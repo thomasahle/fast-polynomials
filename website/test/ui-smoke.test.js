@@ -173,7 +173,13 @@ check(/useEffect\(\(\) => \{ compileNow\(\); \}, \[\]\)/.test(uiSrc), 'initial e
 const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 check(indexSrc.includes('id="paper-card"') && indexSrc.includes('title="arXiv link to follow"'),
   'header paper card exposes the intentional pre-publication placeholder');
-check(indexSrc.includes('Read the paper'), 'paper card heading');
+check(indexSrc.includes('<b>Fast Evaluation of Polynomials with Rational Preprocessing</b>'),
+      'paper card heading');
+check(indexSrc.includes('js/vendor/katex/katex.min.css') &&
+      indexSrc.includes('js/vendor/katex/katex.min.js'),
+      'the self-hosted KaTeX stylesheet and runtime are loaded');
+check(!indexSrc.includes('All arithmetic is exact'),
+      'field-specific implementation notes are not repeated in a global footer');
 check(indexSrc.includes('id="github-star"') &&
       indexSrc.includes('href="https://github.com/thomasahle/fast-polynomials"') &&
       indexSrc.includes('aria-label="Star fast-polynomials on GitHub"'),
@@ -189,8 +195,13 @@ check(outputFn.length > 0 && !outputFn.includes('id="methods"') && !outputFn.inc
       'output card (#out) no longer holds the method seg');
 check(uiSrc.includes('id="methods"') && uiSrc.indexOf('id="methods"') < uiSrc.indexOf('function Output'),
       'method chips render in the input card');
-for (const id of ['monic', 'degree', 'deg-minus', 'deg-plus', 'share', 'copy', 'footer-stats'])
+for (const id of ['monic', 'degree', 'deg-minus', 'deg-plus', 'share', 'copy', 'download', 'footer-stats'])
   check(uiSrc.includes(`id="${id}"`), `#${id} present in ui.js`);
+check(uiSrc.includes('cBundleArchive') && uiSrc.includes('URL.createObjectURL'),
+      'Download builds and saves the C benchmark archive');
+check(uiSrc.includes('chainMathRows') && uiSrc.includes('function MathChain') &&
+      uiSrc.includes('class="chain math-chain"'),
+      'mathematical chains use the KaTeX display adapter');
 check(uiSrc.includes('navigator.clipboard') && uiSrc.includes("execCommand('copy')"),
       'clipboard write has an execCommand fallback');
 check(uiSrc.includes('stateFromHash(s, location.hash)'), 'boot state seeded from the URL hash');

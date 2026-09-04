@@ -9,7 +9,7 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 
 ## Structure
 
-- `index.html`, `style.css` — the page (no build step; Preact + htm vendored). One card:
+- `index.html`, `style.css` — the page (no build step; Preact + htm and KaTeX vendored). One card:
   example chips (Taylor polynomials over ℚ/ℝ; over the hashing fields a random key —
   a fresh draw per click —, sparse, dense and a fixed reproducible key, all regenerated
   at the chosen degree) → the polynomial input (highlighted through a transparent
@@ -21,7 +21,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   factor/original form and exact/decimal (hex) constants — a display-only rewrite ·
   C code with float/fraction constants over ℚ · graph) → the comparison table (one row
   per method: multiplications with the scalar count, additions, multiplicative depth,
-  exact or ≈ numeric; clicking a row selects the method) + Share
+  exact or ≈ numeric; clicking a row selects the method) + Share. Copy is paired with
+  Download, which packages every available C method with benchmark and assembly-audit
+  scripts.
 - `js/rat.js` — exact rationals over BigInt
 - `js/field.js` — field interface: ℚ, GF(p) and GF(2^k) (carryless mul, Frobenius roots)
 - `js/poly.js` — dense polynomial arithmetic over any field
@@ -40,15 +42,22 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   explicit coefficient maps. Belaga and Pan's complex schemes remain as
   reference implementations but are not shown in the comparison table;
   `js/compare.js` runs the displayed methods on the same input
-- `js/cgen.js` — C code generation matching the paper's benchmark code
-  (`tools/bench/framework/multiplication*.h`): PCLMULQDQ / PMULL
-  carryless multiplication for GF(2^64), `__uint128_t` Mersenne helpers for GF(2^89−1),
-  doubles for ℚ (float or exact `(double)NUM/DEN` constants)
+- `js/cgen.js` — descriptor-driven C emission matching the paper's benchmark code
+  (`tools/bench/framework/multiplication*.h`). All methods share the
+  emitter; measured width-specific kernels supply PCLMULQDQ / PMULL for GF(2^32),
+  GF(2^64), and GF(2^128), Mersenne arithmetic for 2^61−1, 2^89−1, and 2^127−1,
+  or doubles for ℚ/ℝ. Estrin rows are emitted by dependency layer so the compiler can
+  schedule independent FMAs and apply SLP when profitable.
+- `js/cbundle.js` — dependency-free `.tar.gz` creation for the Download button, plus
+  the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL
 - `js/chain.js` — chain rendering: index names or the paper's letter names
   (y, z, t, u, …) with gadget headings (Q_7, H_2, T-recursion, …)
 - `js/graph.js`, `js/graphview.js` — computational-graph IR (× and + nodes) and its
   layered SVG layout / text listing
 - `js/highlight.js` — dependency-free C tokenizer / syntax highlighter for the code pane
+- `js/mathview.js` — display-only conversion of the generated chain grammar to
+  aligned TeX rows; KaTeX renders them with MathML while Copy preserves the exact
+  canonical plain text
 - `js/uistate.js` — the page's state: one plain object (mode, source, job id, result,
   selected method, view and its sub-options), a pure reducer, and the selectors every
   control is rendered from (`selectedRow`, `paneContent`, `availableSubOptions`, …);
@@ -59,14 +68,19 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   off the UI thread; it posts every view (math, paper-format math, C, fraction-C,
   graph IR + SVG) for ours and each comparison method so switching views never recompiles
 - `js/vendor/preact-htm.module.js` — Preact + htm standalone ES-module bundle (vendored,
-  MIT; see `js/vendor/LICENSE-preact.txt`); the only third-party code, no build step
+  MIT; see `js/vendor/LICENSE-preact.txt`)
+- `js/vendor/katex/` — pinned KaTeX runtime, stylesheet and WOFF2 fonts (vendored,
+  MIT; see its `LICENSE` and `README.md`); no CDN and no build step
 - `test/` — dependency-free Node test suites: `char2.test.js`, `char0.test.js` (985 checks incl.
   Python-generated goldens), `chain.test.js` (paper-format naming + gadget
   provenance), `cgen.test.js` (generated C compiled and executed), `graph.test.js`,
   `methods.test.js`, `motzkin.test.js`, `belaga.test.js`, `pan1978.test.js`,
   `pan1978real.test.js`, `ui-smoke.test.js` (worker result shape per
   mode + highlighter), `uistate.test.js` (reducer / selector invariants: mode switch,
-  result selection, sub-option visibility, cancel and stale replies)
+  result selection, sub-option visibility, cancel and stale replies), and
+  `cbundle.test.js` (archive contents plus compile/run of the shipped scripts), and
+  `mathview.test.js` (plain-chain to TeX conversion plus KaTeX rendering across fields
+  and methods)
 
 ## Tests
 

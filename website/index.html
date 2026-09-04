@@ -1,72 +1,69 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fast Polynomial Evaluation — chain compiler</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#x2797;</text></svg>">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fast Polynomial Evaluation — chain compiler</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#x2797;</text></svg>">
+  <link rel="stylesheet" href="js/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<div class="wrap">
-  <header>
-    <div class="head-main">
-      <h1>Half-the-multiplications polynomial chains</h1>
-      <p class="sub">Type a polynomial and get back a straight-line evaluation chain, as
-      mathematics, as C, or as a graph. <em class="ours">This paper</em> is the schedule of
-      <em>Fast Evaluation of Polynomials with Rational Preprocessing</em> (preprint, 2026;
-      arXiv link to follow): a monic polynomial of degree <i>n</i> in
-      &lfloor;<i>n</i>/2&rfloor;+1 multiplications after an everywhere-defined rational
-      preprocessing of its coefficients (a non-monic input costs one more scalar
-      multiplication, by the leading coefficient), shown next to Horner, Estrin,
-      Rabin&ndash;Winograd, Knuth&ndash;Eve, and Pan on the same input. Three field
-      settings: exact rationals (&#8474;, or &#8477; with the same exact chain shown in
-      doubles), Mersenne-prime fields as used in polynomial hashing, and binary fields
-      GF(2<sup><i>k</i></sup>) for carry-less hashing.</p>
-    </div>
-    <div class="header-links">
-      <a class="paper-card" id="paper-card" href="#" title="arXiv link to follow">
-        <svg class="doc-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"
-          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
-          <path d="M5.5 2.5h9l4 4v15h-13z"/>
-          <path d="M14.5 2.5v4h4"/>
-          <path stroke-width="1.2" stroke-linecap="round" d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5"/>
-        </svg>
-        <span class="paper-txt"><b>Read the paper</b>
-        <span>&hellip;the &lfloor;n/2&rfloor;+1-multiplication schedules compiled here, and the
-        everywhere-defined rational preprocessing behind them (preprint, 2026; arXiv link to
-        follow).</span></span>
-      </a>
-      <a class="github-link" id="github-star" href="https://github.com/thomasahle/fast-polynomials"
-        target="_blank" rel="noopener noreferrer" aria-label="Star fast-polynomials on GitHub">
-        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor">
-          <path d="M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.6 0-1.2.4-2.3 1.2-3.1-.1-.3-.5-1.6.1-3.1 0 0 1-.3 3.1 1.2a10.7 10.7 0 0 1 5.7 0c2.2-1.5 3.1-1.2 3.1-1.2.6 1.5.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.3-2.8 5.3-5.5 5.6.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z"/>
-        </svg>
-        GitHub
-        <span class="github-stars">
-          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
-            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+  <div class="wrap">
+    <header>
+      <div class="head-main">
+        <h1>Evaluating Polynomials Fast</h1>
+        <p class="sub">
+          You may have heard about Horner's method that allows evaluating a polynomial of degree <i>n</i> in <i>n</i>
+          multiplications.
+          But did you know that with a bit of preprocessing of the coefficients, often <b><i>n/2</i> multiplications
+            suffice?</b>
+          You can use this to approximate functions like exp, sin, cos, or to evaluate polynomials in cryptography,
+          hashing, and coding theory.
+          Simple type a polynomial below, pick your field, and we'll preprocess it for you.
+        </p>
+      </div>
+      <div class="header-links">
+        <a class="paper-card" id="paper-card" href="#" title="arXiv link to follow">
+          <svg class="doc-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none"
+            stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+            <path d="M5.5 2.5h9l4 4v15h-13z" />
+            <path d="M14.5 2.5v4h4" />
+            <path stroke-width="1.2" stroke-linecap="round" d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" />
           </svg>
-          <span id="github-star-count" aria-live="polite">&hellip;</span>
-        </span>
-      </a>
-    </div>
-  </header>
+          <span class="paper-txt"><b>Fast Evaluation of Polynomials with Rational Preprocessing</b>
+            <span>&hellip;the &lfloor;n/2&rfloor;+1-multiplication schedules compiled here, and the
+              everywhere-defined rational preprocessing behind them (preprint, 2026; arXiv link to
+              follow).</span></span>
+        </a>
+        <a class="github-link" id="github-star" href="https://github.com/thomasahle/fast-polynomials" target="_blank"
+          rel="noopener noreferrer" aria-label="Star fast-polynomials on GitHub">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor">
+            <path
+              d="M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.6 0-1.2.4-2.3 1.2-3.1-.1-.3-.5-1.6.1-3.1 0 0 1-.3 3.1 1.2a10.7 10.7 0 0 1 5.7 0c2.2-1.5 3.1-1.2 3.1-1.2.6 1.5.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.3-2.8 5.3-5.5 5.6.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z" />
+          </svg>
+          GitHub
+          <span class="github-stars">
+            <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
+              <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
+            </svg>
+            <span id="github-star-count" aria-live="polite">&hellip;</span>
+          </span>
+        </a>
+      </div>
+    </header>
 
-  <!-- The single card (input, field / method choosers, tabs + output pane, stats)
+    <!-- The single card (input, field / method choosers, tabs + output pane, stats)
        is rendered here by js/ui.js (Preact + htm, vendored). -->
-  <div id="app"></div>
+    <div id="app"></div>
 
-  <footer>
-    All arithmetic is exact (BigInt rationals, Mersenne-prime fields GF(2<sup>k</sup>&minus;1),
-    carryless binary fields GF(2<sup>k</sup>)). The &#8477; setting runs the same exact
-    rational preprocessing as &#8474; and then shows and emits the chain's constants as
-    doubles; that rounding alone is why it is reported as &approx; numeric. The generated C
-    matches the code used for the paper's experiments (PCLMULQDQ / PMULL carryless
-    multiplication, 128-bit Mersenne reduction).
-  </footer>
-</div>
-<script type="module" src="js/github-stars.js"></script>
-<script type="module" src="js/ui.js"></script>
+  </div>
+  <script src="js/vendor/katex/katex.min.js"></script>
+  <script type="module" src="js/github-stars.js"></script>
+  <script type="module" src="js/ui.js"></script>
 </body>
+
 </html>

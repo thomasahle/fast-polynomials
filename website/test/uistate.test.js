@@ -86,7 +86,7 @@ for (const m of MODES) {
   const exs = examplesFor(m, 10);
   check(exs.length > 0 && exs.every(e =>
     typeof e.key === 'string' && e.key.length > 0 &&
-    typeof e.labelHtmlSpec === 'string' && e.labelHtmlSpec.length > 0 &&
+    typeof e.label === 'string' && e.label.length > 0 &&
     typeof e.title === 'string' && e.title.length > 0 &&
     typeof e.src === 'string' && e.src.length > 0), `examples for ${m}`);
   eq(MODE_MSG[m], REGISTRY.find(f => f.id === m).worker, `worker message fields for ${m}`);
@@ -134,6 +134,8 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(shf.method === 'ours', 'reply falls back when the chosen method is unavailable');
   eq(examplesFor('Q', 10).map(e => e.key), ['exp', 'ln', 'sqrt'], 'ℚ example chips');
   eq(examplesFor('R', 10).map(e => e.key), ['exp', 'ln', 'sqrt'], 'ℝ example chips (the same Taylor polynomials)');
+  eq(examplesFor('Q', 10).map(e => e.labelTex), ['e^x', '\\ln(1+x)', '\\sqrt{1+x}'],
+    'ℚ example chips carry TeX labels');
   for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128'])
     eq(examplesFor(m, 10).map(e => e.key), ['random', 'sparse', 'dense', 'fixed'], `${m} hashing example chips`);
   const exM = reduce(reduce(s1, { type: 'setMode', mode: 'p89' }), { type: 'example', key: 'dense' });

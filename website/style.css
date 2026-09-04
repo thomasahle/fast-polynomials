@@ -94,12 +94,13 @@ label.head { display: block; font-weight: 700; }
 /* example chips, regenerated at the chosen degree */
 .examples { display: inline-flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .examples a.chip {
+  display: inline-flex; align-items: center;
   border: 1px solid var(--border); border-radius: 999px; background: var(--mono-bg);
   padding: .14rem .7rem; color: var(--accent); cursor: pointer; font-size: .88rem;
   user-select: none;
 }
 .examples a.chip:hover { border-color: var(--accent); }
-.examples .rad { border-top: 1.2px solid currentColor; }   /* radical overline: √(1+x) */
+.examples a.chip .katex { font-size: 1em; line-height: 1; }
 .monic-toggle {
   border: 1px solid var(--border); border-radius: 999px; background: transparent;
   padding: .14rem .7rem; color: var(--muted); cursor: pointer; font: inherit;
@@ -220,19 +221,23 @@ button.cancel {
 .subopts a.off { opacity: .4; cursor: default; }
 .subopts a:not(.on):not(.off):hover { color: var(--ink); }
 
-/* the pane wrapper anchors the Copy button to the pane's top-right corner */
+/* the pane wrapper anchors Copy + Download to the pane's top-right corner */
 .pane-wrap { position: relative; }
-button.copy {
+.pane-actions {
   position: absolute; top: .55rem; right: .55rem;
+  z-index: 2; display: flex; gap: .35rem;
+}
+button.copy, button.download {
   border: 1px solid var(--out-border); border-radius: 6px; background: var(--out-bg);
   color: var(--accent); cursor: pointer; font: inherit; font-size: .8rem;
   padding: .12rem .6rem;
 }
-button.copy:hover { border-color: var(--accent); }
+button.copy:hover, button.download:hover { border-color: var(--accent); }
+button.download:disabled { opacity: .55; cursor: wait; }
 
 /* the generated output: pane colour distinct from the input, no top border
    (the tab row's line is the top edge), square top corners under the tabs */
-pre.chain, .graph-pane {
+.chain, .graph-pane {
   background: var(--out-bg); border: 1px solid var(--out-border); border-top: 0;
   border-radius: 0 0 8px 8px; margin: 0;
 }
@@ -243,6 +248,49 @@ pre.chain {
 pre.chain .op { color: var(--accent); }
 pre.chain .cm { color: var(--muted); }
 pre.chain .none { color: var(--muted); font-style: italic; }
+
+/* Mathematical view: KaTeX cells in a real alignment table. The canonical
+   plain-text chain remains behind Copy and the operation counter; this is only
+   its typeset presentation. Extra top padding reserves the action-button row. */
+.math-chain {
+  padding: 2.55rem 1.1rem 1.15rem; overflow-x: auto;
+  color: var(--ink); -webkit-overflow-scrolling: touch;
+}
+.math-table {
+  border-collapse: separate; border-spacing: 0 .24rem;
+  width: max-content; min-width: 100%;
+}
+.math-table td, .math-table th { white-space: nowrap; vertical-align: baseline; }
+.math-equation td { padding-block: .06rem; }
+.math-lhs { min-width: 2.4rem; padding: 0 .25rem 0 .2rem; text-align: right; color: var(--accent); }
+.math-rel { padding: 0 .55rem; text-align: center; color: var(--muted); }
+.math-rhs { padding: 0 .4rem 0 .05rem; text-align: left; }
+.math-chain .katex { font-size: 1.08em; }
+.math-equation.result td { padding-top: .42rem; }
+.math-equation.result .math-lhs { font-weight: 700; }
+.math-annotation {
+  margin-left: 1rem; color: var(--muted);
+  font: italic .78rem/1.3 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.math-section th {
+  padding: .62rem .25rem .12rem; text-align: left; color: var(--muted); font-weight: 400;
+}
+.math-section:first-child th { padding-top: 0; }
+.math-section-rule {
+  display: inline-block; width: 1.35rem; margin: 0 .55rem .18rem 0;
+  border-top: 1px solid var(--out-border); vertical-align: middle;
+}
+.math-section-rule:last-child { margin: 0 0 .18rem .55rem; }
+.math-note td {
+  padding: .25rem; color: var(--muted);
+  font: italic .82rem/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.math-gap td { height: .5rem; }
+@media (max-width: 540px) {
+  .math-chain { padding-inline: .75rem; }
+  .math-chain .katex { font-size: .98em; }
+  .math-rel { padding-inline: .35rem; }
+}
 
 /* C syntax highlighting (js/highlight.js) */
 .hl-comment { color: var(--hl-comment); font-style: italic; }
@@ -312,8 +360,6 @@ button.share {
 }
 button.share:hover { border-color: var(--accent); }
 
-footer { color: var(--muted); font-size: .85rem; margin-top: 2.5rem; }
-footer a { color: var(--accent); }
 
 /* stale-while-revalidate: while a new job runs the previous output stays
    mounted and dims briefly (the delay hides the dim on fast compiles) */

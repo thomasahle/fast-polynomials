@@ -22,6 +22,8 @@
 // row per method) + Share.
 import { html, render, useReducer, useState, useEffect, useRef } from './vendor/preact-htm.module.js';
 import { highlightC } from './highlight.js';
+import { cBundleArchive, hasCBundle } from './cbundle.js';
+import { chainMathRows, renderLatex } from './mathview.js';
 import {
   reduce, initialState, stateFromHash, hashFromState, VIEWS, examplesFor, exampleHeld,
   exampleDegree, showOutput, compileMessage, methodTabs, comparisonTable, subOptionStrips,
@@ -32,6 +34,21 @@ const DEBOUNCE_MS = 500;   // quiet time after an edit before the chain recompil
 const COPIED_MS = 1200;    // how long Copy / Share show their transient "copied"
 
 const VIEW_LABEL = { math: 'mathematical', c: 'C code', graph: 'graph' };
+
+/** One trusted, generated TeX fragment. KaTeX supplies accessible MathML;
+ *  `fallback` remains visible if the runtime or a particular render fails. */
+function Typeset({ tex, fallback = tex, className = null }) {
+  const markup = renderLatex(tex);
+  return markup
+    ? html`<span class=${className} dangerouslySetInnerHTML=${{ __html: markup }} />`
+    : html`<span class=${className}>${fallback}</span>`;
+}
+
+function ExampleLabel({ example }) {
+  return example.labelTex
+    ? html`<${Typeset} tex=${example.labelTex} fallback=${example.label} />`
+    : example.label;
+}
 
 /** Typeset a registry label: `^k` exponents and Unicode superscript runs
  *  ("GF(2^64)", "GF(2⁶⁴)") both become real superscripts. */
@@ -154,7 +171,7 @@ function App() {
         <span class="examples" id="examples">
           ${examplesFor(state.mode, state.exDegree, state.exSeed, state.exMonic).map(ex => html`<a key=${ex.key} class="chip"
             data-ex=${ex.key} title=${ex.title || null} onClick=${() => runExample(ex.key)}
-            dangerouslySetInnerHTML=${{ __html: ex.labelHtmlSpec }}></a>`)}
+            ><${ExampleLabel} example=${ex} /></a>`)}
         </span>
         <button id="monic" class=${`monic-toggle${state.exMonic ? ' on' : ''}`}
           aria-pressed=${state.exMonic} title="normalize generated examples to leading coefficient 1"
@@ -245,7 +262,7 @@ function Output({ state, dispatch }) {
         </span>`)}
       </div>
     </div>
-    <${Pane} content=${paneContent(state)} />
+    <${Pane} content=${paneContent(state)} state=${state} />
   </div>`;
 }
 
@@ -286,13 +303,35 @@ function CopyButton({ text }) {
     onClick=${() => copyText(text).then(flash)}>${copied ? 'copied' : 'Copy'}</button>`;
 }
 
+/** Download every available C method together with a comparison harness. */
+function DownloadButton({ state }) {
+  const [busy, setBusy] = useState(false);
+  const download = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { name, blob } = await cBundleArchive(state);
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = name; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally { setBusy(false); }
+  };
+  return html`<button class="download" id="download"
+    title="download all C methods with a benchmark script" disabled=${busy}
+    onClick=${download}>${busy ? 'packing…' : 'Download'}</button>`;
+}
+
 /** The pane below the view bar; keyed per kind so switching kinds remounts the element. */
-function Pane({ content }) {
+function Pane({ content, state }) {
   const text = content?.kind === 'math' ? content.text
     : content?.kind === 'c' ? content.code
       : content?.kind === 'c-missing' ? `${content.note}\n\n${content.text}` : null;
   return html`<div class="pane-wrap">
-    ${text !== null && html`<${CopyButton} text=${text} />`}
+    ${text !== null && html`<div class="pane-actions">
+      <${CopyButton} text=${text} />
+      ${hasCBundle(state) && html`<${DownloadButton} state=${state} />`}
+    </div>`}
     ${paneBody(content)}
   </div>`;
 }
@@ -300,7 +339,7 @@ function Pane({ content }) {
 function paneBody(content) {
   switch (content?.kind) {
     case 'math':
-      return html`<pre class="chain" id="chain" key="math">${content.text}</pre>`;
+      return html`<${MathChain} text=${content.text} />`;
     case 'c':
       return html`<pre class="chain code" id="chain" key="c"
         dangerouslySetInnerHTML=${{ __html: highlightC(content.code) }} />`;
@@ -319,6 +358,36 @@ function paneBody(content) {
     default:
       return null;
   }
+}
+
+/** The plain-text chain rendered as an equals-aligned mathematical display.
+ *  Copy still receives the untouched text from Pane. */
+function MathChain({ text }) {
+  if (!globalThis.katex) return html`<pre class="chain" id="chain" key="math">${text}</pre>`;
+  const rows = chainMathRows(text);
+  let lastEquation = -1;
+  rows.forEach((row, i) => { if (row.kind === 'equation') lastEquation = i; });
+  return html`<div class="chain math-chain" id="chain" key="math"
+    role="region" aria-label="mathematical evaluation chain">
+    <table class="math-table"><tbody>
+      ${rows.map((row, i) => {
+        if (row.kind === 'heading') return html`<tr class="math-section" key=${i}>
+          <th colspan="3"><span class="math-section-rule"></span>
+            <${Typeset} tex=${row.tex} fallback=${row.text} />
+            <span class="math-section-rule"></span></th></tr>`;
+        if (row.kind === 'note') return html`<tr class="math-note" key=${i}>
+          <td colspan="3">${row.text}</td></tr>`;
+        if (row.kind === 'gap') return html`<tr class="math-gap" aria-hidden="true" key=${i}>
+          <td colspan="3"></td></tr>`;
+        return html`<tr class=${i === lastEquation ? 'math-equation result' : 'math-equation'} key=${i}>
+          <td class="math-lhs"><${Typeset} tex=${row.lhsTex} fallback=${row.lhs} /></td>
+          <td class="math-rel"><${Typeset} tex="=" fallback="=" /></td>
+          <td class="math-rhs"><${Typeset} tex=${row.rhsTex} fallback=${row.expression} />
+            ${row.annotation && html`<span class="math-annotation">${row.annotation}</span>`}</td>
+        </tr>`;
+      })}
+    </tbody></table>
+  </div>`;
 }
 
 // only the edge decorations that actually occur in the shown graph are listed

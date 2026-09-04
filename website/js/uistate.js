@@ -136,10 +136,9 @@ export function tokenizePoly(src) {
 
 // ---- example generators ----------------------------------------------------
 // The example chips are pure generators: examplesFor(mode, degree, seed) returns
-// [{ key, labelHtmlSpec, title, src, reseed? }] with the polynomial regenerated
-// at the chosen degree (clamped per field).  labelHtmlSpec is a constant
-// restricted-HTML string owned by this file (sup / span tags only) that ui.js
-// renders as-is.  Characteristic 0 (ℚ, ℝ): Taylor polynomials.  Hashing fields
+// [{ key, label, labelTex?, title, src, reseed? }] with the polynomial regenerated
+// at the chosen degree (clamped per field). Characteristic 0 (ℚ, ℝ): Taylor
+// polynomials whose labels are typeset by KaTeX. Hashing fields
 // (Mersenne primes, GF(2^k)): a uniformly random key polynomial (a fresh draw per
 // click: `reseed`), a sparse and a dense small-coefficient polynomial, and one
 // fixed full-width key that is the same on every visit.
@@ -300,7 +299,7 @@ function denseSrc(f, n) {
 }
 
 /** The example chips for a mode, generated at `degree` (clamped) and, for the
- *  reseeding chips, at `seed`: [{ key, labelHtmlSpec, title, src, reseed? }]. */
+ *  reseeding chips, at `seed`: [{ key, label, labelTex?, title, src, reseed? }]. */
 export function examplesFor(mode, degree, seed = 0, monic = false) {
   const f = fieldOf(mode);
   if (!f) return [];
@@ -308,26 +307,26 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   const normalized = monic ? 'monic normalization of the ' : '';
   const seriesSrc = key => ratPolyToSrc(monic ? monicRat(seriesCoeffs(key, n)) : seriesCoeffs(key, n));
   if (f.char === 0) return [
-    { key: 'exp',  labelHtmlSpec: 'e<sup>x</sup>', title: `${normalized}Taylor polynomial of eˣ, degree ${n}`,
+    { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: `${normalized}Taylor polynomial of eˣ, degree ${n}`,
       src: seriesSrc('exp') },
-    { key: 'ln',   labelHtmlSpec: 'ln(1+x)', title: `${normalized}Taylor polynomial of ln(1+x), degree ${n}`,
+    { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: `${normalized}Taylor polynomial of ln(1+x), degree ${n}`,
       src: seriesSrc('ln') },
-    { key: 'sqrt', labelHtmlSpec: '√<span class="rad">(1+x)</span>', title: `${normalized}Taylor polynomial of √(1+x), degree ${n}`,
+    { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: `${normalized}Taylor polynomial of √(1+x), degree ${n}`,
       src: seriesSrc('sqrt') },
   ];
   const k = n + 1;
   return [
-    { key: 'random', labelHtmlSpec: 'random key', reseed: true,
+    { key: 'random', label: 'random key', reseed: true,
       title: monic
         ? `monic random degree-${n} polynomial over ${f.name} — click again for fresh lower coefficients`
         : `${k}-independent hashing: a uniformly random key polynomial over ${f.name} ` +
           `(all ${k} coefficients full-width) — click again for a fresh key`,
       src: keySrc(f, n, ['random', seed], monic) },
-    { key: 'sparse', labelHtmlSpec: 'sparse', title: 'monic, only a few small nonzero coefficients',
+    { key: 'sparse', label: 'sparse', title: 'monic, only a few small nonzero coefficients',
       src: sparseSrc(f, n) },
-    { key: 'dense',  labelHtmlSpec: 'dense', title: 'monic, every coefficient a small nonzero value',
+    { key: 'dense',  label: 'dense', title: 'monic, every coefficient a small nonzero value',
       src: denseSrc(f, n) },
-    { key: 'fixed',  labelHtmlSpec: 'fixed key',
+    { key: 'fixed',  label: 'fixed key',
       title: `a fixed, reproducible ${monic ? 'monic ' : 'full-width key '}polynomial over ${f.name} (the same on every visit)`,
       src: keySrc(f, n, ['fixed'], monic) },
   ];

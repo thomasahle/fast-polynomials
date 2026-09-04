@@ -7,7 +7,8 @@
 //   ours Q (n = 9, both constant styles): compared to double Horner (1e-9 rel).
 //   Horner / Rabin–Winograd / Estrin chains in each of the three modes.
 //   The other registry fields, ours + the three methods, native and x86 cross:
-//     GF(2^32) (uint32_t, PCLMUL/PMULL), GF(2^128) (__uint128_t, 4 clmuls),
+//     GF(2^32) (uint32_t, PCLMUL/PMULL), GF(2^128) (__uint128_t,
+//     4-clmul general products / 2-clmul squares),
 //     2^61-1 (uint64_t, lazy folds; x any 64-bit word), 2^127-1 (__uint128_t;
 //     x any 128-bit word), R (the exact chain, constants rounded to doubles).
 // Plus unit checks of ratToDouble (correct rounding) and the naming helpers.
@@ -24,7 +25,7 @@ import { compileHorner } from '../js/methods/horner.js';
 import { compileRW } from '../js/methods/rw.js';
 import { compileEstrin } from '../js/methods/estrin.js';
 import { methodChainC, char0C, char2C, ratToDouble, doubleLiteral, qConst,
-         wireLetter, cIdent, parseRhs, MERSENNE89 } from '../js/cgen.js';
+         wireLetter, cIdent, parseRhs, MERSENNE89, C_PROVENANCE } from '../js/cgen.js';
 
 const TMP = '/tmp/site2/cgen_test';
 mkdirSync(TMP, { recursive: true });
@@ -72,6 +73,7 @@ const MAINS = {
 };
 function buildAndRun(cText, mode, xs, tag) {
   // xs: bigint[] (finite fields) or number[] (Q / R)
+  check(cText.startsWith(C_PROVENANCE), `${tag}: generated-source provenance`);
   const outs = {};
   const kind = KINDS[mode];
   if (!kind) throw new Error(`buildAndRun: unknown mode ${mode}`);
@@ -268,6 +270,9 @@ for (const [k, mode, fmt] of [[32, 'gf32', hex8], [128, 'gf128', hex128]]) {
     for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
       const m = fn(coeffs, F);
       const c = methodChainC(m.lines, nm === 'Horner' ? 'gf2k' : mode, F, { name: nm, mults: m.mults, preprocessing: m.preprocessing });
+      if (k === 128 && nm === 'Estrin')
+        check(c.includes('gf128_square(x)') && c.includes('gf128_square(x2)'),
+              'gf128 Estrin power ladder uses the two-CLMUL square kernel');
       const o = buildAndRun(c, mode, xs, `${nm}${k}_n${n}`);
       compare(o, xs.map(x => fmt(P.evalAt(F, coeffs, x))), `${nm} gf${k} n=${n}`, (a, b) => a === b);
     }

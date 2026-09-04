@@ -9,7 +9,8 @@
 //   tools/bench/framework/fast_hashing_arm.h      slemul  (ARM: clmul + 3-PMULL fold)
 // The other fields follow the same shapes: GF(2^32) and GF(2^128) with
 // PCLMULQDQ / PMULL partial products and shift-xor folds through their standard
-// moduli; 2^61-1 in 64-bit words with 128-bit products and lazy folds;
+// moduli (GF(2^128) has a two-partial-product square kernel); 2^61-1 in
+// 64-bit words with 128-bit products and lazy folds;
 // 2^127-1 with 128-bit values (four 64x64 partial products, values kept in
 // [0, p]); ℚ and ℝ as doubles (exact chain constants rounded).
 // Conventions: a constants table at the top (a[] for GF(2^k) keys, alpha[]
@@ -25,6 +26,7 @@ import { Rat } from './rat.js';
 import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 
 export { ratToDouble, MERSENNE89 };
+export const C_PROVENANCE = '/* Generated from https://thomasahle.com/fast-polynomials/ */';
 
 // ---------- naming ----------
 const WIRE_LETTERS = ['y', 'z', 't', 'u', 'v', 'w', 's', 'r', 'q', 'p',
@@ -104,14 +106,15 @@ export function gf64Header() {
     '/* GF(2^64) = GF(2)[x] / (x^64 + x^4 + x^3 + x + 1); r = 27 = x^4+x^3+x+1 */',
     '#if defined(__x86_64__) && defined(__PCLMUL__) && defined(__SSSE3__)',
     '#include <immintrin.h>',
-    '/* lemul: tools/bench/framework/fast_hashing.h + lemire_modulo in',
-    '   tools/bench/framework/multiplication.h (Lemire & Kaser 2015). */',
+    '/* Lemire--Kaser, "Faster 64-bit universal hashing using carry-less',
+    '   multiplications": one CLMUL plus a 16-byte lookup table. */',
     'static inline uint64_t gf64_mul(uint64_t a, uint64_t b) {',
     '    __m128i ab = _mm_clmulepi64_si128(_mm_cvtsi64_si128((long long)a),',
     '                                      _mm_cvtsi64_si128((long long)b), 0x00);',
     '    __m128i r = _mm_cvtsi64_si128(27);',
     '    __m128i xr = _mm_clmulepi64_si128(ab, r, 0x01);   /* ab[high] * r */',
-    '    /* table lookup instead of the second multiplication */',
+    '    /* Constant 16-byte lookup instead of the second multiplication.  The',
+    '       initializer is compile-time data: optimizing compilers hoist/load it. */',
     '    __m128i table = _mm_setr_epi8(0, 27, 54, 45, 108, 119, 90, 65, (char)216,',
     '                                  (char)195, (char)238, (char)245, (char)180,',
     '                                  (char)175, (char)130, (char)153);',
@@ -120,8 +123,8 @@ export function gf64Header() {
     '}',
     ARM_PMULL,
     '#include <arm_neon.h>',
-    '/* slemul / reduce_fast: tools/bench/framework/fast_hashing_arm.h (gf64_mult in',
-    '   tools/bench/framework/multiplication_arm.h); 3 PMULLs beat the table on Apple M1. */',
+    '/* PMULL implementation from "Fast Evaluation of Polynomials with Rational',
+    '   Preprocessing": multiply once, then fold twice through x^64 = r. */',
     'static inline uint64_t gf64_mul(uint64_t a, uint64_t b) {',
     '    const poly64_t r = (poly64_t)27;',
     '    uint64x2_t ab = vreinterpretq_u64_p128(vmull_p64((poly64_t)a, (poly64_t)b));',
@@ -160,6 +163,8 @@ export function gf32Header() {
     '#error "gf32_mul needs carry-less multiplication: x86 -mpclmul, ARM -march=armv8-a+crypto"',
     '#endif',
     '/* a*b in GF(2^32): the product\'s upper word is folded twice through x^32 = r */',
+    '/* Unlike GF(2^64), the residual has seven bits; one 16-entry byte shuffle',
+    '   cannot encode it.  The two sparse shift/XOR folds avoid extra tables. */',
     'static inline uint32_t gf32_mul(uint32_t a, uint32_t b) {',
     '    uint64_t ab = clmul32(a, b);                             /* degree <= 62 */',
     '    uint64_t hi = ab >> 32;',
@@ -173,7 +178,8 @@ export function gf32Header() {
 
 /** gf128_mul: four PCLMULQDQ / PMULL partial products (schoolbook), the
  *  256-bit product's upper half folded through x^128 = x^7 + x^2 + x + 1. */
-export function gf128Header() {
+export function gf128Header(body = '') {
+  const needSquare = body === '' || body.includes('gf128_square(');
   return [
     '#include <stdint.h>',
     '',
@@ -197,9 +203,24 @@ export function gf128Header() {
     '#else',
     '#error "gf128_mul needs carry-less multiplication: x86 -mpclmul, ARM -march=armv8-a+crypto"',
     '#endif',
-    '/* a*b in GF(2^128): four 64x64 partial products, then the upper 128 bits of',
-    '   the product are folded through x^128 = r in two rounds (the second one',
-    '   handles the 7 bits that the first fold pushes past bit 128). */',
+    '/* Reduce hi*x^128+lo through x^128 = r. */',
+    'static inline __uint128_t gf128_reduce(__uint128_t lo, __uint128_t hi) {',
+    '    __uint128_t top = (hi >> 127) ^ (hi >> 126) ^ (hi >> 121); /* hi*r above bit 128 */',
+    '    __uint128_t red = hi ^ (hi << 1) ^ (hi << 2) ^ (hi << 7);  /* hi*r mod x^128 */',
+    '    red ^= top ^ (top << 1) ^ (top << 2) ^ (top << 7);         /* top*r, degree <= 13 */',
+    '    return lo ^ red;',
+    '}',
+    ...(needSquare ? [
+      '/* Squaring has no cross term in characteristic two, so it needs only two',
+      '   64x64 carry-less products rather than the general product\'s four. */',
+      'static inline __uint128_t gf128_square(__uint128_t a) {',
+      '    uint64_t a0 = (uint64_t)a, a1 = (uint64_t)(a >> 64);',
+      '    return gf128_reduce(clmul64(a0, a0), clmul64(a1, a1));',
+      '}',
+    ] : []),
+    '/* a*b in GF(2^128): four 64x64 partial products.  A three-CLMUL Karatsuba',
+    '   product saves one multiply but adds a dependent XOR/extract path; keep',
+    '   that as a separately benchmarked kernel rather than assuming it wins. */',
     'static inline __uint128_t gf128_mul(__uint128_t a, __uint128_t b) {',
     '    uint64_t a0 = (uint64_t)a, a1 = (uint64_t)(a >> 64);',
     '    uint64_t b0 = (uint64_t)b, b1 = (uint64_t)(b >> 64);',
@@ -207,32 +228,30 @@ export function gf128Header() {
     '    __uint128_t mid = clmul64(a0, b1) ^ clmul64(a1, b0);',
     '    lo ^= mid << 64;',
     '    hi ^= mid >> 64;                                           /* a*b = hi*x^128 + lo */',
-    '    __uint128_t top = (hi >> 127) ^ (hi >> 126) ^ (hi >> 121); /* hi*r above bit 128 */',
-    '    __uint128_t red = hi ^ (hi << 1) ^ (hi << 2) ^ (hi << 7);  /* hi*r mod x^128 */',
-    '    red ^= top ^ (top << 1) ^ (top << 2) ^ (top << 7);         /* top*r, degree <= 13 */',
-    '    return lo ^ red;',
+    '    return gf128_reduce(lo, hi);',
     '}',
   ].join('\n');
 }
 
-const GF_MODS = {
-  32: (1n << 32n) | 0b10001101n,
-  64: (1n << 64n) | 0b11011n,
-  128: (1n << 128n) | 0b10000111n,
-};
+// Shared emission is descriptor-driven; only these measured, width-specific
+// product/reduction kernels differ. Adding a field is one descriptor plus its
+// kernel, not a new Horner/Estrin/paper-chain emitter.
 const GF_SPECS = {
-  32: { T: 'uint32_t', mul: 'gf32_mul', header: gf32Header, lit: hex32, inline: v => '0x' + toBig(v).toString(16) + 'U',
+  32: { mod: (1n << 32n) | 0b10001101n,
+        T: 'uint32_t', mul: 'gf32_mul', header: gf32Header, lit: hex32, inline: v => '0x' + toBig(v).toString(16) + 'U',
         flags: 'x86  cc -O2 -mpclmul ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
-  64: { T: 'uint64_t', mul: 'gf64_mul', header: gf64Header, lit: hex64, inline: v => '0x' + toBig(v).toString(16) + 'ULL',
+  64: { mod: (1n << 64n) | 0b11011n,
+        T: 'uint64_t', mul: 'gf64_mul', header: gf64Header, lit: hex64, inline: v => '0x' + toBig(v).toString(16) + 'ULL',
         flags: 'x86  cc -O2 -mpclmul -mssse3 ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
-  128: { T: '__uint128_t', mul: 'gf128_mul', header: gf128Header, lit: u128, inline: u128,
+  128: { mod: (1n << 128n) | 0b10000111n,
+         T: '__uint128_t', mul: 'gf128_mul', square: 'gf128_square', header: gf128Header, lit: u128, inline: u128,
          flags: 'x86  cc -O2 -mpclmul ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
 };
 /** Emitter spec for a GF(2^k) field object; throws for unsupported k / moduli. */
 function gfSpec(F) {
   const spec = GF_SPECS[F?.k];
   if (!spec) throw new Error(`C generation supports GF(2^32), GF(2^64) and GF(2^128) (got ${F?.name ?? F})`);
-  if (F.mod !== GF_MODS[F.k]) throw new Error(`C generation for GF(2^${F.k}) needs the standard modulus`);
+  if (F.mod !== spec.mod) throw new Error(`C generation for GF(2^${F.k}) needs the standard modulus`);
   return { ...spec, k: F.k };
 }
 /** Header for a GF(2^k) field (k = 32, 64, 128). */
@@ -256,12 +275,13 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
     const parts = [...f.t, ...(f.k !== null ? [`a${f.k}`] : [])];
     return parts.length > 1 ? `(${parts.join(' + ')})` : parts[0];
   };
-  const L = [];
+  const L = [C_PROVENANCE];
+  const usesSquare = !!G.square && spec.gates.some(g => cFactor(g.l) === cFactor(g.r));
   L.push(`/* P(x) over GF(2^${G.k}): ${mults} multiplications` +
          ` (Horner: ${deg - 1}), ${nkeys} key${nkeys === 1 ? '' : 's'} a_0..a_${nkeys - 1}. */`);
-  L.push('/* Same shape as the paper\'s benchmark code (tools/fast_poly.py repr_cpp).');
-  L.push(`   Compile: ${G.flags} */`);
-  L.push(...G.header().split('\n'));
+  L.push('/* Kernel conventions follow "Fast Evaluation of Polynomials with Rational');
+  L.push(`   Preprocessing". Compile: ${G.flags} */`);
+  L.push(...G.header(usesSquare ? `${G.square}(` : 'no square').split('\n'));
   L.push('');
   L.push(`/* keys (the appendix's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
   L.push(`static const ${G.T} a[${nkeys}] = {`);
@@ -272,9 +292,11 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   L.push('');
   L.push(`${G.T} ${name}(${G.T} x) {`);
   const body = [];
-  for (const g of spec.gates)
-    body.push([`    ${G.T} ${g.w} = ${G.mul}(${cFactor(g.l)}, ${cFactor(g.r)});`,
-               `${g.w} = ${mFactor(g.l)} * ${mFactor(g.r)}`]);
+  for (const g of spec.gates) {
+    const left = cFactor(g.l), right = cFactor(g.r);
+    const product = G.square && left === right ? `${G.square}(${left})` : `${G.mul}(${left}, ${right})`;
+    body.push([`    ${G.T} ${g.w} = ${product};`, `${g.w} = ${mFactor(g.l)} * ${mFactor(g.r)}`]);
+  }
   const o = spec.out;
   const core = lifted ? `P_${spec.n}` : 'P';           // the odd part P_{n-1} when lifted
   body.push([`    ${G.T} ${core} = ${cFactor(o)};`,
@@ -291,6 +313,13 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
 }
 
 // ---------- Mersenne primes ----------
+const MERSENNE_FOLD_NOTE = [
+  '/* Common reduction principle: 2^b = 1 (mod 2^b-1), following the',
+  '   branch-free Mersenne-prime treatment of Ahle, Knudsen & Thorup,',
+  '   "The Power of Hashing with Mersenne Primes" (2020).  The safe lazy',
+  '   range and limb schedule below remain specific to each word width. */',
+];
+
 /** 2^89-1 helpers, transcribed to C from tools/bench/framework/multiplication.h
  *  (identical in multiplication_arm.h). Lazy reduction: results are < 2p.
  *  Only the helpers actually referenced by `body` are emitted. */
@@ -299,9 +328,9 @@ export function mersenneHeader(body = '') {
   const L = [
     '#include <stdint.h>',
     '',
-    '/* p = 2^89 - 1.  Helpers adapted from tools/bench/framework/multiplication.h',
-    '   (same code in multiplication_arm.h); values are kept lazily reduced (< 2p)',
-    '   between gates, exactly as in the paper\'s benchmarks. */',
+    ...MERSENNE_FOLD_NOTE,
+    '/* p = 2^89 - 1.  Values are kept lazily reduced (< 2p) between gates,',
+    '   as in "Fast Evaluation of Polynomials with Rational Preprocessing." */',
     '#define M89 ((((__uint128_t)1) << 89) - 1)',
     '#define U128(hi, lo) ((((__uint128_t)(hi)) << 64) | (__uint128_t)(lo))',
   ];
@@ -323,9 +352,7 @@ export function mersenneHeader(body = '') {
     '',
     '/* (a*b + d) mod p, approximately: assumes a, b < 2^c p with c < 7 and',
     '   returns a value < p + 4 + 2^c. */',
-    '/* extra_large_mult_add_mod: a*b + d modulo the Mersenne prime 2^89-1 in 128-bit',
-    '   arithmetic, after Ahle, Knudsen & Thorup, "The Power of Hashing with Mersenne',
-    '   Primes" (2020); implementation transcribed from tools/bench/framework/multiplication.h. */',
+    '/* Tuned 64+25-bit a*b+d kernel for p = 2^89 - 1. */',
     'static inline __uint128_t extra_large_mult_add_mod(__uint128_t a, __uint128_t b, __uint128_t d) {',
     '    uint64_t a_lo = (uint64_t)a;',
     '    uint64_t b_lo = (uint64_t)b;',
@@ -373,6 +400,7 @@ export function mersenne61Header() {
   return [
     '#include <stdint.h>',
     '',
+    ...MERSENNE_FOLD_NOTE,
     '/* p = 2^61 - 1.  Values are kept lazily reduced (below 2^61 + 8) between',
     '   gates: 2^61 = 1 (mod p), so folding the bits above bit 61 back in reduces',
     '   without a division.  Products use one 64x64 -> 128-bit multiply and two folds. */',
@@ -389,21 +417,23 @@ export function mersenne61Header() {
 }
 
 /** 2^127-1 helpers: 128-bit values in [0, p], four 64x64 partial products. */
-export function mersenne127Header() {
+export function mersenne127Header(body = '') {
+  const needSub = body === '' || body.includes('sub127(');
   return [
     '#include <stdint.h>',
     '',
-    '/* p = 2^127 - 1.  With one spare bit in a 128-bit word there is no room for',
-    '   lazier reduction: values are kept in [0, p] (p itself may stand for 0),',
-    '   every addition folds the carry bit back in (2^127 = 1 mod p), and products',
-    '   are formed from four 64x64-bit partial products (schoolbook) and folded twice. */',
+    ...MERSENNE_FOLD_NOTE,
+    '/* p = 2^127 - 1.  The general multiplier requires canonical operands, so',
+    '   this kernel keeps values in [0, p] (p itself may stand for 0), folds each',
+    '   addition via 2^127 = 1 (mod p). Products use four 64x64-bit partial',
+    '   products (schoolbook) and are folded twice. */',
     '#define M127 ((((__uint128_t)1) << 127) - 1)',
     '#define U128(hi, lo) ((((__uint128_t)(hi)) << 64) | (__uint128_t)(lo))',
     '/* a <= 2p -> [0, p] */',
     'static inline __uint128_t fold127(__uint128_t a) { return (a & M127) + (a >> 127); }',
     '/* a, b <= p */',
     'static inline __uint128_t add127(__uint128_t a, __uint128_t b) { return fold127(a + b); }',
-    'static inline __uint128_t sub127(__uint128_t a, __uint128_t b) { return fold127(a + (M127 - b)); }',
+    ...(needSub ? ['static inline __uint128_t sub127(__uint128_t a, __uint128_t b) { return fold127(a + (M127 - b)); }'] : []),
     'static inline __uint128_t mul127(__uint128_t a, __uint128_t b) {',
     '    uint64_t a0 = (uint64_t)a, a1 = (uint64_t)(a >> 64);',
     '    uint64_t b0 = (uint64_t)b, b1 = (uint64_t)(b >> 64);',
@@ -431,8 +461,8 @@ const PRIME_OPS = {
   p89: {
     prime: MERSENNE89, macro: 'M89', T: '__uint128_t', xT: 'uint64_t', lit: u128,
     banner: 'GF(p), p = 2^89 - 1',
-    intro: ['/* Same shape as the paper\'s benchmark code (tools/fast_poly.py repr_mersenne_cpp);',
-            '   the input x is a 64-bit word as in the hashing experiments. */'],
+    intro: ['/* Kernel conventions follow "Fast Evaluation of Polynomials with Rational',
+            '   Preprocessing"; x is a 64-bit word as in the hashing experiments. */'],
     header: body => mersenneHeader(body),
     // x is a uint64_t parameter: an integer multiple must be widened first,
     // otherwise k*x wraps modulo 2^64 for x >= 2^63 (wires are already 128-bit).
@@ -491,7 +521,7 @@ const PRIME_OPS = {
     banner: 'GF(p), p = 2^127 - 1',
     intro: ['/* 128-bit values kept in [0, p]; every addition folds once (add127 / sub127),',
             '   products are four 64x64 partial products (mul127); x is any 128-bit word. */'],
-    header: () => mersenne127Header(),
+    header: body => mersenne127Header(body),
     multiple: (nm, k) => (k === 1 ? [nm, 1] : k === 2 ? [`add127(${nm}, ${nm})`, 1]
                           : k === 3 ? [`add127(add127(${nm}, ${nm}), ${nm})`, 1] : [`mul127(${nm}, ${k})`, 1]),
     neg: e => [`(M127 - ${e})`, 1],
@@ -527,7 +557,11 @@ const entriesOf = t => (t instanceof Map ? [...t.entries()] : Object.entries(t).
   .filter(([, k]) => k !== 0).sort((a, b) => a[0] - b[0]);
 const isZeroConst = c => (c instanceof Rat ? c.isZero() : (typeof c === 'number' ? c === 0 : toBig(c) === 0n));
 
-const DOUBLE_NOTE = '/* For best accuracy and speed, compile with FMA contraction enabled: gcc/clang -O2 -march=native (MSVC: /fp:contract). */';
+const DOUBLE_NOTE = [
+  '/* Estrin layers leave independent multiply-adds visible to the compiler.',
+  '   Compile with gcc/clang -O3 -march=native (MSVC: /O2); optionally test',
+  '   -ffp-contract=fast (/fp:contract) for more aggressive FMA/auto-SLP. */',
+].join('\n');
 
 /** C for a char-0 PolynomialChain. mode: 'Q' | 'R' (doubles: the exact chain
  *  constants rounded — the same code, ℝ differs only in its banner),
@@ -566,7 +600,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   };
   const mGate = g => `${nameOf(g.out_wire)} = ${mForm(g.left, true)} * ${mForm(g.right, true)}`;
 
-  const L = [];
+  const L = [C_PROVENANCE];
   const mults = chain.gates.length + (scaleBy !== null ? 1 : 0);
   const gateLabels = chain.gate_labels ?? null;
   const labelLine = i => {
@@ -766,10 +800,13 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
 
   let T, xT, header, ops, entry = [], finish = () => [];
   if (isGF) {
-    T = xT = G.T; header = G.header();
+    T = xT = G.T; header = null;
     ops = { lit, wire: w => [cIdent(w), 2, w === 'x'],
       neg: v => v,
-      mul: (a, b) => [`${G.mul}(${unparen(a[0])}, ${unparen(b[0])})`, 2, false],
+      mul: (a, b) => {
+        const left = unparen(a[0]), right = unparen(b[0]);
+        return [G.square && left === right ? `${G.square}(${left})` : `${G.mul}(${left}, ${right})`, 2, false];
+      },
       fold: ps => [ps.map(p => p.v[0]).join(' ^ '), 2, false] };
   } else if (isPrime) {
     const P = PRIME_OPS[mode];
@@ -819,9 +856,10 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   fnL.push(...finish(out));
   fnL.push(`    return ${out};`, '}');
   const fnText = fnL.join('\n');
-  if (header === null) header = PRIME_OPS[mode].header(fnText);
+  if (isGF) header = G.header(fnText);
+  else if (header === null) header = PRIME_OPS[mode].header(fnText);
   else if (usesLdexp) header = '#include <math.h>\n' + header;
-  const L = [`/* ${name}${mults !== null ? `: ${mults} multiplications` : ''} */`, header, ''];
+  const L = [C_PROVENANCE, `/* ${name}${mults !== null ? `: ${mults} multiplications` : ''} */`, header, ''];
   if (useTable && table.length) {
     L.push(`/* ${name} constants */`);
     L.push(`static const ${T} c[${table.length}] = {`);
