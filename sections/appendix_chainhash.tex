@@ -11,10 +11,13 @@
 %   eq:kwise:monic-poly                                              (main_theorem.tex)
 % 2026-09-03: final design.  Three independent recurrence keys u, y, z (the
 %   three-variable form of def:injective:recurrence, no specialisation), S
-%   sub-block pairs per block (S = 2 for the 1 KB variant), degree-7 finalizer
-%   evaluated by the four-multiplication characteristic-2 circuit, with an
-%   explicit unitriangular decoder for its coefficient map (lem:ph:chain).
-%   Bound (Sn+2)/2^64 for messages of at most n blocks.
+%   sub-block pairs per block (S = 2 for the 1 KB variant).
+% 2026-09-04: degree-5 finalizer evaluated by the three-multiplication
+%   characteristic-2 circuit, with an explicit unitriangular decoder (unit
+%   pivots only) for its coefficient map (lem:ph:chain), applied to the
+%   integer-add twist V + tau of the level-2 value (sec:ph:twist; the twist
+%   word is t_in in the code).  Key W+9 words.  Bound (Sn+2)/2^64 for
+%   messages of at most n blocks; 5-wise independence (thm:ph:kwise).
 % ---------------------------------------------------------------------------
 \providecommand{\F}{\mathbb{F}}
 \providecommand{\clnh}{\mathrm{CLNH}}
@@ -33,9 +36,11 @@ its collision bound.  The family is a three-level composition: a carry-less
 NH (CLNH) block hash \cite{lemire2015clhash} applied to sub-blocks of $B/S$
 bytes, the last block being processed at $16$-byte pair granularity; the
 injective recurrence of \Cref{sec:injective} in its three-variable form, with
-$u,y,z$ three independent uniform keys; and a monic degree-$7$ finalizer
-evaluated by a four-multiplication circuit whose coefficient map is a
-bijection in characteristic~$2$ (\Cref{lem:ph:chain}).  Every random key
+$u,y,z$ three independent uniform keys; and a monic degree-$5$ finalizer
+evaluated by a three-multiplication circuit whose coefficient map is a
+bijection in characteristic~$2$ (\Cref{lem:ph:chain}), applied to the
+integer-add twist of the level-2 value by one further key word
+(\Cref{sec:ph:twist}).  Every random key
 element is drawn uniformly from the field and used directly; there is no
 preprocessing step and no heuristic mixing step.
 
@@ -73,12 +78,13 @@ sub-blocks of $W_s=W/S$ words ($B_s=B/S$ bytes, $W_s/2$ pairs).  The shipped
 configurations are $(W,S)=(32,1)$ ($256$-byte blocks, one pair per block) and
 $(W,S)=(128,2)$ ($1$\,KB blocks, two $512$-byte sub-blocks); the $64$-byte row
 of \Cref{tab:injective:adversarial} is $(W,S)=(8,1)$.  The finalizer degree is
-$7$ throughout.
+$5$ throughout.
 
 \paragraph{Key.}
-$\kappa=(k_0,\dots,k_{W-1})\in\F^{W}$, $\theta=(u,y,z)\in\F^3$, and
-$c=(c_0,\dots,c_6)\in\F^7$, all $W+10$ elements independent and uniform on
-$\F$ ($42$, $138$ and $18$ words for the three configurations above).  Sub-block
+$\kappa=(k_0,\dots,k_{W-1})\in\F^{W}$, $\theta=(u,y,z)\in\F^3$,
+$c=(c_0,\dots,c_4)\in\F^5$, and the twist word $\tau\in\F$ (\texttt{t\_in} in
+the code), all $W+9$ elements independent and uniform on $\F$ ($41$, $137$
+and $17$ words for the three configurations above).  Sub-block
 position $i\in\{0,\dots,S-1\}$ within a block uses the key segment
 $\kappa^{(i)}=(k_{iW_s},\dots,k_{(i+1)W_s-1})$.
 
@@ -159,21 +165,25 @@ $u,y,z$; then $V_\kappa(m)=P^{(m)}(u,y,z)$, and the coefficients of $P^{(m)}$
 depend on $\kappa$ and $m$ only.
 
 \paragraph{Level 3: finalizer.}
-For $c\in\F^7$ let $f_c\in\F[X]$ be the polynomial computed by the circuit
-\begin{equation}\label{eq:ph:chain7}
-  g_1=X(X+c_0),\quad
-  g_2=(X+c_1)(g_1+c_2),\quad
-  g_3=g_2(g_2+c_3),\quad
-  f_c=(X+c_4)(g_1+g_3+c_5)+c_6 ,
+For $c\in\F^5$ let $f_c\in\F[X]$ be the polynomial computed by the circuit
+\begin{equation}\label{eq:ph:chain5}
+  g_1=X\cdot X,\qquad
+  g_2=(g_1+c_0)(X+g_1+c_1),\qquad
+  f_c=(X+c_2)(g_2+c_3)+c_4 ,
 \end{equation}
-evaluated exactly as written at $X=v$: four multiplications,
-$\lfloor7/2\rfloor+1$ as in \Cref{thm:main} (\texttt{chain<7>} in
+evaluated exactly as written at $X=v$: three multiplications,
+$\lfloor5/2\rfloor+1$ as in \Cref{thm:main} (\texttt{chain<5>} in
 \texttt{chainhash.h}, where the intermediates are called \texttt{y},
-\texttt{z}, \texttt{t}, \texttt{u}).  It is monic of degree $7$
-(\Cref{lem:ph:chain}).
+\texttt{z}, \texttt{t}).  It is monic of degree $5$ (\Cref{lem:ph:chain}).
+The finalizer is applied not to the level-2 value itself but to its
+\emph{integer-add twist} $V_\kappa(m)\boxplus\tau$, where $v\boxplus\tau$
+denotes the addition modulo $2^{64}$ of the $64$-bit words $v,\tau$ read as
+integers (bit $i$ = coefficient of $X^i$ = binary digit $2^i$), carries and
+all.  \Cref{sec:ph:twist} explains why the twist is there; the collision and
+independence proofs see it only through \Cref{lem:ph:twist}.
 
 \begin{definition}[\textsc{ChainHash}]\label{def:ph:hash}
-$H_{\kappa,\theta,c}(m)=f_c\bigl(V_\kappa(m)\bigr)\in\F$.
+$H_{\kappa,\theta,c,\tau}(m)=f_c\bigl(V_\kappa(m)\boxplus\tau\bigr)\in\F$.
 \end{definition}
 
 \subsection{Statement}
@@ -182,7 +192,7 @@ $H_{\kappa,\theta,c}(m)=f_c\bigl(V_\kappa(m)\bigr)\in\F$.
 Fix $W$, $S$ and $n\ge1$, and put $p=Sn$.  For every two distinct messages
 $m\ne m'$ with $n(m),n(m')\le n$ (equivalently: of at most $nB$ bytes each),
 \[
-  \Pr_{\kappa,\theta,c}\bigl[H_{\kappa,\theta,c}(m)=H_{\kappa,\theta,c}(m')\bigr]\;\le\;\frac{p+2}{2^{64}}=\frac{Sn+2}{2^{64}} .
+  \Pr_{\kappa,\theta,c,\tau}\bigl[H_{\kappa,\theta,c,\tau}(m)=H_{\kappa,\theta,c,\tau}(m')\bigr]\;\le\;\frac{p+2}{2^{64}}=\frac{Sn+2}{2^{64}} .
 \]
 \end{theorem}
 
@@ -192,7 +202,8 @@ $(2\lceil\ell/1024\rceil+2)/2^{64}$: $3/2^{64}$ and $4/2^{64}$ for messages of
 up to $256$ bytes, $4098/2^{64}\approx2^{-52}$ and $2050/2^{64}\approx2^{-53}$
 for messages of up to $1$\,MB.  The proof separates the three levels:
 \Cref{lem:ph:stream} (level 1), \Cref{lem:ph:level2} (level 2) and
-\Cref{lem:ph:finalizer} (level 3).
+\Cref{lem:ph:finalizer} (level 3), the twist being absorbed by
+\Cref{lem:ph:twist}.
 
 \subsection{Level 1: full-width XOR-universality of CLNH}
 
@@ -451,145 +462,168 @@ Average over $\kappa$.
 \subsection{Level 3: the finalizer is a uniformly random monic polynomial}
 
 \Cref{thm:main} does not cover characteristic $2$ (\Cref{rem:char2}), so the
-bijectivity of the circuit \eqref{eq:ph:chain7} is proved directly, by an
-explicit decoder.  Throughout, $\F$ is a field of characteristic $2$;
-squaring $r\mapsto r^2$ is then additive (the Frobenius endomorphism) and
-injective, and on a finite field $\mathrm{GF}(2^k)$ it is a bijection with
-inverse $r\mapsto r^{2^{k-1}}$, which we call the \emph{Frobenius root} and
-write $\sqrt{r}$.
+bijectivity of the circuit \eqref{eq:ph:chain5} is proved directly, by an
+explicit decoder.  Throughout, $\F$ is a field of characteristic $2$.
 
-\begin{lemma}[The degree-$7$ circuit is a bijective parametrisation]\label{lem:ph:chain}
-Let $\F$ have characteristic $2$ and write $f_c(X)=\sum_{i\le7}e_iX^i$ for the
-polynomial \eqref{eq:ph:chain7}.  Put
+\begin{lemma}[The degree-$5$ circuit is a bijective parametrisation]\label{lem:ph:chain}
+Let $\F$ have characteristic $2$ and write $f_c(X)=\sum_{i\le5}e_iX^i$ for the
+polynomial \eqref{eq:ph:chain5}.  Put
 \[
-  b=c_0+c_1,\qquad e=c_2+c_0c_1,\qquad d=c_1c_2 .
+  b=c_0+c_1,\qquad d=c_0c_1 .
 \]
-Then $e_7=1$ and
-\begin{equation}\label{eq:ph:chain7-coeffs}
+Then $e_5=1$ and
+\begin{equation}\label{eq:ph:chain5-coeffs}
 \begin{aligned}
-  e_6&=c_4, & e_2&=c_3e+c_0+c_4\,(e^2+c_3b+1),\\
-  e_5&=b^2, & e_1&=d^2+c_3d+c_5+c_4\,(c_3e+c_0),\\
-  e_4&=c_3+c_4b^2, & e_0&=c_6+c_4\,(d^2+c_3d+c_5),\\
-  e_3&=e^2+c_3b+1+c_3c_4 .
+  e_4&=1+c_2, & e_1&=d+c_3+c_0c_2,\\
+  e_3&=b+c_2, & e_0&=c_4+c_2\,(d+c_3).\\
+  e_2&=c_0+c_2b,
 \end{aligned}
 \end{equation}
-The coefficient map $\varphi_7:\F^7\to\F^7$, $c\mapsto(e_0,\dots,e_6)$, is
-injective, and bijective when $\F$ is perfect, in particular for every finite
-field $\mathrm{GF}(2^k)$.  Consequently, if $c$ is uniform on
-$\mathrm{GF}(2^k)^7$ then $f_c$ is a uniformly random monic polynomial of
-degree $7$.
+The coefficient map $\varphi_5:\F^5\to\F^5$, $c\mapsto(e_0,\dots,e_4)$, is a
+bijection, for every field $\F$ of characteristic $2$ (no perfect-field
+hypothesis is needed; in particular for every finite field
+$\mathrm{GF}(2^k)$).  Consequently, if $c$ is uniform on $\mathrm{GF}(2^k)^5$
+then $f_c$ is a uniformly random monic polynomial of degree $5$.
 \end{lemma}
 \begin{proof}
-\emph{Expansion.}  In characteristic $2$, $g_1=X^2+c_0X$ and
-$g_2=(X+c_1)(X^2+c_0X+c_2)=X^3+bX^2+eX+d$.  Squaring is additive, so
-$g_2^2=X^6+b^2X^4+e^2X^2+d^2$ and
+\emph{Expansion.}  In characteristic $2$, $g_1=X^2$ and
 \[
-  g_3=g_2^2+c_3g_2=X^6+b^2X^4+c_3X^3+(e^2+c_3b)X^2+c_3eX+(d^2+c_3d),
+  g_2=(X^2+c_0)(X^2+X+c_1)=X^4+X^3+bX^2+c_0X+d ,
 \]
-whence
-$g_1+g_3+c_5=X^6+b^2X^4+c_3X^3+(e^2+c_3b+1)X^2+(c_3e+c_0)X+(d^2+c_3d+c_5)$.
-Multiplying by $X+c_4$ and adding $c_6$ gives $e_7=1$ and
-\eqref{eq:ph:chain7-coeffs}: each $e_i$ for $i\le6$ is the coefficient of
-$X^{i-1}$ of that sextic plus $c_4$ times its coefficient of $X^i$.
+whence $g_2+c_3=X^4+X^3+bX^2+c_0X+(d+c_3)$.  Multiplying by $X+c_2$ and
+adding $c_4$ gives $e_5=1$ and \eqref{eq:ph:chain5-coeffs}: each $e_i$ for
+$i\le4$ is the coefficient of $X^{i-1}$ of that quartic plus $c_2$ times its
+coefficient of $X^i$.
 
 \emph{Pivot coordinates.}  The change of parameters
-\begin{equation}\label{eq:ph:chain7-q}
-  q=(q_0,\dots,q_6):=(c_4,\ b,\ c_3,\ e,\ c_1,\ c_5,\ c_6)
-  =(c_4,\ c_0+c_1,\ c_3,\ c_2+c_0c_1,\ c_1,\ c_5,\ c_6)
+\begin{equation}\label{eq:ph:chain5-q}
+  q=(q_0,\dots,q_4):=(c_2,\ b,\ c_0,\ c_3,\ c_4)
+  =(c_2,\ c_0+c_1,\ c_0,\ c_3,\ c_4)
 \end{equation}
-is a bijection of $\F^7$, with inverse
-\begin{equation}\label{eq:ph:chain7-cq}
-  c=(q_1+q_4,\ q_4,\ q_3+q_1q_4+q_4^2,\ q_2,\ q_0,\ q_5,\ q_6):
+is a bijection of $\F^5$, with inverse
+\begin{equation}\label{eq:ph:chain5-cq}
+  c=(q_2,\ q_1+q_2,\ q_0,\ q_3,\ q_4):
 \end{equation}
-indeed $c_1=q_4$, then $c_0=b+c_1=q_1+q_4$ and $c_2=e+c_0c_1=q_3+(q_1+q_4)q_4$,
-and the remaining entries are copied.  Substituting \eqref{eq:ph:chain7-cq}
-into \eqref{eq:ph:chain7-coeffs}, with
-$d=c_1c_2=q_4\,(q_3+q_1q_4+q_4^2)=:\delta$ (a polynomial in $q_1,q_3,q_4$),
-the rows read, from $X^6$ down to $X^0$,
-\begin{equation}\label{eq:ph:chain7-rows}
+indeed $c_0=q_2$, then $c_1=b+c_0=q_1+q_2$, and the remaining entries are
+copied.  Substituting \eqref{eq:ph:chain5-cq} into
+\eqref{eq:ph:chain5-coeffs}, with
+$d=c_0c_1=q_2\,(q_1+q_2)=:\delta$ (a polynomial in $q_1,q_2$), the rows
+read, from $X^4$ down to $X^0$,
+\begin{equation}\label{eq:ph:chain5-rows}
 \begin{aligned}
-  e_6&=q_0,\\
-  e_5&=q_1^2,\\
-  e_4&=q_2+q_0q_1^2,\\
-  e_3&=q_3^2+q_2q_1+q_2q_0+1,\\
-  e_2&=q_4+q_2q_3+q_1+q_0\,(q_3^2+q_2q_1+1),\\
-  e_1&=q_5+\delta^2+q_2\delta+q_0\,(q_2q_3+q_1+q_4),\\
-  e_0&=q_6+q_0\,(\delta^2+q_2\delta+q_5).
+  e_4&=q_0+1,\\
+  e_3&=q_1+q_0,\\
+  e_2&=q_2+q_0q_1,\\
+  e_1&=q_3+\delta+q_0q_2,\\
+  e_0&=q_4+q_0\,(\delta+q_3).
 \end{aligned}
 \end{equation}
-Row $i$ (the coefficient $e_{6-i}$) has the form $\pi_i(q_i)+K_i(q_0,\dots,q_{i-1})$,
-where the pivot $\pi_i$ is the identity for $i\in\{0,2,4,5,6\}$ and the square
-$q_i\mapsto q_i^2$ for $i\in\{1,3\}$, and $K_i$ is a polynomial in the earlier
-coordinates only: the system is unitriangular with pivots that are
-bijections of a perfect field.
+Row $i$ (the coefficient $e_{4-i}$) has the form $q_i+K_i(q_0,\dots,q_{i-1})$,
+where $K_i$ is a polynomial in the earlier coordinates only
+($K_0=1$, $K_1=q_0$, $K_2=q_0q_1$, $K_3=\delta+q_0q_2$,
+$K_4=q_0(\delta+q_3)$): the system is unitriangular with every pivot the
+identity.  (The degree-$7$ circuit that this replaces had two Frobenius
+pivots $q_i\mapsto q_i^2$ and therefore needed $\F$ perfect; here no root is
+ever taken.)
 
-\emph{Decoder.}  Given $(e_0,\dots,e_6)$, recover $q$ top-down, each line
+\emph{Decoder.}  Given $(e_0,\dots,e_4)$, recover $q$ top-down, each line
 using only $e$ and the coordinates already recovered:
-\begin{equation}\label{eq:ph:chain7-decoder}
+\begin{equation}\label{eq:ph:chain5-decoder}
 \begin{aligned}
-  q_0&=e_6,\qquad q_1=\sqrt{e_5},\qquad q_2=e_4+q_0q_1^2,\qquad
-  q_3=\sqrt{e_3+q_2q_1+q_2q_0+1},\\
-  q_4&=e_2+q_2q_3+q_1+q_0\,(q_3^2+q_2q_1+1),\\
-  q_5&=e_1+\delta^2+q_2\delta+q_0\,(q_2q_3+q_1+q_4)\qquad\text{with }\delta=q_4\,(q_3+q_1q_4+q_4^2),\\
-  q_6&=e_0+q_0\,(\delta^2+q_2\delta+q_5),
+  q_0&=e_4+1,\qquad q_1=e_3+q_0,\qquad q_2=e_2+q_0q_1,\\
+  q_3&=e_1+\delta+q_0q_2\qquad\text{with }\delta=q_2\,(q_1+q_2),\\
+  q_4&=e_0+q_0\,(\delta+q_3),
 \end{aligned}
 \end{equation}
-then $c$ from \eqref{eq:ph:chain7-cq}.  Over a perfect field the Frobenius
-root is defined everywhere and inverts squaring, so
-\eqref{eq:ph:chain7-decoder} composed with \eqref{eq:ph:chain7-rows} is the
-identity in both directions and $\varphi_7$ is a bijection.  Over an
-arbitrary field of characteristic $2$ squaring is still injective, so two
-parameter vectors with the same coefficients agree row by row in
-\eqref{eq:ph:chain7-rows}, and $\varphi_7$ is injective.  A bijection of
-$\F^7$ maps the uniform distribution to itself.
+then $c$ from \eqref{eq:ph:chain5-cq}.  Line by line,
+\eqref{eq:ph:chain5-decoder} composed with \eqref{eq:ph:chain5-rows} is the
+identity in both directions (substituting the rows into the decoder gives
+$q_0,\dots,q_4$ back; substituting the decoder into the rows gives
+$e_4,\dots,e_0$ back), using only the ring operations of $\F$.  Hence
+$\varphi_5$ is a bijection over every field of characteristic $2$, and a
+bijection of $\F^5$ maps the uniform distribution to itself.
 \end{proof}
 
 \begin{remark}[Sanity checks, and the relation to \Cref{thm:main}]\label{rem:ph:thm-main}
-The decoder \eqref{eq:ph:chain7-decoder} \emph{is} the proof; the following
+The decoder \eqref{eq:ph:chain5-decoder} \emph{is} the proof; the following
 checks only guard against transcription errors.  The expansion
-\eqref{eq:ph:chain7-coeffs}, the coordinate change
-\eqref{eq:ph:chain7-q}--\eqref{eq:ph:chain7-cq} and the row structure
-\eqref{eq:ph:chain7-rows} were verified symbolically over
-$\F_2[c_0,\dots,c_6][X]$ (\texttt{tools/bench/chainhash/verify7.py}); test T5 of
-\texttt{test\_chainhash.cpp} expands the
-transcribed circuit over $\mathrm{GF}(2^{64})[X]$, checks that it is monic of
-degree $7$, and checks decode$\circ$encode and encode$\circ$decode on random
-parameter vectors and random monic polynomials, with
-$\sqrt{r}=r^{2^{63}}$; and an exhaustive run of the same decoder
-(\texttt{tools/\allowbreak bench/\allowbreak chainhash/\allowbreak exh7.c}) over $\mathrm{GF}(2)$,
-$\mathrm{GF}(4)$, $\mathrm{GF}(8)$ and $\mathrm{GF}(16)$, i.e.\ over all
-$2^{7k}$ parameter vectors for $k\le4$ ($16^7$ for $k=4$), found no decoding
-failure and no two parameter vectors with the same coefficient vector.  \Cref{thm:main} asserts bijective coefficient maps for
-characteristic $0$ or $p>n$, which does \emph{not} cover
-$\F=\mathrm{GF}(2^{64})$ (\Cref{rem:char2}); the circuit \eqref{eq:ph:chain7}
-reaches the same count $\lfloor7/2\rfloor+1=4$ with a decoder whose only
-non-unit pivots are Frobenius squares, which is exactly what characteristic
-$2$ makes invertible.  The point of \Cref{sec:main-theorem:kwise} is that
-sampling the circuit parameters $c$ uniformly is then equivalent to sampling
-the standard Wegman--Carter key \eqref{eq:kwise:monic-poly}.
+\eqref{eq:ph:chain5-coeffs}, the coordinate change
+\eqref{eq:ph:chain5-q}--\eqref{eq:ph:chain5-cq}, the row structure
+\eqref{eq:ph:chain5-rows} (unit pivots, no later coordinate in any row) and
+both compositions decoder$\circ$rows and rows$\circ$decoder were verified
+symbolically over $\F_2[c_0,\dots,c_4][X]$ (\texttt{tools/bench/chainhash/verify5.py});
+test T5 of \texttt{test\_chainhash.cpp} expands the transcribed circuit over
+$\mathrm{GF}(2^{64})[X]$, checks that it is monic of degree $5$, and checks
+decode$\circ$encode and encode$\circ$decode on random parameter vectors and
+random monic polynomials; and an exhaustive run of the same decoder
+(\texttt{tools/bench/chainhash/\allowbreak exh5.c}) over $\mathrm{GF}(2)$,
+$\mathrm{GF}(4)$, $\mathrm{GF}(8)$, $\mathrm{GF}(16)$ and $\mathrm{GF}(32)$,
+i.e.\ over all $2^{5k}$ parameter vectors for $k\le5$ ($32^5=33{,}554{,}432$
+for $k=5$), found no decoding failure, no two parameter vectors with the same
+coefficient vector, and no point at which the gate-by-gate circuit and
+Horner's rule on \eqref{eq:ph:chain5-coeffs} disagree.
+\Cref{thm:main} asserts bijective coefficient maps for characteristic $0$ or
+$p>n$, which does \emph{not} cover $\F=\mathrm{GF}(2^{64})$ (\Cref{rem:char2});
+the circuit \eqref{eq:ph:chain5} reaches the same count
+$\lfloor5/2\rfloor+1=3$ with a decoder whose pivots are all units, so the
+statement holds over every field of characteristic $2$ and not only over the
+perfect ones.  The point of \Cref{sec:main-theorem:kwise} is that sampling
+the circuit parameters $c$ uniformly is then equivalent to sampling the
+standard Wegman--Carter key \eqref{eq:kwise:monic-poly}.
 \end{remark}
 
 \begin{lemma}[Finalizer]\label{lem:ph:finalizer}
-Let $c$ be uniform on $\F^7$, $\F=\mathrm{GF}(2^{64})$.
+Let $c$ be uniform on $\F^5$, $\F=\mathrm{GF}(2^{64})$.
 \begin{enumerate}[label=(\roman*)]
 \item For fixed $v\ne v'\in\F$: $\Pr_c[f_c(v)=f_c(v')]=2^{-64}$ exactly.
-\item For fixed pairwise distinct $v_1,\dots,v_t\in\F$ with $t\le7$, the vector
+\item For fixed pairwise distinct $v_1,\dots,v_t\in\F$ with $t\le5$, the vector
       $(f_c(v_1),\dots,f_c(v_t))$ is uniform on $\F^t$.
 \end{enumerate}
 \end{lemma}
 \begin{proof}
-By \Cref{lem:ph:chain}, $e=\varphi_7(c)$ is uniform on $\F^7$ and
-$f_c(X)=X^7+\sum_{i<7}e_iX^i$.
-(i) $f_c(v)-f_c(v')=(v-v')\,e_1+\bigl[(v^7-v'^7)+\sum_{i\ne1}e_i(v^i-v'^i)\bigr]$.
+By \Cref{lem:ph:chain}, $e=\varphi_5(c)$ is uniform on $\F^5$ and
+$f_c(X)=X^5+\sum_{i<5}e_iX^i$.
+(i) $f_c(v)-f_c(v')=(v-v')\,e_1+\bigl[(v^5-v'^5)+\sum_{i\ne1}e_i(v^i-v'^i)\bigr]$.
 Conditioned on $(e_i)_{i\ne1}$ the bracket is a constant and $e_1\mapsto(v-v')e_1+\text{const}$
 is a bijection of $\F$ ($v-v'\ne0$), so exactly one value of the uniform $e_1$
 gives $0$: conditional probability $2^{-64}$, hence unconditional $2^{-64}$.
-(ii) $(f_c(v_j))_{j\le t}=(v_j^7)_j+Ve$ where $V=(v_j^i)_{j\le t,\,i<7}\in\F^{t\times7}$.
+(ii) $(f_c(v_j))_{j\le t}=(v_j^5)_j+Ve$ where $V=(v_j^i)_{j\le t,\,i<5}\in\F^{t\times5}$.
 The $t\times t$ minor with columns $i=0,\dots,t-1$ is a Vandermonde matrix in
 distinct points, hence invertible, so $V$ has rank $t$ and $e\mapsto Ve$ is
-surjective with all fibres of equal size $|\F|^{7-t}$; the image of the uniform
+surjective with all fibres of equal size $|\F|^{5-t}$; the image of the uniform
 $e$ is uniform on $\F^t$, and adding the constant vector preserves uniformity.
 \end{proof}
+
+\paragraph{The twist.}
+\Cref{def:ph:hash} feeds the finalizer with $V_\kappa(m)\boxplus\tau$ rather
+than with $V_\kappa(m)$.  The proofs below use the finalizer only through the
+following lemma, which holds for every bijection of its input.
+
+\begin{lemma}[Bijections of the finalizer input are free]\label{lem:ph:twist}
+Let $\psi:\F\to\F$ be a bijection and let $c$ be uniform on $\F^5$,
+$\F=\mathrm{GF}(2^{64})$.
+\begin{enumerate}[label=(\roman*)]
+\item For fixed $v\ne v'\in\F$: $\Pr_c[f_c(\psi(v))=f_c(\psi(v'))]=2^{-64}$ exactly.
+\item For fixed pairwise distinct $v_1,\dots,v_t\in\F$ with $t\le5$, the
+      vector $\bigl(f_c(\psi(v_j))\bigr)_{j\le t}$ is uniform on $\F^t$.
+\end{enumerate}
+The same holds for a keyed family $\psi_\tau$ when the key $\tau$ is
+independent of $c$, conditionally on every value of $\tau$.
+\end{lemma}
+\begin{proof}
+Distinct points have distinct images under a bijection, so
+$\psi(v)\ne\psi(v')$ and $\psi(v_1),\dots,\psi(v_t)$ are pairwise distinct,
+and (i), (ii) are \Cref{lem:ph:finalizer}(i), (ii) at these points.  For a
+keyed $\psi_\tau$ condition on $\tau$: $c$ is still uniform on $\F^5$.
+\end{proof}
+
+\begin{corollary}\label{cor:ph:twist}
+For every $\tau\in\F$ the map $\psi_\tau(v)=v\boxplus\tau$ is a bijection of
+$\F$, with inverse $v\mapsto v\boxminus\tau$ (subtraction modulo $2^{64}$),
+so \Cref{lem:ph:twist} applies to the finalizer stage
+$v\mapsto f_c(v\boxplus\tau)$ of \Cref{def:ph:hash}, $\tau$ being independent
+of $c$.
+\end{corollary}
 
 \subsection{Proof of \texorpdfstring{\Cref{thm:ph:collision}}{the collision bound}}
 
@@ -597,9 +631,11 @@ Let $m\ne m'$ with $n(m),n(m')\le n$, $p=Sn$, and abbreviate
 $\sigma=\sigma_\kappa(m)$, $\sigma'=\sigma_\kappa(m')$, $V=V_\kappa(m)$, $V'=V_\kappa(m')$.
 Define the events
 \[
-  E_1=\{\sigma=\sigma'\},\qquad
-  E_2=\{\sigma\ne\sigma'\ \wedge\ V=V'\},\qquad
-  E_3=\{V\ne V'\ \wedge\ f_c(V)=f_c(V')\}.
+\begin{aligned}
+  E_1&=\{\sigma=\sigma'\},\qquad
+  E_2=\{\sigma\ne\sigma'\ \wedge\ V=V'\},\\
+  E_3&=\{V\ne V'\ \wedge\ f_c(V\boxplus\tau)=f_c(V'\boxplus\tau)\}.
+\end{aligned}
 \]
 If $H(m)=H(m')$ then either the streams coincide ($E_1$), or they differ but
 the level-2 values coincide ($E_2$), or the level-2 values differ and the
@@ -608,9 +644,10 @@ finalizer collides ($E_3$); so $\{H(m)=H(m')\}\subseteq E_1\cup E_2\cup E_3$ and
   \Pr[H(m)=H(m')]\le\Pr[E_1]+\Pr[E_2]+\Pr[E_3].
 \]
 $E_1$ depends on $\kappa$ only; $E_2$ depends on $(\kappa,\theta)$; for $E_3$,
-condition on any $(\kappa,\theta)$ with $V\ne V'$: $c$ is independent of
-$(\kappa,\theta)$, so \Cref{lem:ph:finalizer}(i) gives conditional probability
-exactly $2^{-64}$, whence $\Pr[E_3]\le2^{-64}$.
+condition on any $(\kappa,\theta,\tau)$ with $V\ne V'$: $c$ is independent of
+$(\kappa,\theta,\tau)$ and $v\mapsto v\boxplus\tau$ is a bijection
+(\Cref{cor:ph:twist}), so \Cref{lem:ph:twist}(i) gives conditional
+probability exactly $2^{-64}$, whence $\Pr[E_3]\le2^{-64}$.
 If $n(m)=n(m')$, then $\Pr[E_1]\le2^{-64}$ by \Cref{lem:ph:stream} and
 $\Pr[E_2]\le p/2^{64}$ by \Cref{lem:ph:level2}, for a total of
 $(1+p+1)/2^{64}$.  If $n(m)\ne n(m')$, then $E_1$ is impossible
@@ -620,19 +657,19 @@ $\Pr[H(m)=H(m')]\le(p+2)/2^{64}$.  In the terminology of
 \Cref{def:injective:universal}, \textsc{ChainHash} is
 $\frac{Sn+2}{2^{64}}$-almost universal on messages of at most $nB$ bytes. \qed
 
-\subsection{\texorpdfstring{$7$}{7}-wise independence}
+\subsection{\texorpdfstring{$5$}{5}-wise independence}
 
-\begin{theorem}[$7$-wise independence up to level-1/2 collisions]\label{thm:ph:kwise}
-Fix $W$, $S$, $n\ge1$, $p=Sn$, and $t\le7$ pairwise distinct messages
+\begin{theorem}[$5$-wise independence up to level-1/2 collisions]\label{thm:ph:kwise}
+Fix $W$, $S$, $n\ge1$, $p=Sn$, and $t\le5$ pairwise distinct messages
 $m_1,\dots,m_t$ with $n(m_i)\le n$.  Let $\mathcal D$ be the event
 (determined by $(\kappa,\theta)$) that the level-2 values
 $V_\kappa(m_1),\dots,V_\kappa(m_t)$ are pairwise distinct, i.e.\ that no pair
 suffers an $E_1$ or $E_2$ collision.  Then
 \begin{enumerate}[label=(\roman*)]
 \item $\Pr[\neg\mathcal D]\le\binom t2\,\frac{p+1}{2^{64}}$;
-\item conditioned on any $(\kappa,\theta)\in\mathcal D$, the vector
-      $(H(m_1),\dots,H(m_t))$ is uniform on $\F^t$: the outputs are
-      independent and uniform, in particular $7$-wise independent;
+\item conditioned on any $(\kappa,\theta)\in\mathcal D$ and on any $\tau$,
+      the vector $(H(m_1),\dots,H(m_t))$ is uniform on $\F^t$: the outputs
+      are independent and uniform, in particular $5$-wise independent;
 \item consequently, for every $T\subseteq\F^t$,
       $\bigl|\Pr[(H(m_1),\dots,H(m_t))\in T]-|T|/2^{64t}\bigr|\le\binom t2\frac{p+1}{2^{64}}$.
 \end{enumerate}
@@ -642,11 +679,290 @@ suffers an $E_1$ or $E_2$ collision.  Then
 with the events of the previous proof, of probability at most
 $2^{-64}+p/2^{64}$ or $0+(p+1)/2^{64}$ by \Cref{lem:ph:stream,lem:ph:level2};
 take a union bound over the $\binom t2$ pairs.
-(ii) $H(m_i)=f_c(V_\kappa(m_i))$ and $c$ is independent of $(\kappa,\theta)$; apply
-\Cref{lem:ph:finalizer}(ii) to the distinct points $V_\kappa(m_1),\dots,V_\kappa(m_t)$.
+(ii) $H(m_i)=f_c(V_\kappa(m_i)\boxplus\tau)$ and $c$ is independent of
+$(\kappa,\theta,\tau)$; apply \Cref{lem:ph:twist}(ii) with
+$\psi_\tau(v)=v\boxplus\tau$ (\Cref{cor:ph:twist}) to the distinct points
+$V_\kappa(m_1),\dots,V_\kappa(m_t)$.
 (iii) $\Pr[\cdot\in T]=\Pr[\mathcal D]\,|T|/2^{64t}+\Pr[\neg\mathcal D\wedge\cdot\in T]$,
 and both $\Pr[\neg\mathcal D]\,|T|/2^{64t}$ and $\Pr[\neg\mathcal D\wedge\cdot\in T]$ lie in $[0,\Pr[\neg\mathcal D]]$.
 \end{proof}
+
+\subsection{The input twist}
+\label{sec:ph:twist}
+
+\Cref{def:ph:hash} applies the finalizer not to the level-2 value
+$V_\kappa(m)$ but to its \emph{integer-add twist}: with one further key word
+$\tau\in\F$, uniform and independent of $(\kappa,\theta,c)$,
+\begin{equation}\label{eq:ph:twist-def}
+  H_{\kappa,\theta,c,\tau}(m)=f_c\bigl(V_\kappa(m)\boxplus\tau\bigr),
+\end{equation}
+where $v\boxplus\tau$ is the addition modulo $2^{64}$ of the $64$-bit words
+$v,\tau$ read as integers (bit $i$ = coefficient of $X^i$ = binary digit
+$2^i$), carries and all; the key thus has $W+9$ words ($41$, $137$ and $17$
+for the three configurations).  This subsection explains why the twist is
+there, recalls that it costs nothing in
+\Cref{thm:ph:collision,thm:ph:kwise}, and states precisely what it changes.
+
+Throughout, $\F=\mathrm{GF}(2^{64})$ is identified with $\F_2^{64}$.  Every
+map $F:\F\to\F$ has an \emph{algebraic normal form}: each of its $64$ output
+bits is a unique polynomial in the $64$ input bits $v_0,\dots,v_{63}$ of
+degree $\le1$ in each variable, and the \emph{$\F_2$-degree} $\deg_{\F_2}F$ is
+the largest degree of these $64$ polynomials.  $F$ is $\F_2$-affine iff
+$\deg_{\F_2}F\le1$; the field operations $v\mapsto v+a$, $v\mapsto av$ and the
+Frobenius $v\mapsto v^2$ are $\F_2$-linear or affine, and a product of two
+maps of $\F_2$-degrees $d,d'$ has $\F_2$-degree at most $d+d'$ (each output bit
+of a field product is a bilinear form in the bits of the factors).
+
+\paragraph{Why degree $5$.}
+The finalizer's degree does not enter the collision bound; it buys the
+$k$-wise independence of \Cref{thm:ph:kwise}.  Five is a principled stop:
+$5$-wise independence is what linear probing provably needs.  Pagh, Pagh and
+Ru\v{z}i\'c \cite{pagh2009linear} show that $5$-wise independent hashing
+gives linear probing expected constant time per operation, and
+P\u{a}tra\c{s}cu and Thorup \cite{patracscu2016kindependence} show that
+$4$-wise independence does not suffice: there are $4$-wise independent
+families under which linear probing takes expected $\Omega(\log n)$ time on
+some inputs.  The step from degree $5$ to degree $7$ costs one field
+multiplication per message, i.e.\ one quarter of the finalizer, with no
+change to any theorem of this appendix.
+
+\paragraph{Why not degree $5$ alone: the Frobenius observation.}
+The reason the earlier design used degree $7$ (\Cref{rem:ph:single-key}) is
+not $k$-wise independence but a different kind of structure, which the
+following observation makes precise.  For $e\ge0$ let $\mathrm{wt}(e)$ be the
+number of ones in the binary expansion of $e$.
+
+\begin{lemma}[$\F_2$-degree of polynomials over $\mathrm{GF}(2^k)$]\label{lem:ph:popcount}
+Over $\F=\mathrm{GF}(2^k)$ the map $v\mapsto v^e$ has $\F_2$-degree at most
+$\mathrm{wt}(e)$.  Hence every $f\in\F[X]$ of degree $\le6$ has $\F_2$-degree at most
+$2$, and all its discrete derivatives $D_af(v)=f(v+a)+f(v)$ are $\F_2$-affine
+in $v$.
+\end{lemma}
+\begin{proof}
+$v^e=\prod_{i:\,e_i=1}v^{2^i}$ is a product of $\mathrm{wt}(e)$ Frobenius powers,
+each $\F_2$-linear in $v$, so each of its output bits is a polynomial of
+degree $\le\mathrm{wt}(e)$ in the bits of $v$; multiplication by the coefficients
+and addition are $\F_2$-linear, and $\mathrm{wt}(e)\le2$ for every $e\le6$ (the first
+exponent of weight $3$ is $7$).  A derivative of a degree-$\le2$ map has
+degree $\le1$.
+\end{proof}
+
+(The $\F_2$-degree of $v\mapsto v^e$ is in fact exactly $\mathrm{wt}(e)$ for
+$0\le e<2^k$; only the upper bound is used.)  So the degree-$3$ and
+degree-$5$ circuits, whatever their parameters, are quadratic maps of the
+$64$ bits of $v$, and $X^7=X^4X^2X$ is the first odd-degree monomial that is
+cubic.
+
+\paragraph{What the tests see.}
+This structure is invisible to $k$-wise independence---a random monic
+polynomial of degree $5$ is exactly $5$-wise independent, quadratic or
+not---but SMHasher3's fixed-seed keysets are built to expose it: Zeroes
+(all-zero messages of consecutive lengths), Sparse (short messages with few
+set bits), Permutation (concatenations of up to seven words from a fixed set
+of eight), TwoBytes (all $2$--$20$-byte messages with one or two nonzero
+bytes), Bitflip (a message and its single-bit flips) and SeedZeroes (zero
+messages under seeds with at most two set bits) all consist of messages
+that differ from one another in few bit positions of one block.  For a fixed
+key and a fixed length within one block, $V_\kappa(m)=a_1+(b_1+y)(z+u)$ with
+$(a_1,b_1)$ the halves of $\clnh_{\kappa}(m_1)+\ell$, and each summand
+$(g_{2s}+k_{2s})(g_{2s+1}+k_{2s+1})$ of \eqref{eq:ph:clnh} is $\F_2$-bilinear
+in the two message words: $V_\kappa$ is an $\F_2$-quadratic function of the
+message bits, and $\F_2$-affine on any keyset that varies only one word of
+each pair (one or two bytes inside a word; the length word in Zeroes within
+a $16$-byte window of lengths).  Composed with an $\F_2$-quadratic finalizer,
+the hash restricted to such a keyset is an $\F_2$-quadratic (in general, a
+degree-$\le4$) function of a handful of Boolean variables---all its second
+derivatives $h(m)+h(m+a)+h(m+b)+h(m+a+b)$ are constant over the keyset---and
+the distribution tests, which histogram $8$--$20$-bit windows of the output
+over the keyset, detect this reliably at the keyset sizes used (the worst
+bias reported for the untwisted degree-$5$ hash was $195.9\times$ the
+expected value on a $16$-bit window of the Permutation keyset).  We offer
+this as the explanation of the pattern of failures, not as a theorem about
+the tests.
+
+\paragraph{Measurements.}
+Full SMHasher3 suite ($200$ tests), $256$-byte configuration, M2~Pro
+(\texttt{notes/handoff\_2026-09-04/twist\_exp/}); ``cycles'' is the
+small-key average over $1$--$31$-byte messages:
+\begin{center}
+\begin{tabular}{llrl}
+finalizer & twist & tests passed & cycles/hash \\\hline
+degree $7$ (4 mult.) & none & $200/200$ & $95.7$ \\
+degree $5$ (3 mult.) & none & $178/200$ & $82.0$ \\
+degree $5$ (3 mult.) & input, $v\boxplus \tau$ & $200/200$ & $81.8$ \\
+degree $5$ (3 mult.) & input and output & $200/200$ & $83.2$ \\
+degree $3$ (2 mult.) & input, $v\boxplus \tau$ & $183/200$ & $66.5$ \\
+degree $3$ (2 mult.) & input and output & $183/200$ & $67.4$ \\
+\end{tabular}
+\end{center}
+The untwisted degree-$5$ hash fails $22$ tests, all in the keysets Zeroes,
+Sparse, Permutation, TwoBytes and Bitflip; the twisted degree-$3$ hash fails
+$17$, in Zeroes, Permutation and SeedZeroes.  An output twist $h\boxplus\tau_{\mathrm{out}}$ adds
+nothing and was dropped.  The twist costs one integer addition, below the
+timing noise.  Degree $5$ with the input twist is therefore $15\%$ faster
+than degree $7$ on short messages with the same test record; the bulk
+throughput on $256$\,KB messages does not depend on the finalizer (the six
+runs report $16.0$--$18.9$ bytes/cycle, varying with machine load, not with
+the variant).  The $\F_2$-degree bound below
+applies to degree $3$ exactly as to degree $5$ (and \texttt{anf\_check.py}
+measures the same degree for both), so the $\F_2$-degree does not separate
+the two; what provably separates them is $3$-wise versus $5$-wise
+independence.  We do not claim to know which property the failing tests
+measure.
+
+\paragraph{The twist is free.}
+Instead of over-provisioning the degree, \textsc{ChainHash} inserts a fixed
+bijection between the recurrence and the finalizer.  \Cref{lem:ph:twist} and
+\Cref{cor:ph:twist} say that this costs nothing: the proofs of
+\Cref{thm:ph:collision,thm:ph:kwise} use the finalizer only through
+\Cref{lem:ph:twist}, applied to the level-2 values with
+$(\kappa,\theta,\tau)$ fixed, and they hold verbatim, with the same bounds,
+for every bijection in place of $\psi_\tau$---including the identity, i.e.\
+the untwisted hash.  The twist changes neither the collision bound, nor the
+$5$-wise independence, nor the key size beyond one word.
+
+\paragraph{What the twist changes.}
+The XOR of a constant is $\F_2$-affine and would change nothing; integer
+addition is not, because of its carry chain.
+
+\begin{proposition}[Algebraic normal form of $v\boxplus \tau$]\label{prop:ph:twist-bits}
+Write $s=v\boxplus \tau$ with bits $s_i$, and let $\gamma_i\in\F_2$ be the carry
+into position $i$ ($\gamma_0=0$).  Over $\F_2$,
+\begin{equation}\label{eq:ph:carry}
+  s_i=v_i+\tau_i+\gamma_i,\qquad
+  \gamma_{i+1}=v_i\tau_i+(v_i+\tau_i)\,\gamma_i,\qquad
+  \gamma_i=\sum_{j<i}v_j\tau_j\prod_{l=j+1}^{i-1}(v_l+\tau_l),
+\end{equation}
+so that, for a fixed $\tau$,
+\[
+  s_0=v_0+\tau_0,\qquad
+  s_1=v_1+\tau_1+\tau_0v_0,\qquad
+  s_2=v_2+\tau_2+\tau_1v_1+\tau_0\tau_1v_0+\tau_0v_0v_1 .
+\]
+If $\tau\ne0$ has lowest set bit $j_0$, then $\deg_{\F_2}s_i=\max(1,\,i-j_0)$
+as a function of $v$.  In particular $\psi_\tau$ is $\F_2$-affine iff $\tau=0$ or
+$j_0\ge62$, and for odd $\tau$ the top bit $s_{63}$ has $\F_2$-degree $63$.
+\end{proposition}
+\begin{proof}
+The recursion is the full adder: the sum bit is the XOR of the three inputs
+and the carry out is their majority,
+$v_i\tau_i+v_i\gamma_i+\tau_i\gamma_i=v_i\tau_i+(v_i+\tau_i)\gamma_i$.  Unrolling it
+gives the sum in \eqref{eq:ph:carry}: $\gamma_i=1$ iff some position $j<i$
+generates a carry ($v_j=\tau_j=1$) and every position strictly between $j$ and
+$i$ propagates it ($v_l+\tau_l=1$); these events are disjoint for different
+$j$ (generation at $j$ means $v_j+\tau_j=0$, so $j$ does not propagate a carry
+from below), and a disjoint OR is a sum over $\F_2$.  The three displayed
+bits are the cases $i\le2$.  For the degree, fix $\tau$ with lowest set bit
+$j_0$: the summands with $j<j_0$ vanish, the summand $j=j_0$ is
+$v_{j_0}\prod_{l=j_0+1}^{i-1}(v_l+\tau_l)$, which contains the monomial
+$v_{j_0}v_{j_0+1}\cdots v_{i-1}$ of degree $i-j_0$, and no summand with
+$j>j_0$ involves $v_{j_0}$, so this monomial survives in $\gamma_i$; every
+monomial of $\gamma_i$ has degree $\le i-j_0$.  Hence
+$\deg\gamma_i=i-j_0$ for $i>j_0$ and $\gamma_i=0$ for $i\le j_0$, and
+$s_i=v_i+\tau_i+\gamma_i$ has degree $\max(1,i-j_0)$.  All bits are affine iff
+$63-j_0\le1$.
+\end{proof}
+
+\begin{proposition}[The twisted finalizer is not quadratic]\label{prop:ph:twist-degree}
+Let $\tau\ne0$ have lowest set bit $j_0\le61$, and let $h_c=f_c\circ\psi_\tau$,
+$h_c(v)=f_c(v\boxplus \tau)$, with $f_c$ the degree-$5$ polynomial
+\eqref{eq:ph:chain5} and $e=\varphi_5(c)$ its coefficients.
+\begin{enumerate}[label=(\roman*)]
+\item $\deg_{\F_2}h_c\le63$ for every $c$; indeed $\deg_{\F_2}(f\circ\psi)\le63$
+      for every bijection $\psi$ of $\F$ and every $f\in\F[X]$ of degree
+      $<2^{64}-1$.
+\item For $2\le r\le63-j_0$, the coefficient of the monomial
+      $v_{j_0}v_{j_0+1}\cdots v_{j_0+r-1}$ in the algebraic normal form of
+      $h_c$ is
+      \[
+      \begin{aligned}
+        \sum_{j<2^r}f_c\bigl(\tau\boxplus 2^{j_0}j\bigr)&=e_1\,w_r+R_r ,\\
+        \text{where}\qquad
+        w_r&=\bigoplus_{j<2^r}\bigl(\tau\boxplus2^{j_0}j\bigr)=2^{j_0+r}\bigl(m\oplus(m+1)\bigr)\ne0 ,
+      \end{aligned}
+      \]
+      $m=\lfloor \tau/2^{j_0+r}\rfloor$, the sum $m+1$ and the XOR are
+      taken modulo $2^{64-j_0-r}$, and $R_r$ depends on $(e_0,e_2,e_3,e_4,\tau)$
+      but not on $e_1$.
+\item Consequently, for uniform $c$,
+      $\Pr_c\bigl[\deg_{\F_2}h_c<63-j_0\bigr]\le2^{-64}$: all but a $2^{-64}$
+      fraction of the keys $c$ give $\F_2$-degree exactly $63$ when $\tau$ is
+      odd, and at least $3$ whenever $j_0\le60$.  By contrast
+      $\deg_{\F_2}f_c\le2$ and $\deg_{\F_2}\bigl(f_c\circ(v\mapsto v\oplus \tau)\bigr)\le2$
+      for every $c$ and $\tau$ (\Cref{lem:ph:popcount}).
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+We use M\"obius inversion: for $F:\F_2^{64}\to\F_2^{64}$ and $I\subseteq\{0,\dots,63\}$,
+the coefficient of $\prod_{i\in I}v_i$ in the algebraic normal form of $F$ is
+$\sum_{v\in\mathrm{span}\{2^i:i\in I\}}F(v)$, the sum of $F$ over the
+$2^{|I|}$ vectors supported on $I$ (setting the other variables to $0$ kills
+exactly the monomials that involve them).
+
+(i) Take $I=\{0,\dots,63\}$: the coefficient of $v_0\cdots v_{63}$ is
+$\sum_{v\in\F}f(\psi(v))=\sum_{x\in\F}f(x)$, and
+$\sum_{x\in\F}x^e=0$ for $0\le e<2^{64}-1$ (for $e=0$ it is $2^{64}\cdot1=0$;
+for $e\ge1$, with $g$ a generator of $\F^\times$, it is
+$\sum_{i<2^{64}-1}g^{ie}=(g^{e(2^{64}-1)}-1)/(g^e-1)=0$).
+
+(ii) Take $I=\{j_0,\dots,j_0+r-1\}$; the vectors supported on $I$ are
+$v=2^{j_0}j$, $j<2^r$, and $v\boxplus \tau=\tau\boxplus2^{j_0}j$.  Write
+$f_c=X^5+e_3X^3+L$ with $L(x)=e_4x^4+e_2x^2+e_1x+e_0$.  Since $x\mapsto x^4$
+and $x\mapsto x^2$ are $\F_2$-linear and $e_0$ is added $2^r$ times,
+$\sum_jL(x_j)=e_4w_r^4+e_2w_r^2+e_1w_r$ with $w_r=\bigoplus_jx_j$, so
+$R_r=\sum_j\bigl(x_j^5+e_3x_j^3\bigr)+e_4w_r^4+e_2w_r^2$.  To compute $w_r$,
+write $\tau=2^{j_0}\tau'$ with $\tau'$ odd and $\tau'=2^rm+s$, $0<s<2^r$, $s$ odd; then
+$\tau\boxplus2^{j_0}j=2^{j_0}\bigl((\tau'+j)\bmod2^{64-j_0}\bigr)$, and the $2^r$
+integers $\tau'+j$ are $2^rm+s,\dots,2^rm+2^r-1$ followed by
+$2^r(m+1),\dots,2^r(m+1)+s-1$, with $m+1$ modulo $2^{64-j_0-r}$.  Their XOR is
+$2^rm\cdot[\,2^r-s\text{ odd}\,]\oplus2^r(m+1)\cdot[\,s\text{ odd}\,]\oplus\bigoplus_{j<2^r}j
+=2^r\bigl(m\oplus(m+1)\bigr)$, because $s$ and $2^r-s$ are odd and
+$\bigoplus_{j<2^r}j=0$ for $r\ge2$.  Finally $m\ne m+1$ modulo
+$2^{64-j_0-r}\ge2$, so $m\oplus(m+1)$ is a nonzero integer below
+$2^{64-j_0-r}$ and $w_r=2^{j_0+r}(m\oplus(m+1))\ne0$ in $\F_2^{64}$.
+
+(iii) By \Cref{lem:ph:chain}, $e=\varphi_5(c)$ is uniform on $\F^5$, so
+$e_1$ is uniform and independent of $(e_0,e_2,e_3,e_4)$.  For $r=63-j_0$ the
+coefficient in (ii) is $e_1w_r+R_r$ with $w_r\ne0$, which vanishes for
+exactly one value of $e_1$; otherwise $h_c$ has a nonzero monomial of degree
+$63-j_0$.  For odd $\tau$ this is degree $63$, the maximum by (i).  The
+contrast statements are \Cref{lem:ph:popcount}, since $v\mapsto v\oplus \tau$
+is $\F_2$-affine.
+\end{proof}
+
+The bad twist words---those with $j_0\ge62$, for which $\psi_\tau$ is
+affine and $h_c$ quadratic for every $c$---are four of the $2^{64}$, and a
+uniform $\tau$ has $j_0\le60$ with probability $1-2^{-60}$.  The proposition
+is silent on what the tests measure; it says that the specific structure of
+\Cref{lem:ph:popcount}, on which the earlier degree-$7$ decision was based,
+is removed by the twist at the cost of one addition rather than one field
+multiplication.
+
+\paragraph{Numerical check.}
+\texttt{tools/bench/chainhash/anf\_check.py}
+computes the algebraic normal form of the finalizer restricted to $10$ input
+bits (the other $54$ bits fixed at random) by the M\"obius transform, for
+$20$ random keys.  On the cube of bits $0$--$9$ with an odd $\tau$ it finds
+$\F_2$-degree $2$ for the degree-$5$ circuit alone, $3$ for the former
+degree-$7$ circuit, $2$ for $f_c(v\oplus \tau)$, and $10$---the maximum a
+$10$-variable function can have---for $f_c(v\boxplus \tau)$, for the degree-$5$
+and the degree-$3$ circuit alike; on the cube of bits $j_0,\dots,j_0+9$ for
+a random $j_0\le50$ it again finds $10$, and on a cube of bits below $j_0$
+(where $\psi_\tau$ is affine) it finds $2$.  The same script checks
+\eqref{eq:ph:carry} and the three displayed bits exhaustively over $8$-bit
+$v,\tau$, the degree formula $\max(1,i-j_0)$ for all $8$-bit $\tau\ne0$, the value
+of $w_r$ on $3{,}094$ random $(\tau,r)$ pairs, and that the top coefficient of
+\Cref{prop:ph:twist-degree}(ii) equals the sum $\sum_jf_c(\tau\boxplus2^{j_0}j)$ and
+moves by $\Delta e_1\cdot w_r$ when $e_1$ alone is changed, on $40$ random
+instances.
+
+To summarise: the twist changes only the algebraic structure of the
+finalizer as a function of the bits of its input.  The collision bound and
+the $5$-wise independence are those of \Cref{thm:ph:collision,thm:ph:kwise}
+for every bijection of the finalizer input (\Cref{lem:ph:twist}), and
+\Cref{prop:ph:twist-degree} says what changes.  Whether that change is
+adequate for a given test suite is an empirical question; for SMHasher3 the
+answer was $200/200$ for degree $5$ and $183/200$ for degree $3$.
 
 \subsection{Remarks}
 
@@ -654,10 +970,10 @@ and both $\Pr[\neg\mathcal D]\,|T|/2^{64t}$ and $\Pr[\neg\mathcal D\wedge\cdot\i
 The bound is $2^{-64}$ (CLNH) $+\ p/2^{64}$ (recurrence) $+\ 2^{-64}$
 (finalizer), with $p=Sn$ the number of recurrence steps, i.e.\ of field
 multiplications between the block level and the finalizer.  The finalizer's
-degree does not enter the collision bound: it buys the $7$-wise guarantee of
-\Cref{thm:ph:kwise} and, over $\F_2$, a cubic rather than quadratic output
-map (\Cref{rem:ph:single-key}), at the price of four multiplications per
-message.  The recurrence term is the $n/|\F|$ of \Cref{sec:injective} with
+degree does not enter the collision bound: it buys the $5$-wise guarantee of
+\Cref{thm:ph:kwise}, at the price of three multiplications per message; the
+$\F_2$-algebraic structure of the output map is the business of the twist
+(\Cref{sec:ph:twist}), not of the degree.  The recurrence term is the $n/|\F|$ of \Cref{sec:injective} with
 $n$ now counting sub-blocks of $B_s$ bytes rather than pairs of words, which
 is why the total is far below the $(\ell/16+O(1))/2^{64}$ one would get from
 the recurrence alone on the raw words.
@@ -673,11 +989,15 @@ for totals of $(3p+1)/2^{64}$ and $(3p+3)/2^{64}$.  The three resident key
 words that held $x,x^2,x^3$ now hold $u,y,z$, and the total-degree bound of
 \Cref{lem:ph:injective}(iii) replaces the univariate one, dividing the
 level-2 term by about three.  The low-degree finalizers were dropped for the
-reason given in \Cref{sec:injective}: over $\mathrm{GF}(2^{64})$ the
+reason given in \Cref{sec:ph:twist}: over $\mathrm{GF}(2^{64})$ the
 $\F_2$-degree of $v\mapsto v^e$ is the number of ones in the binary expansion
 of $e$, so a polynomial of degree $3$ or $5$ is quadratic over $\F_2$ and the
-corresponding hashes fail SMHasher3's distribution tests, while degree $7$ is
-the first odd degree whose leading monomial is cubic.
+corresponding hashes fail SMHasher3's distribution tests
+(\Cref{lem:ph:popcount}).  The design then used, for a while, a degree-$7$
+finalizer evaluated with four multiplications (the first odd degree whose
+leading monomial is cubic), with a decoder whose pivots included two
+Frobenius roots; the present degree-$5$ circuit with the input twist reaches
+the same test record with three multiplications and unit pivots only.
 \end{remark}
 
 \begin{remark}[The length XOR]
@@ -712,9 +1032,9 @@ slightly worse $d/(2^{64}-1)$.
 \begin{remark}[Assumptions, and the gap between the theorem and the code]\label{rem:ph:gaps}
 \begin{enumerate}[label=(A\arabic*)]
 \item \emph{Ideal key.}  \Cref{thm:ph:collision,thm:ph:kwise} are about the family
-      indexed by a uniform $(\kappa,\theta,c)\in\F^{W+10}$ ($8(W+10)$ random
-      bytes; $336$, $1{,}104$ and $144$ bytes for $W=32,128,8$).  The
-      implementation derives $(\kappa,\theta,c)$ from a $64$-bit seed with
+      indexed by a uniform $(\kappa,\theta,c,\tau)\in\F^{W+9}$ ($8(W+9)$ random
+      bytes; $328$, $1{,}096$ and $136$ bytes for $W=32,128,8$).  The
+      implementation derives $(\kappa,\theta,c,\tau)$ from a $64$-bit seed with
       \texttt{splitmix64}; the resulting $2^{64}$-member subfamily is not
       covered by the theorems (no pseudorandomness assumption is made or
       needed for the ideal-key statements; cf.\ the counting argument of
@@ -737,15 +1057,16 @@ slightly worse $d/(2^{64}-1)$.
       total-degree bound $n/|\F|$ stated at the end of that proof is
       \Cref{lem:ph:injective}(iii) with \Cref{lem:ph:sz}.
 \item \emph{Level 3 citation.}  \Cref{thm:main} does not apply in characteristic $2$;
-      \Cref{lem:ph:chain} proves the needed bijectivity for the degree-$7$
-      circuit directly.  Extending \textsc{ChainHash} to another degree needs
+      \Cref{lem:ph:chain} proves the needed bijectivity for the degree-$5$
+      circuit directly, and \Cref{lem:ph:twist} carries it through the twist.  Extending \textsc{ChainHash} to another degree needs
       a characteristic-$2$ bijective circuit of that degree with its own
       decoder (\Cref{rem:char2}).
 \item \emph{Message model.}  Messages are byte strings; the length is XORed as
       a $64$-bit value, so $\ell<2^{64}$.  $n$ counts $B$-byte blocks and
       $p=Sn$ counts sub-blocks; a message of $\ell$ bytes costs
       $\lceil\ell/16\rceil$ carry-less products at level 1, $p(m)$ field
-      multiplications at level 2 and $4$ in the finalizer.  The empty message
+      multiplications at level 2 and $3$ in the finalizer (plus one integer
+      addition for the twist).  The empty message
       is one block of $S$ empty sub-blocks, each with CLNH sum the empty sum
       $0$, hashed with $\ell=0$ (so every stream pair is $(0,0)$).
 \end{enumerate}

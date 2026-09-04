@@ -331,9 +331,9 @@ Polymur~\cite{polymur}                      & 4 & 57 & 19.7 & 16.2 \\
 \texttt{komihash} v5.34                     & 1 & $\ge32^*$ & 24.8 & 24.3 \\
 \hline
 \multicolumn{5}{l}{\emph{proven, key $> 8$ words}} \\
-ChainHash, 1\,KB blocks                     & 138 & 62 & 55.2 & 25.2 \\
-ChainHash, 256\,B blocks                    &  42 & 62 & 51.2 & 27.0 \\
-ChainHash, 64\,B blocks                     &  18 & 62 & 14.5 & 19.4 \\
+ChainHash, 1\,KB blocks                     & 137 & 62 & 57.3 & 28.5 \\
+ChainHash, 256\,B blocks                    &  41 & 62 & 51.0 & 31.1 \\
+ChainHash, 64\,B blocks                     &  17 & 62 & 14.1 & 21.3 \\
 UMASH-64~\cite{umash}                       &  38 & 55 & 40.7 & 32.9 \\
 UMASH-128 (128-bit output)                  &  38 & 83 & 23.9 & 19.7 \\
 CLNH (fixed length)~\cite{lemire2015clhash} & $L$ & 64 & 27.3 & 26.3 \\
@@ -354,37 +354,49 @@ $B\le256$, $S=2$ for $1$\,KB blocks); each sub-block is hashed by carryless NH
 (one \texttt{PMULL} per $16$ bytes into four $128$-bit accumulators) and its
 unreduced sum is consumed as one pair $(a_i,b_i)$ of the three-key recurrence
 $P_0=z$, $P_i=a_i+(b_i+y)(P_{i-1}+u)$, one field multiplication per
-sub-block; the byte length is XORed into the last $a_i$; and the result is
-passed through a random monic polynomial of degree~$7$ evaluated with four
-multiplications, $\lfloor7/2\rfloor+1$ as in \Cref{thm:main}, by a
-characteristic-$2$ circuit whose coefficient map is a bijection of $\F^7$
-(\Cref{sec:ph} gives the explicit decoder), so its seven parameters are drawn
-uniformly at random and the output is $7$-wise independent.  Degree $7$ is the
-least that suffices: over $\F_{2^{64}}$ the $\F_2$-degree of $v\mapsto v^e$ is
-the number of ones in the binary expansion of $e$, so degree-$3$ and
-degree-$5$ finalizers are quadratic over $\F_2$ and fail $23$ and $21$ of
-the $188$ standard SMHasher3 tests~\cite{smhasher3} (Zeroes, Sparse,
-Permutation, TwoBytes, Bitflip, SeedZeroes), whereas degree $7$ is the first
-cubic option and passes; $S=2$
+sub-block; the byte length is XORed into the last $a_i$; one further key
+word is added to the result modulo $2^{64}$ (the \emph{twist}: an integer
+addition, carries and all); and the sum is passed through a random monic
+polynomial of degree~$5$ evaluated with three multiplications,
+$\lfloor5/2\rfloor+1$ as in \Cref{thm:main}, by a characteristic-$2$ circuit
+whose coefficient map is a bijection of $\F^5$ (\Cref{sec:ph} gives the
+explicit decoder), so its five parameters are drawn uniformly at random and
+the output is $5$-wise independent, which is the independence that linear
+probing provably needs~\cite{pagh2009linear,patracscu2016kindependence}.
+The twist answers a question that $k$-wise independence never asks: over
+$\F_{2^{64}}$ the $\F_2$-degree of $v\mapsto v^e$ is the number of ones in
+the binary expansion of $e$, so every polynomial of degree at most $6$ is
+quadratic in the bits of its input, with affine discrete derivatives, and the
+fixed-seed keysets of SMHasher3~\cite{smhasher3} (Zeroes, Sparse,
+Permutation, TwoBytes, Bitflip, SeedZeroes) detect exactly that: the
+untwisted degree-$5$ finalizer fails $22$ of the $200$ tests, and an earlier
+version of the hash used degree $7$, the first cubic option, at the price of
+a fourth multiplication.  Any fixed bijection of the finalizer input
+preserves the $2^{-64}$ bound and the $5$-wise independence exactly, and the
+carry chain of an integer addition is not $\F_2$-affine
+(\Cref{sec:ph:twist}); with the twist the degree-$5$ hash passes $200/200$,
+degree $3$ with the twist still fails $17$, and whether the twist suffices
+for a given test suite is an empirical question, not a theorem.  $S=2$
 gives a one-block message a second message-dependent multiplication for the
-same reason.  The collision probability is at most $(p+2)/2^{64}$ for two
+same kind of reason.  The collision probability is at most $(p+2)/2^{64}$ for two
 messages of at most $n$ blocks, $p=Sn$ sub-blocks: $2^{-64}$ for the block
 level (the full-width XOR-universality of carryless NH, extended to last
 blocks of different pair counts by the length term), $p/2^{64}$ for the
 recurrence (the three-key bound above, with $p$ counting sub-blocks rather
 than word pairs) and $2^{-64}$ for the finalizer (\Cref{sec:ph}).  No
 heuristic mixing step is used anywhere, and both variants pass all $200$
-tests of the full SMHasher3 suite, including a new seeded-differential test
+tests of the full SMHasher3 suite, on an Apple M2 Pro and on an Intel Xeon
+8375C, including a new seeded-differential test
 (full-output collisions of structured pairs, complemented leading or adjacent
 interior words, over $2^{24}$ random seeds, $2^{30}$ in an extended tier) that
 \texttt{MUM} fails outright and \texttt{wyhash}, \texttt{rapidhash},
 \texttt{XXH3} and \texttt{XXH3-128} fail in the extended tier, while \texttt{komihash},
 Polymur, SipHash and the polynomial hashes pass (\Cref{app:adversarial}).
-With $1$\,KB blocks and a $138$-word key it runs at $55$\,GB/s on the M2 Pro,
+With $1$\,KB blocks and a $137$-word key it runs at $57$\,GB/s on the M2 Pro,
 above every heuristic hash in the table and above UMASH, with a proof, and the
 rate is flat up to $64$\,MB messages; the block size is exactly the key-budget
 knob, and at $64$-byte blocks, close to the one-cache-line budget, the hybrid
-is slower than the fanned-out recurrence alone on long messages ($14.5$
+is slower than the fanned-out recurrence alone on long messages ($14.1$
 against $23.8$\,GB/s at $16$\,KB).  The implementation and a
 bit-serial reference are in \texttt{tools/bench/chainhash/} of the repository.
 

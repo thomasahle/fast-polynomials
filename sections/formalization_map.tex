@@ -4,6 +4,14 @@
 This appendix records which statements of the paper are machine-checked in
 the Lean~4 development \texttt{FastPoly/\allowbreak } distributed with the source, under
 which hypotheses, and where the formalization stops short of the paper.  The
+abstract's sentence ``Everything is checked in Lean'' refers to the complete
+upper-bound construction stated immediately before it: the decoder,
+multiplication count, addition bounds, and logarithmic-height arrangement.
+Those claims are joined by the paper-level capstone in
+\texttt{PaperMain.lean}.  The sentence does not refer to independent auxiliary
+results recorded later in the paper, whose coverage is reported separately
+below.
+The
 Lean statements are made over an abstract commutative ring $R$ and a
 commutative $R$-algebra $A$ (Lean: \texttt{[CommRing R] [CommRing A]
 [Algebra R A]}); the only characteristic-type assumptions are explicit
