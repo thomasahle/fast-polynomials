@@ -1,0 +1,217 @@
+\section{Polynomial Evaluation with $\lfloor n/2\rfloor+1$ Multiplications and Rational Preprocessing}
+\label{sec:model}
+
+We work over a field $\F$.
+An \emph{arithmetic circuit} (or straight-line program) takes inputs $(x,\theta)\in\F\times\F^d$ and outputs a value in $\F$ using additions, subtractions, and multiplications.
+We measure the cost of a circuit by the number of multiplications.
+
+Fix $n\ge 1$.
+An \emph{evaluation scheme} of (target) degree $n$ is a circuit $E(x;\theta)$ such that for every $\theta\in\F^d$, the function $x\mapsto E(x;\theta)$ is a polynomial of degree at most $n$.
+Let $\mathsf{coeff}(\theta)\in\F^n$ denote the coefficient vector $(c_0,\dots,c_{n-1})$ of that polynomial, where we write
+\[
+E(x;\theta)=c_0 + c_1 x + \dots + c_{n-1}x^{n-1} + x^n.
+\]
+Thus $\mathsf{coeff}:\F^d\to\F^n$ is a polynomial map.
+
+\paragraph{Rational preprocessing/decoding.}
+We say $E$ has \emph{rational preprocessing} (or \emph{rational decoding}) if there is a rational map
+\[
+\mathsf{pre}:\F^n \dashrightarrow \F^d
+\]
+such that for every coefficient vector $c$ in the domain of $\mathsf{pre}$ we have
+\[
+E(x;\mathsf{pre}(c)) \equiv c_0 + c_1 x + \dots + c_{n-1}x^{n-1} + x^n
+\]
+as polynomials in $x$.
+Equivalently, $\mathsf{pre}$ is a rational right-inverse of $\mathsf{coeff}$ on a Zariski-open set, so $\mathsf{coeff}$ is generically injective (birational onto its image).
+
+\paragraph{Hashing viewpoint.}
+If we sample $\theta$ at random and evaluate $E(x;\theta)$ at an input $x$, we obtain a polynomial-hash family.
+When $\mathsf{coeff}$ is (generically) injective, distinct parameters induce distinct polynomials, which is exactly what is needed to interpret preprocessing as selecting a random polynomial from a well-defined family.
+
+\subsection{Main Result}
+\label{sec:main-theorem}
+
+Our main contribution is an evaluation scheme with essentially the minimum possible number of multiplications while still admitting rational preprocessing.
+
+\begin{theorem}
+\label{thm:main}
+For every $n\ge 1$ and every field $\F$ of characteristic $\neq 2$, there is an evaluation scheme for monic degree-$n$ polynomials over $\F$ that uses $\lfloor n/2\rfloor+1$ multiplications and admits rational preprocessing.
+\end{theorem}
+
+\begin{remark}[Characteristic 2]
+\label{rem:char2}
+In characteristic~2, some of the decoding steps in our characteristic $\neq 2$ construction rely on dividing by even integers (e.g.\ $2$), which is undefined.
+Over perfect fields of characteristic~2 (in particular finite fields $\F_{2^w}$), there is an alternative decoding strategy that replaces those divisions by (i) Lucas’ theorem for binomial coefficients modulo~$2$ and (ii) Frobenius inverses (unique $2^t$-th roots).
+This makes the affected decoding steps well-defined in characteristic~$2$ (with preprocessing allowed to use Frobenius roots).
+A complete, unified characteristic~$2$ construction matching \cref{thm:main} remains open.
+\end{remark}
+
+\subsection{Intuition and Construction Outline}
+\label{sec:main-theorem:outline}
+
+This section gives the high-level intuition behind the construction; the full details appear in \cref{appendix:constructions}.
+The proof consists of making the invariants below precise and checking that every step preserves rational decoding.
+
+\paragraph{From rational preprocessing to decoding coefficients.}
+Fix a circuit family $E(x;\theta)$ and write $c=\mathsf{coeff}(\theta)\in\F^n$ for the output coefficient vector as in \cref{sec:model}.
+Rational preprocessing asks for a rational right-inverse $\mathsf{pre}$ of $\mathsf{coeff}$ on a dense set, i.e.\ that we can (generically) recover the parameters $\theta$ from the coefficients of the resulting polynomial.
+Thus, in the construction we repeatedly build polynomial families whose parameters can be \emph{decoded} from their coefficients by simple triangular relationships.
+
+\paragraph{A warm-up: degree $3$ with two multiplications.}
+Let $n=3$.
+Compute $H_2(x)=x^2$ using one multiplication, and then define
+\[
+   Q_3(x;\alpha_0,\alpha_1,\alpha_2) \;=\; (x+\alpha_2)(H_2(x)+\alpha_1)+\alpha_0.
+\]
+This uses one additional multiplication, so two in total, matching $\lfloor 3/2\rfloor+1$.
+Expanding $H_2(x)=x^2$ gives
+\[
+   Q_3(x)=x^3 + \alpha_2 x^2 + \alpha_1 x + (\alpha_1\alpha_2+\alpha_0),
+\]
+so the coefficient map is (almost) triangular:
+$\alpha_2=\coeff{Q_3}{2}$ and $\alpha_1=\coeff{Q_3}{1}$ are read off directly, and then $\alpha_0=\coeff{Q_3}{0}-\alpha_1\alpha_2$.
+This illustrates the general strategy: we use each multiplication to introduce (roughly) two new degrees of freedom, while keeping decoding algebraic and explicit.
+
+\paragraph{Splitting viewpoint (``splittable pairs'').}
+For larger degrees, it is convenient to construct the output polynomial as
+\[
+   P(x) \;=\; x\cdot T^{(1)}(x) + T^{(2)}(x),
+\]
+where $T^{(1)}$ and $T^{(2)}$ are degree-$(n-1)$ polynomials computed with shared intermediate values.
+The final multiplication by $x$ contributes the ``$+1$'' in the multiplication count.
+We call $(T^{(1)},T^{(2)})$ a \emph{splittable pair} (for degree $n$) if the coefficients of $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ generically determine all underlying parameters (equivalently: the induced coefficient map is birational onto its image).
+The core of the construction is to build splittable pairs for all target degrees while paying only about one multiplication per two coefficients.
+
+\paragraph{Keeping decoding stable: coefficient windows and ``compatible pairs''.}
+The main technical problem is that multiplication mixes coefficients.
+To control this, we maintain an invariant of the following form.
+We consider a pair $(P^{(1)},P^{(2)})$ and its combination $\Phi(x)\coloneqq xP^{(1)}(x)+P^{(2)}(x)$.
+We ensure that there is a \emph{window} of coefficient positions (typically a top-degree range) from which one can recover the parameters introduced so far and also recover the pair $(P^{(1)},P^{(2)})$ itself.
+Pairs with this property are called \emph{compatible pairs} in the long version.
+
+Crucially, the basic operations used in the straight-line program preserve compatibility:
+\begin{itemize}
+   \item adding low-degree polynomials (which only affects low coefficients);
+   \item multiplying by a \emph{known-power gadget} $H_{2^i}(x)$ (a fixed monic degree-$2^i$ polynomial, treated as known to the decoder),
+         which shifts blocks of coefficients by $2^i$ positions without destroying recoverability of a top window;
+   \item combining two compatible pairs in a block-triangular way so that the coefficient windows do not interfere.
+\end{itemize}
+These closure properties are what lets us scale the warm-up decoding argument beyond tiny degrees.
+
+\paragraph{Recursion: filling coefficients with a BRW-style structure.}
+At a high level, we build a decodable family $Q_{2^k-1}(x;\alpha)$ of monic degree $(2^k-1)$ polynomials using a divide-and-conquer pattern reminiscent of Rabin--Winograd / Bernstein constructions~\cite{rabin1972number}:
+we keep a ladder of known-power gadgets $H_2,H_4,\dots,H_{2^{k-1}}$ (computed once and reused),
+and we recursively ``fill'' disjoint coefficient windows by multiplying previously constructed pieces by the appropriate $H_{2^i}$ and adding a fresh low-degree correction.
+The compatibility invariant guarantees that each recursive layer introduces new parameters that remain decodable from the top coefficients, despite coefficient mixing in intermediate multiplications.
+The resulting circuits use $\Theta(2^{k-1})$ multiplications for degree $\Theta(2^k)$, i.e.\ about half the multiplications of Horner.
+
+\paragraph{From the recursion to \cref{thm:main}.}
+The recursion above yields splittable pairs for essentially all odd degrees (with a small number of explicit base cases).
+Given a splittable pair $(T^{(1)},T^{(2)})$ for degree $n$, the circuit for $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ uses one more multiplication than the shared computation of $T^{(1)}$ and $T^{(2)}$.
+For even degrees, we reduce to the odd case by writing
+\(
+   P(x)=c_0 + x\cdot Q(x)
+\)
+where $Q$ is a monic degree-$(n-1)$ polynomial with coefficients $(c_1,\dots,c_{n-1})$; this costs one extra multiplication by $x$.
+In all cases we obtain $\lfloor n/2\rfloor+1$ multiplications overall, and the decoding invariants ensure that the induced coefficient map is generically invertible by rational functions, i.e.\ admits rational preprocessing in the sense of \cref{sec:model}.
+
+\subsection{\texorpdfstring{$k$}{k}-wise independent hashing and why bijectivity matters}
+\label{sec:main-theorem:kwise}
+
+\paragraph{Background: $k$-wise independence via polynomials.}
+Let $\F$ be a field and fix $k\ge 1$.
+A standard way to build a $k$-wise independent hash family $\F\to\F$ is to choose a random
+degree-$k$ \emph{monic} polynomial and evaluate it on the input~\cite{wegman1981new}.
+Concretely, for a coefficient vector $c=(c_0,\dots,c_{k-1})\in\F^k$ define
+\begin{equation}
+  h_c(x) \coloneqq x^k + c_{k-1}x^{k-1} + \cdots + c_1 x + c_0.
+  \label{eq:kwise:monic-poly}
+\end{equation}
+If $c\gets\F^k$ is uniform, then the family $\{h_c\}$ is $k$-wise independent:
+for any $k$ distinct inputs $x_1,\dots,x_k\in\F$, the random vector
+$\bigl(h_c(x_1),\dots,h_c(x_k)\bigr)$ is uniform in $\F^k$.
+Indeed,
+\[
+  h_c(x_j) - x_j^k = \sum_{i=0}^{k-1} c_i x_j^i,
+\]
+and the linear map $c\mapsto \bigl(\sum_i c_i x_j^i\bigr)_{j=1}^k$ is a Vandermonde transform,
+hence invertible when the $x_j$ are distinct.
+
+\paragraph{Why multiplications dominate in practice.}
+Evaluating \eqref{eq:kwise:monic-poly} is a tight inner loop in many randomized data structures
+(hash tables, sketches, filters) and in cryptographic-style workloads.
+In typical finite-field implementations, additions are cheap but multiplications are expensive
+because they entail modular reduction:
+either integer multiplication plus reduction in $\F_p$, or carryless multiplication plus
+reduction in $\F_{2^w}$.
+Thus the main performance objective is often to reduce the number of field multiplications,
+especially on the \emph{critical path} (dependent multiplications).
+
+\paragraph{Classical evaluation baselines.}
+The standard baseline is Horner’s rule, which evaluates \eqref{eq:kwise:monic-poly} using $k-1$
+multiplications and $k$ additions:
+\[
+  \bigl(\cdots((x+c_{k-1})x + c_{k-2})x + \cdots \bigr)x + c_0.
+\]
+There are two widely used alternatives:
+\begin{itemize}
+  \item \textbf{Estrin / Paterson--Stockmeyer style.}
+  These reorganize evaluation to expose instruction-level parallelism by grouping terms,
+  reducing depth to $O(\log k)$ at the cost of extra multiplications (to form powers like $x^2,x^4,\dots$).
+  This can help on wide machines when throughput matters more than total work~\cite{estrin1960organization,paterson1973evaluation}.
+  \item \textbf{Rabin--Winograd preprocessing.}
+  Rabin and Winograd~\cite{rabin1972number} showed that, with preprocessing of the coefficient
+  vector $c$ using only rational operations, one can evaluate a degree-$k$ polynomial with
+  about $k/2 + O(\log k)$ multiplications.
+  Their work framed preprocessing in a way that is compatible with finite fields, and they
+  conjectured their overhead beyond $k/2$ was essentially necessary.
+\end{itemize}
+
+\paragraph{Our setting: preprocessing as a parameterization.}
+In this paper, we consider an evaluation circuit $E(x;\theta)$ whose \emph{runtime key} is a
+parameter vector $\theta\in\F^d$.
+For each $\theta$, the function $x\mapsto E(x;\theta)$ is a monic degree-$k$ polynomial, with
+coefficient vector $\mathsf{coeff}(\theta)\in\F^k$ as in \cref{sec:model}.
+There are then two natural ways to generate a $k$-wise hash function:
+\begin{enumerate}
+  \item sample coefficients $c\gets\F^k$ and preprocess them into parameters
+        $\theta=\mathsf{pre}(c)$, then hash by $x\mapsto E(x;\theta)$;
+  \item sample parameters $\theta$ directly (for example uniformly from $\F^d$) and hash by
+        $x\mapsto E(x;\theta)$.
+\end{enumerate}
+
+\paragraph{Why bijectivity/birationality is important for hashing.}
+The distinction above is exactly where the “bijective/injective” viewpoint matters.
+If $\mathsf{coeff}$ is not injective, then distinct parameters can represent the same polynomial.
+This is not merely an aesthetic issue: sampling $\theta$ induces a potentially \emph{biased}
+distribution on polynomials (some polynomials may have many preimages, others none),
+which can break clean statements like “the hash is $k$-wise independent” if the key-generation
+procedure is “pick a random $\theta$”.
+
+Rational preprocessing, as defined in \cref{sec:model}, is a formal way to rule out this bias:
+it requires a rational right-inverse $\mathsf{pre}$ of $\mathsf{coeff}$ on a dense set, i.e.\ that
+$\mathsf{coeff}$ is generically one-to-one (birational onto its image).
+Operationally this gives two benefits:
+\begin{itemize}
+  \item \textbf{Soundness of preprocessing.}
+  Given a uniformly random coefficient vector $c$ (the standard $k$-wise key), we can compute
+  parameters $\theta=\mathsf{pre}(c)$ such that $E(x;\theta)\equiv h_c(x)$.
+  This lets us implement $k$-wise hashing using the fast circuit while preserving the exact
+  algebraic distribution that the usual Vandermonde proof assumes.
+  \item \textbf{Optional ``sample-$\theta$'' viewpoint.}
+  When $\mathsf{coeff}$ is generically injective, there is essentially one parameter vector per
+  polynomial (up to a lower-dimensional exceptional set), so treating $\theta$ itself as the key
+  corresponds to selecting a polynomial from a well-defined family without duplicates.
+\end{itemize}
+This is the sense in which “fast evaluation with rational preprocessing” becomes a
+bijective/injective parameterization problem.
+
+\paragraph{Implication of \cref{thm:main} for $k$-wise hashing.}
+Applying \cref{thm:main} with $n=k$, we obtain an evaluation scheme for \eqref{eq:kwise:monic-poly}
+that uses only $\lfloor k/2\rfloor+1$ multiplications after preprocessing the coefficients into
+runtime parameters.
+This improves over Horner’s $k-1$ multiplications and removes the $O(\log k)$ overhead in
+Rabin--Winograd while staying within the rational preprocessing model.
+We evaluate practical performance trade-offs against Horner, Estrin-style evaluation, and
+Rabin--Winograd in \cref{sec:experiments:kwise}.

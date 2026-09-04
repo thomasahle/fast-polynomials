@@ -1,0 +1,40 @@
+\section{Introduction}
+In many applications it becomes necessary to evaluate
+\[
+   P = a_0 + a_1 x + a_2 x^2 + \dots + a_{n-1} x^{n-1} + x^{n},
+\]
+where the coefficients $a_i$ are known to the programmer~\cite{knuth1962evaluation}.
+Horner's method evaluates $P$ using just $n$ multiplications:
+$P = a_0 + x(a_1 + x(a_2 + \dots + x(a_{n-1} + x)\dots))$ and has been known for centuries.\footnote{Although named after William George Horner, this method is much older, as it has been attributed to Joseph-Louis Lagrange by Horner himself, and can be traced back many hundreds of years to Chinese and Persian mathematicians; see, e.g., Knuth~\cite{knuth1962evaluation}.}
+Perhaps surprisingly, this is not optimal.
+
+The trick is to allow some preprocessing of the coefficients $a_0, \dots, a_n$.
+For example, the polynomial $9 + 7 x + 5 x^2 + 3 x^3 + x^4$ can be evaluated as
+$y = x (x + 1)$, $P = (x + y - 1)(y + 4) + 13$ using just two multiplications rather than four.
+In the 50s Motzkin gave an algorithm to evaluate any monic polynomial (i.e. leading coefficient 1) of degree $n$ using just $n/2$ multiplications.
+%Later Kedlaya and Umanski~\cite{kedlaya2011fast} reduced this to just $(\log n)^{O(1)}$ time, using table lookups and advanced algebra.
+The downside is that the method requires solving a polynomial system of equations over the complex numbers, which reduces precision and breaks over finite fields.
+%Kedlaya and Umanski's method has a hidden factor of $\log_2 q$, where $q$ is the field size, making it impractical for low degree polynomials over large fields.
+We will discuss the large body of related work by Paterson and Stockmeyer~\cite{paterson1973evaluation}, Kedlaya and Umanski~\cite{kedlaya2011fast}, and others in \cref{sec:related}.
+Arguably, the most practical method is due to Rabin and Winograd~\cite{rabin1972number}, who gave a way to preprocess the coefficients using only rational operations, at the cost of $n/2 + 2\lceil\log n\rceil$ multiplications.
+They conjectured this was optimal up to the constant 2.
+
+In this paper we answer Rabin and Winograd's conjecture in the negative by showing how to evaluate any monic polynomial of degree $n$ using just $n/2+1$ multiplications with \emph{rational preprocessing}, and we show this is optimal.
+At a high level, rational preprocessing is exactly what turns ``fast evaluation'' into a \emph{bijective/injective} parameterization: our evaluation circuit is parameterized by some $\theta$, and it induces a map from parameters $\theta$ to the coefficient vector $(a_0,\dots,a_{n-1})$ of the resulting polynomial.
+Admitting a rational preprocessing/decoding map means that this parameter-to-coefficient map has a rational inverse on a dense set, i.e.\ it is generically one-to-one (birational onto its image).
+
+Fast evaluation of small low-degree polynomials is important in many applications, such as cryptography~\cite{DBLP:conf/fse/CarletGPQR12} and $k$-wise independent hashing~\cite{wegman1981new, patracscu2012power}.
+We show that our method can be used to speed up both of these applications substantially.
+In Section~\ref{sec:experiments}, we demonstrate speedups of $1.3\times$ to $1.9\times$ over standard Horner evaluation for $k$-wise independent hashing with $k \in \{5, \ldots, 9\}$ on modern ARM processors.
+
+\paragraph{Main Results.}
+Section~\ref{sec:model} formalizes our model (arithmetic circuits / straight-line programs) and the notion of rational preprocessing/decoding.
+Our main results are:
+\begin{itemize}
+   \item \textbf{Upper bound.} For every $n\ge 1$ and every field of characteristic $\neq 2$, there is an evaluation scheme for monic degree-$n$ polynomials that uses $\lfloor n/2\rfloor+1$ multiplications and admits rational preprocessing (Theorem~\ref{thm:main}).
+   For characteristic~2, we have explicit constructions up to degree~15 and conjecture the bound holds in general.
+   \item \textbf{Lower bound.} We prove that degree-$6$ evaluation with rational decoding requires at least $4$ multiplications (Section~\ref{sec:lower}), and conjecture that degree-$2n$ requires at least $n+1$ multiplications in general.
+   \item \textbf{Injective Polynomials}. We give an ``injective'' polynomial hashing construction requiring only a single random key (Section~\ref{sec:injective}) and application-level benchmarks for hashing, data structures, and prime-field workloads (Section~\ref{sec:experiments}).
+\end{itemize}
+We also explore concrete constructions in characteristic~2 (currently up to degree~15) in the accompanying code.
+These are of special interest since they can be used in cryptographic applications such as block ciphers and pseudorandom generators.

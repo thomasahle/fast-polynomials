@@ -1,0 +1,52 @@
+\input{header}
+
+
+%\title{Polynomial Hashing with Half the Multiplications}
+%\title{Hashing Polynomials with Fewer Multiplications}
+%\title{Fast Polynomial Evaluation for Hashing}
+%\title{Fast Polynomial Evaluation in Finite Fields}
+%\title{Fast Bijective Polynomials}
+\title{Fast Evaluation of Polynomials with Rational Preprocessing}
+\author{Thomas D. Ahle\thanks{Normal Computing. Email: \texttt{thomas@ahle.dk}.} \and Jakob B. T. Knudsen}
+
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+   Horner's rule evaluates a monic degree-$n$ polynomial using $n-1$ multiplications~\cite{knuth1962evaluation}.
+   We show that with rational preprocessing of the coefficients, any such polynomial
+   can be evaluated using only $\lfloor n/2 \rfloor + 1$ multiplications (over fields
+   of characteristic $\neq 2$).
+   This resolves a conjecture of Rabin and Winograd (1972)~\cite{rabin1972number}, who achieved
+   $n/2 + O(\log n)$ multiplications and conjectured this overhead was necessary.
+   We prove a matching lower bound for degree~6 and conjecture it holds in general.
+
+   We also give an injective polynomial construction for universal hashing that uses
+   $N$ multiplications to hash $2N$ values with a single random key---half the
+   multiplications of standard Horner evaluation.
+   Experiments on ARM processors show $1.3\times$--$1.9\times$ speedups for
+   $k$-wise independent hashing and $2\times$--$2.5\times$ speedups for
+   cryptographic workloads such as Shamir secret sharing~\cite{shamir1979share}.
+\end{abstract}
+
+
+\input{sections/introduction}
+\input{sections/main_theorem}
+\input{sections/related}
+\input{sections/injective}
+\input{sections/lower}
+% \input{sections/conclusion}
+% \input{sections/kwise}
+\input{sections/experiments}
+\input{sections/open_problems}
+\bibliographystyle{alpha}
+\bibliography{references}  % references.bib
+\appendix
+\input{sections/appendix_polynomials}
+\input{sections/constructions}
+
+
+
+\end{document}

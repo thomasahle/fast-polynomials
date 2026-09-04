@@ -1,0 +1,122 @@
+
+\section{Injective Polynomial Hashing with Fewer Multiplications}
+\label{sec:injective}
+
+
+
+We would like to speed up Horner's rule by using roughly half the multiplications.
+The following recurrence computes a degree-$(2i+1)$ polynomial using one multiplication per step:
+\begin{definition}[Naive one-multiplication recurrence]\label{def:injective:naive}
+   Let $P_0=0$ and for $i\ge 1$ define
+   \begin{align}
+      P_{i} &= a_{i} + (b_{i}+x^2)(P_{i-1}+x)
+          \\&= a_{i} + b_{i}x + P_{i-1}x^2 + x^3 + b_{i} P_{i-1}.
+   \end{align}
+\end{definition}
+The first three terms are the ones we would want from a ``packed'' Horner scheme, and the $x^3$ term does not carry data.
+The issue is the extra product term $b_{i} P_{i-1}$: we cannot simply compute and subtract it without returning to two multiplications per step.
+
+\begin{lemma}\label{lem:injective:naive-not-injective}
+   The mapping induced by \cref{def:injective:naive} is not injective for $i\ge 2$.
+\end{lemma}
+\begin{proof}
+   For $i=2$ we have
+   \[
+      P_2
+      = a_2 + b_2a_1 + (b_2b_1+b_2)x + a_1x^2 + (b_2+b_1+1)x^3 + x^5.
+   \]
+   Setting $a_1=a_2=0$, we get
+   \[
+      P_2 = b_2(b_1+1)x + (b_2+b_1+1)x^3 + x^5.
+   \]
+   This takes the same value for $(b_1,b_2)=(0,0)$ and $(b_1,b_2)=(-1,1)$, namely $P_2=x^3+x^5$.
+\end{proof}
+
+Instead we will use a few more variables, such that
+\begin{definition}[Injective recurrence]\label{def:injective:main}
+\begin{align}
+   P_0 &= z \\
+   P_{i} &= a_{i} + (b_{i}+y)(P_{i-1}+x).
+   \label{eq:P-def}
+\end{align}
+\end{definition}
+
+\begin{lemma}\label{lem:injective:coeffmap}
+   Let $P_i$ be as defined in~\cref{eq:P-def}, and let $c_0, \dots, c_{3n-1}$ be the coefficients of the monomials $y^k$, $zy^k$, and $xy^k$ for $0\le k<n$ in $P_n$.
+   Then the mapping $(a_1, \dots, a_n, b_1, \dots, b_n) \mapsto (c_0, \dots, c_{3n-1})$ is injective.
+\end{lemma}
+\begin{proof}
+   We note the following facts about \cref{eq:P-def}:
+   \begin{enumerate}
+      \item $P_n$ is on the form $f_1(y) + z f_2(y) + x f_3(y)$,
+         where $f_1$ has degree at most $n-1$ and $f_2$ and $f_3$ are degree $n$ polynomials in $y$.
+      \item $f_1(y) = \sum_{i=1}^n a_i \prod_{j>i}(y+b_j)$.
+      \item $f_2(y) = \prod_{j=1}^n (b_j + y)$,
+      \item $f_3(y) = \sum_{i=1}^n \prod_{j\ge i} (b_j+y)$.
+   \end{enumerate}
+   Here 2. follows if we let $x=z=0$ and expand
+   \[P_n=a_n+(b_n+y)P_{n-1}=a_n+(b_n+y)(a_{n-1}+(b_{n-1}+y)P_{n-2}),\]
+   etc.
+   The other facts follow similarly.
+
+   To show that the mapping to coefficients is injective, we will show that given the coefficients of $P_n$, we can reconstruct the $a$s and $b$s.
+   It is convenient to start by extracting the $b$s.
+   For this, note that
+   \begin{align}
+      f_2(y) &= y^n + (\sum_{i=1}^n b_i) y^{n-1} + (\sum_{i<j} b_i b_j) y^{n-2} + O(y^{n-3})
+      \quad\text{and}\\
+      f_3(y) &= y^{n} + (1+\sum_{i=1}^n b_i) y^{n-1} + (1 + \sum_{i=2}^n b_i + \sum_{i<j} b_i b_j) y^{n-2} + O(y^{n-3}),
+      \quad\text{so}\\
+      f_3(y)-f_2(y) &= y^{n-1} + (1 + \sum_{i=2}^n b_i) y^{n-2} + O(y^{n-3}).
+   \end{align}
+   We can thus extract $\sum_{i=1}^n b_i$ and $\sum_{i=2}^n b_i$, and from the difference we get $b_1$.
+   Using polynomial synthetic division, we may then divide $f_2(y)$ by $(b_1+y)$ to obtain $f_2^{(2)}(y) := \prod_{j=2}^n (b_j + y)$.
+   Similarly define $f_3^{(2)}(y) := f_3(y)-f_2(y)=\sum_{i=2}^n \prod_{j\ge i} (b_j+y)$.
+   Then proceed by induction to extract the remaining $b$s.
+
+   To extract the $a$s it suffices to notice that $f_1(y) = a_1 y^{n-1} + O(y^{n-2})$ so we may read $a_1$ off the leading coefficient.
+   In the process of extracting the $b$s we constructed for each $i$ the polynomial $\prod_{j>i}(y+b_j)$, so we can subtract $a_1\prod_{j>1}(y+b_j)$ and proceed by induction.
+\end{proof}
+
+\begin{corollary}[Universality via Schwartz--Zippel]\label{cor:injective:sz}
+   Assume $\F$ is finite.
+   Define the keyed hash family $h_{x,y,z}$ by $h_{x,y,z}(a,b)\coloneqq P_n(x,y,z)$ where $P_n$ is computed from \cref{eq:P-def}.
+   Then for any two distinct streams $(a,b)\ne(a',b')$ we have
+   \[
+      \Pr_{(x,y,z)\gets \F^3}\!\left[h_{x,y,z}(a,b)=h_{x,y,z}(a',b')\right] \le \frac{n+1}{|\F|}.
+   \]
+\end{corollary}
+\begin{proof}
+   By \cref{lem:injective:coeffmap}, distinct streams induce distinct polynomials, so $Q\coloneqq P_n-P'_n$ is a nonzero polynomial.
+   Each recurrence step increases total degree by at most $1$, so $\deg(Q)\le n+1$.
+   Applying the Schwartz--Zippel lemma to $Q$ over $\F^3$ gives the stated bound.
+\end{proof}
+
+\begin{remark}[Injective vs.\ $k$-wise viewpoint]\label{rem:injective:vskwise}
+   In the $k$-wise independent hashing setting, the polynomial coefficients are the (random) \emph{key} and the input $x$ is the \emph{data} being hashed.
+   In the injective setting the roles are reversed: the stream $(a_i,b_i)$ is the \emph{data}, while the evaluation point (here a random choice of $(x,y,z)\in\F^3$) is the \emph{key}.
+\end{remark}
+
+\begin{remark}[Single-key variant]\label{rem:injective:onekey}
+   The three-variable construction can be reduced to a \emph{single random key} $x$ by setting $y = x^2$ and $z = x$:
+   \begin{align}
+      P_0 &= x, \\
+      P_{i} &= a_{i} + (b_{i}+x^2)(P_{i-1}+x^2).
+   \end{align}
+   This gives a polynomial in the single variable $x$ of total degree $2n+1$.
+   By Schwartz--Zippel, the collision probability becomes $(2n+1)/|\F|$ instead of $(n+1)/|\F|$,
+   a factor-of-two increase that is acceptable in most applications.
+
+   Alternatively, using $y$ as an independent key while setting $z = x$ gives
+   \begin{align}
+      P_0 &= x, \\
+      P_{i} &= a_{i} + (b_{i}+y)(P_{i-1}+x^2),
+   \end{align}
+   which has total degree $n+2$ in $(x,y)$ and collision probability $(n+2)/|\F|$---comparable
+   to standard Horner evaluation.
+\end{remark}
+
+\begin{remark}[Odd-length streams]\label{rem:injective:odd}
+   For streams of odd length $2n+1$, we can handle the extra element $a'$ by initializing
+   $P_0 = a' + x$ instead of $P_0 = x$.
+\end{remark}

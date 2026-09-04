@@ -1,0 +1,349 @@
+// char0.test.js — port of the essential tests from tools/test_polychain.py
+// for the char-0 lane JS port (website/js/char0/core.js).
+// Plain node, no test framework: console asserts, process.exit(1) on failure.
+// Golden vectors were generated from the Python reference implementation
+// (tools/polychain.py) — see comments at each golden block.
+
+import {
+  Rat,
+  GF,
+  rationals,
+  encode,
+  decode,
+  compile_paper_params_chain,
+  makeRng,
+  _poly_trim,
+  _poly_paper_P_from_params,
+} from '../js/char0/core.js';
+
+let failures = 0;
+let checks = 0;
+
+function check(cond, msg) {
+  checks += 1;
+  if (!cond) {
+    failures += 1;
+    console.error(`FAIL: ${msg}`);
+  }
+}
+
+function eqEl(field, a, b) {
+  return field.eq(a, b);
+}
+
+function eqVec(field, xs, ys) {
+  if (xs.length !== ys.length) return false;
+  for (let i = 0; i < xs.length; i++) if (!field.eq(xs[i], ys[i])) return false;
+  return true;
+}
+
+function show(field, xs) {
+  return '[' + xs.map((x) => String(x)).join(', ') + ']';
+}
+
+// Horner evaluation of a dense ascending coefficient list at x.
+function horner(coeffs, x, field) {
+  let acc = field.zero();
+  for (let i = coeffs.length - 1; i >= 0; i--) {
+    acc = field.add(field.mul(acc, x), field.coerce(coeffs[i]));
+  }
+  return acc;
+}
+
+const MERSENNE61 = (1n << 61n) - 1n;
+
+// =====================================================================
+// (a) Concrete golden checks over Q (generated from Python 2026-08-29):
+//   PYTHONPATH=tools python3 -c "import polychain as pc; ..."
+//   encode(7, [1,2,-1,3,2,-2,1])  == [-9,11,-2,-12,15,21,8]
+//   encode(15, [2,-1,1,3,-2,1,-1,2,1,-3,2,-1,1,2,-2]) ==
+//     [170,648,908,60,-1299,-1359,92,1152,688,-207,-390,-112,51,43,11]
+// =====================================================================
+function testGolden() {
+  const field = rationals();
+  const goldens = [
+    {
+      n: 7,
+      alphas: [1, 2, -1, 3, 2, -2, 1],
+      coeffs: [-9, 11, -2, -12, 15, 21, 8],
+    },
+    {
+      n: 15,
+      alphas: [2, -1, 1, 3, -2, 1, -1, 2, 1, -3, 2, -1, 1, 2, -2],
+      coeffs: [170, 648, 908, 60, -1299, -1359, 92, 1152, 688, -207, -390, -112, 51, 43, 11],
+    },
+  ];
+  for (const { n, alphas, coeffs } of goldens) {
+    const alphasF = alphas.map((a) => field.coerce(a));
+    const coeffsF = coeffs.map((c) => field.coerce(c));
+    // decode(coeffs + [1]) must return exactly the golden alphas
+    const dec = decode(n, coeffsF.concat([field.one()]), field);
+    check(
+      eqVec(field, dec, alphasF),
+      `golden n=${n}: decode mismatch\n  got ${show(field, dec)}\n  want ${show(field, alphasF)}`
+    );
+    // _poly_paper_P_from_params must re-expand to exactly the golden coeffs
+    const P = _poly_trim(_poly_paper_P_from_params({ params: alphasF, field }), field);
+    check(
+      eqVec(field, P, coeffsF.concat([field.one()])),
+      `golden n=${n}: P_from_params mismatch\n  got ${show(field, P)}`
+    );
+    // and JS encode must agree too
+    const enc = encode(n, alphasF, field);
+    check(eqVec(field, enc, coeffsF), `golden n=${n}: encode mismatch\n  got ${show(field, enc)}`);
+  }
+  console.log('golden checks done');
+}
+
+// =====================================================================
+// (b) Round-trip over rationals, n = 1..40
+// =====================================================================
+function testRoundTripQ() {
+  const field = rationals();
+  const rng = makeRng(12345);
+  for (let n = 1; n <= 40; n++) {
+    // random small integer monic coeffs: decode -> re-expand -> exact compare
+    const coeffs = [];
+    for (let i = 0; i < n; i++) coeffs.push(field.coerce(rng.randrange(-9, 10)));
+    coeffs.push(field.one());
+    let alphas;
+    try {
+      alphas = decode(n, coeffs, field);
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: Q round-trip n=${n}: decode threw: ${e.message}`);
+      continue;
+    }
+    const P = _poly_trim(_poly_paper_P_from_params({ params: alphas, field }), field);
+    check(eqVec(field, P, coeffs), `Q round-trip n=${n}: re-expansion mismatch`);
+
+    // encode(random small alphas) -> decode -> compare alphas
+    const alphas2 = [];
+    for (let i = 0; i < n; i++) alphas2.push(field.coerce(rng.randrange(-9, 10)));
+    let coeffs2, dec2;
+    try {
+      coeffs2 = encode(n, alphas2, field);
+      dec2 = decode(n, coeffs2.concat([field.one()]), field);
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: Q encode/decode n=${n}: threw: ${e.message}`);
+      continue;
+    }
+    check(eqVec(field, dec2, alphas2), `Q encode->decode n=${n}: alpha mismatch`);
+  }
+  console.log('Q round-trips done (n=1..40)');
+}
+
+// =====================================================================
+// (c) Round-trip over GF(2^61-1), n = 1..80 plus {97, 128, 200}
+// =====================================================================
+function testRoundTripGF() {
+  const field = GF(MERSENNE61);
+  const rng = makeRng(67890);
+  const ns = [];
+  for (let n = 1; n <= 80; n++) ns.push(n);
+  ns.push(97, 128, 200);
+  for (const n of ns) {
+    const coeffs = [];
+    for (let i = 0; i < n; i++) coeffs.push(field.coerce(rng.randrange(-9, 10)));
+    coeffs.push(field.one());
+    let alphas;
+    try {
+      alphas = decode(n, coeffs, field);
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: GF round-trip n=${n}: decode threw: ${e.message}`);
+      continue;
+    }
+    const P = _poly_trim(_poly_paper_P_from_params({ params: alphas, field }), field);
+    check(eqVec(field, P, coeffs), `GF round-trip n=${n}: re-expansion mismatch`);
+  }
+  console.log('GF(2^61-1) round-trips done (n=1..80, 97, 128, 200)');
+}
+
+// =====================================================================
+// (d) Chain check: compile_paper_params_chain on decoded params.
+//     mul count == (n<=1 ? 0 : n==2 ? 1 : floor(n/2)+1) for n in 3..120 (GF)
+//     chain.eval(x0) == Horner(original coeffs, x0) at 5 random points
+//     (over GF(p); over Q for n <= 20).
+// =====================================================================
+function expectedMulCount(n) {
+  return n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1;
+}
+
+function testChainGF() {
+  const field = GF(MERSENNE61);
+  const rng = makeRng(24680);
+  for (let n = 3; n <= 120; n++) {
+    const coeffs = [];
+    for (let i = 0; i < n; i++) coeffs.push(field.coerce(rng.randrange(-9, 10)));
+    coeffs.push(field.one());
+    let alphas, chain;
+    try {
+      alphas = decode(n, coeffs, field);
+      chain = compile_paper_params_chain(alphas, MERSENNE61);
+      chain.validate();
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: GF chain n=${n}: threw: ${e.message}`);
+      continue;
+    }
+    check(
+      chain.mul_count === expectedMulCount(n),
+      `GF chain n=${n}: mul_count ${chain.mul_count} != ${expectedMulCount(n)}`
+    );
+    for (let t = 0; t < 5; t++) {
+      const x0 = field.coerce(rng.randrange(-1000000, 1000000));
+      const got = chain.eval(x0);
+      const want = horner(coeffs, x0, field);
+      check(eqEl(field, got, want), `GF chain n=${n}: eval mismatch at point ${t}`);
+    }
+  }
+  console.log('GF chain checks done (n=3..120)');
+}
+
+function testChainQ() {
+  const field = rationals();
+  const rng = makeRng(13579);
+  for (let n = 3; n <= 20; n++) {
+    const coeffs = [];
+    for (let i = 0; i < n; i++) coeffs.push(field.coerce(rng.randrange(-9, 10)));
+    coeffs.push(field.one());
+    let alphas, chain;
+    try {
+      alphas = decode(n, coeffs, field);
+      chain = compile_paper_params_chain(alphas, null);
+      chain.validate();
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: Q chain n=${n}: threw: ${e.message}`);
+      continue;
+    }
+    check(
+      chain.mul_count === expectedMulCount(n),
+      `Q chain n=${n}: mul_count ${chain.mul_count} != ${expectedMulCount(n)}`
+    );
+    for (let t = 0; t < 5; t++) {
+      const x0 = field.coerce(rng.randrange(-50, 51));
+      const got = chain.eval(x0);
+      const want = horner(coeffs, x0, field);
+      check(eqEl(field, got, want), `Q chain n=${n}: eval mismatch at point ${t}`);
+    }
+  }
+  console.log('Q chain checks done (n=3..20)');
+}
+
+// =====================================================================
+// (e) Registry fields of the char-0 lane: GF(2^127-1) round trips through
+//     core.GF (same decoder, larger prime), and the compileChar0 pipeline
+//     end to end for 'p61', 'p127' (exact), 'Q' and 'R' (the same exact
+//     rational chain; R displays and emits its constants as doubles):
+//     decode -> chain -> chain.eval == Horner exactly, for n = 3..20 and a
+//     few larger degrees; R's C body must be identical to Q's float style.
+// =====================================================================
+const MERSENNE127 = (1n << 127n) - 1n;
+function testRoundTripGF127() {
+  const field = GF(MERSENNE127);
+  const rng = makeRng(31337);
+  for (let n = 1; n <= 40; n++) {
+    const coeffs = [];
+    for (let i = 0; i < n; i++) coeffs.push(field.coerce(rng.randrange(-9, 10)));
+    coeffs.push(field.one());
+    let alphas, chain;
+    try {
+      alphas = decode(n, coeffs, field);
+      chain = compile_paper_params_chain(alphas, MERSENNE127);
+      chain.validate();
+    } catch (e) {
+      failures += 1;
+      console.error(`FAIL: GF(2^127-1) round-trip n=${n}: threw: ${e.message}`);
+      continue;
+    }
+    const P = _poly_trim(_poly_paper_P_from_params({ params: alphas, field }), field);
+    check(eqVec(field, P, coeffs), `GF(2^127-1) round-trip n=${n}: re-expansion mismatch`);
+    for (let t = 0; t < 3; t++) {
+      const x0 = field.coerce((BigInt(rng.randrange(0, 1073741824)) << 97n) | BigInt(rng.randrange(0, 1073741824)));
+      check(eqEl(field, chain.eval(x0), horner(coeffs, x0, field)), `GF(2^127-1) chain n=${n}: eval mismatch`);
+    }
+  }
+  console.log('GF(2^127-1) round-trips done (n=1..40)');
+}
+
+const intSrc = ints => ints.map((c, i) => `${c < 0 ? '-' : '+'}${Math.abs(c)}${i === 0 ? '' : i === 1 ? 'x' : 'x^' + i}`)
+  .reverse().join('').replace(/^\+/, '');
+
+async function testCompilePipeline() {
+  const { compileChar0 } = await import('../js/compile0.js');
+  const rng = makeRng(4242);
+  const ns = Array.from({ length: 18 }, (_, i) => i + 3).concat([23, 31]);
+  for (const n of ns) {
+    const ints = Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : rng.randrange(-9, 10) || 3));
+    const src = intSrc(ints);
+    const results = {};
+    for (const mode of ['p61', 'p127', 'Q', 'R']) {
+      let r;
+      try { r = await compileChar0(src, mode); }
+      catch (e) { failures += 1; console.error(`FAIL: compileChar0 ${mode} n=${n}: threw: ${e.message}`); continue; }
+      results[mode] = r;
+      check(r.mults === expectedMulCount(n), `compileChar0 ${mode} n=${n}: mults ${r.mults} != ${expectedMulCount(n)}`);
+      const exact = mode !== 'R';
+      check(r.fieldId === mode && r.exact === exact && r.status === (exact ? 'exact' : '≈ numeric') &&
+            r.field.name === { p61: 'GF(2^61−1)', p127: 'GF(2^127−1)', Q: 'ℚ', R: 'ℝ' }[mode],
+        `compileChar0 ${mode} n=${n}: field info`);
+      // C is rendered unless a constant exceeds the double range (Q / R only)
+      const cOk = typeof r.cText === 'string' && r.cText.includes('eval_P');
+      check(cOk || (!exact || mode === 'Q') && /no C rendering: constant -?Infinity/.test(r.note), `compileChar0 ${mode} n=${n}: C rendering`);
+      // independent exact evaluation check against Horner in the field of the chain
+      const field = r.chain.field;
+      const dense = ints.map(c => field.coerce(BigInt(c)));
+      for (let t = 0; t < 3; t++) {
+        const x0 = field.coerce(field.modulus === null ? rng.randrange(-50, 51) : rng.randrange(-1000000, 1000000));
+        check(eqEl(field, r.chain.eval(x0), horner(dense, x0, field)), `compileChar0 ${mode} n=${n}: eval mismatch at point ${t}`);
+      }
+      if (mode === 'R') {
+        check(typeof r.maxRelError === 'number' && r.maxRelError >= 0 && (r.cText === null) === (r.maxRelError === Infinity),
+          `compileChar0 R n=${n}: maxRelError ${r.maxRelError}`);
+        check(!/\d\/\d/.test(r.mathText) && /≈ numeric/.test(r.note), `compileChar0 R n=${n}: constants shown as doubles`);
+      }
+    }
+    // R is Q's chain with the constants printed as doubles: same structure, and
+    // the C below the banner is byte-identical to Q's float style
+    const q = results.Q, r = results.R;
+    if (q && r) {
+      check(q.mathText.split('\n').length === r.mathText.split('\n').length && q.mults === r.mults && q.adds === r.adds && q.height === r.height,
+        `compileChar0 R n=${n}: same chain shape as Q`);
+      check(q.chain.gates.every((g, i) => q.chain.field.eq(g.left.const, r.chain.gates[i].left.const) && q.chain.field.eq(g.right.const, r.chain.gates[i].right.const)),
+        `compileChar0 R n=${n}: same exact constants as Q`);
+      // (Q's table comments carry the exact fractions, R's only the slot name: compare code, not comments)
+      const body = t => (t === null ? null : t.slice(t.indexOf('/* chain constants')).replace(/[ \t]*\/\/.*$/gm, ''));
+      check(body(q.cText) === body(r.cText), `compileChar0 R n=${n}: C code identical to Q (float constants)`);
+    }
+  }
+  // R: decimal inputs are parsed exactly (0.5 = 1/2, 1.5e-1 = 3/20) and rendered
+  // back as doubles; the leading-coefficient scale shows the double
+  const r = await compileChar0('0.5x^7 + 0.25x^5 - 1.5e-1x^3 + 2x - 0.125', 'R');
+  check(r.mults === expectedMulCount(7) + 1 && /P̃/.test(r.mathText) && r.maxRelError < 1e-12, 'compileChar0 R: decimal, non-monic input');
+  check(/0\.5 \* P̃/.test(r.mathText) && !/\d\/\d/.test(r.mathText), 'compileChar0 R: double constants in the math view');
+  const q = await compileChar0('0.5x^7 + 0.25x^5 - 1.5e-1x^3 + 2x - 0.125', 'Q');
+  check(/1\/2 \* P̃/.test(q.mathText) && q.mults === r.mults, 'compileChar0 Q: the same input shows exact fractions');
+  // shortest round-trip decimals, scientific notation when needed
+  const tiny = await compileChar0('0.0000001x^5 + x^3 + 0.5x + 3', 'R');
+  check(/1e-7 \* P̃/.test(tiny.mathText) && /return P \* 1e-7;/.test(tiny.cText) && /10000001/.test(tiny.mathText), 'compileChar0 R: 1e-7 rendering');
+  const tiny2 = await compileChar0('x^5 + 0.0000001x + 3', 'R');
+  check(/1\.0000001/.test(tiny2.mathText) && /1\.0000001/.test(tiny2.cText) && !/\d\/\d/.test(tiny2.mathText), 'compileChar0 R: 1.0000001 rendering');
+  console.log('compileChar0 pipeline checks done (p61, p127, Q, R; n = 3..20, 23, 31)');
+}
+
+testGolden();
+testRoundTripQ();
+testRoundTripGF();
+testChainGF();
+testChainQ();
+testRoundTripGF127();
+await testCompilePipeline();
+
+if (failures > 0) {
+  console.error(`\n${failures} failure(s) out of ${checks} checks`);
+  process.exit(1);
+}
+console.log(`\nAll ${checks} checks passed`);

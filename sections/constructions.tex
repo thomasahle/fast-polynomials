@@ -1,0 +1,2012 @@
+\section{Full Construction Details}
+\label{appendix:constructions}
+
+This appendix provides the complete splittable-pair constructions for all odd degrees except~$7$ over fields of characteristic $\neq 2$ (under the invertibility assumptions stated in the relevant lemmas).
+For $n=7$ we use a separate decodable septic base construction.
+
+\subsection{Definitions}
+A list of definitions needed in this note.
+
+\begin{definition}[Extractable]
+    We say that $(\alpha_i)_{i \in \rng{n}}$ are \emph{extractable} from a polynomial $P \in \mathbb{F}[\alpha_0, \ldots, \alpha_{n - 1}][x]$, if for every $i \in \rng{n}$ there exists a polynomial $E_i$ such that
+    \[
+        \alpha_i = E_i\!\bigl((\coeff{P}{j})_{\,j \in [\deg P]}\bigr).
+    \]
+
+    We say that $(\alpha_i)_{i \in \rng{n}}$ are \emph{extractable} from a polynomial $P \in \mathbb{F}[\alpha_0, \ldots, \alpha_{n - 1}][x]$ given a sequence of monic polynomials, $(B_i)_{i \in [t]}$, if for every $i \in \rng{n}$ there exists a polynomial $E_i$ such that
+    \[
+        \alpha_i = E_i\!\bigl((\coeff{P}{j})_{\,j \in [\deg P]},\; (\coeff{B_k}{r})_{\,k \in [t],\, r \in [\deg B_k]}\bigr).
+    \]
+\end{definition}
+
+\begin{definition}[Decodable]
+    We say that a monic polynomial $P \in \mathbb{F}[\alpha_0, \ldots, \alpha_{n - 1}][x]$ is \emph{decodable} if $\deg P = n$ and $(\alpha_i)_{i \in \rng{n}}$ are extractable from $P$.
+
+    We say that a monic polynomial $P \in \mathbb{F}[\alpha_0, \ldots, \alpha_{n - 1}][x]$ is \emph{decodable} given a sequence of monic polynomials, $(B_i)_{i \in [t]}$, if $\deg P = n$ and $(\alpha_i)_{i \in \rng{n}}$ are extractable from $P$ given $(B_i)_{i \in [t]}$.
+\end{definition}
+
+\begin{definition}[Derivable]
+    Let $P\in\mathbb{F}[\alpha_0,\ldots,\alpha_{m-1}][x]$ and let $(B_i)_{i\in[t]}$ be a sequence of polynomials in the same ring.
+    We say that $P$ is \emph{derivable} from $(B_i)_{i\in[t]}$ if for every $j\in\idx{\deg P}$ there exists a polynomial $D_j$ (with coefficients in $\mathbb{F}$) such that
+    \[
+        \coeff{P}{j}
+            = D_j\!\Bigl( (\coeff{B_k}{r})_{\,k\in[t],\, r\in\idx{\deg B_k}} \Bigr).
+    \]
+
+    Given an auxiliary sequence $(C_\ell)_{\ell\in[s]}$, we say $P$ is derivable from $(B_i)$ \emph{given} $(C_\ell)$ if each $D_j$ is additionally allowed to depend on the coefficients of the $C_\ell$’s.
+\end{definition}
+
+\begin{lemma}[Extractability via derivability]\label{lem:extractable-via-derivable}
+    If $(\alpha_i)_{i\in\rng{n}}$ are extractable from a polynomial $Q$ given $(B_k)_{k\in[t]}$, and $Q$ is derivable from a polynomial $P$ given $(B_k)_{k\in[t]}$, then $(\alpha_i)_{i\in\rng{n}}$ are extractable from $P$ given $(B_k)_{k\in[t]}$.
+\end{lemma}
+\begin{proof}
+    Fix $i\in\rng{n}$ and let $E_i$ be an extraction polynomial for $\alpha_i$ from $Q$ given $(B_k)$, so
+    \[
+        \alpha_i
+            = E_i\!\Bigl( (\coeff{Q}{j})_{j\in\idx{\deg Q}},\;(\coeff{B_k}{r})_{k\in[t],\,r\in\idx{\deg B_k}} \Bigr).
+    \]
+    Since $Q$ is derivable from $P$ given $(B_k)$, each coefficient $\coeff{Q}{j}$ is a polynomial in the coefficients of $P$ and of the $B_k$’s.
+    Substituting these expressions into $E_i$ yields an extraction polynomial for $\alpha_i$ from $P$ given $(B_k)$.
+\end{proof}
+
+\begin{definition}[Compatible pair]\label{def:compatible-pair}
+    Let $n\in\mathbb{N}$. We say that a pair of monic polynomials $(P^{(1)}, P^{(2)})\in\mathbb{F}[x]^2$ is a \emph{compatible pair} on a set of indices $G \subseteq [n+1]$ if:
+    \begin{enumerate}
+        \item $\deg P^{(1)} = \deg P^{(2)} = n$.
+        \item For every $j\in [n]$ there exist polynomials $C^{(1)}_j$ and $C^{(2)}_j$ such that
+        \begin{align}
+            \coeff{P^{(1)}}{j} &= C^{(1)}_j\!\left(\bigl(\coeff{x P^{(1)} + P^{(2)}}{i}\bigr)_{\,i \in G,\; i \ge j+1}\right), \\
+            \coeff{P^{(2)}}{j} &= C^{(2)}_j\!\left(\bigl(\coeff{x P^{(1)} + P^{(2)}}{i}\bigr)_{\,i \in G,\; i \ge j}\right).
+        \end{align}
+    \end{enumerate}
+
+    Given an auxiliary sequence of monic polynomials $(B_k)_{k\in[t]}$, we say $(P^{(1)}, P^{(2)})$ is compatible on $G$ \emph{given} $(B_k)$ if the same conditions hold with $C^{(1)}_j$ and $C^{(2)}_j$ allowed to additionally depend on the tuple $(\coeff{B_k}{i})_{\,k\in[t],\,i\in[\deg B_k]}$.
+\end{definition}
+
+\paragraph{Constructive viewpoint.}
+Although the definition of compatibility quantifies over coefficient polynomials $C^{(1)}_j,C^{(2)}_j$, every time we prove that a concrete pair is compatible we in fact exhibit a constructive recovery procedure for the coefficients of $P^{(1)}$ and $P^{(2)}$ from the specified window of coefficients of $\Phi=xP^{(1)}+P^{(2)}$ (and the auxiliary data).
+Moreover, the proofs of the Additivity and Multiplicativity lemmas are themselves constructive: given recovery procedures for the input pairs, the proofs describe an explicit recovery procedure for the output pair by descending induction on degree.
+Thus, throughout the note, statements of the form ``$(P^{(1)},P^{(2)})$ is compatible on $G$'' may be read as supplying an explicit algorithm to recover $(P^{(1)},P^{(2)})$ from $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G}$ and the relevant auxiliary data.
+
+\begin{definition}[Compatibility certificate]\label{def:compat-certificate}
+  A \emph{compatibility certificate} for $(P^{(1)},P^{(2)})$ on $G$ (given $(B_k)_{k\in[t]}$) consists of:
+  (i) the set $G$; and (ii) explicit coefficient polynomials $C^{(1)}_j,C^{(2)}_j$ witnessing
+  \Cref{def:compatible-pair}.
+  Equivalently, it is an explicit procedure that, given the coefficients $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G}$
+  of $\Phi=xP^{(1)}+P^{(2)}$ and the coefficients of the auxiliary polynomials $(B_k)$, recovers all
+  coefficients of $P^{(1)}$ and $P^{(2)}$.
+\end{definition}
+
+\begin{lemma}[Composing compatibility certificates]\label{lem:compat-certificate-compose}
+  In the settings of the Additivity, Multiplicativity, and square-closure lemmas
+  (\Cref{lem:compatible-power}), if we are given compatibility certificates for the input pairs, then the
+  proofs compute a compatibility certificate for the output pair, and also give explicit derivations of the
+  input pairs from the output pair (with the same auxiliary data).
+\end{lemma}
+\begin{proof}
+  Each proof reconstructs the relevant combined-polynomial coefficients on the input windows by descending
+  induction on degree, using only the certificate procedures for the input pairs and the disjoint-window
+  hypotheses to isolate the needed terms. Substituting these reconstructed coefficients into the input
+  certificates then derives the input pairs and yields the coefficient polynomials required for the output
+  certificate.
+\end{proof}
+
+
+\begin{definition}[Splittable pair]
+    For $n\in\mathbb{N}$, a pair of monic polynomials $(T^{(1)}, T^{(2)}) \in \mathbb{F}[\alpha_0, \ldots, \alpha_{n - 1}][x]^2$ is a \emph{splittable pair} for $n$ if
+    \[
+        \deg T^{(1)} = \deg T^{(2)} = n - 1
+        \quad\text{and}\quad
+        x\,T^{(1)} + T^{(2)}\;\text{is decodable}.
+    \]
+\end{definition}
+
+
+\subsection{Combination Lemmas}
+
+\begin{lemma}[Additivity of Compatible Pairs]
+    Let $(P^{(1)}_1, P^{(2)}_1), (P^{(1)}_2, P^{(2)}_2) \in \mathbb{F}[x]^2$ be compatible pairs on $G_1 \subseteq \idx{n_1}$ and $G_2 \subseteq \idx{n_2}$ given $(B_k)_{k \in [t]}$, respectively, with $\deg P^{(1)}_1 = n_1$ and $\deg P^{(1)}_2 = n_2$.
+    Assume $G_1 \cap G_2 = \emptyset$. If $n_1 \ne n_2$, define
+    \[
+        (P^{(1)},P^{(2)}) \coloneqq (P^{(1)}_1 + P^{(1)}_2,\; P^{(2)}_1 + P^{(2)}_2).
+    \]
+    If instead $n_1 = n_2$, define
+    \[
+        (P^{(1)},P^{(2)}) \coloneqq \bigl(P^{(1)}_1 + P^{(1)}_2 - x^{n_1},\; P^{(2)}_1 + P^{(2)}_2 - x^{n_1}\bigr).
+    \]
+    Then $(P^{(1)}, P^{(2)})$ is a compatible pair on $G_1 \cup G_2$ given $(B_k)_{k \in [t]}$, and $P^{(1)}_1, P^{(2)}_1, P^{(1)}_2, P^{(2)}_2$ are all derivable from $(P^{(1)}, P^{(2)}, (B_k)_{k \in [t]})$.
+\end{lemma}
+\begin{proof}
+    For $i\in\{1,2\}$ define $\Phi_i(x)\coloneqq xP^{(1)}_i(x)+P^{(2)}_i(x)$, and adopt the convention $\coeff{P^{(1)}_i}{-1}=0$.
+    Define
+    \[
+        \Delta(x)\coloneqq
+        \begin{cases}
+            0 & \text{if } n_1\ne n_2,\\
+            x^{n_1+1}+x^{n_1} & \text{if } n_1=n_2.
+        \end{cases}
+    \]
+    Then the combined polynomial for $(P^{(1)},P^{(2)})$ satisfies
+    \[
+        xP^{(1)}(x)+P^{(2)}(x)=\Phi_1(x)+\Phi_2(x)-\Delta(x).
+    \]
+
+    Set $G\coloneqq G_1\cup G_2$. From $\bigl(\coeff{xP^{(1)}+P^{(2)}}{d}\bigr)_{d\in G}$ we can recover $\bigl(\coeff{\Phi_1+\Phi_2}{d}\bigr)_{d\in G}$ by adding the known coefficients of $\Delta$.
+    We now show that from the coefficients $\bigl(\coeff{\Phi_1+\Phi_2}{d}\bigr)_{d\in G}$ (and the coefficients of $(B_k)_{k\in[t]}$) we can recover $\bigl(\coeff{\Phi_1}{d}\bigr)_{d\in G_1}$ and $\bigl(\coeff{\Phi_2}{d}\bigr)_{d\in G_2}$.
+    We proceed by descending induction on $d$.
+
+    Fix $d\ge 0$ and assume inductively that $\coeff{\Phi_1}{r}$ and $\coeff{\Phi_2}{r}$ are known for all $r>d$.
+    If $d>n_2+1$ then $\coeff{\Phi_2}{d}=0$, and if $d=n_2+1$ then $\coeff{\Phi_2}{d}=1$.
+    Otherwise, if $d\notin G_2$, compatibility of $(P^{(1)}_2,P^{(2)}_2)$ on $G_2$ expresses $\coeff{P^{(1)}_2}{d-1}$ and $\coeff{P^{(2)}_2}{d}$ as polynomials in $\bigl(\coeff{\Phi_2}{i}\bigr)_{i\in G_2,\; i>d}$ and the coefficients of $(B_k)_{k\in[t]}$, hence determines $\coeff{\Phi_2}{d}=\coeff{P^{(1)}_2}{d-1}+\coeff{P^{(2)}_2}{d}$.
+
+    If $d\in G_1$ (so $d\notin G_2$), then $d\in G$ and we can compute
+    \[
+        \coeff{\Phi_1}{d}=\coeff{\Phi_1+\Phi_2}{d}-\coeff{\Phi_2}{d}.
+    \]
+    The case $d\in G_2$ is symmetric.
+    Finally, if $d\notin G_1\cup G_2$ then both $d\notin G_1$ and $d\notin G_2$, so compatibility of each pair determines $\coeff{\Phi_1}{d}$ and $\coeff{\Phi_2}{d}$ from higher coefficients and $(B_k)_{k\in[t]}$ without using $\coeff{\Phi_1+\Phi_2}{d}$.
+
+    This completes the induction and thus recovers the required coefficients of $\Phi_1$ on $G_1$ and $\Phi_2$ on $G_2$.
+    Applying compatibility of each original pair, we can recover all coefficients of $P^{(1)}_1,P^{(2)}_1$ from $(\coeff{\Phi_1}{d})_{d\in G_1}$ and $(B_k)_{k\in[t]}$, and similarly for $P^{(1)}_2,P^{(2)}_2$.
+    Therefore $P^{(1)}_1,P^{(2)}_1,P^{(1)}_2,P^{(2)}_2$ are derivable from $(P^{(1)},P^{(2)},(B_k)_{k\in[t]})$. In particular, from $\bigl(\coeff{xP^{(1)}+P^{(2)}}{d}\bigr)_{d\in G}$ we can recover all coefficients of $P^{(1)}$ and $P^{(2)}$, so $(P^{(1)},P^{(2)})$ is compatible on $G$.
+\end{proof}
+
+\begin{lemma}[Multiplicativity of Compatible Pairs]
+    Let $(P^{(1)}_1, P^{(2)}_1), (P^{(1)}_2, P^{(2)}_2) \in \mathbb{F}[x]^2$ be compatible pairs on $G_1 \subseteq \idx{n_1}$ and $G_2 \subseteq \idx{n_2}$ given $(B_k)_{k \in [t]}$, respectively, with $\deg P^{(1)}_1 = n_1$ and $\deg P^{(1)}_2 = n_2$.
+    If $(n_2 + G_1) \cap (n_1 + G_2) = \emptyset$ then $(P^{(1)}_1 \cdot P^{(1)}_2, P^{(2)}_1 \cdot P^{(2)}_2)$ is a compatible pair on $(n_2 + G_1) \cup (n_1 + G_2)$ given $(B_k)_{k \in [t]}$, and $P^{(1)}_1, P^{(2)}_1, P^{(1)}_2, P^{(2)}_2$ are all derivable from $(P^{(1)}_1 \cdot P^{(1)}_2, P^{(2)}_1 \cdot P^{(2)}_2, (B_k)_{k \in [t]})$.
+\end{lemma}
+\begin{proof}
+    Define $\Phi_i(x)\coloneqq xP^{(1)}_i(x)+P^{(2)}_i(x)$ for $i\in\{1,2\}$ and
+    \[
+        \Phi(x)\coloneqq x\bigl(P^{(1)}_1(x)P^{(1)}_2(x)\bigr)+P^{(2)}_1(x)P^{(2)}_2(x).
+    \]
+    Write $N\coloneqq n_1+n_2$, and adopt the convention $\coeff{P}{r}=0$ for $r<0$.
+    Without loss of generality assume $n_1\ge n_2$ (otherwise swap the roles of the pairs).
+
+    We show by descending induction on $j=0,1,\dotsc,n_1$ that $\coeff{\Phi_1}{n_1-j}$ and $\coeff{\Phi_2}{n_2-j}$ are derivable from
+    \[
+        \bigl(\coeff{\Phi}{d}\bigr)_{d\in (n_2+G_1)\cup(n_1+G_2),\; d\ge N-j}
+        \quad\text{and}\quad
+        \bigl(\coeff{B_k}{r}\bigr)_{k\in[t],\, r\in[\deg B_k]}.
+    \]
+
+    Fix $j$ and assume inductively that $\coeff{\Phi_1}{n_1-k}$ and $\coeff{\Phi_2}{n_2-k}$ are known for all $k<j$.
+    Using compatibility of $(P^{(1)}_1,P^{(2)}_1)$ and $(P^{(1)}_2,P^{(2)}_2)$, this determines the coefficients of $P^{(1)}_1$ of degrees $\ge n_1-j$ and of $P^{(2)}_1$ of degrees $> n_1-j$, as well as the coefficients of $P^{(1)}_2$ of degrees $\ge n_2-j$ and of $P^{(2)}_2$ of degrees $> n_2-j$.
+
+    Consider the coefficient $\coeff{\Phi}{N-j}$. By the Cauchy product and monicity we have
+    \begin{align}
+        \coeff{\Phi}{N-j}
+            &= \coeff{P^{(1)}_1P^{(1)}_2}{N-j-1} + \coeff{P^{(2)}_1P^{(2)}_2}{N-j} \\
+            &= \coeff{\Phi_1}{n_1-j} + \coeff{\Phi_2}{n_2-j}
+                + \sum_{\substack{i_1 \in [n_1],\, i_2 \in [n_2]\\ i_1 + i_2 = N-j-1}} \coeff{P^{(1)}_1}{i_1}\coeff{P^{(1)}_2}{i_2}
+                + \sum_{\substack{i_1 \in [n_1],\, i_2 \in [n_2]\\ i_1 + i_2 = N-j}} \coeff{P^{(2)}_1}{i_1}\coeff{P^{(2)}_2}{i_2}.
+    \end{align}
+    The two sums involve only coefficients already recovered in the induction hypothesis (in particular, the second sum uses degrees at least $n_1-j+1$ and $n_2-j+1$).
+
+    If $N-j\notin (n_2+G_1)\cup(n_1+G_2)$ then $n_1-j\notin G_1$ and $n_2-j\notin G_2$, so compatibility of each original pair determines $\coeff{\Phi_1}{n_1-j}$ and $\coeff{\Phi_2}{n_2-j}$ from higher coefficients without using $\coeff{\Phi}{N-j}$.
+    Otherwise, we know $\coeff{\Phi}{N-j}$ and can compute
+    \[
+        S_j \coloneqq \coeff{\Phi}{N-j}
+            - \sum_{\substack{i_1 \in [n_1],\, i_2 \in [n_2]\\ i_1 + i_2 = N-j-1}} \coeff{P^{(1)}_1}{i_1}\coeff{P^{(1)}_2}{i_2}
+            - \sum_{\substack{i_1 \in [n_1],\, i_2 \in [n_2]\\ i_1 + i_2 = N-j}} \coeff{P^{(2)}_1}{i_1}\coeff{P^{(2)}_2}{i_2}
+        = \coeff{\Phi_1}{n_1-j} + \coeff{\Phi_2}{n_2-j}.
+    \]
+    The disjointness condition implies that not both $n_1-j\in G_1$ and $n_2-j\in G_2$ hold.
+    If $n_1-j\notin G_1$, compatibility of $(P^{(1)}_1,P^{(2)}_1)$ gives $\coeff{\Phi_1}{n_1-j}$ from higher coefficients, and then $\coeff{\Phi_2}{n_2-j}=S_j-\coeff{\Phi_1}{n_1-j}$.
+    The case $n_2-j\notin G_2$ is symmetric.
+
+    This completes the induction, and therefore we can recover the tuples $(\coeff{\Phi_1}{d})_{d\in G_1}$ and $(\coeff{\Phi_2}{d})_{d\in G_2}$ from $(\coeff{\Phi}{d})_{d\in (n_2+G_1)\cup(n_1+G_2)}$ and $(B_k)_{k\in[t]}$.
+    Applying the compatibility of the original pairs yields all coefficients of $P^{(1)}_1,P^{(2)}_1,P^{(1)}_2,P^{(2)}_2$, proving derivability.
+    Finally, since we can reconstruct the factors, we can reconstruct their products, so $(P^{(1)}_1P^{(1)}_2,P^{(2)}_1P^{(2)}_2)$ is compatible on $(n_2+G_1)\cup(n_1+G_2)$.
+\end{proof}
+
+\begin{lemma}[Division by a monic polynomial]\label{lem:monic-division}
+    Let $D,F\in\mathbb{F}[x]$ with $D$ monic of degree $d\ge 1$ and $\deg F=n\ge d$.
+    Let $Q,R\in\mathbb{F}[x]$ be the unique polynomials with
+    \[
+      F=QD+R,\qquad \deg R<d.
+    \]
+    Then $Q$ and $R$ are derivable from $(F,D)$.
+\end{lemma}
+\begin{proof}
+    Write $q\coloneqq n-d$ so $\deg Q=q$.
+    Since $D$ is monic, the coefficient of $x^{n}$ in $F$ equals the coefficient of $x^{q}$ in $Q$.
+    More generally, a descending induction on $t=q,q-1,\ldots,0$ recovers $\coeff{Q}{t}$:
+    after the coefficients $\coeff{Q}{q},\ldots,\coeff{Q}{t+1}$ are known, the coefficient of $x^{d+t}$ in $F$
+    equals $\coeff{Q}{t}$ plus a polynomial in the already-known coefficients of $Q$ and the coefficients of $D$
+    (this is the Cauchy product for $QD$, isolating the term where $D$ contributes degree $d$).
+    Thus $Q$ is derivable from $(F,D)$, and then $R=F-QD$ is derivable as well.
+\end{proof}
+
+\begin{lemma}[Recovering a monic polynomial from a power]\label{lem:monic-from-power}
+    Let $P\in\mathbb{F}[x]$ be monic of degree $n$, and let $m>1$ be an integer that is invertible in $\mathbb{F}$.
+    Then $P$ is derivable from $P^m$.
+\end{lemma}
+\begin{proof}
+    For any $s\ge 1$, the coefficient $\coeff{P^m}{nm-s}$ equals
+    \[
+        m\,\coeff{P}{n-s}
+    \]
+    plus a polynomial in $\coeff{P}{n-1},\ldots,\coeff{P}{n-s+1}$ (this is the Cauchy product, isolating the terms where exactly one factor contributes degree $n-s$).
+    Since $m$ is invertible, a descending induction on $s$ recovers all coefficients of $P$ from $P^m$, proving derivability.
+\end{proof}
+
+\begin{lemma}[Recovering a monic polynomial from a power with a boundary error]\label{lem:monic-from-power-boundary}
+    Let $P\in\mathbb{F}[x]$ be monic of degree $n$, and let $m>1$ be an integer that is invertible in $\mathbb{F}$.
+    Let $E\in\mathbb{F}[x]$ satisfy $\deg E\le nm-n$, and define $W\coloneqq P^m+E$.
+    Then $P$ is derivable from $(W,\coeff{E}{nm-n})$.
+\end{lemma}
+\begin{proof}
+    Since $\deg E\le nm-n$, we have $\coeff{W}{nm-s}=\coeff{P^m}{nm-s}$ for all $s=0,1,\ldots,n-1$, and also
+    \[
+      \coeff{P^m}{nm-n}=\coeff{W}{nm-n}-\coeff{E}{nm-n}.
+    \]
+    Therefore, from $(W,\coeff{E}{nm-n})$ we can compute the coefficients $\coeff{P^m}{nm-1},\ldots,\coeff{P^m}{nm-n}$.
+    The proof of \Cref{lem:monic-from-power} then recovers $P$ by descending induction, using only these top coefficients.
+\end{proof}
+
+\begin{lemma}[Decoding a square minus a low-degree term]\label{lem:square-minus-low}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $S,T\in\mathbb{F}[x]$ with $S$ monic of degree $d\ge 1$ and $\deg T<d$.
+    Define $E\coloneqq S^2-T$.
+    Then $S$ and $T$ are derivable from $E$.
+\end{lemma}
+\begin{proof}
+    Since $\deg T<d$, the coefficients of $E$ in degrees $2d-1,2d-2,\ldots,d$ coincide with those of $S^2$.
+    Because $\mathrm{char}(\mathbb{F})\ne 2$, \Cref{lem:monic-from-power} with $m=2$ recovers $S$ from these coefficients, and hence from $E$.
+    Finally, $T=S^2-E$ is derivable once $S$ is.
+\end{proof}
+
+\begin{lemma}[Decoding the square gadget $xS^2+(S+\delta)^2$]\label{lem:square-gadget}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $S\in\mathbb{F}[x]$ be monic of degree $d\ge 1$ and let $\delta\in\mathbb{F}$.
+    Define
+    \[
+      G(x)\coloneqq x\,S(x)^2 + \bigl(S(x)+\delta\bigr)^2.
+    \]
+    Then $S$ and $\delta$ are derivable from $G$.
+\end{lemma}
+\begin{proof}
+    Write $A(x)\coloneqq S(x)^2$.
+    Since $\deg S=d$, we have $\deg A=2d$, and for every $i>d$ the scalar shift does not affect degree $i$, i.e.
+    \[
+      [x^i]\bigl(S+\delta\bigr)^2=[x^i]S^2=[x^i]A.
+    \]
+    Therefore, for $i=d+1,\ldots,2d+1$,
+    \[
+      [x^i]G = [x^i]\bigl(xA\bigr) + [x^i]A = [x^{i-1}]A + [x^i]A.
+    \]
+    Since $A$ is monic, $[x^{2d}]A=1$, so descending induction on $i=2d+1,2d,\ldots,d+1$ recovers $[x^j]A$ for all $j=d,\ldots,2d$ from the coefficients of $G$.
+    By \Cref{lem:monic-from-power} (with $m=2$), this recovers $S$ from $A=S^2$.
+
+    Finally, compute $(S+\delta)^2 = G - xS^2$.
+    Since $[x^d](S+\delta)^2 = [x^d]S^2 + 2\delta$ and $\mathrm{char}(\mathbb{F})\ne 2$, we can solve
+    \[
+      \delta=\frac{[x^d]\bigl((S+\delta)^2-S^2\bigr)}{2},
+    \]
+    so $\delta$ is derivable once $S$ is.
+\end{proof}
+
+\begin{lemma}[Top-window division by a monic factor]\label{lem:peel-monic-factor}
+    Let $A,B,E\in\mathbb{F}[x]$ with $A$ monic of degree $a$ and $\deg B\le b$.
+    Fix $t\ge 1$ and define $P\coloneqq AB+E$.
+    If $\deg E\le a+b-t$, then the coefficients $\coeff{B}{b},\coeff{B}{b-1},\ldots,\coeff{B}{b-(t-1)}$ are derivable from the coefficients of $A$ and the coefficients $\coeff{P}{a+b},\coeff{P}{a+b-1},\ldots,\coeff{P}{a+b-(t-1)}$.
+\end{lemma}
+\begin{proof}
+    Adopt the convention $\coeff{Q}{r}=0$ for $r<0$.
+    Since $\deg E\le a+b-t$, we have $\coeff{P}{a+b-s}=\coeff{AB}{a+b-s}$ for $s=0,1,\ldots,t-1$.
+    For each such $s$, the Cauchy product and monicity of $A$ give
+    \[
+        \coeff{AB}{a+b-s}=\coeff{B}{b-s}+G_s\!\bigl(\coeff{B}{b},\ldots,\coeff{B}{b-s+1},\coeff{A}{a-1},\ldots,\coeff{A}{a-s}\bigr)
+    \]
+    for some polynomial $G_s$.
+    A descending induction on $s$ therefore recovers $\coeff{B}{b-s}$ from $\coeff{P}{a+b-s}$ and previously recovered higher coefficients of $B$, proving the claim.
+\end{proof}
+
+\begin{lemma}[Scalar shift from a square boundary coefficient]\label{lem:scalar-shift-square}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $H,M\in\mathbb{F}[x]$ be monic with $\deg H=d\ge 1$ and $\deg M=e$.
+    Let $\delta\in\mathbb{F}$ and $\lambda\in\mathbb{F}^\times$.
+    Define $S\coloneqq H+\delta$ and $P\coloneqq \lambda\,S^2M+E$ for some $E\in\mathbb{F}[x]$ with $\deg E\le d+e-1$.
+    Then $\delta$ is extractable from $P$ given $(H,M)$.
+\end{lemma}
+\begin{proof}
+    Since $\deg E\le d+e-1$, we have $\coeff{P}{d+e}=\lambda\,\coeff{S^2M}{d+e}$.
+    Expanding $S^2=H^2+2\delta H+\delta^2$ gives
+    \[
+      S^2M = H^2M + 2\delta\,HM + \delta^2M.
+    \]
+    The term $\delta^2M$ has degree $e<d+e$, so it does not contribute to $\coeff{S^2M}{d+e}$.
+    Moreover, $HM$ is monic of degree $d+e$, so $\coeff{HM}{d+e}=1$ and therefore
+    \[
+      \coeff{S^2M}{d+e}=\coeff{H^2M}{d+e}+2\delta.
+    \]
+    Since $\mathrm{char}(\mathbb{F})\ne 2$ and $\lambda\ne 0$, we can solve
+    \[
+      \delta=\frac{\coeff{P}{d+e}-\lambda\,\coeff{H^2M}{d+e}}{2\lambda},
+    \]
+    which is a polynomial expression in the coefficients of $P,H,M$.
+\end{proof}
+
+\begin{lemma}[Square closure for compatible pairs]\label{lem:compatible-power}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $(P^{(1)}, P^{(2)}) \in \mathbb{F}[x]^2$ be a compatible pair on $G \subseteq \idx{n}$ given $(B_k)_{k \in [t]}$, with $\deg P^{(1)}=\deg P^{(2)}=n$.
+    Then $\bigl((P^{(1)})^2, (P^{(2)})^2\bigr)$ is a compatible pair on $n + G$ given $(B_k)_{k \in [t]}$, and $P^{(1)}$ and $P^{(2)}$ are derivable from $\bigl((P^{(1)})^2, (P^{(2)})^2\bigr)$.
+\end{lemma}
+\begin{proof}
+    By \Cref{lem:monic-from-power} with $m=2$, each of $P^{(1)}$ and $P^{(2)}$ is derivable from its square (using $\mathrm{char}(\mathbb{F})\ne 2$ to divide by $2$).
+
+    It remains to prove compatibility of $\bigl((P^{(1)})^2,(P^{(2)})^2\bigr)$ on $n+G$ given $(B_k)_{k\in[t]}$.
+    Define the combined polynomials
+    \[
+        \Phi(x)\coloneqq xP^{(1)}(x)+P^{(2)}(x)
+        \qquad\text{and}\qquad
+        \Psi(x)\coloneqq x\,(P^{(1)}(x))^2 + (P^{(2)}(x))^2.
+    \]
+
+    \paragraph{Step 1: Recover $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G}$ from $\bigl(\coeff{\Psi}{n+i}\bigr)_{i\in G}$.}
+    Fix $i\in\idx{n}$.
+    For $1\le i\le n-1$, expanding coefficients of squares shows that
+    \[
+        \coeff{\Psi}{n+i}
+        = 2\,\coeff{\Phi}{i} + F_i,
+    \]
+    where $F_i$ is a polynomial in the coefficients $\coeff{P^{(1)}}{r}$ with $r>i-1$ and $\coeff{P^{(2)}}{r}$ with $r>i$.
+    (Indeed, in $\coeff{(P^{(1)})^2}{n+i-1}$ the two ``boundary'' terms $(r,s)=(n,i-1)$ and $(i-1,n)$ contribute $2\,\coeff{P^{(1)}}{i-1}$, and all other Cauchy-product summands involve only degrees $>i-1$; similarly $\coeff{(P^{(2)})^2}{n+i}$ has boundary contribution $2\,\coeff{P^{(2)}}{i}$ and all other summands use only degrees $>i$.)
+
+    The endpoint cases are similar: for $i=n$ we have
+    \[
+        \coeff{\Psi}{2n}
+        = \coeff{(P^{(1)})^2}{2n-1}+\coeff{(P^{(2)})^2}{2n}
+        = 2\,\coeff{P^{(1)}}{n-1}+1
+        = 2\,\coeff{\Phi}{n}-1,
+    \]
+    and for $i=0$ we have
+    \[
+        \coeff{\Psi}{n}
+        = \coeff{(P^{(1)})^2}{n-1}+\coeff{(P^{(2)})^2}{n}
+        = 2\,\coeff{\Phi}{0} + F_0,
+    \]
+    where $F_0$ depends only on the coefficients of $P^{(1)}$ in degrees $>0$ and of $P^{(2)}$ in degrees $>0$.
+
+    By compatibility of $(P^{(1)},P^{(2)})$ on $G$, these ``higher-degree'' coefficients are determined by $\bigl(\coeff{\Phi}{d}\bigr)_{d\in G,\; d>i}$ and the $(B_k)$-coefficients.
+    Thus, descending induction on $i$ recovers $\coeff{\Phi}{i}$ for all $i\in G$ from $\bigl(\coeff{\Psi}{n+i}\bigr)_{i\in G}$ and $(B_k)_{k\in[t]}$ (dividing by $2$ in $\mathbb{F}$ when needed, and using the explicit constant $-1$ term for $i=n$).
+
+    \paragraph{Step 2: Recover $P^{(1)}$ and $P^{(2)}$, then their squares.}
+    Applying compatibility of $(P^{(1)},P^{(2)})$ on $G$ now derives $P^{(1)}$ and $P^{(2)}$ from $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G}$ and $(B_k)_{k\in[t]}$.
+    Squaring then derives $(P^{(1)})^2$ and $(P^{(2)})^2$.
+
+    Therefore $\bigl((P^{(1)})^2,(P^{(2)})^2\bigr)$ is compatible on $n+G$ given $(B_k)_{k\in[t]}$.
+\end{proof}
+
+
+\subsection{Constructing $2^n - 1$ using known powers}
+The main result of this section is that if $(T^{(1)}, T^{(2)}) \in \mathbb{F}[x]^2$ are a compatible pair on $G \subseteq \rng{n - 2^l}$ with $\deg T^{(1)} = \deg T^{(2)} = n$, and we are given monic polynomials $H_2, \ldots, H_{2^{l}}$ with $\deg H_{2^i} = 2^i$, then \Cref{alg:constr-fill} constructs a monic polynomial
+\[
+    P \in \mathbb{F}[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^{l}}, \ldots, \beta_{0}][x]
+\]
+of degree $n + 2^{l+1}-1$ such that $T^{(1)}$ and $T^{(2)}$ are derivable from $(P, H_2, \ldots, H_{2^{l}})$ and all parameters $(\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^{l}}, \ldots, \beta_{0})$ are extractable from $P$ given $(H_2, \ldots, H_{2^{l}})$.
+Combining this fill construction with \Cref{alg:constr-known-2n-1} yields decodable polynomials $Q_{2^k-1}$ given $(H_2,\ldots,H_{2^{k-1}})$.
+
+\begin{algorithm}[H]
+    \caption{High-level fill construction}\label{alg:constr-fill}
+    \begin{algorithmic}
+        \If{$l = 1$}
+            \Statex $A^{(1)}_{2}[\alpha_0, \alpha_1, \beta_2, \beta_1](S^{(1)}_2, (x, H_2)) = (H_2 + \beta_1) S^{(1)}_2 + \alpha_1$
+            \Statex $A^{(2)}_{2}[\alpha_0, \alpha_1, \beta_2, \beta_1](S^{(2)}_2, (x, H_2)) = (H_2 + \beta_2) S^{(2)}_2 + \alpha_0$
+        \ElsIf{$l = 2$}
+            \Statex $S^{(1)}_{2} = (H_{4} + \beta_3) S^{(1)}_{4} + Q_{3}[\alpha_3, \alpha_4, \alpha_5](x, H_2)$
+            \Statex $A^{(1)}_{4}[\alpha_0, \ldots, \alpha_5, \beta_4, \ldots, \beta_1](S^{(1)}_{4}, (x, H_2, H_4))$
+            \Statex $\quad= A^{(1)}_{2}[\alpha_0, \alpha_1, \beta_2, \beta_1](S^{(1)}_{2}, (x, H_2))$
+            \Statex $S^{(2)}_{2} = (H_{4} + \beta_4) S^{(2)}_{4} + \alpha_2$
+            \Statex $A^{(2)}_{4}[\alpha_0, \ldots, \alpha_5, \beta_4, \ldots, \beta_1](S^{(2)}_{4}, (x, H_2, H_{4}))$
+            \Statex $\quad= A^{(2)}_{2}[\alpha_0, \alpha_1, \beta_2, \beta_1](S^{(2)}_{2}, (x, H_2))$
+        \Else
+            \Statex $S^{(1)}_{2^{l - 1}} = (H_{2^{l}} + Q_{2^{l - 1} - 1}[\beta_{2^{l} - 1}, \ldots, \beta_{2^{l - 1} + 1}](x, H_2, \ldots, H_{2^{l - 2}})) S^{(1)}_{2^l}$
+            \Statex $\qquad\qquad+\; Q_{2^{l} - 1}[\alpha_{2^{l} - 1}, \ldots, \alpha_{2^{l + 1} - 3}](x, H_2, \ldots, H_{2^{l - 1}})$
+            \Statex $A^{(1)}_{2^l}[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l - 1}, \ldots, \beta_{1}](S^{(1)}_{2^l}, (x, H_2, \ldots, H_{2^{l}}))$
+            \Statex $\qquad\qquad= A^{(1)}_{2^{l - 1}}[\alpha_0, \ldots, \alpha_{2^l - 3}, \beta_{2^{l - 1} - 1}, \ldots, \beta_{1}](S^{(1)}_{2^{l - 1}}, (x, H_2, \ldots, H_{2^{l - 1}}))$
+            \Statex $S^{(2)}_{2^{l - 1}} = (H_{2^{l}} + \beta_{2^{l}}) S^{(2)}_{2^l} + \alpha_{2^l - 2}$
+            \Statex $A^{(2)}_{2^l}[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{1}](S^{(2)}_{2^l}, (x, H_2, \ldots, H_{2^{l}}))$
+            \Statex $\qquad\qquad= A^{(2)}_{2^{l - 1}}[\alpha_0, \ldots, \alpha_{2^l - 3}, \beta_{2^{l - 1}}, \ldots, \beta_{1}](S^{(2)}_{2^{l - 1}}, (x, H_2, \ldots, H_{2^{l - 1}}))$
+        \EndIf
+        \Statex $A_{2^l}[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{0}](S^{(1)}_{2^l}, S^{(2)}_{2^l}, (x, H_2, \ldots, H_{2^{l}})) = (x + \beta_{0}) A^{(1)}_{2^l} + A^{(2)}_{2^l}$
+    \end{algorithmic}
+\end{algorithm}
+
+The construction, \Cref{alg:constr-fill}, proceeds by recursively building intermediate pairs and finally outputting
+$P=(x+\beta_0)A^{(1)}_{2^l}+A^{(2)}_{2^l}$.
+We start by isolating this final step.
+
+\begin{lemma}[$(x+\alpha)$-extraction]\label{lem:x-alpha-extraction}
+    Let $(T^{(1)}, T^{(2)})$ be a compatible pair on $G \subseteq \rng{n}$ given $(B_i)_{i \in [t]}$, with $\deg T^{(1)}=\deg T^{(2)}=n$.
+    Define $P[\alpha](x)=(x+\alpha)\,T^{(1)}(x)+T^{(2)}(x)$.
+    Then: (1) $\alpha$ is extractable from $P$ given $(B_i)_{i\in[t]}$; and (2) $T^{(1)}$ and $T^{(2)}$ are derivable from $\bigl(P,(B_i)_{i\in[t]}\bigr)$.
+\end{lemma}
+\begin{proof}
+    Since $G \subseteq \rng{n}$, compatibility for $j=n-1$ expresses $\coeff{T^{(1)}}{n-1}$ as a polynomial in the $(B_i)$-coefficients (the tuple $\bigl(\coeff{xT^{(1)}+T^{(2)}}{i}\bigr)_{i\in G,\, i\ge n}$ is empty).
+    Moreover, since $T^{(1)}$ and $T^{(2)}$ are monic of degree $n$,
+    \[
+        \coeff{P}{n}
+            = \coeff{(x+\alpha)T^{(1)}}{n} + \coeff{T^{(2)}}{n}
+            = \alpha\,\coeff{T^{(1)}}{n} + \coeff{T^{(1)}}{n-1} + 1
+            = \alpha + \coeff{T^{(1)}}{n-1} + 1.
+    \]
+    Hence $\alpha=\coeff{P}{n}-\coeff{T^{(1)}}{n-1}-1$ is extractable from $P$ given $(B_i)_{i\in[t]}$.
+
+    Now define $\Phi(x)\coloneqq xT^{(1)}(x)+T^{(2)}(x)$. Since $P=\Phi+\alpha T^{(1)}$, we have
+    \[
+        \coeff{\Phi}{k}=\coeff{P}{k}-\alpha\,\coeff{T^{(1)}}{k}\qquad(k\ge 0).
+    \]
+    We recover the coefficients of $T^{(1)}$ and $T^{(2)}$ by descending induction on $j=n-1,n-2,\ldots,0$.
+    The induction hypothesis is that $\coeff{T^{(1)}}{r}$ and $\coeff{T^{(2)}}{r}$ are known for all $r>j$, and thus $\coeff{\Phi}{i}$ is known for all $i\in G$ with $i>j$.
+    By compatibility, $\coeff{T^{(1)}}{j}$ is a polynomial in $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G,\,i\ge j+1}$ and the $(B_i)$-coefficients; since $i\ge j+1$ implies $i>j$, these $\Phi$-coefficients are already known by the induction hypothesis.
+    Once $\coeff{T^{(1)}}{j}$ is known, we can compute $\coeff{\Phi}{j}=\coeff{P}{j}-\alpha\,\coeff{T^{(1)}}{j}$, and then compatibility expresses $\coeff{T^{(2)}}{j}$ as a polynomial in $\bigl(\coeff{\Phi}{i}\bigr)_{i\in G,\,i\ge j}$ and the $(B_i)$-coefficients.
+    This completes the induction and shows that $T^{(1)}$ and $T^{(2)}$ are derivable from $\bigl(P,(B_i)_{i\in[t]}\bigr)$.
+\end{proof}
+
+\begin{lemma}[Aux-head compatibility for degree $2$]\label{lem:compatible-auxhead-deg2}
+    Let $H_2\in\mathbb{F}[x]$ be monic of degree $2$, and let $b_1,b_2$ be scalars.
+    Define $F_1\coloneqq H_2+b_1$ and $F_2\coloneqq H_2+b_2$.
+    Then $(F_1,F_2)$ is a compatible pair on $\{0,1\}$ given $(H_2)$.
+\end{lemma}
+\begin{proof}
+    Define $\Phi\coloneqq xF_1+F_2$.
+    Since $F_1$ and $F_2$ are monic of degree $2$, their leading coefficients are known.
+    Also $\coeff{F_1}{1}=\coeff{F_2}{1}=\coeff{H_2}{1}$ is derivable from $H_2$.
+
+    Finally, using that $\coeff{\Phi}{0}=\coeff{F_2}{0}$ and $\coeff{\Phi}{1}=\coeff{F_1}{0}+\coeff{F_2}{1}$, we can derive
+    \[
+        \coeff{F_2}{0}=\coeff{\Phi}{0},
+        \qquad
+        \coeff{F_1}{0}=\coeff{\Phi}{1}-\coeff{H_2}{1}.
+    \]
+    Hence all coefficients of $F_1$ and $F_2$ are derivable from $\bigl(\coeff{\Phi}{i}\bigr)_{i\in\{0,1\}}$ and the coefficients of $H_2$, which witnesses compatibility on $\{0,1\}$ given $(H_2)$.
+\end{proof}
+
+\begin{lemma}[A trivial compatible pair for adding constants]\label{lem:compatible-monic-plus-constants}
+    Let $n\ge 2$ and let $u,v$ be scalars.
+    Then the pair $\bigl(x^n+u,\;x^n+v\bigr)$ is compatible on $\{0,1\}$.
+\end{lemma}
+\begin{proof}
+    Define $\Phi\coloneqq x(x^n+u)+(x^n+v)=x^{n+1}+x^n+ux+v$.
+    Since $n\ge 2$, we have $\coeff{\Phi}{0}=v$ and $\coeff{\Phi}{1}=u$.
+    Thus $u$ and $v$ are extractable from $\Phi$, and hence the two polynomials are derivable from $\bigl(\coeff{\Phi}{0},\coeff{\Phi}{1}\bigr)$.
+\end{proof}
+
+\noindent
+In later constructions we repeatedly meet pairs of the form $(H+Q,\;H+b)$ where $H$ is a known monic
+polynomial, $Q$ is an \emph{unknown} lower-degree monic polynomial, and $b$ is an unknown scalar shift.
+The next lemma records that such a pair is compatible on the low-degree window that contains all
+coefficients of $Q$: the map $\Phi=x(H+Q)+(H+b)$ is block-triangular, so one can peel off $Q$ (and $b$)
+from low-degree coefficients of $\Phi$ given $H$.
+
+\begin{lemma}[A block-triangular compatible pair]\label{lem:compatible-aux-add-left}
+    Let $H\in\mathbb{F}[x]$ be monic of degree $m\ge 1$, let $Q\in\mathbb{F}[x]$ be monic of degree $q<m$, and let $b$ be a scalar.
+    Define $P^{(1)}\coloneqq H+Q$ and $P^{(2)}\coloneqq H+b$.
+    Then $(P^{(1)},P^{(2)})$ is a compatible pair on $\idx{q}$ given $(H)$.
+\end{lemma}
+\begin{proof}
+    Define $\Phi\coloneqq xP^{(1)}+P^{(2)}$ and note that
+    \[
+      \Phi = x(H+Q) + (H+b) = (xH+H) + (xQ+b).
+    \]
+    Since $H$ is given, the polynomial $xH+H$ is derivable.
+    Therefore the polynomial
+    \[
+      \Xi \coloneqq \Phi-(xH+H)=xQ+b
+    \]
+    is derivable from $\Phi$ given $(H)$.
+    In particular, $b=\coeff{\Xi}{0}$ is derivable.
+
+    Next, for $1\le i\le q$ we have $\coeff{\Xi}{i}=\coeff{Q}{i-1}$, so the coefficients $\coeff{Q}{0},\ldots,\coeff{Q}{q-1}$ are derivable from $\bigl(\coeff{\Phi}{i}\bigr)_{i\in\idx{q}}$ given $(H)$.
+    Together with monicity $\coeff{Q}{q}=1$, this derives $Q$, hence also $P^{(1)}=H+Q$ and $P^{(2)}=H+b$.
+
+    It remains to verify the coefficient-dependency condition in the definition of compatibility.
+    Since $q<m$, we have $\coeff{P^{(1)}}{j}=\coeff{P^{(2)}}{j}=\coeff{H}{j}$ for all $j>q$, and these coefficients are derivable from $(H)$ alone.
+    For $j\le q$, each coefficient of $Q$ (and hence of $P^{(1)}$) is derivable from the coefficients $\bigl(\coeff{\Phi}{i}\bigr)_{i\in\idx{q},\, i\ge j+1}$ and $(H)$ by the explicit reconstruction above (since $\coeff{Q}{j}$ depends only on $\coeff{\Xi}{j+1}$ when $j<q$, and $\coeff{Q}{q}=1$).
+    Similarly, $\coeff{P^{(2)}}{0}$ is derivable from $\coeff{\Phi}{0}$ and $(H)$ via $b$, and $\coeff{P^{(2)}}{j}=\coeff{H}{j}$ for $j\ge 1$.
+    This gives the required coefficient polynomials in the definition of compatibility on $\idx{q}$ given $(H)$.
+\end{proof}
+
+In order to prove correctness of \Cref{alg:constr-fill}, we need to first show how we construct $Q_{2^k - 1}$ which is done in \Cref{alg:constr-known-2n-1}.
+As described in the beginning, we do this by employing \Cref{alg:constr-fill}.
+At first, one might be worried that this leads to a cyclic reasoning but we will prove by induction that this is not the case.
+
+\begin{algorithm}[H]
+    \caption{Known powers construction}\label{alg:constr-known-2n-1}
+    \begin{algorithmic}
+        \If{$k = 1$}
+            \Statex $Q_{1}[\alpha_0](x)=x+\alpha_0$
+        \ElsIf{$k = 2$}
+            \Statex $Q_{3}[\alpha_0, \alpha_1, \alpha_2](x, H_2) = (x + \alpha_2)(H_2 + \alpha_1) + \alpha_0$
+        \ElsIf{$k = 3$}
+            \Statex $S^{(1)}_{2} = H_{4} + \alpha_{3}$
+            \Statex $S^{(2)}_{2} = H_{4} + \alpha_{2}$
+            \Statex $Q_{7}[\alpha_0, \ldots, \alpha_{6}](x, H_2, H_{4}) = A_{2}[\alpha_0, \alpha_1, \alpha_4, \alpha_5, \alpha_6](S^{(1)}_{2}, S^{(2)}_{2}, (x, H_2))$
+          \Else
+              \Statex $S^{(1)}_{2^{k - 2}} = H_{2^{k - 1}} + Q_{2^{k - 2} - 1}[\alpha_{2^{k - 1} - 1}, \ldots, \alpha_{2^{k - 1} + 2^{k - 2} - 3}](x, H_2, \ldots, H_{2^{k - 3}})$
+              \Statex $S^{(2)}_{2^{k - 2}} = H_{2^{k - 1}} + \alpha_{2^{k - 1} - 2}$
+              \Statex $Q_{2^k - 1}[\alpha_0, \ldots, \alpha_{2^k - 2}](x, H_2, \ldots, H_{2^{k - 1}})$
+              \Statex $\quad= A_{2^{k - 2}}[\alpha_0, \ldots, \alpha_{2^{k - 1} - 3}, \alpha_{2^{k - 1} + 2^{k - 2} - 2}, \ldots, \alpha_{2^k - 2}](S^{(1)}_{2^{k - 2}}, S^{(2)}_{2^{k - 2}}, (x, H_2, \ldots, H_{2^{k - 2}}))$
+          \EndIf
+      \end{algorithmic}
+\end{algorithm}
+
+We first record the trivial base case $Q_1$, then give a separate proof that $Q_3$ is decodable given $H_2$ before proving correctness of \Cref{alg:constr-fill} and \Cref{alg:constr-known-2n-1}.
+
+\begin{lemma}
+    $Q_{1}[\alpha_0](x)$ is decodable.
+\end{lemma}
+\begin{proof}
+    By definition $Q_1(x)=x+\alpha_0$, so $\alpha_0=[x^0]Q_1$ is extractable from $Q_1$.
+\end{proof}
+
+\begin{lemma}
+    $Q_{3}[\alpha_0, \alpha_1, \alpha_2](x, H_2)$ is decodable given $H_2$.
+\end{lemma}
+\begin{proof}
+    By definition, $Q_3(x,H_2)=(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$ with $H_2$ monic of degree 2.
+    Writing $H_2(x)=x^2 + h_1 x + h_0$, a direct expansion gives
+    \begin{align}
+        [x^2]Q_3 &= h_1 + \alpha_2, \\
+        [x^1]Q_3 &= h_0 + \alpha_1 + h_1\alpha_2, \\
+        [x^0]Q_3 &= \alpha_0 + h_0\alpha_2 + \alpha_1\alpha_2.
+    \end{align}
+    Hence
+    \begin{align}
+        \alpha_2 &= [x^2]Q_3 - [x^1]H_2, \\
+        \alpha_1 &= [x^1]Q_3 - [x^0]H_2 - \alpha_2\,[x^1]H_2, \\
+        \alpha_0 &= [x^0]Q_3 - \alpha_2\bigl([x^0]H_2 + \alpha_1\bigr),
+    \end{align}
+    which are polynomials in the coefficients of $Q_3$ and $H_2$. Thus $Q_3$ is decodable given $H_2$.
+\end{proof}
+
+We are now ready to prove the correctness of \Cref{alg:constr-fill} and \Cref{alg:constr-known-2n-1} which are the main result of this section.
+
+\begin{lemma}\label{lem:fill-correctness}
+    Let $L\ge 1$ and let $H_2, \ldots, H_{2^L}$ be a sequence of monic polynomials with $\deg H_{2^i} = 2^i$ for $1 \le i \le L$.
+    Fix $l$ with $1\le l\le L$.
+    (We allow extra known powers $H_{2^{l+1}},\ldots,H_{2^L}$ since later arguments may carry more auxiliary data than the particular fill level $l$ needs.)
+    Assume that $(S^{(1)}_{2^l}, S^{(2)}_{2^l})$ are a compatible pair on $G \subseteq \rng{n - 2^l}$ given $(H_2, \ldots, H_{2^L})$ with $n = \deg S^{(1)}_{2^l} = \deg S^{(2)}_{2^l} \ge 2^l$.
+    Then the monic polynomial
+    \[
+        P[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{0}](x)
+        = A_{2^l}[\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{0}](S^{(1)}_{2^l}, S^{(2)}_{2^l}, (x, H_2, \ldots, H_{2^l}))
+    \]
+    satisfies that $\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{0}$ are extractable from $P$ given $(H_2, \ldots, H_{2^L})$, and that $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ are derivable from $(P, H_2, \ldots, H_{2^L})$.
+
+    In particular, $Q_{2^k -1}[\alpha_0, \ldots, \alpha_{2^k - 2}]$ is decodable given $(H_2,\ldots,H_{2^{k-1}})$ for $k \ge 2$.
+\end{lemma}
+\begin{proof}
+    We argue by induction on $l$.
+
+    Base case $l=1$: The output is
+    \[
+        P=(x+\beta_0)\bigl((H_2+\beta_1)S^{(1)}_2+\alpha_1\bigr)+\bigl((H_2+\beta_2)S^{(2)}_2+\alpha_0\bigr).
+    \]
+    We claim that $(A^{(1)}_2,A^{(2)}_2)$ is a compatible pair on
+    \[
+        G' \coloneqq (2+G)\cup(n+\{0,1\})\cup\{0,1\}\subseteq\rng{n+2}
+    \]
+    given $(H_2,\ldots,H_{2^L})$.
+    Indeed, by \Cref{lem:compatible-auxhead-deg2} the degree-$2$ pair $\bigl(H_2+\beta_1,\;H_2+\beta_2\bigr)$ is compatible on $\{0,1\}$ given $(H_2)$.
+    Since $G\subseteq\rng{n-2}$, the shifted windows $(2+G)$ and $(n+\{0,1\})$ are disjoint, so the Multiplicativity lemma implies that $\bigl((H_2+\beta_1)S^{(1)}_2,\;(H_2+\beta_2)S^{(2)}_2\bigr)$ is compatible on $(2+G)\cup(n+\{0,1\})$ given $(H_2,\ldots,H_{2^L})$.
+    Moreover, by \Cref{lem:compatible-monic-plus-constants} (applied with $n\gets n+2$), the pair $(x^{n+2}+\alpha_1,\;x^{n+2}+\alpha_0)$ is compatible on $\{0,1\}$, and this window is disjoint from $(2+G)\cup(n+\{0,1\})$.
+    Therefore, applying the Additivity lemma in the equal-degree case yields that $\bigl(A^{(1)}_2,A^{(2)}_2\bigr)=\bigl((H_2+\beta_1)S^{(1)}_2+\alpha_1,\;(H_2+\beta_2)S^{(2)}_2+\alpha_0\bigr)$ is compatible on $G'$ given $(H_2,\ldots,H_{2^L})$.
+    Now we may apply \Cref{lem:x-alpha-extraction} to $P=(x+\beta_0)A^{(1)}_2+A^{(2)}_2$ to extract $\beta_0$ and derive $A^{(1)}_2,A^{(2)}_2$.
+
+    Since $(S^{(1)}_2,S^{(2)}_2)$ is compatible on $G\subseteq\rng{n-2}$ given $(H_2,\ldots,H_{2^L})$, its coefficients of degrees $n-1$ and $n-2$ are derivable from the given data alone.
+    Comparing the coefficient of $x^{n}$ in $A^{(1)}_2=(H_2+\beta_1)S^{(1)}_2+\alpha_1$ then extracts $\beta_1$, and similarly extracts $\beta_2$ from $A^{(2)}_2=(H_2+\beta_2)S^{(2)}_2+\alpha_0$.
+    Since $H_2+\beta_1$ and $H_2+\beta_2$ are monic, \Cref{lem:monic-division} applied to
+    \(
+      A^{(1)}_2=(H_2+\beta_1)S^{(1)}_2+\alpha_1
+    \)
+    and
+    \(
+      A^{(2)}_2=(H_2+\beta_2)S^{(2)}_2+\alpha_0
+    \)
+    derives $S^{(1)}_2,S^{(2)}_2$ and the remainders $\alpha_1,\alpha_0$, completing the base case.
+
+    Induction step: Assume the claim holds for all smaller levels, and fix $l\ge 2$.
+    The recursive equalities in \Cref{alg:constr-fill} show that $P$ is obtained by applying the level-$(l-1)$ fill construction to the intermediate pair $(S^{(1)}_{2^{l-1}},S^{(2)}_{2^{l-1}})$ (with parameters $\alpha_0,\ldots,\alpha_{2^l-3}$ and $\beta_{2^{l-1}},\ldots,\beta_0$).
+
+    We first check that this intermediate pair satisfies the assumptions needed to apply the induction hypothesis at level $l-1$.
+    Write $n\coloneqq\deg S^{(1)}_{2^l}=\deg S^{(2)}_{2^l}$, so $\deg S^{(1)}_{2^{l-1}}=\deg S^{(2)}_{2^{l-1}}=n+2^l$.
+
+    If $l=2$, \Cref{alg:constr-fill} defines
+    \[
+      S^{(1)}_{2}=(H_{4}+\beta_3)\,S^{(1)}_{4}+Q_{3}[\alpha_3,\alpha_4,\alpha_5](x,H_2),
+      \qquad
+      S^{(2)}_{2}=(H_{4}+\beta_4)\,S^{(2)}_{4}+\alpha_2.
+    \]
+    Since $H_4$ is given, subtracting $xH_4+H_4$ from $x(H_4+\beta_3)+(H_4+\beta_4)$ isolates $\beta_3x+\beta_4$, so $\bigl(H_4+\beta_3,\;H_4+\beta_4\bigr)$ is compatible on $\{0,1\}$ given $(H_4)$.
+    Together with compatibility of $(S^{(1)}_{4},S^{(2)}_{4})$ on $G\subseteq\rng{n-4}$, the Multiplicativity lemma shows that the product pair
+    \(
+      \bigl((H_{4}+\beta_3)S^{(1)}_{4},\;(H_{4}+\beta_4)S^{(2)}_{4}\bigr)
+    \)
+    is compatible on $(4+G)\cup(n+\{0,1\})$.
+    Since the remainders $Q_3$ and $\alpha_2$ have degree $<4$, enlarging by the low-degree window $\idx{4}$ yields that $(S^{(1)}_2,S^{(2)}_2)$ is compatible on
+    \[
+      \idx{4}\cup(4+G)\cup(n+\{0,1\})\subseteq\rng{(n+4)-2}.
+    \]
+
+    Now assume $l\ge 3$.
+    Let
+    \[
+      Q_{\mathrm{low}}\coloneqq Q_{2^{l-1}-1}[\beta_{2^{l}-1},\ldots,\beta_{2^{l-1}+1}](x,H_2,\ldots,H_{2^{l-2}}),
+      \qquad
+      Q_{\mathrm{high}}\coloneqq Q_{2^{l}-1}[\alpha_{2^{l}-1},\ldots,\alpha_{2^{l+1}-3}](x,H_2,\ldots,H_{2^{l-1}}).
+    \]
+    By \Cref{alg:constr-fill}, the intermediate pair is defined by
+    \[
+      S^{(1)}_{2^{l-1}}=(H_{2^l}+Q_{\mathrm{low}})\,S^{(1)}_{2^l}+Q_{\mathrm{high}},
+      \qquad
+      S^{(2)}_{2^{l-1}}=(H_{2^l}+\beta_{2^l})\,S^{(2)}_{2^l}+\alpha_{2^l-2}.
+    \]
+    By \Cref{lem:compatible-aux-add-left}, the pair $\bigl(H_{2^l}+Q_{\mathrm{low}},\;H_{2^l}+\beta_{2^l}\bigr)$ is compatible on $\idx{2^{l-1}-1}$ given $(H_{2^l})$.
+    Since $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ is compatible on $G$ and $G\subseteq\rng{n-2^l}$, we have
+    \[
+      (n+\idx{2^{l-1}-1})\cap(2^l+G)=\emptyset,
+    \]
+    and therefore the Multiplicativity lemma implies that the product pair
+    \(
+      \bigl((H_{2^l}+Q_{\mathrm{low}})S^{(1)}_{2^l},\;(H_{2^l}+\beta_{2^l})S^{(2)}_{2^l}\bigr)
+    \)
+    is compatible on $(2^l+G)\cup(n+\idx{2^{l-1}-1})$ given $(H_2,\ldots,H_{2^L})$.
+    The additional summands $Q_{\mathrm{high}}$ and $\alpha_{2^l-2}$ have degree $<2^l$.
+    Thus, enlarging the window by the low-degree range $\idx{2^l}$, the intermediate pair is compatible on
+    \[
+      G_{\mathrm{int}}\coloneqq \idx{2^l}\cup(2^l+G)\cup(n+\idx{2^{l-1}-1})
+      \subseteq \rng{(n+2^l)-2^{l-1}}
+    \]
+    given $(H_2,\ldots,H_{2^L})$.
+
+    By the induction hypothesis at level $l-1$, the parameters $\alpha_0,\ldots,\alpha_{2^l-3}$ and $\beta_{2^{l-1}},\ldots,\beta_0$ are extractable from $P$ given $(H_2,\ldots,H_{2^L})$, and $(S^{(1)}_{2^{l-1}},S^{(2)}_{2^{l-1}})$ is derivable from $(P,H_2,\ldots,H_{2^L})$.
+
+    If $l=2$, we now recover $(S^{(1)}_{4},S^{(2)}_{4})$ and the remaining parameters as follows.
+    Since $(S^{(1)}_{4},S^{(2)}_{4})$ is compatible on $G\subseteq\rng{n-4}$, its top four coefficients are derivable from the given power data alone.
+    Comparing the coefficient of $x^{n}$ in $S^{(1)}_{2}=(H_{4}+\beta_3)S^{(1)}_{4}+Q_3$ then extracts $\beta_3$ (the $Q_3$ term does not contribute to degree $n$), and similarly extracts $\beta_4$ from $S^{(2)}_{2}=(H_{4}+\beta_4)S^{(2)}_{4}+\alpha_2$.
+    Applying \Cref{lem:monic-division} to $S^{(1)}_{2}$ and $H_4+\beta_3$ derives $S^{(1)}_{4}$ and the remainder $Q_3$, and applying it to $S^{(2)}_{2}$ and $H_4+\beta_4$ derives $S^{(2)}_{4}$ and the remainder $\alpha_2$.
+    Finally, the earlier $Q_3$ lemma decodes $Q_3$ to extract $\alpha_3,\alpha_4,\alpha_5$.
+    This completes the induction step for $l=2$.
+
+    Now assume $l\ge 3$.
+    It remains to recover the remaining parameters $\beta_{2^l},\beta_{2^l-1},\ldots,\beta_{2^{l-1}+1}$ and $\alpha_{2^l-2},\alpha_{2^l-1},\ldots,\alpha_{2^{l+1}-3}$, and to derive $(S^{(1)}_{2^l},S^{(2)}_{2^l})$.
+    Define
+    \[
+      \Phi\coloneqq xS^{(1)}_{2^{l-1}}+S^{(2)}_{2^{l-1}}.
+    \]
+    Using the displayed definitions and $\deg Q_{\mathrm{high}}<2^l$, the polynomial $xQ_{\mathrm{high}}+\alpha_{2^l-2}$ contributes only to degrees $\le 2^l$, and its contribution in degree $2^l$ is the known constant $1$ (since $Q_{\mathrm{high}}$ is monic of degree $2^l-1$).
+    Therefore, from $\Phi$ we can derive the combined product polynomial
+    \[
+      \Phi_{\mathrm{prod}}\coloneqq \Phi-x^{2^l}
+      = x\bigl((H_{2^l}+Q_{\mathrm{low}})S^{(1)}_{2^l}\bigr) + (H_{2^l}+\beta_{2^l})S^{(2)}_{2^l}
+        \;+\; (\text{terms supported in degrees }<2^l).
+    \]
+    In particular, the coefficients of $\Phi_{\mathrm{prod}}$ in the window $(2^l+G)\cup(n+\idx{2^{l-1}-1})$ agree with those of
+    \(x\bigl((H_{2^l}+Q_{\mathrm{low}})S^{(1)}_{2^l}\bigr) + (H_{2^l}+\beta_{2^l})S^{(2)}_{2^l}\).
+    Since the corresponding product pair is compatible on this window, we can derive
+    \(
+      (H_{2^l}+Q_{\mathrm{low}})S^{(1)}_{2^l}
+    \)
+    and
+    \(
+      (H_{2^l}+\beta_{2^l})S^{(2)}_{2^l}
+    \),
+    and then the Multiplicativity lemma derives the factors $(H_{2^l}+Q_{\mathrm{low}},H_{2^l}+\beta_{2^l})$ and $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ from these products given $(H_2,\ldots,H_{2^L})$.
+
+    With these polynomials derived, we can extract $\beta_{2^l}$ from the constant term of $H_{2^l}+\beta_{2^l}$.
+    Also, applying \Cref{lem:monic-division} to $S^{(1)}_{2^{l-1}}$ and the monic divisor $H_{2^l}+Q_{\mathrm{low}}$ derives the remainder $Q_{\mathrm{high}}$, and applying it to $S^{(2)}_{2^{l-1}}$ and $H_{2^l}+\beta_{2^l}$ derives the remainder $\alpha_{2^l-2}$.
+
+    Finally, to extract the remaining $\beta$- and $\alpha$-blocks, observe that $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ are outputs of the known-powers construction \Cref{alg:constr-known-2n-1} at parameters $k=l-1$ and $k=l$.
+    For $l=3$, these are the already-handled base instances $Q_3$ and $Q_7$; for $l\ge 4$, they are produced by outer fill calls at levels $l-3$ and $l-2$, respectively.
+    In all cases, these outer calls use only fill levels strictly smaller than $l$ and take as input a pair that is compatible on a low window by \Cref{lem:compatible-aux-add-left}.
+    Therefore, by the already-established smaller-level cases of this lemma, both $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ are decodable given the relevant known powers.
+    Hence the remaining $\beta$-block is extractable from $Q_{\mathrm{low}}$, and the remaining $\alpha$-block is extractable from $Q_{\mathrm{high}}$.
+    This completes the induction.
+
+    For the “in particular” statement, fix $k\ge 2$ and apply \Cref{alg:constr-known-2n-1}.
+    The cases $k=1$ and $k=2$ are covered by the explicit $Q_1$ and $Q_3$ lemmas above.
+    For $k=3$, the $A_2$ call takes as input the pair $(H_4+\alpha_3,\;H_4+\alpha_2)$, which is compatible on $\{0,1\}$ given $(H_4)$ (hence given $(H_2,H_4)$) since subtracting $xH_4+H_4$ from $x(H_4+\alpha_3)+(H_4+\alpha_2)$ isolates $\alpha_3x+\alpha_2$.
+    For $k\ge 4$, the $A_{2^{k-2}}$ call takes as input $(H_{2^{k-1}}+Q_{2^{k-2}-1},\;H_{2^{k-1}}+\alpha_{2^{k-1}-2})$, which is compatible on $\idx{2^{k-2}-1}\subseteq\rng{2^{k-2}}$ given $(H_{2^{k-1}})$ by \Cref{lem:compatible-aux-add-left}.
+    Therefore the hypotheses above apply (with $L=k-1$ and $l=k-2$), and together with the already-established decodability of the smaller $Q$ instances this yields that $Q_{2^k-1}$ is decodable given $(H_2,\ldots,H_{2^{k-1}})$.
+\end{proof}
+
+\begin{algorithm}[H]
+  \caption{Decoder for the fill construction $A_{2^l}$ (paper procedure)}\label{alg:decode-fill}
+  \begin{algorithmic}
+    \Require level $l\ge 1$, known powers $(H_2,\ldots,H_{2^L})$ with $L\ge l$, and $P=A_{2^l}(\cdot)$ as in \Cref{lem:fill-correctness} (including a compatible-pair certificate for the input pair on some window $G\subseteq\rng{n-2^l}$)
+    \Ensure the parameter blocks $(\alpha_0,\ldots,\alpha_{2^{l+1}-3},\beta_{2^l},\ldots,\beta_0)$ and the input pair $(S^{(1)}_{2^l},S^{(2)}_{2^l})$
+
+    \If{$l=1$}
+      \State Use the explicit compatibility window $G'$ from the base case in \Cref{lem:fill-correctness} and apply \Cref{lem:x-alpha-extraction} to extract $\beta_0$ and derive $(A^{(1)}_2,A^{(2)}_2)$.
+      \State Extract $\beta_1,\beta_2$ from the coefficient of $x^n$ in $A^{(1)}_2,A^{(2)}_2$ (using that the relevant top coefficients of $(S^{(1)}_2,S^{(2)}_2)$ are derivable from the auxiliary data by compatibility).
+      \State Apply \Cref{lem:monic-division} to recover $S^{(1)}_2,S^{(2)}_2$ and the remainders $\alpha_1,\alpha_0$.
+    \ElsIf{$l=2$}
+      \State First run the $l=1$ decoder on $P$ to derive $(S^{(1)}_2,S^{(2)}_2)$ and extract $(\alpha_0,\alpha_1,\beta_0,\beta_1,\beta_2)$.
+      \State Undo the $l=2$ fill step as in \Cref{lem:fill-correctness}: extract $\beta_3,\beta_4$ from the coefficient of $x^n$ in the equations
+      \(S^{(1)}_2=(H_4+\beta_3)S^{(1)}_4+Q_3\) and \(S^{(2)}_2=(H_4+\beta_4)S^{(2)}_4+\alpha_2\),
+      then divide by the monic divisors to recover $(S^{(1)}_4,S^{(2)}_4)$ and $(Q_3,\alpha_2)$.
+      \State Decode $Q_3$ by the explicit $Q_3$ lemma to extract $(\alpha_3,\alpha_4,\alpha_5)$.
+    \Else \Comment{$l\ge 3$}
+      \State First run the decoder recursively at level $l-1$ on $P$ to derive the intermediate pair $(S^{(1)}_{2^{l-1}},S^{(2)}_{2^{l-1}})$ and extract the lower blocks $(\alpha_0,\ldots,\alpha_{2^l-3},\beta_{2^{l-1}},\ldots,\beta_0)$.
+      \State Form the combined polynomial $\Phi=xS^{(1)}_{2^{l-1}}+S^{(2)}_{2^{l-1}}$ and subtract the known $x^{2^l}$ contribution (coming from monicity of the degree-$(2^l-1)$ $Q_{\mathrm{high}}$ term) to obtain $\Phi_{\mathrm{prod}}$ as in \Cref{lem:fill-correctness}.
+      \State Using compatibility on the disjoint window $(2^l+G)\cup(n+\idx{2^{l-1}-1})$, recover the product pair
+      \(
+        \bigl((H_{2^l}+Q_{\mathrm{low}})S^{(1)}_{2^l},\,(H_{2^l}+\beta_{2^l})S^{(2)}_{2^l}\bigr)
+      \)
+      and then (by the multiplicativity reconstruction) derive the factors $(H_{2^l}+Q_{\mathrm{low}},H_{2^l}+\beta_{2^l})$ and $(S^{(1)}_{2^l},S^{(2)}_{2^l})$.
+      \State Extract $\beta_{2^l}$ from the constant term of $H_{2^l}+\beta_{2^l}$.
+      \State Apply \Cref{lem:monic-division} to recover the remainders $Q_{\mathrm{high}}$ and $\alpha_{2^l-2}$ from the defining equations for $S^{(1)}_{2^{l-1}}$ and $S^{(2)}_{2^{l-1}}$.
+      \State Decode $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ by the known-powers construction (base cases $Q_3,Q_7$ and otherwise smaller fill levels), extracting the remaining $\beta$- and $\alpha$-blocks.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Decoder for $Q_{2^k-1}$ from known powers (paper procedure)}\label{alg:decode-Q-2kminus1}
+  \begin{algorithmic}
+    \Require integer $k\ge 1$, known powers $(H_2,\ldots,H_{2^{k-1}})$, and $Q=Q_{2^k-1}[\alpha_0,\ldots,\alpha_{2^k-2}]$ as produced by \Cref{alg:constr-known-2n-1}
+    \Ensure the parameter block $(\alpha_0,\ldots,\alpha_{2^k-2})$
+
+    \If{$k=1$}
+      \State Output $\alpha_0=[x^0]Q$.
+    \ElsIf{$k=2$}
+      \State Apply the explicit $Q_3$ decoding lemma to extract $(\alpha_0,\alpha_1,\alpha_2)$ from $(Q,H_2)$.
+    \ElsIf{$k=3$}
+      \State In \Cref{alg:constr-known-2n-1} we have $Q_7=A_2(S^{(1)}_2,S^{(2)}_2,(x,H_2))$ with $S^{(1)}_2=H_4+\alpha_3$ and $S^{(2)}_2=H_4+\alpha_2$.
+      \State Apply the $A_2$ instance of \Cref{alg:decode-fill} (i.e. $l=1$) to recover $(\alpha_0,\alpha_1,\alpha_4,\alpha_5,\alpha_6)$ and derive $(S^{(1)}_2,S^{(2)}_2)$.
+      \State Extract $\alpha_2,\alpha_3$ from the constant-term shifts $S^{(2)}_2-H_4$ and $S^{(1)}_2-H_4$.
+    \Else \Comment{$k\ge 4$}
+      \State In \Cref{alg:constr-known-2n-1} we have
+      \(Q_{2^k-1}=A_{2^{k-2}}(S^{(1)}_{2^{k-2}},S^{(2)}_{2^{k-2}},(x,H_2,\ldots,H_{2^{k-2}}))\)
+      with
+      \(S^{(1)}_{2^{k-2}}=H_{2^{k-1}}+Q_{2^{k-2}-1}\) and \(S^{(2)}_{2^{k-2}}=H_{2^{k-1}}+\alpha_{2^{k-1}-2}\).
+      \State Apply \Cref{alg:decode-fill} at level $l=k-2$ to $Q_{2^k-1}$ to extract the parameters used explicitly in that $A_{2^{k-2}}$ call and to derive the input pair $(S^{(1)}_{2^{k-2}},S^{(2)}_{2^{k-2}})$.
+      \State Extract the scalar $\alpha_{2^{k-1}-2}$ from $S^{(2)}_{2^{k-2}}-H_{2^{k-1}}$.
+      \State Form the lower instance $Q_{2^{k-2}-1}=S^{(1)}_{2^{k-2}}-H_{2^{k-1}}$ and recurse to decode its parameter block.
+      \State Combine the extracted blocks to obtain all $\alpha_0,\ldots,\alpha_{2^k-2}$.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+
+\begin{lemma}
+    For all $l\ge 2$ and $k\ge 2$:
+    \begin{align}
+        \mathcal{A}(A^{(1)}_{2^l}) + \mathcal{A}(A^{(2)}_{2^l})
+            &= 5(2^{l - 1} + 2^{l - 2}) - 4 \\
+        \mathcal{M}(A^{(1)}_{2^l}) + \mathcal{M}(A^{(2)}_{2^l})
+            &= 2^l + 2^{l - 1} - 1 \\
+        \mathcal{A}(A_{2^l}) &= 5(2^{l - 1} + 2^{l - 2}) - 2 \\
+        \mathcal{M}(A_{2^l}) &= 2^l + 2^{l - 1} \\
+        \mathcal{A}(Q_{2^k - 1}) &= 5 \cdot 2^{k - 2} - 2 \\
+        \mathcal{M}(Q_{2^k - 1}) &= 2^{k - 1} - 1
+    \end{align}
+\end{lemma}
+\begin{proof}
+    We count top-level polynomial additions and multiplications (macro-ops).
+    First, for $Q_{2^k-1}$ we argue by induction on $k\ge 2$ using \Cref{alg:constr-known-2n-1}, in steps of $2$.
+
+    Base $k=2$: $Q_3=(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$ uses three additions and one multiplication, matching $\mathcal{A}=3=5\cdot2^{0}-2$ and $\mathcal{M}=1=2^{1}-1$.
+
+    Base $k=3$: $Q_7$ is computed as $A_2(S^{(1)}_2,S^{(2)}_2,(x,H_2))$ with $S^{(1)}_2=H_4+\alpha_3$ and $S^{(2)}_2=H_4+\alpha_2$ (two additions).
+    The map $A_2$ performs three multiplications and six additions (two affine products $(H_2+\beta)S+\alpha$ and one final $(x+\beta_0)A^{(1)}_2+A^{(2)}_2$), so $\mathcal{A}(Q_7)=2+6=8$ and $\mathcal{M}(Q_7)=3$, matching $5\cdot2^{1}-2$ and $2^{2}-1$.
+
+    Step $k\ge 4$: The construction computes $S^{(1)}_{2^{k-2}}=H_{2^{k-1}}+Q_{2^{k-2}-1}$ and $S^{(2)}_{2^{k-2}}=H_{2^{k-1}}+\alpha_{2^{k-1}-2}$ (two additions, plus the recursive cost of $Q_{2^{k-2}-1}$), then applies $A_{2^{k-2}}$. Hence
+    \[
+      \mathcal{A}(Q_{2^k-1})=\mathcal{A}(Q_{2^{k-2}-1})+2+\mathcal{A}(A_{2^{k-2}}),\qquad
+      \mathcal{M}(Q_{2^k-1})=\mathcal{M}(Q_{2^{k-2}-1})+\mathcal{M}(A_{2^{k-2}}).
+    \]
+    Using the formulas for $\mathcal{A}(A_{2^{k-2}})$ and $\mathcal{M}(A_{2^{k-2}})$ below, this recurrence solves to $\mathcal{A}(Q_{2^k-1})=5\cdot 2^{k-2}-2$ and $\mathcal{M}(Q_{2^k-1})=2^{k-1}-1$ by induction on $k$ with step size 2.
+
+    Next, define $a_l=\mathcal{A}(A^{(1)}_{2^l})+\mathcal{A}(A^{(2)}_{2^l})$ and $m_l=\mathcal{M}(A^{(1)}_{2^l})+\mathcal{M}(A^{(2)}_{2^l})$ for $l\ge 2$. From \Cref{alg:constr-fill}, for $l\ge 3$ we form
+    \[
+      S^{(1)}_{2^{l-1}}=(H_{2^l}+Q_{2^{l-1}-1})\,S^{(1)}_{2^l}+Q_{2^l-1},\qquad
+      S^{(2)}_{2^{l-1}}=(H_{2^l}+\beta_{2^l})\,S^{(2)}_{2^l}+\alpha_{2^l-2},
+    \]
+    costing $2$ additions and $1$ multiplication for each $S$-update, plus $\mathcal{A}(Q_{2^{l-1}-1})+\mathcal{M}(Q_{2^{l-1}-1})$ and $\mathcal{A}(Q_{2^{l}-1})+\mathcal{M}(Q_{2^{l}-1})$ for the $Q$ terms on the first branch. Therefore
+    \begin{align}
+      a_l &= a_{l-1} + 4 + \mathcal{A}(Q_{2^{l-1}-1}) + \mathcal{A}(Q_{2^{l}-1}),\\
+      m_l &= m_{l-1} + 2 + \mathcal{M}(Q_{2^{l-1}-1}) + \mathcal{M}(Q_{2^{l}-1}).
+    \end{align}
+    With base $l=2$ computed directly from the $l=2$ branch (giving $a_2=11$ and $m_2=5$), and inserting the closed forms for $\mathcal{A}(Q_{\cdot})$ and $\mathcal{M}(Q_{\cdot})$ from above, these recurrences solve to
+    \[
+      a_l=5(2^{l-1}+2^{l-2})-4,\qquad m_l=2^l+2^{l-1}-1.
+    \]
+    Finally, $A_{2^l}=(x+\beta_0)A^{(1)}_{2^l}+A^{(2)}_{2^l}$ adds two more additions and one multiplication, so
+    \[
+      \mathcal{A}(A_{2^l})=a_l+2=5(2^{l-1}+2^{l-2})-2,\qquad
+      \mathcal{M}(A_{2^l})=m_l+1=2^l+2^{l-1}.
+    \]
+    This completes the induction.
+\end{proof}
+
+
+\subsection{Splittable pair for $4k + 1$}
+\label{sec:splittable-4k+1}
+The purpose of this section is to define the recursive $T_{k,2^l}$ construction and prove the decoding lemmas it relies on (in particular \Cref{lem:Rk2l}).
+At the end of the section we give a complete decoding argument showing that the resulting degree-$(4k+1)$ polynomial $P_{4k+1}=xT^{(1)}_{4k+1}+T^{(2)}_{4k+1}$ is decodable for every $k\ge 1$ (i.e., that $4k+1$ is splittable).
+\begin{algorithm}[H]
+    \caption{
+        Recursive construction of $T_{k,2^l}$ (main cases).
+        We assume that $l \ge 2$ if $k$ is even and that $l \ge 3$ if $k$ is odd.
+    }\label{alg:constr-Tk2l}
+    \begin{algorithmic}
+        \If{$k = 1$}
+            \State $T^{(1)}_{1, 2^l}(x, H_2, \ldots, H_{2^l}) = H_{2^l}$
+            \State $T^{(2)}_{1, 2^l}(x, H_2, \ldots, H_{2^{l}}, \tilde{H}_{2^l}) = \tilde{H}_{2^l}$
+        \ElsIf{$2 | k$}
+                \State $S^{(1)}_1 = H_{2^{l - 1}} + Q_{2^{l - 1} - 1}[\alpha_{(k/2 - 1) 2^{l + 1} + 2^{l - 1} + 1}, \ldots, \alpha_{(k/2 - 1) 2^{l + 1} + 2^l - 1}](x, H_2, \ldots, H_{2^{l - 2}})$
+                \State $S^{(1)}_2 = Q_{2^{l - 1} - 1}[\alpha_{(k/2 - 1) 2^{l + 1} + 1}, \ldots, \alpha_{(k/2 - 1) 2^{l + 1} + 2^{l - 1} - 1}](x, H_2, \ldots, H_{2^{l - 2}})$
+                \State $H_{2^{l + 1}} = (H_{2^l} + S^{(1)}_1)(H_{2^l} - S^{(1)}_1) + S^{(1)}_2$
+                \State $T^{(1)}_{k, 2^l}[\alpha_0, \ldots, \alpha_{(k - 1) \cdot 2^l - 1}](x, H_2, \ldots, H_{2^l})$
+                \State $\qquad\qquad= T^{(1)}_{k/2, 2^{l + 1}}[\alpha_0, \ldots, \alpha_{(k/2 - 1) 2^{l + 1} - 1}](x, H_2, \ldots, H_{2^{l}}, H_{2^{l + 1}})$
+
+                \\
+                \State $S^{(2)}_1 = H_{2^{l - 1}} + \alpha_{(k/2 - 1) 2^{l + 1} + 2^{l - 1}}$
+                \State $S^{(2)}_2 = \alpha_{(k/2 - 1) 2^{l + 1}}$
+                \State $\tilde{H}_{2^{l + 1}} = (\tilde{H}_{2^l} + S^{(2)}_1)(\tilde{H}_{2^l} - S^{(2)}_1) + S^{(2)}_2$
+                \State $T^{(2)}_{k, 2^l}[\alpha_0, \ldots, \alpha_{(k - 1) 2^l - 1}](x, H_2, \ldots, H_{2^l}, \tilde{H}_{2^l})$
+                \State $\qquad\qquad= T^{(2)}_{k/2, 2^{l + 1}}[\alpha_0, \ldots, \alpha_{(k/2 - 1) 2^{l + 1} - 1}](x, H_2, \ldots, H_{2^{l}}, H_{2^{l + 1}}, \tilde{H}_{2^{l + 1}})$
+        \Else
+                \State $S^{(1)}_1 = H_{2^{l - 1}} + Q_{2^{l - 1} - 1}[\alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 1} + 1}, \ldots, \alpha_{(k - 1) 2^{l} - 1}](x, H_2, \ldots, H_{2^{l - 2}})$
+                \State $S^{(1)}_2 = H_{2^{l - 2}} + Q_{2^{l - 2} - 1}[\alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 2} + 1}, \ldots, \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 1} - 1}](x, H_2, \ldots, H_{2^{l - 3}})$
+                \State $S^{(1)}_3 = Q_{2^{l - 2} - 1}[\alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 1}, \ldots, \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 2} - 1}](x, H_2, \ldots, H_{2^{l - 3}})$
+                \State $H_{2^{l + 1}} = ((H_{2^l} + S^{(1)}_1) + S^{(1)}_2)((H_{2^l} + S^{(1)}_1) - S^{(1)}_2) + S^{(1)}_3$
+                \State $T^{(1)}_{k, 2^l}[\alpha_0, \ldots, \alpha_{(k - 1) \cdot 2^l - 1}](x, H_2, \ldots, H_{2^l})$
+                \State $= \left(H_{2^l} - (k - 1) S^{(1)}_1 \right) T^{(1)}_{(k - 1)/2, 2^{l + 1}}[\alpha_{2^l}, \ldots, \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} - 1}](x, H_2, \ldots, H_{2^{l}}, H_{2^{l + 1}})$
+                \State $\qquad+\; Q_{2^l - 1}[\alpha_1, \ldots, \alpha_{2^l - 1}](x, H_2, \ldots, H_{2^{l - 1}})$
+
+                \\
+                \State $S^{(2)}_1 = H_{2^{l - 1}} + \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 1}}$
+                \State $S^{(2)}_2 = H_{2^{l - 2}} + \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} + 2^{l - 2}}$
+                \State $S^{(2)}_3 = \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1}}$
+                \State $\tilde{H}_{2^{l + 1}} = ((\tilde{H}_{2^l} + S^{(2)}_1) + S^{(2)}_2)((\tilde{H}_{2^l} + S^{(2)}_1) - S^{(2)}_2) + S^{(2)}_3$
+                \State $T^{(2)}_{k, 2^l}[\alpha_0, \ldots, \alpha_{(k - 1) \cdot 2^l - 1}](x, H_2, \ldots, H_{2^l}, \tilde{H}_{2^l})$
+                \State $= (\tilde{H}_{2^l} - (k - 1) S^{(2)}_1) T^{(2)}_{(k - 1)/2, 2^{l + 1}}[\alpha_{2^l}, \ldots, \alpha_{2^l + ((k - 1)/2 - 1) 2^{l + 1} - 1}](x, H_2, \ldots, H_{2^{l}}, H_{2^{l + 1}}, \tilde{H}_{2^{l + 1}})$
+                \State $\qquad\qquad+\; \alpha_{0}$
+        \EndIf
+    \end{algorithmic}
+\end{algorithm}
+\begin{algorithm}[H]
+    \caption{
+        Recursive construction of $T_{k,2^l}$ (base cases):
+        the case of $k$ even and $l = 1$, and the case of $k$ odd and $l = 2$.
+    }\label{alg:constr-Tk2l-base}
+      \begin{algorithmic}
+          \If{$2 | k$}
+              \State $H_4 = \bigl(H_2 + (x + \alpha_{2k-3})\bigr)\bigl(H_2 - (x + \alpha_{2k-3})\bigr) + \alpha_{2k-4}$
+              \State $\tilde H_4 = \bigl(\tilde H_2 + (x + \alpha_{2k-3})\bigr)\bigl(\tilde H_2 - (x + \alpha_{2k-3})\bigr) + \alpha_{2k-4}$
+              \State $T^{(1)}_{k, 2}[\alpha_0,\ldots,\alpha_{2k-3}](x, H_2) = T^{(1)}_{k/2, 4}[\alpha_0,\ldots,\alpha_{2k-5}](x, H_2, H_4)$
+              \State $T^{(2)}_{k, 2}[\alpha_0,\ldots,\alpha_{2k-3}](x, H_2, \tilde{H}_2) = T^{(2)}_{k/2, 4}[\alpha_0,\ldots,\alpha_{2k-5}](x, H_2, H_4, \tilde H_4)$
+          \Else
+              \State $S^{(1)}_1 = H_2 + (x + \alpha_{4k-5})$
+              \State $S^{(1)}_2 = x$
+              \State $S^{(1)}_3 = 0$
+              \State $H_8 = ((H_4 + S^{(1)}_1) + S^{(1)}_2)((H_4 + S^{(1)}_1) - S^{(1)}_2) + S^{(1)}_3$
+              \State $T^{(1)}_{k, 4}[\alpha_0,\ldots,\alpha_{4k-5}](x, H_2, H_4)$
+              \State $= (H_4 - (k - 1)S^{(1)}_1)T^{(1)}_{(k - 1)/2, 8}[\alpha_4,\ldots,\alpha_{4k-9}](x, H_2, H_4, H_8) + Q_3[\alpha_1,\alpha_2,\alpha_3](x, H_2)$
+              \\
+              \State $S^{(2)}_1 = H_2 + \alpha_{4k-6}$
+              \State $S^{(2)}_2 = x + \alpha_{4k-7}$
+              \State $S^{(2)}_3 = \alpha_{4k-8}$
+              \State $\tilde H_8 = ((\tilde H_4 + S^{(2)}_1) + S^{(2)}_2)((\tilde H_4 + S^{(2)}_1) - S^{(2)}_2) + S^{(2)}_3$
+              \State $T^{(2)}_{k, 4}[\alpha_0,\ldots,\alpha_{4k-5}](x, H_2, H_4, \tilde{H}_4)$
+              \State $= (\tilde H_4 - (k - 1)S^{(2)}_1) T^{(2)}_{(k - 1)/2, 8}[\alpha_4,\ldots,\alpha_{4k-9}](x, H_2, H_4, H_8, \tilde H_8) + \alpha_0$
+          \EndIf
+      \end{algorithmic}
+  \end{algorithm}
+\begin{lemma}\label{lem:Rk2l}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $l\ge 1$ and $k\ge 1$, and assume the integer coefficients that appear below are invertible in $\mathbb{F}$ (in particular: if $k$ is even, writing $k=2m$ we assume $m$ is invertible; and if $k$ is odd we assume $\tfrac{k(k-1)}{2}$ is invertible).
+    Define the remainder polynomials by
+    \[
+      R^{(1)}_{k,2^l}\coloneqq T^{(1)}_{k,2^l}(x,H_2,\ldots,H_{2^l})-H_{2^l}^k,
+      \qquad
+      R^{(2)}_{k,2^l}\coloneqq T^{(2)}_{k,2^l}(x,H_2,\ldots,H_{2^l},\tilde H_{2^l})-\tilde H_{2^l}^k.
+    \]
+    Then:
+    \begin{enumerate}
+        \item By definition,
+        \(
+          T^{(1)}_{k,2^l}=H_{2^l}^k+R^{(1)}_{k,2^l}
+        \)
+        and
+        \(
+          T^{(2)}_{k,2^l}=\tilde H_{2^l}^k+R^{(2)}_{k,2^l}.
+        \)
+        \item $\deg R^{(1)}_{k, 2^l} = (k - 1) 2^l$ and $\deg R^{(2)}_{k, 2^l} = (k - 1) 2^l$.
+        \item The parameters $\alpha_0,\ldots,\alpha_{(k-1)2^l-1}$ are extractable from $xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$ given $(H_2,\ldots,H_{2^l},\tilde H_{2^l})$.
+    \end{enumerate}
+\end{lemma}
+\begin{proof}
+    We prove (2--3) by induction on $k$ (since (1) holds by definition).
+    For $k=1$, we have $T^{(1)}_{1,2^l}=H_{2^l}$ and $T^{(2)}_{1,2^l}=\tilde H_{2^l}$ by the defining algorithm, hence $R^{(1)}_{1,2^l}=R^{(2)}_{1,2^l}=0$ and the claims are trivial.
+
+    Next we consider the case where $k$ is even.
+    We then have that
+    \begin{align}
+        H_{2^{l + 1}}
+            &= (H_{2^l} + S^{(1)}_1)(H_{2^l} - S^{(1)}_1) + S^{(1)}_2
+            = H_{2^l}^2 - (S^{(1)}_1)^2 + S^{(1)}_2 \\
+        \tilde{H}_{2^{l + 1}}
+            &= (\tilde{H}_{2^l} + S^{(2)}_1)(\tilde{H}_{2^l} - S^{(2)}_1) + S^{(2)}_2
+            = \tilde{H}_{2^l}^2 - (S^{(2)}_1)^2 + S^{(2)}_2
+    \end{align}
+    and by the induction hypothesis we have that there exists $R^{(1)}_{k/2, 2^{l + 1}}$ and $R^{(2)}_{k/2, 2^{l + 1}}$ such that
+    \begin{align}
+        T^{(1)}_{k, 2^l}(x, H_2, \ldots, H_{2^l})
+            &= T^{(1)}_{k/2, 2^{l + 1}}(x, H_2, \ldots, H_{2^l}, H_{2^{l + 1}})
+            = H_{2^{l + 1}}^{k/2} + R^{(1)}_{k/2, 2^{l + 1}} \\
+        T^{(2)}_{k, 2^l}(x, H_2, \ldots, H_{2^l}, \tilde{H}_{2^l})
+            &= T^{(2)}_{k/2, 2^{l + 1}}(x, H_2, \ldots, H_{2^l}, H_{2^{l + 1}}, \tilde{H}_{2^{l + 1}})
+            = \tilde{H}_{2^{l + 1}}^{k/2} + R^{(2)}_{k/2, 2^{l + 1}}
+    \end{align}
+    The binomial expansion gives polynomials $\hat{R}^{(1)}, \hat{R}^{(2)}$ with $\deg \hat{R}^{(1)} = \deg \hat{R}^{(2)} = (k - 2)2^l$ such that
+    \begin{align}
+        H_{2^{l + 1}}^{k/2}
+            &= H_{2^l}^{k} + \frac{k}{2} \left(- (S^{(1)}_1)^2 + S^{(1)}_2\right) H_{2^l}^{k - 2} + \hat{R}^{(1)} \\
+        \tilde{H}_{2^{l + 1}}^{k/2}
+            &= \tilde{H}_{2^l}^{k} + \frac{k}{2} \left(- (S^{(2)}_1)^2 + S^{(2)}_2\right) \tilde{H}_{2^l}^{k - 2} + \hat{R}^{(2)}
+    \end{align}
+    We then get that,
+    \begin{align}
+        T^{(1)}_{k, 2^l}(x, H_2, \ldots, H_{2^l})
+            &= H_{2^l}^{k} + \frac{k}{2} \left(- (S^{(1)}_1)^2 + S^{(1)}_2\right) H_{2^l}^{k - 2} + \hat{R}^{(1)} + R^{(1)}_{k/2, 2^{l + 1}} \\
+        T^{(2)}_{k, 2^l}(x, H_2, \ldots, H_{2^l}, \tilde{H}_{2^l})
+            &= \tilde{H}_{2^l}^{k} + \frac{k}{2} \left(- (S^{(2)}_1)^2 + S^{(2)}_2\right) \tilde{H}_{2^l}^{k - 2} + \hat{R}^{(2)} + R^{(2)}_{k/2, 2^{l + 1}}
+    \end{align}
+      Setting
+      \begin{align}
+          R^{(1)}_{k, 2^l}
+              &= \frac{k}{2} \left(- (S^{(1)}_1)^2 + S^{(1)}_2\right) H_{2^l}^{k - 2} + \hat{R}^{(1)} + R^{(1)}_{k/2, 2^{l + 1}} \\
+          R^{(2)}_{k, 2^l}
+              &= \frac{k}{2} \left(- (S^{(2)}_1)^2 + S^{(2)}_2\right) \tilde{H}_{2^l}^{k - 2} + \hat{R}^{(2)} + R^{(2)}_{k/2, 2^{l + 1}}
+      \end{align}
+      proves 1. and 2.
+
+        We now prove 3.\ in the even case. Let $k=2m$ and define
+        \[
+          P(x)\coloneqq xR^{(1)}_{k,2^l}(x)+R^{(2)}_{k,2^l}(x).
+        \]
+      The binomial expansion gives explicit formulas for the remainder polynomials, namely
+      \[
+        \hat R^{(1)}=\sum_{i=2}^{m}\binom{m}{i}\Bigl(- (S^{(1)}_1)^2+S^{(1)}_2\Bigr)^i\,H_{2^l}^{k-2i},
+        \qquad
+        \hat R^{(2)}=\sum_{i=2}^{m}\binom{m}{i}\Bigl(- (S^{(2)}_1)^2+S^{(2)}_2\Bigr)^i\,\tilde H_{2^l}^{k-2i}.
+      \]
+      Hence
+      \begin{align}
+        P
+          &= m\Bigl(x\bigl(- (S^{(1)}_1)^2+S^{(1)}_2\bigr)H_{2^l}^{k-2}
+              + \bigl(- (S^{(2)}_1)^2+S^{(2)}_2\bigr)\tilde H_{2^l}^{k-2}\Bigr)
+              + \bigl(x\hat R^{(1)}+\hat R^{(2)}\bigr)
+              + \bigl(xR^{(1)}_{m,2^{l+1}}+R^{(2)}_{m,2^{l+1}}\bigr).
+      \end{align}
+        The last two parenthesized terms have degree at most $(k-2)2^l+1$, so the coefficients of $P$ in degrees $>(k-2)2^l+1$ determine the coefficients of the ``first-order'' correction term
+        \[
+          C(x)\coloneqq x\bigl(- (S^{(1)}_1)^2+S^{(1)}_2\bigr)H_{2^l}^{k-2}
+                + \bigl(- (S^{(2)}_1)^2+S^{(2)}_2\bigr)\tilde H_{2^l}^{k-2}.
+        \]
+        Since $m$ is invertible in $\mathbb{F}$, the coefficients of $C$ in this range are derivable from $P$.
+
+        We first recover the parameters defining $S^{(1)}_1$. Note that $S^{(1)}_2$ has degree $2^{l-1}-1$, so the term $xS^{(1)}_2H_{2^l}^{k-2}$ has degree at most $(k-2)2^l+2^{l-1}$ and does not affect the top $2^{l-1}$ coefficients of $C$.
+        Moreover $S^{(2)}_1=H_{2^{l-1}}+\alpha$ and $S^{(2)}_2$ is a scalar, so the coefficients of $\bigl(- (S^{(2)}_1)^2+S^{(2)}_2\bigr)$ in degrees $>2^{l-1}$ agree with those of $-H_{2^{l-1}}^2$ and are therefore derivable from the known-power data.
+          Therefore, after subtracting the derivable contribution of $\bigl(- (S^{(2)}_1)^2+S^{(2)}_2\bigr)\tilde H_{2^l}^{k-2}$, the top $2^{l-1}$ coefficients of $C$ agree with those of $-x(S^{(1)}_1)^2H_{2^l}^{k-2}$, and \Cref{lem:peel-monic-factor} recovers the coefficients of $(S^{(1)}_1)^2$ in degrees $2^l-1,2^l-2,\ldots,2^{l-1}$.
+          Since $\mathrm{char}(\mathbb{F})\ne 2$, \Cref{lem:monic-from-power} with $m=2$ then recovers the monic polynomial $S^{(1)}_1$ from $(S^{(1)}_1)^2$.
+        Finally, to extract the parameters inside $S^{(1)}_1$: if $l=1$ then by the special-case definition $S^{(1)}_1=x+\alpha_{2k-3}$ and the scalar $\alpha_{2k-3}$ is extractable from its constant term; otherwise $S^{(1)}_1-H_{2^{l-1}}$ equals a $Q_{2^{l-1}-1}$-polynomial, which is decodable given $(H_2,\ldots,H_{2^{l-2}})$ by the previous section, so the corresponding block of parameters is extractable from $P$.
+
+          Next we recover the remaining parameters in the even-step gadgets.
+        If $l=1$, then by the special-case definition $S^{(2)}_1=x+\alpha_{2k-3}$ is already known once $S^{(1)}_1$ is recovered; otherwise, the coefficient of $C$ in degree $(k-2)2^l+2^{l-1}$ determines the scalar shift in $S^{(2)}_1=H_{2^{l-1}}+\alpha$: after subtracting the already-known contribution of $xS^{(1)}_2H_{2^l}^{k-2}$, apply \Cref{lem:scalar-shift-square} to the boundary coefficient of the term $-(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$.
+            With $S^{(2)}_1$ known, the coefficients of $C$ in degrees $(k-2)2^l+2,\ldots,(k-2)2^l+2^{l-1}$ determine the non-constant coefficients of $S^{(1)}_2$ by subtracting the now-known contributions of $x(S^{(1)}_1)^2H_{2^l}^{k-2}$ and $-(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$ (note $S^{(2)}_2$ does not contribute in this degree range) and then applying \Cref{lem:peel-monic-factor} to the monic factor $H_{2^l}^{k-2}$.
+          We postpone the constant coefficient of $S^{(1)}_2$ to the next step (it sits at the boundary degree $(k-2)2^l+1$).
+
+          \begin{lemma}[Boundary coefficients in the even step]\label{lem:Rk2l-even-boundary}
+              In the even case $k=2m$, set $d\coloneqq (k-2)2^l$.
+              Then the coefficients in degrees $d+1$ and $d$ of the error term
+              \[
+                  E(x)\coloneqq \bigl(x\hat R^{(1)}+\hat R^{(2)}\bigr) + \bigl(xR^{(1)}_{m,2^{l+1}}+R^{(2)}_{m,2^{l+1}}\bigr)
+              \]
+              are derivable from the known-power data and the already-recovered polynomials $S^{(1)}_1,S^{(2)}_1$.
+              Moreover, these coefficients are independent of the constant coefficient of $S^{(1)}_2$, of the scalar $S^{(2)}_2$, and of the recursive parameter block $\alpha_0,\ldots,\alpha_{(k-2)2^l-1}$ (i.e., the parameters used inside $R^{(\cdot)}_{m,2^{l+1}}$).
+          \end{lemma}
+          \begin{proof}
+              For the $\hat R$-part, note that $\deg \hat R^{(1)}=\deg \hat R^{(2)}=(k-2)2^l=d$.
+              In the explicit sums for $\hat R^{(1)}$ and $\hat R^{(2)}$, any summand with $i\ge 3$ has degree
+              \[
+                \deg\Bigl(\bigl(-(S^{(\cdot)}_1)^2+S^{(\cdot)}_2\bigr)^i\,H_{2^l}^{k-2i}\Bigr)=(k-i)2^l\le (k-3)2^l=d-2^l,
+              \]
+              so it cannot contribute to the coefficients in degrees $d$ or $d-1$.
+              Hence the coefficients of $\hat R^{(1)}$ in degrees $d$ and $d-1$ (and of $\hat R^{(2)}$ in degree $d$) come only from the $i=2$ term.
+              Since $S^{(1)}_2$ has degree $2^{l-1}-1$ and $S^{(2)}_2$ is a scalar, the top two coefficients of $-(S^{(1)}_1)^2+S^{(1)}_2$ and of $-(S^{(2)}_1)^2+S^{(2)}_2$ agree with those of $-(S^{(1)}_1)^2$ and $-(S^{(2)}_1)^2$, respectively.
+              Therefore the coefficients of $x\hat R^{(1)}+\hat R^{(2)}$ in degrees $d+1$ and $d$ are determined by $S^{(1)}_1,S^{(2)}_1,H_{2^l},\tilde H_{2^l}$ and are independent of the missing scalars.
+
+              For the recursive term $xR^{(1)}_{m,2^{l+1}}+R^{(2)}_{m,2^{l+1}}$, consider the instance with parameters $(m,l+1)$ and let $S^{(1)\prime}_1,S^{(2)\prime}_1$ denote the polynomials called $S^{(1)}_1,S^{(2)}_1$ in that instance.
+              In both parity cases for $m$, the expressions defining $R^{(1)}_{m,2^{l+1}}$ and $R^{(2)}_{m,2^{l+1}}$ have leading terms of the form
+              \[
+                R^{(1)}_{m,2^{l+1}} = c\cdot\bigl(-(S^{(1)\prime}_1)^2\bigr)\,H_{2^{l+1}}^{m-2} + (\text{terms of degree }\le d-2^l),
+              \]
+              \[
+                R^{(2)}_{m,2^{l+1}} = c\cdot\bigl(-(S^{(2)\prime}_1)^2\bigr)\,\tilde H_{2^{l+1}}^{m-2} + (\text{terms of degree }\le d-2^l),
+              \]
+              with $c=\tfrac{m}{2}$ if $m$ is even and $c=\tfrac{m(m-1)}{2}$ if $m$ is odd.
+              (All other summands in the explicit formulas for $R^{(1)}_{m,2^{l+1}}$ and $R^{(2)}_{m,2^{l+1}}$
+              have degree at most $(m-2)2^{l+1}+2^{l}\le d-2^l$: beyond the displayed leading products, each term
+              either carries an additional binomial index (losing at least $2^{l+1}$ degrees) or involves an
+              extra factor supported in degrees $\le 2^l$.)
+              Consequently, the coefficients of $xR^{(1)}_{m,2^{l+1}}+R^{(2)}_{m,2^{l+1}}$ in degrees $d+1$ and $d$ depend only on the top two coefficients of $(S^{(1)\prime}_1)^2H_{2^{l+1}}^{m-2}$ and of $(S^{(2)\prime}_1)^2\tilde H_{2^{l+1}}^{m-2}$.
+              These in turn depend only on the top two coefficients of $S^{(1)\prime}_1,S^{(2)\prime}_1$ and of $H_{2^{l+1}},\tilde H_{2^{l+1}}$.
+              In the construction, $S^{(1)\prime}_1=H_{2^l}+Q_{2^l-1}$ with $Q_{2^l-1}$ monic, so $\coeff{S^{(1)\prime}_1}{2^l}=1$ and $\coeff{S^{(1)\prime}_1}{2^l-1}=\coeff{H_{2^l}}{2^l-1}+1$ are fixed by the known-power data.
+              Also $S^{(2)\prime}_1=H_{2^l}+\alpha$ differs from $H_{2^l}$ by a scalar, so its top two coefficients are fixed by the known-power data as well.
+              Finally, adding scalars to $H_{2^{l+1}}$ or $\tilde H_{2^{l+1}}$ changes only their constant terms, which cannot affect the coefficients in degrees $\ge d$ of the displayed leading products (one would have to lose at least $2^{l+1}$ degrees in a Cauchy product to involve a constant term).
+              This proves the claim, and in particular shows independence from the recursive parameter block.
+          \end{proof}
+
+          To finish the even case, we still need to extract the scalar $S^{(2)}_2$ and the recursive block of parameters (the ones inside the call defining $R^{(\cdot)}_{m,2^{l+1}}$).
+          The coefficient of $P$ in degree $(k-2)2^l+1$ determines the remaining constant coefficient of $S^{(1)}_2$ after subtracting the already-known contributions from $x(S^{(1)}_1)^2H_{2^l}^{k-2}$ and $-(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$, as well as the (now-derivable) degree-$(k-2)2^l+1$ contribution of the error term $E$ from \Cref{lem:Rk2l-even-boundary}.
+          Thus all coefficients of $S^{(1)}_2$ are now known, and its full parameter block is extractable.
+          Consequently $H_{2^{l+1}}$ is derivable from $(H_{2^l},S^{(1)}_1,S^{(1)}_2)$.
+
+          Similarly, the coefficient of $P$ in degree $(k-2)2^l$ then determines the scalar $S^{(2)}_2$:
+          it appears linearly as $m\cdot S^{(2)}_2$ via the leading coefficient of $\tilde H_{2^l}^{k-2}$, while all other contributions (including the degree-$(k-2)2^l$ contribution of $E$ from \Cref{lem:Rk2l-even-boundary}) are known.
+          With $S^{(2)}_2$ known, $\tilde H_{2^{l+1}}=\tilde H_{2^l}^2-(S^{(2)}_1)^2+S^{(2)}_2$ is derivable.
+
+          We can now isolate the recursive combined remainder polynomial
+          \[
+            xR^{(1)}_{m,2^{l+1}}+R^{(2)}_{m,2^{l+1}}
+              = P - m\,C - \bigl(x\hat R^{(1)}+\hat R^{(2)}\bigr),
+          \]
+          and apply the induction hypothesis for $m$ at level $l+1$ (with the now-derived inputs $H_{2^{l+1}}$ and $\tilde H_{2^{l+1}}$) to extract the remaining parameters.
+          This completes the even case.
+
+      Now we consider the case where $k$ is odd.
+    We then have that
+    \begin{align}
+        H_{2^{l + 1}}
+            &= ((H_{2^l} + S^{(1)}_1) + S^{(1)}_2)((H_{2^l} + S^{(1)}_1) - S^{(1)}_2) + S^{(1)}_3
+            = (H_{2^l} + S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3 \\
+        \tilde{H}_{2^{l + 1}}
+            &= ((\tilde{H}_{2^l} + S^{(2)}_1) + S^{(2)}_2)((\tilde{H}_{2^l} + S^{(2)}_1) - S^{(2)}_2) + S^{(2)}_3
+            = (\tilde{H}_{2^l} + S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3
+    \end{align}
+    and by the induction hypothesis we have that there exists $R^{(1)}_{(k - 1)/2, 2^{l + 1}}$ and $R^{(2)}_{(k - 1)/2, 2^{l + 1}}$ such that
+    \begin{align}
+        T^{(1)}_{(k - 1)/2, 2^{l + 1}}(x, H_2, \ldots, H_{2^l}, H_{2^{l + 1}})
+            &= H_{2^{l + 1}}^{(k - 1)/2} + R^{(1)}_{(k - 1)/2, 2^{l + 1}} \\
+        T^{(2)}_{(k - 1)/2, 2^{l + 1}}(x, H_2, \ldots, H_{2^l}, H_{2^{l + 1}}, \tilde{H}_{2^{l + 1}})
+            &= \tilde{H}_{2^{l + 1}}^{(k - 1)/2} + R^{(2)}_{(k - 1)/2, 2^{l + 1}}
+    \end{align}
+    Using the binomial theorem and Cauchy products, we expand
+    \[
+      H_{2^{l+1}}^{(k-1)/2}=\Bigl((H_{2^l}+S^{(1)}_1)^2-(S^{(1)}_2)^2+S^{(1)}_3\Bigr)^{(k-1)/2},\quad
+      \tilde H_{2^{l+1}}^{(k-1)/2}=\Bigl((\tilde H_{2^l}+S^{(2)}_1)^2-(S^{(2)}_2)^2+S^{(2)}_3\Bigr)^{(k-1)/2}.
+    \]
+    Isolating the leading contribution $(H_{2^l}+S^{(1)}_1)^{k-1}$ (resp. $(\tilde H_{2^l}+S^{(2)}_1)^{k-1}$) and grouping
+    higher-order terms in $S^{(\cdot)}_2,S^{(\cdot)}_3$ yields the displayed $\hat R^{(\cdot)}_2$; similarly, expanding
+    $(H_{2^l}+S^{(1)}_1)^{k-1}$ and multiplying by $H_{2^l}-(k-1)S^{(1)}_1$ isolates the terms
+    $H_{2^l}^k$ and $-\tfrac{k(k-1)}{2}(S^{(1)}_1)^2 H_{2^l}^{k-2}$ with the remaining powers of $S^{(1)}_1$ absorbed in
+    $\hat R^{(1)}_1$ (and analogously for the $\tilde H_{2^l}$ branch). All remainder terms have degree at most
+    $(k-1)2^l$ since $\deg H_{2^l}=2^l$ and $\deg S^{(\cdot)}_i\le 2^{l-1}$. Consequently, we obtain
+    \begin{align}
+        T^{(1)}_{k, 2^{l}}(x, H_2, \ldots, H_{2^l})
+            &= H_{2^l}^{k} - \frac{k(k - 1)}{2} (S^{(1)}_1)^2 H_{2^l}^{k - 2}
+                \\&+ \frac{k - 1}{2} \left(- (S^{(1)}_2)^2 + S^{(1)}_3\right) \left(H_{2^l} - (k - 1) S^{(1)}_1 \right) \left(H_{2^l} + S^{(1)}_1\right)^{k - 3}
+                \\&+ \left(H_{2^l} - (k - 1) S^{(1)}_1 \right) R^{(1)}_{(k - 1)/2, 2^{l + 1}} + Q_{2^l - 1}
+                \\&+ \hat{R}^{(1)}_1 + \hat{R}^{(1)}_2 \\
+        T^{(2)}_{k, 2^{l}}(x, H_2, \ldots, H_{2^l}, \tilde{H}_{2^{l}})
+            &= \tilde{H}_{2^l}^{k} - \frac{k(k - 1)}{2} (S^{(2)}_1)^2 \tilde{H}_{2^l}^{k - 2}
+                \\&+ \frac{k - 1}{2} \left(- (S^{(2)}_2)^2 + S^{(2)}_3\right) \left(\tilde{H}_{2^l} - (k - 1) S^{(2)}_1 \right) \left(\tilde{H}_{2^l} + S^{(2)}_1\right)^{k - 3}
+                \\&+ \left(\tilde{H}_{2^l} - (k - 1) S^{(2)}_1 \right) R^{(2)}_{(k - 1)/2, 2^{l + 1}} + \alpha_0
+                \\&+ \hat{R}^{(2)}_1 + \hat{R}^{(2)}_2
+    \end{align}
+    Setting $R^{(1)}_{k,2^l}\coloneqq T^{(1)}_{k, 2^{l}}-H_{2^l}^k$ and $R^{(2)}_{k,2^l}\coloneqq T^{(2)}_{k, 2^{l}}-\tilde H_{2^l}^k$ proves 1. and 2. also in the odd case.
+
+      We now prove 3.\ in the odd case. Let
+        \[
+          P(x)\coloneqq xR^{(1)}_{k,2^l}(x)+R^{(2)}_{k,2^l}(x).
+        \]
+        Write $c\coloneqq \tfrac{k(k-1)}{2}$, which is invertible by assumption.
+        Inspecting the explicit sums for $\hat R^{(1)}_1,\hat R^{(2)}_1$ in~(720--725), every summand has degree
+        \(
+          \deg(H_{2^l}^{k-i}(S^{(\cdot)}_1)^i)=k2^l-i2^{l-1}\le (k-1)2^l-2^{l-1}
+        \)
+        since $i\ge 3$.
+        Consequently, the contribution of $x\hat R^{(1)}_1+\hat R^{(2)}_1$ to $P$ has degree at most $(k-1)2^l-2^{l-1}+1$.
+        The remaining non-recursive terms in~(692--702) have degree at most $(k-2)2^l+2^{l-1}+1=(k-1)2^l-2^{l-1}+1$ as well, while the leading $S_1$-correction terms have degrees $(k-1)2^l+1$ (from the $x(S^{(1)}_1)^2H_{2^l}^{k-2}$ branch) and $(k-1)2^l$ (from the $(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$ branch).
+        Therefore, the coefficients of $P$ in the top window
+        \[
+          (k-1)2^l-2^{l-1}+2,\ldots,(k-1)2^l+1
+        \]
+        determine the corresponding coefficients of
+        \(
+          -c\cdot x(S^{(1)}_1)^2H_{2^l}^{k-2}
+        \)
+        up to known contributions from the $(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$ branch (since $S^{(2)}_1=H_{2^{l-1}}+\alpha$ differs from a known power by a scalar).
+          By \Cref{lem:peel-monic-factor}, this recovers the top coefficients of $(S^{(1)}_1)^2$, and since $\mathrm{char}(\mathbb{F})\ne 2$ we can then recover the monic polynomial $S^{(1)}_1$ itself by \Cref{lem:monic-from-power} with $m=2$.
+        To extract the parameters inside $S^{(1)}_1-H_{2^{l-1}}$: if $l=2$ then $S^{(1)}_1-H_{2^{l-1}}$ is just $x$ plus a scalar and this scalar is extractable from the coefficients of $S^{(1)}_1$; otherwise, $S^{(1)}_1-H_{2^{l-1}}$ is a $Q_{2^{l-1}-1}$ instance and decodability of that $Q$-polynomial extracts its parameter block.
+        To recover $S^{(2)}_1$ itself, write $S^{(2)}_1=H_{2^{l-1}}+\delta$ for a scalar $\delta$.
+        Consider the coefficient of $P$ in degree
+        \[
+          (k-2)2^l+2^{l-1}=(k-1)2^l-2^{l-1}.
+        \]
+        In the term $-c\,(S^{(2)}_1)^2\tilde H_{2^l}^{k-2}$, \Cref{lem:scalar-shift-square} (with $H=H_{2^{l-1}}$, $M=\tilde H_{2^l}^{k-2}$, and $\lambda=-c$) shows that this coefficient determines $\delta$ after subtracting the $\delta$-independent contributions.
+        Any other contribution to this coefficient can only involve the top coefficients of $S^{(2)}_1$ (since using the constant term $\delta$ in any Cauchy product loses at least $2^{l-1}$ degrees), and these top coefficients agree with those of $H_{2^{l-1}}$.
+        Therefore, after subtracting the derivable $\delta$-independent contributions, we can solve for $\delta$ since $c$ is invertible and $\mathrm{char}(\mathbb{F})\ne 2$, and hence $S^{(2)}_1$ is derivable.
+
+          With $S^{(1)}_1,S^{(2)}_1$ known, we can compute and subtract from $P$ all contributions that depend only on these (including $x\hat R^{(1)}_1+\hat R^{(2)}_1$).
+          We now give the explicit stage-2 extraction procedure for the $S_2/S_3$ gadget.
+          Set $m\coloneqq \tfrac{k-1}{2}$ and write
+          \[
+            d\coloneqq (k-2)2^l.
+          \]
+          In the displayed formulas for $T^{(1)}_{k,2^l}$ and $T^{(2)}_{k,2^l}$, the $S_2/S_3$ gadget appears (up to the scalar factor $m$) through the $i=1$ term in the binomial expansion of
+          \(
+            \bigl((H_{2^l}+S^{(1)}_1)^2-(S^{(1)}_2)^2+S^{(1)}_3\bigr)^{m}
+          \)
+          and
+          \(
+            \bigl((\tilde H_{2^l}+S^{(2)}_1)^2-(S^{(2)}_2)^2+S^{(2)}_3\bigr)^{m}.
+          \)
+          Concretely, after subtracting all already-derived contributions that depend only on $S^{(1)}_1,S^{(2)}_1$, the remaining polynomial has the form
+          \[
+            P_{\mathrm{stage2}}
+              =
+              m\Bigl(
+                -x\bigl((S^{(1)}_2)^2-S^{(1)}_3\bigr)H_{2^l}^{k-2}
+                - \bigl((S^{(2)}_2)^2-S^{(2)}_3\bigr)\tilde H_{2^l}^{k-2}
+              \Bigr)
+              + E_{\mathrm{stage2}},
+          \]
+          where $\deg E_{\mathrm{stage2}}\le d+1$. (Indeed, any term in which a factor $S^{(\cdot)}_1$ is used in place of a factor $H_{2^l}$ loses at least $2^{l-1}$ degrees, so the difference between the exact $S_2/S_3$ gadget expression and the displayed ``$H_{2^l}^{k-2}$'' approximation is supported in degrees $\le d+1$; and the remaining non-recursive terms involving $S_2,S_3$ are precisely the $i\ge 2$ summands absorbed into $\hat R^{(\cdot)}_2$, each of which has degree at most $(k-2)2^l+1=d+1$ since $i\ge 2$ contributes at least $i\cdot 2^{l-1}\ge 2^l$ degrees of loss.)
+
+          Therefore, the coefficients of $P_{\mathrm{stage2}}$ in degrees
+          \[
+            d+2,\ldots,d+2^{l-1}+1
+          \]
+          are exactly the corresponding coefficients of the displayed gadget sum.
+          In this range, the contribution of the second branch (the $\tilde H_{2^l}$ term) is known up to scalars because $S^{(2)}_2$ and $S^{(2)}_3$ differ from known powers by scalars, so their top coefficients are fixed by the auxiliary data (using the same Cauchy-product degree-loss argument as for $S^{(2)}_1$ above).
+          Subtracting these known contributions reduces to recovering the coefficients of the first branch
+          \(
+            x\bigl((S^{(1)}_2)^2-S^{(1)}_3\bigr)H_{2^l}^{k-2}
+          \)
+          in the same degree window.
+
+          Now apply \Cref{lem:peel-monic-factor} to peel the monic factor $H_{2^l}^{k-2}$ from this window and recover the coefficients of $(S^{(1)}_2)^2$ in degrees $2^{l-2},\ldots,2^{l-1}$ (the $S^{(1)}_3$ term has degree $<2^{l-2}$ by the construction).
+          Since $\mathrm{char}(\mathbb{F})\ne 2$, \Cref{lem:monic-from-power} with $m=2$ then reconstructs the monic polynomial $S^{(1)}_2$ itself from these square coefficients.
+          With $S^{(1)}_2$ known, subtracting $x(S^{(1)}_2)^2H_{2^l}^{k-2}$ from the first-branch window yields the coefficients of $xS^{(1)}_3H_{2^l}^{k-2}$ in degrees $d+2,\ldots,d+2^{l-2}$, which directly recover all coefficients of $S^{(1)}_3$ except possibly its constant term.
+
+          To recover the remaining scalars (the constant term of $S^{(1)}_3$, and the scalar shifts inside $S^{(2)}_2,S^{(2)}_3$), use the boundary coefficients at degrees $d+1$ and $d$.
+          These boundary degrees are the only ones in stage~2 that can be contaminated by the recursive remainder product terms
+          \(
+            x\bigl(H_{2^l}-(k-1)S^{(1)}_1\bigr)R^{(1)}_{m,2^{l+1}}
+          \)
+          and
+          \(
+            \bigl(\tilde H_{2^l}-(k-1)S^{(2)}_1\bigr)R^{(2)}_{m,2^{l+1}},
+          \)
+          whose top degrees are $d+1$ and $d$, respectively.
+          However, their contributions at these boundary degrees depend only on the leading coefficients of the inner remainders $R^{(1)}_{m,2^{l+1}}$ and $R^{(2)}_{m,2^{l+1}}$ (at degree $(m-1)2^{l+1}=d-2^l$), since the factors $H_{2^l}-(k-1)S^{(1)}_1$ and $\tilde H_{2^l}-(k-1)S^{(2)}_1$ are monic of degree $2^l$.
+          By \Cref{lem:Rk2l-leading-coeff} applied to the inner call $(m,l+1)$, these leading coefficients are explicit field constants depending only on $m$ (and the stated invertibility hypotheses), so the boundary contributions of the recursive product terms are derivable from the auxiliary data and can be subtracted.
+          After this subtraction, the remaining boundary equations involve the unknown scalars affinely with invertible slopes (by the same scalar-shift argument as in \Cref{lem:scalar-shift-square}), hence determine them uniquely and thus derive $S^{(2)}_2,S^{(2)}_3$ and the constant term of $S^{(1)}_3$.
+
+          Finally, since $S^{(1)}_2-H_{2^{l-2}}$ and $S^{(1)}_3$ are (for $l\ge 3$) instances of the known-powers gadget $Q_{2^{l-2}-1}$, decodability of that $Q$-polynomial extracts their parameter blocks (for the special case $l=2$ these blocks are empty as in \Cref{alg:constr-Tk2l-base}).
+
+        Finally, with all $S^{(\cdot)}_i$ recovered, we can subtract the explicit non-recursive terms in~(692--702) to isolate the product terms involving the recursive remainders at $(k-1)/2$ and level $l+1$.
+          Applying \Cref{lem:peel-monic-factor} to the now-known monic factors $H_{2^l}-(k-1)S^{(1)}_1$ and $\tilde H_{2^l}-(k-1)S^{(2)}_1$ reduces to the induction hypothesis, extracting the remaining parameters.
+
+    Here the remainder terms are defined by
+    \begin{align}
+        \hat{R}^{(1)}_1 &= \sum_{i = 3}^{k - 1} \binom{k - 1}{i} H_{2^l}^{k - i}\left(S^{(1)}_1\right)^i
+            - (k - 1) \sum_{i = 2}^{k - 1} \binom{k - 1}{i} H_{2^l}^{k - i - 1} \left(S^{(1)}_1\right)^{i + 1}  \\
+        \hat{R}^{(1)}_2 &= \left(H_{2^l} - (k - 1) S^{(1)}_1 \right) \sum_{i = 2}^{(k - 1)/2} \binom{(k - 1)/2}{i} \left(- (S^{(1)}_2)^2 + S^{(1)}_3\right)^i \left(H_{2^l} + S^{(1)}_1\right)^{k - 1 - 2i} \\
+        \hat{R}^{(2)}_1 &= \sum_{i = 3}^{k - 1} \binom{k - 1}{i} \tilde{H}_{2^l}^{k - i}\left(S^{(2)}_1\right)^i
+            - (k - 1) \sum_{i = 2}^{k - 1} \binom{k - 1}{i} \tilde{H}_{2^l}^{k - i - 1} \left(S^{(2)}_1\right)^{i + 1}  \\
+        \hat{R}^{(2)}_2 &= \left(\tilde{H}_{2^l} - (k - 1) S^{(2)}_1 \right) \sum_{i = 2}^{(k - 1)/2} \binom{(k - 1)/2}{i} \left(- (S^{(2)}_2)^2 + S^{(2)}_3\right)^i \left(\tilde{H}_{2^l} + S^{(2)}_1\right)^{k - 1 - 2i}
+    \end{align}
+\end{proof}
+
+\begin{algorithm}[H]
+  \caption{Decoder for the combined remainder polynomial $xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$ (paper procedure)}\label{alg:decode-Rk2l}
+  \begin{algorithmic}
+    \Require integers $l\ge 1$, $k\ge 1$, known powers $(H_2,\ldots,H_{2^l})$ and the shifted power $\tilde H_{2^l}$, and $P=xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$
+    \Ensure the parameter block $\alpha_0,\ldots,\alpha_{(k-1)2^l-1}$ (and the derived inputs for the recursive call at $(k',l+1)$)
+
+    \If{$k=1$}
+      \State Output the empty parameter list.
+    \ElsIf{$k$ is even}
+      \State Use the top-degree window to peel the monic factor in the first-order correction term, recovering $S^{(1)}_1$ (via \Cref{lem:peel-monic-factor} and \Cref{lem:monic-from-power} with $m=2$).
+      \State Recover the scalar shift in $S^{(2)}_1=H_{2^{l-1}}+\delta$ from the boundary coefficient of the $(S^{(2)}_1)^2$ branch using \Cref{lem:scalar-shift-square}.
+      \State Recover the full $S^{(1)}_2$ block (hence its embedded $Q$ parameters) from the coefficient at degree $(k-2)2^l+1$ after subtracting known contributions, as in the even-case proof of \Cref{lem:Rk2l}.
+      \State Recover the scalar $S^{(2)}_2$ from the next boundary coefficient (it enters affinely with slope $\tfrac{k}{2}$).
+      \State Derive $H_{2^{l+1}}$ and $\tilde H_{2^{l+1}}$ from the recovered $(S^{(1)}_1,S^{(1)}_2,S^{(2)}_1,S^{(2)}_2)$.
+      \State Isolate the recursive combined remainder polynomial $xR^{(1)}_{k/2,2^{l+1}}+R^{(2)}_{k/2,2^{l+1}}$ and recurse at parameters $(k/2,l+1)$.
+    \Else \Comment{$k$ odd}
+      \State Use the top window to recover $S^{(1)}_1$ (again via \Cref{lem:peel-monic-factor} and \Cref{lem:monic-from-power}).
+      \State Recover the scalar shift in $S^{(2)}_1=H_{2^{l-1}}+\delta$ from the boundary coefficient using \Cref{lem:scalar-shift-square}.
+      \State Subtract from $P$ all non-recursive contributions that depend only on $S^{(1)}_1,S^{(2)}_1$ (including the explicit $\hat R_1$ term).
+      \State Use the stage-2 window to recover $S^{(1)}_2,S^{(1)}_3$ and $S^{(2)}_2,S^{(2)}_3$, noting that the single boundary coefficient at degree $(k-2)2^l+1$ is contaminated by the recursive remainder and must be handled by first isolating the recursive product term (the proof uses the leading-coefficient constant from \Cref{lem:Rk2l-leading-coeff} for the inner call).
+      \State With all $S_i$ recovered, subtract the explicit non-recursive terms and apply \Cref{lem:peel-monic-factor} to the monic factors $H_{2^l}-(k-1)S^{(1)}_1$ and $\tilde H_{2^l}-(k-1)S^{(2)}_1$ to reduce to the recursive call at $((k-1)/2,l+1)$.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[Leading coefficient of the remainder polynomials]\label{lem:Rk2l-leading-coeff}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$ and the invertibility hypotheses in \Cref{lem:Rk2l}.
+    Let $l\ge 1$ and $k\ge 2$.
+    Then the leading coefficients of the remainder polynomials satisfy
+    \[
+      \coeff{R^{(1)}_{k,2^l}}{(k-1)2^l}=\coeff{R^{(2)}_{k,2^l}}{(k-1)2^l}
+      =
+      \begin{cases}
+        -\tfrac{k}{2} & \text{if $k$ is even},\\
+        -\tfrac{k(k-1)}{2} & \text{if $k$ is odd}.
+      \end{cases}
+    \]
+\end{lemma}
+\begin{proof}
+    In the even case $k=2m$, the proof of \Cref{lem:Rk2l}(1--2) shows that the leading contribution to
+    $R^{(1)}_{k,2^l}$ is the first-order binomial term
+    \(
+      m\,E^{(1)}H_{2^l}^{k-2}
+    \)
+    with $E^{(1)}=-(S^{(1)}_1)^2+S^{(1)}_2$.
+    Since $\deg S^{(1)}_2<\deg(S^{(1)}_1)^2=2^l$ and $S^{(1)}_1$ is monic of degree $2^{l-1}$, we have
+    \(
+      \coeff{E^{(1)}}{2^l}=-1
+    \),
+    so the coefficient of $x^{(k-1)2^l}=x^{(2m-1)2^l}$ in $m\,E^{(1)}H_{2^l}^{k-2}$ equals $-m=-\tfrac{k}{2}$.
+    All other summands in $R^{(1)}_{k,2^l}$ have strictly smaller degree, so this is the leading coefficient.
+    The same argument applies to $R^{(2)}_{k,2^l}$.
+
+    In the odd case, the proof of \Cref{lem:Rk2l}(1--2) shows that the top-degree term of $R^{(1)}_{k,2^l}$ is
+    \(
+      -\tfrac{k(k-1)}{2}\,(S^{(1)}_1)^2H_{2^l}^{k-2}
+    \),
+    and since $S^{(1)}_1$ and $H_{2^l}$ are monic this term has leading coefficient $-\tfrac{k(k-1)}{2}$.
+    Again all remaining terms have smaller degree, and similarly for $R^{(2)}_{k,2^l}$.
+\end{proof}
+
+\begin{lemma}[The $4k+1$ family is splittable]\label{lem:4k+1-splittable}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $k\ge 1$ and assume $2k$ is invertible in $\mathbb{F}$, as well as the invertibility hypotheses required by \Cref{lem:Rk2l} for the internal $T$-calls at parameters $(2k,1)$.
+    Define the quadratic base
+    \[
+      H_2[\alpha_{4k-1},\alpha_{4k}](x)\coloneqq (x+\alpha_{4k})x+\alpha_{4k-1},
+      \qquad
+      \tilde H_2\coloneqq H_2+\alpha_{4k-2}.
+    \]
+    Let
+    \[
+      T^{(1)}_{4k+1}\coloneqq T^{(1)}_{2k,2}[\alpha_0,\ldots,\alpha_{4k-3}](x,H_2),
+      \qquad
+      T^{(2)}_{4k+1}\coloneqq T^{(2)}_{2k,2}[\alpha_0,\ldots,\alpha_{4k-3}](x,H_2,\tilde H_2),
+    \]
+    and set $P_{4k+1}\coloneqq xT^{(1)}_{4k+1}+T^{(2)}_{4k+1}$.
+    Then $P_{4k+1}$ is decodable (and hence $(T^{(1)}_{4k+1},T^{(2)}_{4k+1})$ is a splittable pair for $4k+1$).
+\end{lemma}
+\begin{proof}
+    Apply \Cref{lem:Rk2l} with $(l,k)=(1,2k)$ to the call defining $T^{(1)}_{4k+1}$ and $T^{(2)}_{4k+1}$.
+    This yields remainder polynomials $R^{(1)}_{2k,2}$ and $R^{(2)}_{2k,2}$ with $\deg R^{(1)}_{2k,2}=\deg R^{(2)}_{2k,2}=4k-2$ and
+    \[
+      T^{(1)}_{4k+1}=H_2^{2k}+R^{(1)}_{2k,2},\qquad
+      T^{(2)}_{4k+1}=\tilde H_2^{2k}+R^{(2)}_{2k,2}.
+    \]
+    Hence
+    \[
+      P_{4k+1}=xH_2^{2k}+\tilde H_2^{2k}+\bigl(xR^{(1)}_{2k,2}+R^{(2)}_{2k,2}\bigr).
+    \]
+    The combined remainder polynomial has degree at most $4k-1$, so it does not contribute to $[x^{4k}]P_{4k+1}$.
+    Writing $H_2=x^2+bx+c$, the binomial identity gives $[x^{4k-1}]H_2^{2k}=(2k)\,b$, and therefore
+    \[
+      \alpha_{4k}=b=\frac{[x^{4k}]P_{4k+1}-1}{2k}.
+    \]
+
+    Next, the coefficient of $x^{4k-1}$ in the combined remainder polynomial equals $\coeff{R^{(1)}_{2k,2}}{4k-2}$ (since $R^{(2)}_{2k,2}$ has degree $4k-2$ and is not $x$-shifted).
+    By \Cref{lem:Rk2l-leading-coeff} (even case, with $k\gets 2k$ and $l=1$), this leading coefficient is $-k$.
+    Using also $[x^{4k-1}]\tilde H_2^{2k}=(2k)\,b$ (since $\tilde H_2$ differs from $H_2$ by a scalar), we can solve for $c$ from $[x^{4k-1}]P_{4k+1}$:
+    \[
+      [x^{4k-1}]P_{4k+1} = [x^{4k-2}]H_2^{2k} + (2k)b - k,
+    \]
+    and
+    \(
+      [x^{4k-2}]H_2^{2k}=\binom{2k}{2}b^2+(2k)c
+    \),
+    so
+    \[
+      \alpha_{4k-1}=c=\frac{[x^{4k-1}]P_{4k+1}-(2k)b+k-\binom{2k}{2}b^2}{2k}.
+    \]
+
+    Finally, $\alpha_{4k-2}$ is the scalar shift in $\tilde H_2=H_2+\alpha_{4k-2}$.
+    Since this shift affects only the constant term of $\tilde H_2$, it does not change the top-degree coefficients used in the even-$k$ decoding argument from \Cref{lem:Rk2l}: any occurrence of the constant term in a Cauchy product lowers degree by at least $2$.
+    Therefore, once $H_2$ is derived, we can recover the scalar shift $\alpha_{4k-2}$ from $P_{4k+1}$ by specializing the even-$k$ boundary-coefficient extraction step in the proof of \Cref{lem:Rk2l}(3) to $(l,k)=(1,2k)$:
+    in the first coefficient where the constant term of $\tilde H_2=H_2+\alpha_{4k-2}$ enters (namely degree $4k-2$), it appears affinely with slope $2k$, while all other contributions are determined by the already-derived quantities and by the leading-coefficient constraint from \Cref{lem:Rk2l-leading-coeff}.
+
+    With $H_2$ and $\tilde H_2$ now derived, we can form the combined remainder polynomial
+    \[
+      xR^{(1)}_{2k,2}+R^{(2)}_{2k,2}=P_{4k+1}-\bigl(xH_2^{2k}+\tilde H_2^{2k}\bigr).
+    \]
+    By \Cref{lem:Rk2l}(3), the remaining parameters $\alpha_0,\ldots,\alpha_{4k-3}$ are extractable from this polynomial given $(H_2,\tilde H_2)$.
+    This extracts all parameters $\alpha_0,\ldots,\alpha_{4k}$ from $P_{4k+1}$, so $P_{4k+1}$ is decodable.
+\end{proof}
+
+\begin{lemma}[A decodable $Q_{4k+1}$ given $H_2$]\label{lem:Q4k+1-from-H2}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $k\ge 1$ and let $H_2\in\mathbb{F}[x]$ be monic of degree $2$.
+    Assume $2k$ is invertible in $\mathbb{F}$, as well as the invertibility hypotheses required by \Cref{lem:Rk2l} for the internal $T$-calls at parameters $(2k,1)$.
+
+    Define
+    \[
+      \hat H_2 \coloneqq H_2+\alpha_{4k-1},
+      \qquad
+      \tilde H_2 \coloneqq \hat H_2+\alpha_{4k-2},
+    \]
+    and let
+    \[
+      S^{(1)}_2 \coloneqq T^{(1)}_{2k,2}[\alpha_0,\ldots,\alpha_{4k-3}](x,\hat H_2),
+      \qquad
+      S^{(2)}_2 \coloneqq T^{(2)}_{2k,2}[\alpha_0,\ldots,\alpha_{4k-3}](x,\hat H_2,\tilde H_2).
+    \]
+    Finally define
+    \[
+      Q_{4k+1}[\alpha_0,\ldots,\alpha_{4k}](x,H_2)\coloneqq (x+\alpha_{4k})\,S^{(1)}_2(x)+S^{(2)}_2(x).
+    \]
+    Then $Q_{4k+1}$ is decodable given $H_2$, and the polynomial $H_4$ computed in the internal even-$k$, $l=1$ step is derivable from $Q_{4k+1}$ given $H_2$.
+\end{lemma}
+\begin{proof}
+    Write $H_2=x^2+bx+c$.
+    Since $S^{(1)}_2$ is monic of degree $4k$ and \Cref{lem:Rk2l}(1--2) gives $\deg\bigl(S^{(1)}_2-\hat H_2^{2k}\bigr)\le 4k-2$, we have
+    \[
+      [x^{4k-1}]S^{(1)}_2=[x^{4k-1}]\hat H_2^{2k}=(2k)\,b,
+    \]
+    and therefore
+    \[
+      [x^{4k}]Q_{4k+1} = [x^{4k-1}]S^{(1)}_2 + [x^{4k}]S^{(2)}_2 + \alpha_{4k}[x^{4k}]S^{(1)}_2
+        = (2k)b + 1 + \alpha_{4k}.
+    \]
+    Hence $\alpha_{4k}=[x^{4k}]Q_{4k+1}-(2k)b-1$ is extractable from $Q_{4k+1}$ given $H_2$.
+
+    Next we derive $S^{(1)}_2$ and $S^{(2)}_2$ from $Q_{4k+1}$ given $H_2$.
+    The pair $(S^{(1)}_2,S^{(2)}_2)$ is produced by an internal $T_{2k,2}$ call.
+    In that call, every intermediate pair is obtained from previously constructed pairs by either:
+    \begin{enumerate}
+      \item adding compatible pairs supported on disjoint degree windows (Additivity), or
+      \item multiplying compatible pairs whose shifted windows do not overlap (Multiplicativity),
+    \end{enumerate}
+    starting from known-power inputs (derivable from $H_2$) and from embedded $Q_{2^t-1}$ instances that are decodable given the smaller known-power data (hence can be treated as compatible building blocks on the low windows they occupy).
+    The disjointness conditions required by the Additivity/Multiplicativity lemmas hold at each step because every nontrivial $Q$-term has degree strictly smaller than the current power scale, so multiplying by known powers shifts it away from the window where other branches carry information.
+    Therefore the closure lemmas imply that the final output pair is compatible on some window $G\subseteq\rng{4k}$ given $H_2$.
+    Therefore we may apply \Cref{lem:x-alpha-extraction} to $Q_{4k+1}=(x+\alpha_{4k})S^{(1)}_2+S^{(2)}_2$ to derive $(S^{(1)}_2,S^{(2)}_2)$ from $Q_{4k+1}$ given $H_2$.
+
+    Define
+    \[
+      P\coloneqq Q_{4k+1}-\alpha_{4k}\,S^{(1)}_2 = xS^{(1)}_2+S^{(2)}_2.
+    \]
+      Now apply the decoding argument from \Cref{lem:4k+1-splittable} to $P$ (with $H_2$ known rather than encoded):
+      $P$ determines $\hat H_2$ and $\tilde H_2$ (via \Cref{lem:monic-from-power-boundary} applied to the two branches),
+      and hence extracts $\alpha_{4k-1}=\hat H_2-H_2$ and $\alpha_{4k-2}=\tilde H_2-\hat H_2$.
+
+    With $\hat H_2$ and $\tilde H_2$ now derivable, we can isolate the combined remainder polynomial
+    \[
+      xR^{(1)}_{2k,2}+R^{(2)}_{2k,2} = P-\bigl(x\hat H_2^{2k}+\tilde H_2^{2k}\bigr).
+    \]
+    By \Cref{lem:Rk2l}(3), the remaining parameters $\alpha_0,\ldots,\alpha_{4k-3}$ are extractable from this polynomial given $(H_2,\hat H_2,\tilde H_2)$, and all these polynomials are derivable from $Q_{4k+1}$ and $H_2$.
+
+    Finally, the internal $l=1$ even-$k$ step computes a polynomial $H_4$ from $\hat H_2$ and a sub-block of the parameters $\alpha_0,\ldots,\alpha_{4k-3}$; since all these inputs are now derivable, $H_4$ is derivable from $Q_{4k+1}$ given $H_2$.
+    This extracts all parameters $\alpha_0,\ldots,\alpha_{4k}$, so $Q_{4k+1}$ is decodable given $H_2$.
+\end{proof}
+
+
+\subsection{Constructions for $4k + 1$ and $4k + 3$ using known powers}
+\begin{algorithm}[H]
+    \caption{
+        We assume that $k\ge 1$ and $l\ge 2$ and show that it is possible to calculate $Q_{2^{l + 1}k + (2^l - 1)}$ if we have access to $H_2, \ldots, H_{2^l}$.
+    }
+      \begin{algorithmic}
+          \State $\hat{H}_{2^l} = H_{2^l} + Q_{2^{l - 1} - 1}[\alpha_{2^{l + 1} k - 1}, \ldots, \alpha_{2^{l + 1}k + 2^{l - 1} - 3}](x, H_2, \ldots, H_{2^{l - 2}})$
+          \State $S^{(1)}_{2^l} = T^{(1)}_{2 k, 2^{l}}[\alpha_{2^{l} - 2}, \ldots, \alpha_{2^{l + 1}k - 3}](x, H_2, \ldots, \hat{H}_{2^l})$
+          \State $S^{(2)}_{2^l} = T^{(2)}_{2 k, 2^{l}}[\alpha_{2^{l} - 2}, \ldots, \alpha_{2^{l + 1}k - 3}](x, H_2, \ldots, \hat{H}_{2^l}, \hat{H}_{2^l} + \alpha_{2^{l + 1}k - 2})$
+          \State $Q_{2^{l + 1}k + (2^l - 1)}[\alpha_0, \ldots, \alpha_{2^{l + 1}k + 2^l - 2}](x, H_2, \ldots, H_{2^l})$
+          \State $= A_{2^{l-1}}[\alpha_0, \ldots, \alpha_{2^l - 3}, \alpha_{2^{l + 1}k + 2^{l - 1} - 2}, \ldots, \alpha_{2^{l + 1}k + 2^l - 2}](S^{(1)}_{2^l}, S^{(2)}_{2^l}, (x, H_2, \ldots, H_{2^{l-1}}))$
+
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}\label{lem:Q-odd-degree-with-powers}
+    Let $k\ge 1$ and $l\ge 2$, and assume $2k$ is invertible in $\mathbb{F}$.
+    Then the construction above outputs a polynomial $Q_{2^{l+1}k+(2^l-1)}$ that is decodable given $(H_2,\ldots,H_{2^l})$.
+\end{lemma}
+\begin{proof}
+    Let $n\coloneqq\deg S^{(1)}_{2^l}=\deg S^{(2)}_{2^l}=2^{l+1}k$.
+    The internal $T_{2k,2^l}$ call that defines $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ uses the perturbed power
+    $\hat H_{2^l}=H_{2^l}+Q_{2^{l-1}-1}$ (with $\deg Q_{2^{l-1}-1}=2^{l-1}-1$) and its scalar shift
+    $\tilde H_{2^l}=\hat H_{2^l}+\alpha_{2^{l+1}k-2}$.
+    In particular, the only contributions that can affect degrees $\ge n-2^{l-1}-1$ come from the known-power part
+    $H_{2^l}^{2k}$ together with the monicity of $Q_{2^{l-1}-1}$ (terms involving $Q_{2^{l-1}-1}^2$, the scalar shift, or the remainder polynomials from \Cref{lem:Rk2l}(1--2) lose at least $2^{l-1}$ degrees).
+    Therefore the top $2^{l-1}+1$ coefficients of $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ are derivable from the known-power data $(H_2,\ldots,H_{2^l})$ alone.
+    More explicitly, writing $\deg H_{2^l}=2^l$ and $n=2k\cdot 2^l$, we have:
+    \begin{itemize}
+      \item for every $j\in\{0,1,\ldots,2^{l-1}\}$, the coefficient of $x^{n-j}$ in each of $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ equals the coefficient of $x^{n-j}$ in $H_{2^l}^{2k}$ (since any use of $Q_{2^{l-1}-1}$ lowers degree by at least $2^{l-1}+1$);
+      \item in degree $n-2^{l-1}-1$, the only additional contribution comes from the linear binomial term $2k\cdot Q_{2^{l-1}-1}H_{2^l}^{2k-1}$ and depends only on monicity of $Q_{2^{l-1}-1}$, namely it adds $(2k)$ to that boundary coefficient (the scalar shift in $\tilde H_{2^l}$ does not affect degrees $\ge n-2^{l-1}-1$).
+    \end{itemize}
+    In particular, the boundary coefficient needed to start coefficient-level inversion of the outer fill call is computable directly from the known-power input $H_{2^l}$ (by forming $H_{2^l}^{2k}$ and adjusting the single boundary degree as above).
+    We claim that $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ is compatible on an explicit low-degree window $G\subseteq\rng{n-2^{l-1}}$ given $(H_2,\ldots,H_{2^l})$.
+    The internal $T_{2k,2^l}$ call builds $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ from smaller pairs using only:
+    (i) Additivity of compatible pairs over disjoint windows; (ii) Multiplicativity of compatible pairs over disjoint shifted windows; and (iii) the square-closure lemma \Cref{lem:compatible-power}.
+    Its leaves are base pairs of three kinds:
+    known monic powers (derivable from the given data), scalar shifts of known powers (handled by the $\{0,1\}$ compatibility lemmas), and embedded $Q_{2^t-1}$ instances (decodable given smaller-power data, hence providing compatible inputs).
+    Therefore, starting from these leaf certificates and repeatedly applying \Cref{lem:compat-certificate-compose} along the recursion tree of $T_{2k,2^l}$, we obtain a compatibility certificate for the output pair on some window $G$ computed by the window formulas in the Additivity/Multiplicativity lemmas.
+    The degree bookkeeping in the $T$ recursion ensures that every nontrivial $Q$-term has degree $<2^t\le 2^l\le n-2^{l-1}$, and multiplication by known-power factors shifts such low-degree contributions away from the top-degree range.
+    Hence all indices that ever enter the window-tracking construction lie in $\rng{n-2^{l-1}}$, so the resulting window satisfies $G\subseteq\rng{n-2^{l-1}}$.
+
+      Applying \Cref{lem:fill-correctness} at level $l-1$ to the outer $A_{2^{l-1}}$ call shows that the parameters appearing explicitly in that call are extractable from $Q_{2^{l+1}k+(2^l-1)}$ given $(H_2,\ldots,H_{2^l})$, and that $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ is derivable from this given power data.
+
+    It remains to extract the parameters that occur inside the definitions of $\hat H_{2^l}$, $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$.
+    Since $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ is derivable, the combined polynomial $xS^{(1)}_{2^l}+S^{(2)}_{2^l}$ is derivable as well.
+
+    First we derive the inputs $\hat H_{2^l}$ and $\tilde H_{2^l}=\hat H_{2^l}+\alpha_{2^{l+1}k-2}$ from $(S^{(1)}_{2^l},S^{(2)}_{2^l})$.
+    By \Cref{lem:Rk2l}(1--2) applied to the call defining $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$, we have
+    \[
+      S^{(1)}_{2^l}= \hat H_{2^l}^{2k}+R^{(1)}_{2k,2^l},\qquad
+      S^{(2)}_{2^l}= \tilde H_{2^l}^{2k}+R^{(2)}_{2k,2^l}
+    \]
+    with $\deg R^{(1)}_{2k,2^l}=\deg R^{(2)}_{2k,2^l}=(2k-1)2^l$.
+    In the even case of \Cref{lem:Rk2l} with parameter $2k$ (so $m=k$), the leading term of $R^{(1)}_{2k,2^l}$ is the first-order correction
+    $k\,E^{(1)}H^{2k-2}$ where $E^{(1)}=-(S^{(1)}_1)^2+S^{(1)}_2$ has leading coefficient $-1$ (since $\deg S^{(1)}_2<\deg (S^{(1)}_1)^2=2^l$).
+      Therefore $\coeff{R^{(1)}_{2k,2^l}}{(2k-1)2^l}=-k$.
+      Similarly, since $\deg S^{(2)}_2<\deg (S^{(2)}_1)^2=2^l$ and $S^{(2)}_1$ is monic, the leading coefficient of
+      $E^{(2)}=-(S^{(2)}_1)^2+S^{(2)}_2$ is also $-1$, so $\coeff{R^{(2)}_{2k,2^l}}{(2k-1)2^l}=-k$.
+    Therefore \Cref{lem:monic-from-power-boundary} (with $(P,m,n)=(\hat H_{2^l},2k,2^l)$ and $(W,E)=(S^{(1)}_{2^l},R^{(1)}_{2k,2^l})$) derives $\hat H_{2^l}$ from $S^{(1)}_{2^l}$, and similarly derives $\tilde H_{2^l}$ from $S^{(2)}_{2^l}$.
+    Taking the difference then extracts the scalar parameter $\alpha_{2^{l+1}k-2}=\tilde H_{2^l}-\hat H_{2^l}$.
+
+    Next, from the derived $\hat H_{2^l}$ we obtain the polynomial
+    \[
+      Q_{2^{l-1}-1}=\hat H_{2^l}-H_{2^l}.
+    \]
+    This is exactly the $Q_{2^{l-1}-1}$ instance in the definition of $\hat H_{2^l}$, so decodability of $Q_{2^{l-1}-1}$ given $(H_2,\ldots,H_{2^{l-2}})$ extracts the corresponding parameter block.
+
+    Finally, we isolate the combined remainder polynomial for the $T_{2k,2^l}$ call:
+    \[
+      xR^{(1)}_{2k,2^l}+R^{(2)}_{2k,2^l}
+        = \bigl(xS^{(1)}_{2^l}+S^{(2)}_{2^l}\bigr) - \bigl(x\hat H_{2^l}^{2k}+\tilde H_{2^l}^{2k}\bigr).
+    \]
+    By \Cref{lem:Rk2l}(3), the remaining block of parameters inside $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ is extractable from this polynomial given $(H_2,\ldots,H_{2^{l-1}},\hat H_{2^l},\tilde H_{2^l})$, and all these polynomials are derivable from the data we already have.
+    Therefore all parameters are extractable from $Q_{2^{l+1}k+(2^l-1)}$ given $(H_2,\ldots,H_{2^l})$, proving that the output is decodable.
+\end{proof}
+
+\subsection{Induction Steps}
+
+The $8k+3$ induction step and the special case $n=31$ require a small auxiliary ingredient: a degree-$15$ polynomial that is decodable given only $(H_2,H_4)$.
+We define one explicit instance $\bar Q_{15}$ below; in the induction steps themselves we otherwise only use the $Q$-families from the previous sections.
+
+\begin{lemma}[A decodable $\bar Q_{15}$ given $(H_2,H_4)$]\label{lem:barQ15}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $H_2,H_4\in\mathbb{F}[x]$ be monic with $\deg H_2=2$ and $\deg H_4=4$.
+    Define
+    \[
+      H_8 \coloneqq \bigl(H_4+(x+\alpha_1)\bigr)\bigl(H_4+(H_2+\alpha_2)\bigr)+\alpha_0,
+      \qquad
+      S^{(1)}_4\coloneqq H_8,\quad S^{(2)}_4\coloneqq H_8+\alpha_3.
+    \]
+    Then the degree-$15$ polynomial
+    \[
+      \bar Q_{15}[\alpha_0,\ldots,\alpha_{14}](x,H_2,H_4)
+      \;\coloneqq\;
+      A_{4}[\alpha_4,\ldots,\alpha_9,\;\alpha_{10},\ldots,\alpha_{14}](S^{(1)}_4,S^{(2)}_4,(x,H_2,H_4))
+    \]
+    is decodable given $(H_2,H_4)$.
+\end{lemma}
+\begin{proof}
+      By \Cref{lem:fill-correctness} with $l=2$ (so $2^l=4$), all parameters used in the outer $A_4$ call (namely $\alpha_4,\ldots,\alpha_{14}$) are extractable from $\bar Q_{15}$ given $(H_2,H_4)$, and the input pair $(S^{(1)}_4,S^{(2)}_4)$ is derivable from this given power data.
+    In particular, $H_8=S^{(1)}_4$ is derivable.
+
+    It remains to extract $\alpha_0,\alpha_1,\alpha_2,\alpha_3$ from $H_8$ given $(H_2,H_4)$.
+    Write $H_2=x^2+b_1x+b_0$ and $H_4=x^4+h_3x^3+h_2x^2+h_1x+h_0$.
+    A direct coefficient expansion of
+    \(
+      H_8=\bigl(H_4+(x+\alpha_1)\bigr)\bigl(H_4+(H_2+\alpha_2)\bigr)+\alpha_0
+    \)
+    shows that
+    \begin{align}
+      [x^4]H_8
+        &= \bigl(2h_0+b_0+(h_1+1)h_3+h_2(h_2+1)+h_3(h_1+b_1)\bigr) + (\alpha_1+\alpha_2),\\
+      [x^2]H_8
+        &= \bigl(h_0(h_2+1)+(h_1+1)(h_1+b_1)+h_2(h_0+b_0)\bigr) + (h_2+1)\alpha_1 + h_2\alpha_2.
+    \end{align}
+    Define the known quantities
+    \begin{align}
+      u &\coloneqq [x^4]H_8-\bigl(2h_0+b_0+(h_1+1)h_3+h_2(h_2+1)+h_3(h_1+b_1)\bigr)=\alpha_1+\alpha_2,\\
+      v &\coloneqq [x^2]H_8-\bigl(h_0(h_2+1)+(h_1+1)(h_1+b_1)+h_2(h_0+b_0)\bigr)=(h_2+1)\alpha_1+h_2\alpha_2.
+    \end{align}
+    Then $\alpha_1=v-h_2u$ and $\alpha_2=(h_2+1)u-v$, so $\alpha_1$ and $\alpha_2$ are extractable from $H_8$ given $(H_2,H_4)$.
+    Finally, $\alpha_0$ is extractable from the constant term $[x^0]H_8$ once $\alpha_1,\alpha_2$ are known, and $\alpha_3=[x^0]S^{(2)}_4-[x^0]S^{(1)}_4$ is extractable since $S^{(1)}_4,S^{(2)}_4$ are derivable.
+    This proves that all parameters $\alpha_0,\ldots,\alpha_{14}$ are extractable from $\bar Q_{15}$ given $(H_2,H_4)$, and hence $\bar Q_{15}$ is decodable.
+\end{proof}
+
+\begin{lemma}[A decodable $\bar Q_{8k+7}$ given $(H_2,H_4)$]\label{lem:barQ8k+7}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Let $k\ge 2$ and let $H_2,H_4\in\mathbb{F}[x]$ be monic with $\deg H_2=2$ and $\deg H_4=4$.
+    Assume the invertibility hypotheses required by \Cref{lem:Rk2l} for the internal $T_{k,8}$ call, and assume $k$ is invertible in $\mathbb{F}$.
+
+    Define
+    \[
+      H_8 \coloneqq \bigl(H_4+(x+\alpha_1)\bigr)\bigl(H_4+(H_2+\alpha_2)\bigr)+\alpha_0,
+      \qquad
+      \tilde H_8 \coloneqq H_8+\alpha_3.
+    \]
+    Let
+    \[
+      S^{(1)} \coloneqq T^{(1)}_{k,8}[\alpha_4,\ldots,\alpha_{8k-5}](x,H_2,H_4,H_8),
+      \qquad
+      S^{(2)} \coloneqq T^{(2)}_{k,8}[\alpha_4,\ldots,\alpha_{8k-5}](x,H_2,H_4,H_8,\tilde H_8),
+    \]
+    and define
+    \[
+      \bar Q_{8k+7}[\alpha_0,\ldots,\alpha_{8k+6}](x,H_2,H_4)
+      \;\coloneqq\;
+      A_{4}[\alpha_{8k-4},\ldots,\alpha_{8k+1},\;\alpha_{8k+2},\ldots,\alpha_{8k+6}](S^{(1)},S^{(2)},(x,H_2,H_4)).
+    \]
+    Then $\bar Q_{8k+7}$ is decodable given $(H_2,H_4)$.
+\end{lemma}
+\begin{proof}
+    Apply \Cref{lem:fill-correctness} with $l=2$ (so $2^l=4$) to the outer $A_4$ call.
+      This yields that the $11$ parameters used explicitly in the $A_4$ call (namely $\alpha_{8k-4},\ldots,\alpha_{8k+6}$) are extractable from $\bar Q_{8k+7}$ given $(H_2,H_4)$, and that the input pair $(S^{(1)},S^{(2)})$ is derivable from this given power data.
+    In particular, the combined polynomial $xS^{(1)}+S^{(2)}$ is derivable.
+
+    Next we derive the power inputs $H_8$ and $\tilde H_8$ from $S^{(1)}$ and $S^{(2)}$.
+    By \Cref{lem:Rk2l}(1--2) applied to the internal $T_{k,8}$ call, we have
+    \[
+      S^{(1)} = H_8^{k}+R^{(1)}_{k,8},
+      \qquad
+      S^{(2)} = \tilde H_8^{k}+R^{(2)}_{k,8}
+    \]
+    with $\deg R^{(1)}_{k,8}=\deg R^{(2)}_{k,8}=8k-8$.
+    Moreover, by \Cref{lem:Rk2l-leading-coeff} (with $2^l=8$), the leading coefficient of each remainder polynomial is the (nonzero) constant
+    \[
+      \coeff{R^{(1)}_{k,8}}{8k-8}=\coeff{R^{(2)}_{k,8}}{8k-8}=
+      \begin{cases}
+        -\tfrac{k}{2} & \text{if $k$ is even},\\
+        -\tfrac{k(k-1)}{2} & \text{if $k$ is odd}.
+      \end{cases}
+    \]
+    Therefore \Cref{lem:monic-from-power-boundary} derives $H_8$ from $S^{(1)}$, and derives $\tilde H_8$ from $S^{(2)}$.
+    Taking the difference then extracts $\alpha_3=\tilde H_8-H_8$.
+
+    With $H_8$ and $\tilde H_8$ known, we isolate the combined remainder polynomial
+    \[
+      xR^{(1)}_{k,8}+R^{(2)}_{k,8}
+        = \bigl(xS^{(1)}+S^{(2)}\bigr) - \bigl(xH_8^{k}+\tilde H_8^{k}\bigr),
+    \]
+    which is derivable from $\bar Q_{8k+7}$ given $(H_2,H_4)$.
+    By \Cref{lem:Rk2l}(3), the parameter block $\alpha_4,\ldots,\alpha_{8k-5}$ used inside the $T_{k,8}$ call is extractable from this polynomial given $(H_2,H_4,H_8,\tilde H_8)$, and all these polynomials are derivable from $\bar Q_{8k+7}$ and $(H_2,H_4)$.
+
+    It remains to extract $\alpha_0,\alpha_1,\alpha_2$ from $H_8$ given $(H_2,H_4)$.
+    Write $H_2=x^2+b_1x+b_0$ and $H_4=x^4+h_3x^3+h_2x^2+h_1x+h_0$ as in \Cref{lem:barQ15}.
+    As in the proof of \Cref{lem:barQ15}, a direct coefficient expansion of
+    \(H_8=\bigl(H_4+(x+\alpha_1)\bigr)\bigl(H_4+(H_2+\alpha_2)\bigr)+\alpha_0\)
+    expresses
+      \[
+        u\coloneqq \alpha_1+\alpha_2,\qquad v\coloneqq (h_2+1)\alpha_1+h_2\alpha_2
+      \]
+    as explicit polynomials in the known coefficients of $H_2,H_4$ together with $[x^4]H_8$ and $[x^2]H_8$.
+    Since $\mathrm{char}(\mathbb{F})\ne 2$, we can solve for $\alpha_1=v-h_2u$ and $\alpha_2=(h_2+1)u-v$,
+    and then extract $\alpha_0$ from the constant term $[x^0]H_8$.
+
+    Thus all parameters $\alpha_0,\ldots,\alpha_{8k+6}$ are extractable from $\bar Q_{8k+7}$ given $(H_2,H_4)$, proving decodability.
+\end{proof}
+
+\begin{lemma}[Odd-degree gadgets from $(H_2,H_4)$]\label{lem:odd-gadgets-H2H4}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$ and the invertibility hypotheses in the lemmas above.
+    Let $H_2,H_4\in\mathbb{F}[x]$ be monic with $\deg H_2=2$ and $\deg H_4=4$.
+    Then:
+    \begin{enumerate}
+        \item If $n\equiv 1\pmod 4$ and $n\ge 5$, then $Q_n$ is decodable given $H_2$ by \Cref{lem:Q4k+1-from-H2}.
+        \item If $n\equiv 3\pmod 8$, then $Q_n$ is decodable given $(H_2,H_4)$ by the known-powers construction with $l=2$ (i.e. \Cref{alg:constr-known-2n-1} and \Cref{lem:Q-odd-degree-with-powers} specialized to $l=2$).
+        \item If $n\equiv 7\pmod 8$ and $n\ge 15$, then $\bar Q_n$ is decodable given $(H_2,H_4)$ by \Cref{lem:barQ15} (for $n=15$) and \Cref{lem:barQ8k+7} (for $n\ge 23$).
+    \end{enumerate}
+\end{lemma}
+\begin{proof}
+    For $n\equiv 1\pmod 4$, write $n=4k+1$ and apply \Cref{lem:Q4k+1-from-H2}.
+
+    For $n\equiv 3\pmod 8$, write $n=2^{l+1}k+(2^l-1)$ with $l=2$ and apply the construction \Cref{alg:constr-known-2n-1} together with \Cref{lem:Q-odd-degree-with-powers} (specialized to $l=2$).
+
+    For $n\equiv 7\pmod 8$ and $n\ge 15$, the case $n=15$ is \Cref{lem:barQ15} and the remaining cases are covered by \Cref{lem:barQ8k+7}.
+\end{proof}
+
+\subsection{If $2k + 1$ is splittable then $8k + 7$ is splittable}
+\begin{algorithm}[H]
+    \caption{
+        If $2k + 1$ is splittable then $8k + 7$ is splittable.
+        Let $l\ge 1$ and suppose we are given monic polynomials $H_2,\ldots,H_{2^l}$ with $\deg H_{2^i}=2^i$ (as “known powers”) for use in the $Q$-calls below; see \Cref{alg:constr-known-2n-1} and the known-powers lemma.
+    }
+
+    \begin{algorithmic}
+        \State $S^{(1)}_1 = T^{(1)}_{2k + 1}[\alpha_{0}, \ldots, \alpha_{2k}](x)$ \Comment This also calculates polynomials $H_2(x), \ldots, H_{2^l}(x)$.
+        \State $S^{(1)}_2 = Q_{2k + 1}[\alpha_{2k + 2}, \ldots, \alpha_{4k + 2}](x, H_2(x), \ldots, H_{2^{l - 1}}(x))$
+        \State $S^{(1)}_3 = Q_{4k + 3}[\alpha_{4k + 4}, \ldots, \alpha_{8k + 6}](x, H_2(x), \ldots, H_{2^l}(x))$
+        \State $T^{(1)}_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            = (S^{(1)}_3 + S^{(1)}_2)(S^{(1)}_3 - S^{(1)}_2) + S^{(1)}_1
+            = (S^{(1)}_3)^2 - (S^{(1)}_2)^2 + S^{(1)}_1$
+        \\
+        \State $S^{(2)}_1 = T^{(2)}_{2k + 1}[\alpha_{0}, \ldots, \alpha_{2k}](x)$
+        \State $S^{(2)}_2 = S^{(1)}_2 + \alpha_{2k + 1}$
+        \State $S^{(2)}_3 = S^{(1)}_3 + \alpha_{4k + 3}$
+        \State $T^{(2)}_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            = (S^{(2)}_3 + S^{(2)}_2)(S^{(2)}_3 - S^{(2)}_2) + S^{(2)}_1
+            = (S^{(2)}_3)^2 - (S^{(2)}_2)^2 + S^{(2)}_1$
+
+        \State \begin{align}
+            P_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            &= x T^{(1)}_{8k + 7} + T^{(2)}_{8k + 7}
+            \\&= x(S^{(1)}_3)^2 + (S^{(1)}_3 + \alpha_{4k + 3})^2 - x(S^{(1)}_2)^2 - (S^{(1)}_2 + \alpha_{2k + 1})^2 + x S^{(1)}_1 + S^{(2)}_1
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[The $8k+7$ induction step is decodable (and preserves compatibility)]\label{lem:8k+7-splittable}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Suppose that $P_{2k+1}=xT^{(1)}_{2k+1}+T^{(2)}_{2k+1}$ is decodable, and that the auxiliary polynomials $S^{(1)}_2,S^{(1)}_3$ in the above construction are decodable given the relevant known-power data.
+    Assume moreover that the underlying pair $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ is compatible on some window $G$ given the relevant known-power data.
+    Define
+    \[
+      G_{8k+7}\coloneqq \{2k+1,\ldots,4k+3\}\cup\{4k+3,\ldots,8k+7\}\cup G.
+    \]
+    Then the polynomial $P_{8k+7}$ produced by the construction is decodable, and the output pair $(T^{(1)}_{8k+7},T^{(2)}_{8k+7})$ is compatible on $G_{8k+7}$ given the same auxiliary data.
+\end{lemma}
+\begin{proof}
+    Write $S_2\coloneqq S^{(1)}_2$ and $S_3\coloneqq S^{(1)}_3$ for brevity, and let $a\coloneqq \alpha_{2k+1}$ and $b\coloneqq \alpha_{4k+3}$ be the two scalar shifts in the construction.
+
+    Since $S_3=Q_{4k+3}$ is monic of degree $4k+3$, the polynomial $xS_3^2+(S_3+b)^2$ has degree $8k+7$.
+    All remaining summands in the explicit formula for $P_{8k+7}$ have degree at most $4k+3$:
+    indeed, $S_2=Q_{2k+1}$ has degree $2k+1$, so $xS_2^2$ has degree $4k+3$ and $(S_2+a)^2$ has degree $4k+2$, while $xS^{(1)}_1+S^{(2)}_1=P_{2k+1}$ has degree $2k+1$.
+    Therefore we may write
+    \[
+        P_{8k+7} = \underbrace{xS_3^2 + (S_3+b)^2}_{\text{square gadget at degree }4k+3}
+            \;+\; E_3
+    \]
+    where $\deg E_3\le 4k+3$.
+    Therefore \Cref{lem:square-gadget} derives $S_3$ and $b$ from $P_{8k+7}$.
+    Since $S_3$ is decodable given the relevant known-power data, \Cref{lem:extractable-via-derivable} then yields that all parameters used inside $S_3$ are extractable from $P_{8k+7}$ as well.
+
+    Subtracting the derived square-gadget polynomial $xS_3^2+(S_3+b)^2$ from $P_{8k+7}$ leaves
+    \[
+        P' \coloneqq -xS_2^2 - (S_2+a)^2 + P_{2k+1}.
+    \]
+    Equivalently, $-P' = xS_2^2 + (S_2+a)^2 + E_2$ with $E_2=-P_{2k+1}$ and $\deg E_2\le 2k+1\le \deg S_2$.
+    Applying \Cref{lem:square-gadget} again derives $S_2$ and $a$ from $P'$, and by \Cref{lem:extractable-via-derivable} all parameters used inside $S_2$ are extractable from $P_{8k+7}$.
+
+    Finally,
+    \[
+        P_{2k+1} = P' + xS_2^2 + (S_2+a)^2
+    \]
+    is derivable from $P_{8k+7}$, so decodability of $P_{2k+1}$ implies (again by \Cref{lem:extractable-via-derivable}) that all parameters of the $2k+1$ block are extractable from $P_{8k+7}$.
+    Together, this extracts all parameters $\alpha_0,\ldots,\alpha_{8k+6}$, proving that $P_{8k+7}$ is decodable.
+
+    For compatibility, note that \Cref{lem:square-gadget} derives $(S_3,b)$ from the coefficients of $P_{8k+7}$ in degrees $4k+3,\ldots,8k+7$ and derives $(S_2,a)$ from degrees $2k+1,\ldots,4k+3$ after subtracting the first square-gadget polynomial.
+    Moreover, since $P_{2k+1}$ is derivable from $P_{8k+7}$ and $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ is compatible on $G$, the same reconstruction polynomials derive $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ from the coefficients of $P_{8k+7}$ on $G$.
+    Hence all inputs to the defining formulas for $(T^{(1)}_{8k+7},T^{(2)}_{8k+7})$ are derivable from the coefficients of $P_{8k+7}$ on $G_{8k+7}$ and the auxiliary data, proving compatibility on $G_{8k+7}$.
+\end{proof}
+
+\begin{example}[Worked example: $k=7$ (constructing $63$)]
+    Instantiating the construction with $k=7$ gives $2k+1=15$, $4k+3=31$, and $8k+7=63$.
+    Let $(T^{(1)}_{15},T^{(2)}_{15})$ be any splittable pair for $15$ (e.g. \Cref{sec:special-cases}), and let $Q_{15}$ and $Q_{31}$ be the corresponding $Q_{2^n-1}$ polynomials.
+    Writing $a\coloneqq \alpha_{15}$ and $b\coloneqq \alpha_{31}$ for the two scalar shifts, the construction specializes to
+    \[
+        T^{(1)}_{63}=Q_{31}^2-Q_{15}^2+T^{(1)}_{15},
+        \qquad
+        T^{(2)}_{63}=(Q_{31}+b)^2-(Q_{15}+a)^2+T^{(2)}_{15},
+    \]
+    and hence
+    \[
+        P_{63}=xT^{(1)}_{63}+T^{(2)}_{63}
+        = xQ_{31}^2 + (Q_{31}+b)^2 - xQ_{15}^2 - (Q_{15}+a)^2 + P_{15}.
+    \]
+    Parameter-wise, the blocks are $\alpha_0,\ldots,\alpha_{14}$ for $(T^{(1)}_{15},T^{(2)}_{15})$, $\alpha_{16},\ldots,\alpha_{30}$ for $Q_{15}$, $\alpha_{32},\ldots,\alpha_{62}$ for $Q_{31}$, and the two scalar shifts $a=\alpha_{15}$ and $b=\alpha_{31}$.
+\end{example}
+
+\subsection{If $2k + 1$ is splittable then $8k + 3$ is splittable}
+\begin{algorithm}[H]
+    \caption{
+        If $2k + 1$ is splittable then $8k + 3$ is splittable.
+        (The call to $Q_{2k-1}$ below uses the relevant known-power inputs available from the construction of $Q_{4k+1}$, in particular a derivable $H_4$.)
+    }
+
+    \begin{algorithmic}
+        \State $S^{(1)}_1 = T^{(1)}_{2k + 1}[\alpha_{2k}, \ldots, \alpha_{4k}](x)$ \Comment This calculates the polynomial $H_2(x)$.
+        \State $S^{(1)}_2 = Q_{4k + 1}[\alpha_{4k + 2}, \ldots, \alpha_{8k + 2}](x, H_2(x))$ \Comment This calculates (and hence makes derivable) the polynomial $H_4(x)$.
+        \If{$k > 1$}
+            \State \Comment Let $\ell\ge 1$ be such that $2k=2^\ell(2m+1)$ with $(2m+1)$ odd (so $2k-1=2^\ell(2m+1)-1$).
+            \State $S^{(1)}_3 = Q_{2k - 1}[\alpha_{1}, \ldots, \alpha_{2k - 1}](x, H_2(x), H_4(x), \ldots, H_{2^{\ell}}(x))$
+        \Else
+            \State $S^{(1)}_3 = \alpha_1$
+        \EndIf
+        \State $T^{(1)}_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            = (S^{(1)}_2 + S^{(1)}_1)(S^{(1)}_2 - S^{(1)}_1) + S^{(1)}_3
+            = (S^{(1)}_2)^2 - (S^{(1)}_1)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = T^{(2)}_{2k + 1}[\alpha_{2k}, \ldots, \alpha_{4k}](x)$
+        \State $S^{(2)}_2 = S^{(1)}_2 + \alpha_{4k + 1}$
+        \State $S^{(2)}_3 = \alpha_{0}$
+        \State $T^{(2)}_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            = (S^{(2)}_2 + S^{(2)}_1)(S^{(2)}_2 - S^{(2)}_1) + S^{(2)}_3
+            = (S^{(2)}_2)^2 - (S^{(2)}_1)^2 + S^{(2)}_3$
+
+        \State \begin{align}
+            P_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            &= x T^{(1)}_{8k + 3} + T^{(2)}_{8k + 3}
+            \\&= x(S^{(1)}_2)^2 + (S^{(1)}_2 + \alpha_{4k + 1})^2 - x(S^{(1)}_1)^2 - (S^{(2)}_1)^2 + x S^{(1)}_3 + S^{(2)}_3
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[The $8k+3$ induction step is decodable (and preserves compatibility)]\label{lem:8k+3-splittable}
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$.
+    Suppose that $P_{2k+1}=xT^{(1)}_{2k+1}+T^{(2)}_{2k+1}$ is decodable, and that the underlying pair $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ is compatible on some $G$ given the relevant known-power data.
+    Assume also that the auxiliary polynomials $S^{(1)}_2$ and $S^{(1)}_3$ in the above construction are decodable given the relevant known-power data.
+    Define
+    \[
+      G_{8k+3}\coloneqq \{4k+1,\ldots,8k+3\}\cup (2k+G)\cup \idx{2k+1}.
+    \]
+    Then the polynomial $P_{8k+3}$ produced by the construction is decodable, and the output pair $(T^{(1)}_{8k+3},T^{(2)}_{8k+3})$ is compatible on $G_{8k+3}$ given the same auxiliary data.
+\end{lemma}
+\begin{proof}
+    (The compatibility hypothesis is an additional invariant: it is not implied by decodability of $P_{2k+1}$, but it is preserved by our constructions via repeated application of the Additivity/Multiplicativity/\Cref{lem:compatible-power} lemmas, and we use it here to recover $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ from the square gadget.)
+    Write $S_2\coloneqq S^{(1)}_2$, $S_3\coloneqq S^{(1)}_3$, and $a\coloneqq \alpha_{4k+1}$ for the scalar shift.
+
+    From the explicit formula in the algorithm we have
+    \[
+        P_{8k+3} = \underbrace{xS_2^2 + (S_2+a)^2}_{\text{square gadget at degree }4k+1} + E,
+    \]
+    where $\deg E\le 4k+1$ (all remaining terms involve only the $2k+1$-block and $xS_3+\alpha_0$).
+    Therefore \Cref{lem:square-gadget} derives $S_2$ and $a$ from $P_{8k+3}$.
+    Since $S_2$ is decodable given the relevant known-power data, \Cref{lem:extractable-via-derivable} implies that all parameters used inside $S_2$ are extractable from $P_{8k+3}$.
+
+      Subtracting the derived square-gadget polynomial $xS_2^2+(S_2+a)^2$ from $P_{8k+3}$ yields
+      \[
+          P' \coloneqq -x\bigl(S^{(1)}_1\bigr)^2 - \bigl(S^{(2)}_1\bigr)^2 + xS_3 + \alpha_0,
+      \]
+      where $S^{(1)}_1=T^{(1)}_{2k+1}$ and $S^{(2)}_1=T^{(2)}_{2k+1}$.
+      Define
+      \[
+          \Psi \coloneqq x(S^{(1)}_1)^2+(S^{(2)}_1)^2.
+      \]
+        The term $xS_3+\alpha_0$ has degree at most $2k$, so for every $d>2k$ we have $\coeff{P'}{d}=-\coeff{\Psi}{d}$.
+        Moreover, the only possible contamination at the boundary degree $d=2k$ comes from $xS_3$:
+        by the defining algorithm, if $k=1$ then $S_3=\alpha_1$ is a scalar (so $\deg S_3=0$), and if $k>1$ then $S_3$ is a $Q_{2k-1}$ instance and hence monic of degree $2k-1$.
+        In either case, the coefficient $\coeff{xS_3}{2k}=\coeff{S_3}{2k-1}$ is known (it equals $0$ when $k=1$ and $1$ otherwise).
+        Therefore $\coeff{\Psi}{2k}$ is derivable from $P'$ (and the known-power data) as well, via
+        \(
+          \coeff{\Psi}{2k}=\coeff{xS_3}{2k}-\coeff{P'}{2k}.
+      \)
+
+      By the hypothesis, $(S^{(1)}_1,S^{(2)}_1)$ is compatible on some $G$ given the known-power data.
+      Applying \Cref{lem:compatible-power} to this pair shows that $\bigl((S^{(1)}_1)^2,(S^{(2)}_1)^2\bigr)$ is compatible on $2k+G$ (since $\deg S^{(1)}_1=2k$), so from the coefficients $\bigl(\coeff{\Psi}{d}\bigr)_{d\in 2k+G}$ we can derive $(S^{(1)}_1,S^{(2)}_1)$.
+      Since these $\Psi$-coefficients are derivable from $P'$, applying the compatibility reconstruction to the squared pair on the window $2k+G$ derives $(S^{(1)}_1,S^{(2)}_1)$ from $P'$ (and the known-power data), and hence $P_{2k+1}=xS^{(1)}_1+S^{(2)}_1$ is derivable as well.
+      Since $P_{2k+1}$ is decodable, \Cref{lem:extractable-via-derivable} implies that all parameters of the $2k+1$-block are extractable from $P_{8k+3}$.
+
+    Finally, with $(S^{(1)}_1,S^{(2)}_1)$ derived, we can isolate
+    \[
+        xS_3+\alpha_0 = P' + x(S^{(1)}_1)^2 + (S^{(2)}_1)^2.
+    \]
+    The constant term of $xS_3+\alpha_0$ equals $\alpha_0$, so $\alpha_0$ is extractable.
+    Subtracting $\alpha_0$ then derives $xS_3$, and hence $S_3$ (by shifting coefficients).
+    Decodability of $S_3$ and \Cref{lem:extractable-via-derivable} yield that all parameters inside $S_3$ are extractable from $P_{8k+3}$.
+
+    Together with the parameters already extracted from $S_2$, this extracts all $\alpha_0,\ldots,\alpha_{8k+2}$, proving that $P_{8k+3}$ is decodable.
+    For compatibility on $G_{8k+3}$, note that \Cref{lem:square-gadget} derives $(S_2,a)$ from the coefficients of $P_{8k+3}$ in degrees $4k+1,\ldots,8k+3$.
+    Next, the derivation of $\Psi=x(S^{(1)}_1)^2+(S^{(2)}_1)^2$ from $P'$ in the proof above shows that the coefficients $(\coeff{\Psi}{d})_{d\in 2k+G}$ are derivable from $P_{8k+3}$ (using also the known boundary contribution of $xS_3$), so \Cref{lem:compatible-power} and compatibility of $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ derive $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ from these coefficients.
+    Finally, the low-degree window $\idx{2k+1}$ derives $\alpha_0$ and $S_3$ from $xS_3+\alpha_0$, and the defining formulas then derive $(T^{(1)}_{8k+3},T^{(2)}_{8k+3})$, proving compatibility on $G_{8k+3}$.
+\end{proof}
+
+
+\subsection{Special Cases}
+\label{sec:special-cases}
+
+\subsection{3}
+\begin{lemma}
+    There exists a splittable pair for $3$.
+\end{lemma}
+\begin{proof}
+    Define $H_2[\alpha_1,\alpha_2](x)=(x+\alpha_2)x+\alpha_1$ and set
+    \[
+      T^{(1)}_3[\alpha_0,\alpha_1,\alpha_2](x)\coloneqq H_2,\qquad
+      T^{(2)}_3[\alpha_0,\alpha_1,\alpha_2](x)\coloneqq H_2+\alpha_0.
+    \]
+    Then $T^{(1)}_3$ and $T^{(2)}_3$ are monic of degree $2$ and
+    \[
+      P_3=xT^{(1)}_3+T^{(2)}_3
+        =x^3+(\alpha_2+1)x^2+(\alpha_1+\alpha_2)x+(\alpha_0+\alpha_1).
+    \]
+    Hence $\alpha_2=[x^2]P_3-1$, $\alpha_1=[x^1]P_3-\alpha_2$, and $\alpha_0=[x^0]P_3-\alpha_1$, so $P_3$ is decodable and $(T^{(1)}_3,T^{(2)}_3)$ is splittable.
+\end{proof}
+
+\subsection{15}
+\begin{algorithm}[H]
+    \caption{
+        Construction showing that $15$ is splittable.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_6, \alpha_7](x) = (x + \alpha_7)x + \alpha_6$
+        \State $H_4[\alpha_4, \alpha_5, \alpha_6, \alpha_7](x) = (H_2 + (x + \alpha_5))(H_2 - (x + \alpha_5)) + \alpha_4$
+        \\
+        \State $S^{(1)}_1 = Q_7[\alpha_8, \ldots, \alpha_{14}](x, H_2, H_4)$
+        \State $S^{(1)}_2 = H_2 + \alpha_{3}$
+        \State $S^{(1)}_3 = \alpha_1$
+        \State $T^{(1)}_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = H_4$
+        \State $S^{(2)}_2 = H_2 + \alpha_2$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3 + T^{(1)}_{15}
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3 + T^{(1)}_{15}$
+
+        \State \begin{align}
+            P_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            &= x T^{(1)}_{15} + T^{(2)}_{15}
+            \\&= (x+1)T^{(1)}_{15} + H_4^2 - (H_2 + \alpha_2)^2 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{27}
+\begin{algorithm}[H]
+    \caption{
+        Construction showing that $27$ is splittable.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_2, \alpha_3](x) = (x + \alpha_3)x + \alpha_2$
+        \\
+        \State $S^{(1)}_1 = Q_{13}[\alpha_14, \ldots, \alpha_{26}](x, H_2)$ \Comment This calculates the polynomial $H_4$.
+        \State $S^{(1)}_2 = Q_3[\alpha_4, \ldots, \alpha_6](x, H_2)$
+        \State $S^{(1)}_3 = \alpha_1$
+        \State $T^{(1)}_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = Q_7[\alpha_7, \ldots, \alpha_{13}](x, H_2, H_4)$
+        \State $S^{(2)}_2 = H_2$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3 + T^{(1)}_{27}
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3 + T^{(1)}_{27}$
+
+        \State \begin{align}
+            P_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            &= x T^{(1)}_{27} + T^{(2)}_{27}
+            \\&= (x+1)T^{(1)}_{27} + (S^{(2)}_1)^2 - H_2^2 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{31}
+\begin{algorithm}[H]
+    \caption{
+        Construction showing that $31$ is splittable.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_6, \alpha_7](x) = (x + \alpha_7)x + \alpha_6$
+        \State $H_4[\alpha_4, \alpha_5, \alpha_6, \alpha_7](x) = (H_2 + (x + \alpha_5))(H_2 - (x + \alpha_5)) + \alpha_4$
+        \\
+        \State $S^{(1)}_1 = \bar{Q}_{15}[\alpha_{16}, \ldots, \alpha_{30}](x, H_2, H_4)$
+        \State $S^{(1)}_2 = Q_7[\alpha_8, \ldots, \alpha_{14}](x, H_2, H_4)$
+        \State $S^{(1)}_3 = Q_3[\alpha_1, \alpha_2, \alpha_3](x, H_2)$
+        \State $T^{(1)}_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = S^{(1)}_1 + \alpha_{15}$
+        \State $S^{(2)}_2 = H_4$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3$
+
+        \State \begin{align}
+            P_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            &= x T^{(1)}_{31} + T^{(2)}_{31}
+            \\&= x(S^{(1)}_1)^2 + (S^{(1)}_1 + \alpha_{15})^2 - x(S^{(1)}_2)^2 - H_4^2 + x S^{(1)}_3 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}\label{lem:special-cases-splittable}
+    The special-case constructions for $15$, $27$, and $31$ produce splittable pairs.
+    Moreover, by composing compatibility certificates along each construction (via \Cref{lem:compat-certificate-compose}), the resulting pairs are compatible on an explicit window computable from the construction tree.
+    In particular, $P_{15}$, $P_{27}$, and $P_{31}$ are decodable.
+\end{lemma}
+\begin{proof}
+    In each construction, the subblocks $Q_3$ and $Q_7$ are decodable (cf.\ the $Q_3$ lemma and the $Q_{2^k-1}$ result), and $\bar Q_{15}$ is decodable given $(H_2,H_4)$ by \Cref{lem:barQ15}.
+    Each of these gadgets is built from the primitive compatible-pair operations (Additivity, Multiplicativity, and the square-closure lemma \Cref{lem:compatible-power}), starting from known powers and $\{0,1\}$-window base pairs.
+    Therefore each gadget comes with a compatibility certificate, and the constructions for $15$, $27$, and $31$ can be viewed as trees of these primitive operations.
+    Applying \Cref{lem:compat-certificate-compose} along the tree computes a compatibility certificate for the final pair (in particular, an explicit window on which reconstruction is performed).
+
+    For decodability, once the relevant intermediate blocks are decoded and hence derivable, the final polynomial $P_n=xT^{(1)}_n+T^{(2)}_n$ isolates the remaining scalar parameters in low degree and allows recovery of the pair by \Cref{lem:x-alpha-extraction} in the same way as in the preceding induction-step proofs.
+    In the $n=15$ and $n=27$ constructions we also set $T^{(2)}\gets T^{(2)}+T^{(1)}$ to ensure $\deg T^{(2)}=n-1$ while preserving extractability (since $T^{(1)}$ is already derivable once the top-degree windows are decoded).
+    Therefore, by the Additivity and Multiplicativity lemmas for compatible pairs and the $(x+\alpha)$-extraction lemma applied to the final $xT^{(1)}+T^{(2)}$ form, the outputs are splittable and thus decodable.
+\end{proof}
+
+\subsection{Final Construction and Decoder}
+\label{sec:final}
+
+We now summarize the constructions and the corresponding decoders in a single place.
+The point is that every step of the construction uses only:
+(i) the known-powers $Q_{2^t-1}$ gadgets; (ii) the fill gadget $A_{2^l}$; (iii) the $T_{k,2^l}$ splittable-pair recursion; and
+(iv) disjoint-window Additivity/Multiplicativity and the square gadget.
+In particular, we can propagate \emph{compatibility certificates} (\Cref{def:compat-certificate}) through the construction by repeated application of \Cref{lem:compat-certificate-compose}.
+The previous sections provide explicit decoding procedures for each primitive:
+\Cref{alg:decode-Q-2kminus1} for $Q_{2^t-1}$,
+\Cref{alg:decode-fill} for $A_{2^l}$,
+and \Cref{alg:decode-Rk2l} for the combined remainder polynomial used in the $T_{k,2^l}$ recursion.
+
+\begin{algorithm}[H]
+  \caption{Final splittable-pair construction for odd $n\ne 7$}\label{alg:final-construction}
+  \begin{algorithmic}
+    \Require odd integer $n\ge 3$, $n\ne 7$
+    \Ensure a splittable pair $(T^{(1)}_n,T^{(2)}_n)$ together with a compatibility certificate for it (a window $G$ and recovery procedure, in the sense of the constructive viewpoint), and the decodable polynomial $P_n=xT^{(1)}_n+T^{(2)}_n$
+
+    \If{$n\in\{3,15,27,31\}$}
+      \State Use the explicit special-case constructions in \Cref{sec:special-cases}.
+    \ElsIf{$n\equiv 1\pmod 4$}
+      \State Write $n=4k+1$ and construct $(T^{(1)}_{4k+1},T^{(2)}_{4k+1})$ via the $T_{2k,2}$ call; see \Cref{lem:4k+1-splittable}.
+    \ElsIf{$n\equiv 3\pmod 8$}
+      \State Write $n=8k+3$ and construct $(T^{(1)}_{8k+3},T^{(2)}_{8k+3})$ from a smaller splittable pair for $2k+1$ as in the $8k+3$ induction-step algorithm.
+    \Else
+      \State Write $n=8k+7$ with $k\ge 2$ and construct $(T^{(1)}_{8k+7},T^{(2)}_{8k+7})$ from a smaller splittable pair for $2k+1$ as in the $8k+7$ induction-step algorithm (using $\bar Q_{15}$ or $\bar Q_{8k+7}$ as needed).
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Final decoder for $P_n$ (structural recursion)}\label{alg:final-decoder}
+  \begin{algorithmic}
+    \Require odd $n\ge 3$, $n\ne 7$, and $P_n=xT^{(1)}_n+T^{(2)}_n$ produced by \Cref{alg:final-construction} (together with the relevant known-power data required by the internal $Q$ and $T$ calls)
+    \Ensure the full parameter list $(\alpha_0,\ldots,\alpha_{n-1})$
+
+    \If{$n\in\{3,15,27,31\}$}
+      \State Decode by the explicit special-case proofs in \Cref{sec:special-cases}.
+    \ElsIf{$n\equiv 1\pmod 4$}
+      \State Write $n=4k+1$.
+      \State Derive the quadratic base $H_2$ and its scalar shift $\tilde H_2$ from the top coefficients of $P_{4k+1}$ as in \Cref{lem:4k+1-splittable}.
+      \State Form the combined remainder polynomial $xR^{(1)}_{2k,2}+R^{(2)}_{2k,2}$ by subtracting $xH_2^{2k}+\tilde H_2^{2k}$.
+      \State Apply \Cref{alg:decode-Rk2l} at parameters $(k,l)=(2k,1)$ to extract the remaining block $\alpha_0,\ldots,\alpha_{4k-3}$.
+    \ElsIf{$n\equiv 3\pmod 8$}
+      \State Write $n=8k+3$ and apply the square-gadget extraction used in \Cref{lem:8k+3-splittable} to recover the intermediate $Q$ block(s) and reduce to decoding $P_{2k+1}$.
+      \State Decode the required $Q_{2^t-1}$ instances using \Cref{alg:decode-Q-2kminus1} (which in turn calls \Cref{alg:decode-fill}).
+      \State Recurse on $P_{2k+1}$.
+    \Else
+      \State Write $n=8k+7$ with $k\ge 2$ and apply the two square-gadget extractions used in \Cref{lem:8k+7-splittable} to recover the intermediate $Q$ block(s) and reduce to decoding $P_{2k+1}$.
+      \State Decode the required $\bar Q$ and $Q_{2^t-1}$ instances using \Cref{lem:barQ15}, \Cref{lem:barQ8k+7}, and \Cref{alg:decode-Q-2kminus1}.
+      \State Recurse on $P_{2k+1}$.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[All odd numbers except $7$ are splittable (via compatible splittable pairs)]
+    Assume $\mathrm{char}(\mathbb{F})\ne 2$ and the invertibility hypotheses in the lemmas above.
+    Then for every odd $n\ge 3$ with $n\ne 7$ there exists a splittable pair $(T^{(1)}_n,T^{(2)}_n)$ together with a compatibility certificate for it (on some window, given the auxiliary polynomials used by its construction), and hence $P_n=xT^{(1)}_n+T^{(2)}_n$ is decodable.
+\end{theorem}
+\begin{proof}
+    We argue by strong induction on odd $n$.
+    In addition to decodability, our inductive constructions maintain a compatibility invariant: the underlying splittable pairs are built from smaller compatible pairs (and from the known-power gadgets) using only Additivity, Multiplicativity, and \Cref{lem:compatible-power} over disjoint degree windows.
+    This is why the induction-step decoding lemmas assume compatibility of the input splittable pair on some window, and why the statements of \Cref{lem:8k+3-splittable} and \Cref{lem:8k+7-splittable} also record an explicit compatibility window for the output.
+
+    For $n\equiv 1\pmod 4$ and $n\ge 5$ we use \Cref{lem:4k+1-splittable}.
+
+    For $n\equiv 3\pmod 8$ we can write $n=8k+3$ with $k\ge 0$.
+    If $k=0$ then $n=3$ is splittable by \Cref{sec:special-cases}.
+    If $k=3$ then $n=27$ is covered by the special cases.
+    Otherwise $k\ne 3$, so $2k+1<n$ is odd and $2k+1\ne 7$; by the induction hypothesis we have a compatible splittable pair for $2k+1$, and \Cref{lem:8k+3-splittable} yields both decodability of $P_{8k+3}$ and compatibility of the constructed pair for $8k+3$.
+
+    For $n\equiv 7\pmod 8$ we can write $n=8k+7$ with $k\ge 0$.
+    The case $k=0$ is exactly $n=7$ and is excluded.
+    If $k=1$ then $n=15$ is covered by the special cases.
+    If $k=3$ then $n=31$ is covered by the special cases.
+    Otherwise $k\ne 1,3$, so $k\ge 2$ and $2k+1<n$ is odd with $2k+1\ne 7$; by the induction hypothesis we have a compatible splittable pair for $2k+1$, and \Cref{lem:8k+7-splittable} yields both decodability of $P_{8k+7}$ and compatibility of the constructed pair for $8k+7$.
+\end{proof}

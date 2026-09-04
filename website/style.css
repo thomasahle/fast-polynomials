@@ -1,0 +1,321 @@
+:root {
+  --bg: #f7f6f2; --panel: #ffffff; --ink: #1c1b18; --muted: #6f6a5e;
+  --accent: #8a4b2d; --accent-soft: #f2e4da; --border: #e2ddd2;
+  --mono-bg: #fbfaf7;                 /* the editable input */
+  --out-bg: #f0ece3; --out-border: #d9d2c4;   /* the generated output pane: clearly not an input */
+  --good: #2e6e4e; --pivot: #b0692f;
+  /* C syntax colours */
+  --hl-comment: #7a7466; --hl-preproc: #7a4d9c; --hl-string: #9a5b1e;
+  --hl-number: #1f5f9f; --hl-keyword: #8a4b2d; --hl-type: #2e6e4e; --hl-fn: #2a4f8f;
+  /* input polynomial colours */
+  --in-num: #1f5f9f; --in-var: #8a4b2d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #191817; --panel: #211f1d; --ink: #ece8e0; --muted: #9d968a;
+    --accent: #d69a71; --accent-soft: #3a2c22; --border: #383430;
+    --mono-bg: #171614;
+    --out-bg: #2a2724; --out-border: #403b35;
+    --good: #7fc9a2; --pivot: #dfa065;
+    --hl-comment: #8f887b; --hl-preproc: #c39bde; --hl-string: #e0a568;
+    --hl-number: #8fb9ea; --hl-keyword: #d69a71; --hl-type: #7fc9a2; --hl-fn: #9db7e8;
+    --in-num: #8fb9ea; --in-var: #d69a71;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #191817; --panel: #211f1d; --ink: #ece8e0; --muted: #9d968a;
+  --accent: #d69a71; --accent-soft: #3a2c22; --border: #383430;
+  --mono-bg: #171614;
+  --out-bg: #2a2724; --out-border: #403b35;
+  --good: #7fc9a2; --pivot: #dfa065;
+  --hl-comment: #8f887b; --hl-preproc: #c39bde; --hl-string: #e0a568;
+  --hl-number: #8fb9ea; --hl-keyword: #d69a71; --hl-type: #7fc9a2; --hl-fn: #9db7e8;
+  --in-num: #8fb9ea; --in-var: #d69a71;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.55 Charter, Georgia, 'Times New Roman', serif;
+}
+.wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+/* two-column header: title + intro left, "Read the paper" card right; stacks when narrow */
+header {
+  display: flex; flex-wrap: wrap; gap: 1.25rem 2.5rem; align-items: flex-start;
+  justify-content: space-between; margin-bottom: 1.75rem;
+}
+header .head-main { flex: 1 1 24rem; min-width: 0; }
+header h1 { font-size: 1.9rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+header .sub { color: var(--muted); margin: 0; max-width: 44rem; }
+header .sub a { color: var(--accent); }
+header .sub .ours { color: var(--ink); font-style: normal; font-weight: 700; }
+.header-links {
+  flex: 0 1 21rem; display: flex; flex-direction: column; gap: .55rem;
+}
+.paper-card {
+  display: flex; gap: .7rem; align-items: flex-start;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: .8rem .95rem; color: inherit; text-decoration: none;
+  font-size: .85rem; line-height: 1.45;
+}
+.paper-card:hover { border-color: var(--accent); }
+.paper-card .doc-icon { color: var(--accent); flex: none; margin-top: .1rem; }
+.paper-card b { display: block; margin-bottom: .1rem; }
+.paper-card .paper-txt > span { color: var(--muted); }
+.github-link {
+  align-self: flex-end; display: inline-flex; align-items: center; gap: .4rem;
+  color: var(--ink); text-decoration: none; font: 700 .82rem/1.2
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: .38rem .58rem; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--panel);
+}
+.github-link:hover { border-color: var(--accent); color: var(--accent); }
+.github-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.github-stars {
+  min-width: 2.4rem; margin-left: .12rem; padding-left: .52rem;
+  border-left: 1px solid var(--border); display: inline-flex; align-items: center;
+  justify-content: center; gap: .28rem; color: var(--muted); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the single card: input → field / method rows → tabs + pane → stats line */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.25rem 1.4rem; margin-bottom: 1.25rem;
+}
+
+/* heading row: the label left, example chips + degree stepper right */
+.head-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .4rem 1rem; margin-bottom: .55rem;
+}
+label.head { display: block; font-weight: 700; }
+.ex-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; margin-left: auto; }
+
+/* example chips, regenerated at the chosen degree */
+.examples { display: inline-flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.examples a.chip {
+  border: 1px solid var(--border); border-radius: 999px; background: var(--mono-bg);
+  padding: .14rem .7rem; color: var(--accent); cursor: pointer; font-size: .88rem;
+  user-select: none;
+}
+.examples a.chip:hover { border-color: var(--accent); }
+.examples .rad { border-top: 1.2px solid currentColor; }   /* radical overline: √(1+x) */
+.monic-toggle {
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  padding: .14rem .7rem; color: var(--muted); cursor: pointer; font: inherit;
+  font-size: .82rem; line-height: inherit;
+}
+.monic-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.monic-toggle.on { border-color: var(--accent); background: var(--mono-bg); color: var(--accent); font-weight: 700; }
+
+/* degree chooser (− N +) next to the chips */
+.degree { display: inline-flex; align-items: center; gap: .1rem; }
+.degree button {
+  width: 1.55rem; height: 1.55rem; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; color: var(--ink); cursor: pointer; font: inherit; line-height: 1;
+}
+.degree button:hover { border-color: var(--accent); color: var(--accent); }
+.degree .deg-n { color: var(--muted); font-size: .88rem; padding: 0 .4rem; white-space: nowrap; }
+
+/* The polynomial input: a transparent textarea stacked over a highlighted
+   backdrop.  Both share font, padding, border width, wrapping and width, so
+   the painted tokens sit exactly under the (invisible) typed text; the
+   textarea keeps the caret, selection, focus ring and the resize handle. */
+.poly-edit { position: relative; }
+.poly-edit .poly-hl, textarea#poly-in {
+  font: 15px/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  letter-spacing: normal; tab-size: 4;
+  padding: .7rem .8rem; border: 1px solid var(--border); border-radius: 8px;
+  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; hyphens: none;
+  margin: 0;
+}
+textarea#poly-in {
+  display: block; position: relative; z-index: 1;
+  width: 100%; min-height: 4.2rem; resize: vertical;
+  color: transparent; caret-color: var(--ink); background: transparent;
+}
+textarea#poly-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+textarea#poly-in::selection { background: rgba(138, 75, 45, .28); }
+.poly-edit .poly-hl {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  color: var(--ink); background: var(--mono-bg); border-color: transparent;
+}
+.poly-hl .in-num { color: var(--in-num); }
+.poly-hl .in-var { color: var(--in-var); }
+
+/* control rows: the button groups start at the card's left edge, aligned with
+   each other and with the view tabs; the small-caps legend sits to their right */
+.controls { display: flex; flex-wrap: wrap; gap: .6rem .8rem; align-items: center; margin-top: .9rem; }
+.controls > .lbl, .subopts .lbl {
+  font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+}
+.controls > .lbl { margin-left: .15rem; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button {
+  border: 0; background: transparent; color: var(--muted);
+  padding: .45rem .9rem; font: inherit; cursor: pointer;
+}
+.seg button sup { font-size: .7em; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.seg button:disabled { opacity: .45; cursor: default; }
+button.cancel {
+  margin-left: .6rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+  background: transparent; color: var(--muted); font: inherit; font-size: .82rem;
+  padding: .12rem .55rem;
+}
+
+/* field chooser: one pill group per registry group (exact ℚ ℝ · Mersenne
+   primes 2⁶¹−1 2⁸⁹−1 2¹²⁷−1 · binary fields GF(2³²) GF(2⁶⁴) GF(2¹²⁸)), each led
+   by a muted group caption.  Labels are short and the pills tight so that all
+   three groups plus the FIELD legend share one line at the card's 60rem width
+   (measured headless in Chromium: groups 756px + legend 36px of the 873px available). */
+.field-groups { display: inline-flex; flex-wrap: wrap; gap: .5rem .5rem; align-items: center; }
+.field-groups .seg .grp {
+  display: inline-flex; align-items: center; align-self: stretch;
+  padding: 0 .45rem 0 .55rem; border-right: 1px solid var(--border);
+  font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; cursor: default;
+}
+.field-groups .seg { flex-wrap: wrap; max-width: 100%; }   /* narrow screens: a group wraps inside its pill */
+.field-groups .seg button { padding: .42rem .5rem; white-space: nowrap; }
+
+#error { color: #b03030; margin-top: .8rem; white-space: pre-wrap; }
+
+/* method chips */
+.seg.methods { flex-wrap: wrap; display: inline-flex; }
+.seg.methods button { display: inline-grid; }
+.seg.methods button > span, .seg.methods button::after { grid-area: 1 / 1; }
+.seg.methods button::after {
+  content: attr(data-label); font-weight: 700; visibility: hidden; pointer-events: none;
+}
+
+/* Output section: the view tabs are drawn as attached tabs whose baseline IS
+   the pane's top border (the active tab paints over it in the pane colour). */
+.out { margin-top: 1.1rem; }
+.viewbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 0 1rem; border-bottom: 1px solid var(--out-border); margin: 0;
+}
+.views { display: flex; gap: .25rem; }
+.views button {
+  border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0;
+  background: none; cursor: pointer; margin-bottom: -1px;
+  color: var(--muted); font: inherit; font-size: .82rem; letter-spacing: .06em;
+  text-transform: uppercase; padding: .38rem .85rem .42rem;
+}
+.views button:hover { color: var(--ink); }
+.views button.on {
+  color: var(--ink); font-weight: 700;
+  background: var(--out-bg); border-color: var(--out-border);
+  border-bottom: 1px solid var(--out-bg);
+}
+.subopts { display: flex; flex-wrap: wrap; gap: .2rem .9rem; align-items: center; font-size: .82rem; color: var(--muted); padding-bottom: .35rem; }
+.subopts .strip { display: inline-flex; gap: .2rem; align-items: center; }
+.subopts .lbl { margin-right: .3rem; }
+.subopts a {
+  cursor: pointer; padding: .1rem .55rem; border-radius: 999px; border: 1px solid transparent;
+  color: var(--muted); user-select: none;
+}
+.subopts a.on { color: var(--accent); border-color: var(--accent); }
+.subopts a.off { opacity: .4; cursor: default; }
+.subopts a:not(.on):not(.off):hover { color: var(--ink); }
+
+/* the pane wrapper anchors the Copy button to the pane's top-right corner */
+.pane-wrap { position: relative; }
+button.copy {
+  position: absolute; top: .55rem; right: .55rem;
+  border: 1px solid var(--out-border); border-radius: 6px; background: var(--out-bg);
+  color: var(--accent); cursor: pointer; font: inherit; font-size: .8rem;
+  padding: .12rem .6rem;
+}
+button.copy:hover { border-color: var(--accent); }
+
+/* the generated output: pane colour distinct from the input, no top border
+   (the tab row's line is the top edge), square top corners under the tabs */
+pre.chain, .graph-pane {
+  background: var(--out-bg); border: 1px solid var(--out-border); border-top: 0;
+  border-radius: 0 0 8px 8px; margin: 0;
+}
+pre.chain {
+  padding: 1rem 1.1rem; overflow-x: auto;
+  font: 14px/1.65 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+pre.chain .op { color: var(--accent); }
+pre.chain .cm { color: var(--muted); }
+pre.chain .none { color: var(--muted); font-style: italic; }
+
+/* C syntax highlighting (js/highlight.js) */
+.hl-comment { color: var(--hl-comment); font-style: italic; }
+.hl-preproc { color: var(--hl-preproc); }
+.hl-string  { color: var(--hl-string); }
+.hl-number  { color: var(--hl-number); }
+.hl-keyword { color: var(--hl-keyword); font-weight: 700; }
+.hl-type    { color: var(--hl-type); }
+.hl-fn      { color: var(--hl-fn); }
+
+/* graph view: the SVG is sized to content; the pane scrolls horizontally */
+.graph-pane { padding: .6rem; overflow-x: auto; overflow-y: hidden; }
+.graph-pane svg { display: block; max-width: none; }
+.graph-pane .none { color: var(--muted); font-style: italic; padding: .4rem .5rem; }
+.graph-legend {
+  display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem;
+  color: var(--muted); font-size: .8rem;
+}
+.graph-legend i {
+  display: inline-block; font-style: normal; text-align: center; vertical-align: middle;
+  margin-right: .3rem; font: 700 12px/18px ui-monospace, Menlo, monospace;
+}
+.graph-legend .lg-mul { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--panel); }
+.graph-legend .lg-add { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink); color: var(--ink); line-height: 15px; }
+.graph-legend .lg-const { padding: 0 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--out-bg); color: var(--ink); }
+.graph-legend .lg-dash { width: 22px; height: 0; border-top: 2px dashed var(--muted); }
+.graph-legend .lg-k { color: var(--ink); }
+
+/* comparison table at the bottom of the card: one centered table; the
+   selected method is indicated only with ordinary bold text */
+.foot {
+  display: flex; flex-wrap: wrap; gap: .6rem 1.5rem; align-items: flex-start;
+  justify-content: space-between; margin: .85rem 0 0;
+  color: var(--muted); font-size: .9rem;
+}
+.cmp-wrap { flex: 1 1 22rem; min-width: 0; overflow-x: auto; }
+table.cmp { border-collapse: collapse; width: 100%; max-width: 40rem; margin-inline: auto; font-size: .88rem; color: var(--ink); }
+table.cmp th, table.cmp td {
+  padding: .26rem .65rem; text-align: right; white-space: nowrap;
+  border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
+}
+table.cmp th {
+  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 400;
+  color: var(--muted); padding-bottom: .2rem;
+}
+table.cmp th.m, table.cmp td.m { text-align: left; padding-left: .5rem; }
+table.cmp tbody tr { cursor: pointer; }
+table.cmp tbody tr:hover td { background: var(--mono-bg); }
+table.cmp tbody tr.on td { font-weight: 700; }
+table.cmp tbody tr.off { cursor: default; color: var(--muted); }
+table.cmp tbody tr.off:hover td { background: none; }
+table.cmp td.na { text-align: left; }
+table.cmp .why { font-size: .78rem; white-space: normal; }
+table.cmp th .abbr { display: none; }
+@media (max-width: 480px) {                 /* phones: compact headers + padding, the wrapper still scrolls if needed */
+  table.cmp { font-size: .82rem; }
+  table.cmp th, table.cmp td { padding: .24rem .35rem; }
+  table.cmp td.m { white-space: normal; }   /* long method names (Rabin–Winograd) may wrap */
+  table.cmp th .full { display: none; }
+  table.cmp th .abbr { display: inline; }
+}
+button.share {
+  display: inline-flex; align-items: center; gap: .4rem;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  color: var(--accent); cursor: pointer; font: inherit; font-size: .85rem;
+  padding: .28rem .75rem;
+}
+button.share:hover { border-color: var(--accent); }
+
+footer { color: var(--muted); font-size: .85rem; margin-top: 2.5rem; }
+footer a { color: var(--accent); }
+
+/* stale-while-revalidate: while a new job runs the previous output stays
+   mounted and dims briefly (the delay hides the dim on fast compiles) */
+#out { transition: opacity 0.12s ease; }
+#out.stale { opacity: 0.55; transition: opacity 0.15s ease 0.12s; }

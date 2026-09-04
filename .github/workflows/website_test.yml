@@ -1,0 +1,58 @@
+name: Website tests
+
+on:
+  push:
+    paths:
+      - 'website/**'
+      - '.github/workflows/website_test.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/website_test.yml'
+  workflow_dispatch:
+    inputs:
+      stress:
+        description: Run the full characteristic-2 stress suite
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.event_name != 'schedule'
+    name: ${{ matrix.group }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [core, fields, char0, char2, cgen, belaga, motzkin, methods, pan-complex, pan-real]
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: node test/run-tests.js ${{ matrix.group }}
+
+  stress:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.stress)
+    name: characteristic-2 stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm run test:stress

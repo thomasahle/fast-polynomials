@@ -1,0 +1,148 @@
+\section{Optimized Polynomial Circuits}\label{appendix:polynomials}
+
+This appendix presents optimized arithmetic circuits for computing bijective polynomials of degrees $n = 4$ through $n = 9$.
+The circuits were found using randomized search, optimizing for both structural complexity (number of addition operations)
+and critical path depth (height).
+
+\subsection{Characteristic 2 ($\F_{2^{64}}$)}
+
+Each circuit computes a polynomial $P(x)$ over $\F_{2^{64}}$ using carryless multiplications,
+parameterized by keys $a_0, a_1, \ldots$.
+All additions are XOR, and each multiplication uses Galois field reduction.
+Benchmarks measured on Apple M1 using ARM NEON PMULL.
+
+\medskip
+\noindent
+\begin{tabular}{@{}p{0.47\textwidth}@{\hspace{0.06\textwidth}}p{0.47\textwidth}@{}}
+\textbf{Degree 4} (7 keys) &
+\textbf{Degree 5} (9 keys) \\[2pt]
+$y = (x + 0)(x + a_0)$ &
+$y = (x + 0)(x + 0)$ \\
+$z = (x + a_1)(y + a_2)$ &
+$z = (x + y + a_0)(x + a_1)$ \\
+$t = (x + y + z + a_3)$ &
+$t = (z + a_2)(y + z + a_3)$ \\
+$\quad\; \cdot(x + y + z + 0)$ &
+$u = (x + z + t + a_4)$ \\
+$u = (x + a_4)(y + t + a_5)$ &
+$\quad\; \cdot(x + y + z + a_5)$ \\
+$P = u + a_6$ &
+$v = (x + a_6)(y + a_7)$ \\
+&
+$P = u + v + a_8$ \\[2pt]
+\emph{6.04 ns, h=4, 12 XORs} &
+\emph{7.36 ns, h=4, 16 XORs} \\[6pt]
+\textbf{Degree 6} (11 keys) &
+\textbf{Degree 7} (13 keys) \\[2pt]
+$y = (x + 0)(x + a_0)$ &
+$y = (x + 0)(x + 0)$ \\
+$z = (x + y + a_1)(x + y + 0)$ &
+$z = (y + a_0)(x + y + a_1)$ \\
+$t = (x + z + a_2)(z + a_3)$ &
+$t = (x + z + a_2)(x + a_3)$ \\
+$u = (t + a_4)(x + a_5)$ &
+$u = (x + y + a_4)(x + t + a_5)$ \\
+$v = (x + y + z + t + u + a_6)$ &
+$v = (y + z + a_6)(u + a_7)$ \\
+$\quad\; \cdot(y + a_7)$ &
+$w = (y + z + t + a_8)$ \\
+$w = (x + a_8)(y + z + t + a_9)$ &
+$\quad\; \cdot(x + u + a_9)$ \\
+$P = z + v + w + a_{10}$ &
+$s = (x + z + u + v + w + a_{10})$ \\
+&
+$\quad\; \cdot(x + a_{11})$ \\
+&
+$P = t + s + a_{12}$ \\[2pt]
+\emph{3.22 ns, h=5, 22 XORs} &
+\emph{5.57 ns, h=6, 26 XORs} \\[6pt]
+\textbf{Degree 8} (15 keys) &
+\textbf{Degree 9} (17 keys) \\[2pt]
+$y = (x + 0)(x + a_0)$ &
+$y = (x + 0)(x + a_0)$ \\
+$z = (x + a_1)(x + y + a_2)$ &
+$z = (x + y + a_1)(y + a_2)$ \\
+$t = (y + z + a_3)(x + z + a_4)$ &
+$t = (y + a_3)(x + a_4)$ \\
+$u = (x + t + a_5)(y + z + t + a_6)$ &
+$u = (x + y + z + t + a_5)$ \\
+$v = (x + y + z + u + a_7)(y + a_8)$ &
+$\quad\; \cdot(x + y + t + a_6)$ \\
+$w = (y + a_9)(z + a_{10})$ &
+$v = (t + a_7)(x + y + z + t + u + a_8)$ \\
+$s = (x + y + z + t + u + w + a_{11})$ &
+$w = (t + a_9)(x + y + a_{10})$ \\
+$\quad\; \cdot(x + y + a_{12})$ &
+$s = (y + u + a_{11})(x + z + u + 0)$ \\
+$r = (x + 0)(x + y + v + w + a_{13})$ &
+$r = (x + t + w + s + a_{12})(x + t + a_{13})$ \\
+$P = s + r + a_{14}$ &
+$q = (t + u + a_{14})(z + t + a_{15})$ \\
+&
+$P = y + v + r + q + a_{16}$ \\[2pt]
+\emph{6.38 ns, h=6, 34 XORs} &
+\emph{14.09 ns, h=5, 40 XORs}
+\end{tabular}
+
+\subsection{Characteristic 0 ($\Z/(2^{89}-1)\Z$)}
+
+For characteristic 0 implementations, we use the Mersenne prime $M_{89} = 2^{89} - 1$.
+Each circuit uses 89-bit modular arithmetic with keys $a_0, a_1, \ldots \in [0, M_{89})$.
+The bijectivity of these polynomials is verified using the Jacobian determinant test.
+
+\medskip
+\noindent
+\begin{tabular}{@{}p{0.47\textwidth}@{\hspace{0.06\textwidth}}p{0.47\textwidth}@{}}
+\textbf{Degree 4} (7 keys) &
+\textbf{Degree 5} (9 keys) \\[2pt]
+$y = (x + 0) \cdot (x + a_0)$ &
+$y = (x + 0) \cdot (x + 0)$ \\
+$z = (x + a_1) \cdot (y + a_2)$ &
+$z = (x + y + a_0) \cdot (y + a_1)$ \\
+$t = (x + z + a_3) \cdot (x + 0)$ &
+$t = (y + z + a_2) \cdot (x + a_3)$ \\
+$u = (t + a_4) \cdot (z + a_5)$ &
+$u = (z + a_4) \cdot (t + a_5)$ \\
+$P = y + u + a_6$ &
+$v = (x + a_6) \cdot (y + a_7)$ \\
+&
+$P = u + v + a_8$ \\[2pt]
+\emph{Height 4, 9 additions} &
+\emph{Height 4, 12 additions} \\[6pt]
+\textbf{Degree 6} (11 keys) &
+\textbf{Degree 7} (13 keys) \\[2pt]
+$y = (x + 0) \cdot (x + a_0)$ &
+$y = (x + 0) \cdot (x + 0)$ \\
+$z = (y + a_1) \cdot (x + y + a_2)$ &
+$z = (y + a_0) \cdot (x + y + a_1)$ \\
+$t = (y + z + a_3) \cdot (x + a_4)$ &
+$t = (y + z + a_2) \cdot (x + a_3)$ \\
+$u = (y + t + a_5) \cdot (t + a_6)$ &
+$u = (y + z + a_4) \cdot (z + a_5)$ \\
+$v = (y + a_7) \cdot (z + a_8)$ &
+$v = (z + t + a_6) \cdot (z + u + a_7)$ \\
+$w = (u + a_9) \cdot (x + 0)$ &
+$w = (y + a_8) \cdot (x + a_9)$ \\
+$P = v + w + a_{10}$ &
+$s = (x + y + z + t + u + w + a_{10})$ \\
+&
+$\quad\; \cdot(x + a_{11})$ \\
+&
+$P = v + s + a_{12}$ \\[2pt]
+\emph{Height 5, 15 additions} &
+\emph{Height 4, 24 additions} \\[6pt]
+\textbf{Degree 8} (15 keys) & \\[2pt]
+$y = (x + 0) \cdot (x + a_0)$ & \\
+$z = (y + a_1) \cdot (x + 0)$ & \\
+$t = (z + a_2) \cdot (x + y + z + a_3)$ & \\
+$u = (y + t + a_4) \cdot (z + t + a_5)$ & \\
+$v = (t + a_6) \cdot (x + t + a_7)$ & \\
+$w = (t + a_8) \cdot (x + a_9)$ & \\
+$s = (z + a_{10}) \cdot (x + y + v + a_{11})$ & \\
+$r = (y + a_{12}) \cdot (u + v + a_{13})$ & \\
+$P = w + s + r + a_{14}$ & \\[2pt]
+\emph{Height 5, 25 additions} &
+\end{tabular}
+
+\medskip
+\noindent\textbf{Note:} For characteristic 0, multiplications by $x+0$ correspond to squaring operations, which can be computed more efficiently than general multiplications using the identity $(a+b)^2 = a^2 + 2ab + b^2 \pmod{M_{89}}$.

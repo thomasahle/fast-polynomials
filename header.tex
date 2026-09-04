@@ -1,0 +1,101 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.3in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[UKenglish]{babel}
+
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+%\usepackage{nath}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+\newtheorem{fact}{Fact}
+
+
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+% For using [H] float placement in algorithms
+\usepackage{float}
+
+% Thomas packages
+
+
+\usepackage{todonotes}
+\presetkeys{todonotes}{inline}{}
+
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage[hypertexnames=false]{hyperref}
+\makeatletter
+% Avoid duplicate hyperlink destinations when counters reset (e.g. algorithmic line numbers).
+\providecommand*{\theHALG@line}{\arabic{algorithm}.\arabic{ALG@line}}
+\makeatother
+\usepackage{cleveref}
+\usepackage{autonum}
+\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}
+% Figures
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\asvec}{vec}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+% Allow page break in align
+\allowdisplaybreaks
+
+
+\usepackage{mathtools}
+\DeclarePairedDelimiterX{\infdivx}[2]{(}{)}{#1 \,\delimsize\|\, #2}
+\DeclareMathOperator*{\Div}{D}
+\newcommand{\D}{\Div\infdivx}
+\DeclareMathOperator*{\smallDiv}{d}
+\newcommand{\di}{\smallDiv\infdivx}
+\DeclareMathOperator*{\h}{h}
+
+% Jakob packages
+\newcommand{\eps}{\varepsilon}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Q}{\mathbb{Q}}
+
+\newcommand{\abs}[1]{\left\lvert #1\right\rvert}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+\newcommand{\setbuilder}[2]{\left\{ #1 \; \middle\vert \; #2 \right\}}
+\newcommand{\norm}[2]{\left\| #1 \right\|_{#2}}
+\newcommand{\innerprod}[2]{\left\langle #1, \; #2 \right\rangle}
+
+\newcommand{\Prp}[1]{\Pr\!\left[#1 \right]}
+\newcommand{\Prpcond}[2]{\Pr\!\left[#1 \; \middle| \; #2 \right]}
+\DeclareMathOperator*{\E}{E}
+\newcommand{\Epcond}[2]{\E\!\left[#1 \; \middle| \; #2 \right]}
+
+\newcommand{\br}[1]{\left( #1 \right)}
+
+
+\newcommand{\smat}[1]{\left[\begin{smallmatrix}#1\end{smallmatrix}\right]}
+\newcommand{\svec}[1]{[\begin{smallmatrix}#1\end{smallmatrix}]}
+
+\newcommand{\floor}[1]{\left\lfloor {#1} \right\rfloor}
+
+% Index sets (avoid ambiguity of [n] across notes)
+% Inclusive: {0,1,...,n}
+\newcommand{\idx}[1]{\{0,\dotsc,#1\}}
+% Half-open: {0,1,...,n-1}
+\newcommand{\rng}[1]{\{0,\dotsc,#1-1\}}
+
+% Better math spacing in coefficient extractor
+\newcommand{\coeff}[2]{[x^{#2}]\,#1}
+% Clarify [n] notation inline where needed
+% \newcommand{\range}[1]{\{0,\ldots,#1\}}

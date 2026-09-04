@@ -1,0 +1,25 @@
+\subsection{Related Work}
+\label{sec:related}
+
+\paragraph{Polynomial evaluation with preprocessing.}
+Horner's rule evaluates a degree-$n$ polynomial with $n$ multiplications~\cite{knuth1962evaluation}.
+Allowing preprocessing of the coefficients can reduce the number of multiplications; a classical general-purpose method is Paterson--Stockmeyer~\cite{paterson1973evaluation}.
+Motzkin gave explicit low-degree constructions achieving roughly $n/2$ multiplications for monic polynomials, but over general fields such constructions often rely on solving polynomial systems.
+Kedlaya and Umanski~\cite{kedlaya2011fast} gave asymptotically fast algorithms with preprocessing.
+Rabin and Winograd introduced \emph{rational preprocessing}~\cite{rabin1972number}, where preprocessing uses only field operations and division, obtaining $n/2+O(\log n)$ multiplications.
+
+\paragraph{Hashing.}
+Polynomial evaluation over finite fields is a standard tool for $k$-wise independent hashing and universal hashing~\cite{wegman1981new}.
+When multiplications dominate the cost (e.g.\ due to modular reduction), it is natural to seek constructions that trade fewer multiplications for other resources.
+Examples include simple tabulation hashing~\cite{patracscu2012power} and expansion-based constructions~\cite{christiani2015independence}.
+Another widely used universal hash is the pseudo-dot-product (NH) hash, which uses about half as many multiplications as a full dot product~\cite{winograd1968new, black1999umac}.
+CLHASH~\cite{lemire2015clhash} adapts the NH construction to carryless multiplication over $\F_{2^{64}}$,
+achieving very high throughput by exploiting the independence of all multiplications;
+however, it requires $O(n)$ random keys to hash $n$ values, compared to $O(1)$ keys for polynomial-based methods.
+We include CLHASH (denoted CLNH) in our experimental comparisons as a throughput baseline.
+
+\paragraph{Cryptographic workloads.}
+Fast evaluation of low-degree polynomials over finite fields appears in symmetric cryptography (e.g.\ polynomial representations of S-boxes and analyses of masking schemes~\cite{DBLP:conf/fse/CarletGPQR12}) and in threshold secret sharing~\cite{shamir1979share}.
+Section~\ref{sec:experiments:crypto} benchmarks our constructions on share-generation and polynomial-PRF style workloads.
+
+% Longer scratch material is kept in notes/related_notes.tex (not part of the paper build).

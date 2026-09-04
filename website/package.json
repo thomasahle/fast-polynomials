@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test/run-tests.js",
+    "test:stress": "FAST_POLY_STRESS=1 node test/char2.test.js"
+  }
+}

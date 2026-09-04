@@ -1,0 +1,503 @@
+
+\section{Lower Bound}
+\label{sec:lower}
+
+Throughout the paper, we have build our polynomial evaluation programs as straight-line programs,
+like
+Motzkin's degree 4 example:
+\begin{align}
+   u_1 &= x (x + a_0), \\
+   u_2 &= (u_1 + x + a_1)(x + a_2), \\
+   P &= u_2 + a_3,
+\end{align}
+which showed that degree 4 can be done with 2 multiplications.
+
+It is known that degree $2n+1$ polynomials require at least $n$ multiplications~\cite{paterson1973evaluation}.
+We conjecture that with rational decoding, \emph{degree $2n$ polynomials require at least $n+1$ mu
+ltiplications},
+which would show that the small overhead in our algorithm is necessary.
+
+In this section we prove the conjecture for degree~6 (i.e., that 3 multiplications do not suffice)
+.
+The general case remains open; we outline a potential approach in \cref{sec:lower:general}.
+
+\subsection{Degree 6 with 3 Multiplications}
+
+
+Consider a polynomial chain with three multiplications:
+\begin{align}
+   y&=x(y^{(2)}_x x + a_0)
+   \\
+   z&=(z^{(1)}_y y + z^{(1)}_x x + a_1)
+      (z^{(2)}_y y + z^{(2)}_x x + a_2)
+      \\
+   w&=(w^{(1)}_z z + w^{(1)}_y y + w^{(1)}_x x + a_3)
+      (w^{(2)}_z z + w^{(2)}_y y + w^{(2)}_x x + a_4)
+   \\
+   P &= P_w w + P_z z + P_y y + P_x x + a_5.
+\end{align}
+note we don't count the multiplications by the parameters $y_x$, $z_y$, etc.
+
+Set $a_5=0$ and, by scaling the leading factors, assume $w^{(1)}_z=1$ and $P_w=1$ (absorbing const
+ants into $w$).
+Introduce the shorthand
+\[
+   A:=z+w^{(1)}_y y+w^{(1)}_x x+a_3,\quad
+   B:=w^{(2)}_z z+w^{(2)}_y y+w^{(2)}_x x+a_4,\quad
+   F:=y+z^{(1)}_x x+a_1,\quad
+   G:=z^{(2)}_y y+z^{(2)}_x x+a_2.
+\]
+Then the parameter–derivatives that will form the rows of our matrix are
+\[
+   \frac{\partial P}{\partial a_4}=A,\qquad
+   \frac{\partial P}{\partial a_3}=B,\qquad
+   \frac{\partial P}{\partial a_2}=\bar z\,F,\qquad
+   \frac{\partial P}{\partial a_1}=\bar z\,G,\qquad
+   \frac{\partial P}{\partial a_0}=\bar y\,x,\qquad
+   \frac{\partial P}{\partial a_5}=1,
+\]
+where
+\[
+   \bar z:=\frac{\partial P}{\partial z}=P_z+B+w^{(2)}_zA,\qquad
+   \bar y:=\frac{\partial P}{\partial y}=P_y+w^{(1)}_y B+w^{(2)}_y A+\bar z\,(G+z^{(2)}_y F).
+\]
+
+Our goal is to show that for suitable $b,c$ with $b+c=-1$ and a suitable choice of parameters $a_0
+,\dots,a_4$ we have
+\[
+   b\,\nabla P(-1)+\nabla P(0)+c\,\nabla P(1)=0.
+\]
+This implies that the three columns $\nabla P(-1)$, $\nabla P(0)$ and $\nabla P(1)$ are linearly d
+ependent and hence the $3\times 6$ Jacobian block has zero determinant.
+
+Another observation (from the original draft) is that any program containing a factor $v=(P+a_i)(P
++a_j)$ will not work; in particular we must have
+\[
+   D_z := \begin{vmatrix} 1 & z^{(1)}_x \\ z^{(2)}_y & z^{(2)}_x \end{vmatrix} \neq 0.
+\]
+
+Note that $\frac{\partial P}{\partial a_5}=1$, so the condition $b+c=-1$ is necessary. We will alw
+ays set $a_5=0$.
+
+We proceed by cases. Throughout we use the abbreviations
+\[
+   D_w :=
+   \begin{vmatrix}
+      1 & w^{(1)}_y \\
+      w^{(2)}_z & w^{(2)}_y
+   \end{vmatrix}
+   ,\qquad
+   D_z :=
+   \begin{vmatrix}
+      1 & z^{(1)}_x \\
+      z^{(2)}_y & z^{(2)}_x
+   \end{vmatrix}
+   .
+\]
+
+\paragraph{Case 1: $w^{(2)}_z\neq 0$ and $D_w\neq 0$.}
+Take $a_0=0$ and choose
+\begin{align}
+   b&= -\frac{\,w^{(2)}_x+w^{(2)}_y-(w^{(1)}_x+w^{(1)}_y)w^{(2)}_z\,}{2D_w},\\
+   c&= -\frac{\,w^{(2)}_x-w^{(2)}_y-(w^{(1)}_x-w^{(1)}_y)w^{(2)}_z\,}{2D_w}.
+\end{align}
+Then one can pick $a_1,a_2,a_3,a_4$ as rational functions of the program parameters (with denomina
+tors involving $w^{(2)}_z$, $D_w$ and $D_z$) so that $b\,\nabla P(-1)+\nabla P(0)+c\,\nabla P(1)=0
+$.
+
+\paragraph{Case 2: $D_w=0$ and $w^{(2)}_z\neq 0$.}
+Here $w^{(2)}_y=w^{(2)}_z w^{(1)}_y$; take $b=c=-\tfrac12$ and $a_0=0$.
+Setting either $a_3=0$ or $a_4=0$ and solving for the remaining $a$'s yields the desired identity.
+
+\paragraph{Case 3: $w^{(2)}_z=0$ (necessarily $w^{(2)}_y\neq 0$).}
+Take
+\[
+   b=-1,\qquad c=0,\qquad a_4=-P_z,\qquad a_3=\frac{P_z w^{(1)}_y-P_y}{\,w^{(2)}_y\,}.
+\]
+With $w^{(1)}_z=1$ and $a_4=-P_z$ we have $\bar z=P_z+B=P_z+(w^{(2)}_y y+w^{(2)}_x x - P_z)=w^{(2)
+}_y y+w^{(2)}_x x$.
+Thus the condition $-\nabla P(-1)+\nabla P(0)=0$ reduces to the following identities at $x\in\{-1,
+0\}$:
+\begin{align}
+   &\text{(i)}\; B(-1)=B(0),\qquad
+   \text{(ii)}\; A(-1)=A(0),\\
+   &\text{(iii)}\; \bar z(-1)F(-1)=\bar z(0)F(0),\;\; \bar z(-1)G(-1)=\bar z(0)G(0),\\
+   &\text{(iv)}\; \bar y(-1)=0.
+\end{align}
+Because $x(0)=0$, (iv) is exactly what is needed for the $a_0$-row; our choice of $a_3$ makes
+\[
+   P_y+w^{(1)}_y B+w^{(2)}_y A = 0\quad\text{at}\ x\in\{-1,0\},
+\]
+and since $\bar z(-1)=\bar z(0)$ by (i), the $\bar z(\cdot)(\,\cdot\,)$-part in $\bar y$ does not
+affect (iv).
+
+We now split Case 3 in two subcases.
+
+\emph{Case 3a (aligned slope): $w^{(2)}_x = w^{(2)}_y z^{(1)}_x$.}
+Set
+\[
+   a_0=1-z^{(1)}_x,\qquad a_2=0,\qquad
+   a_1=\frac{\,w^{(1)}_x - w^{(1)}_y z^{(1)}_x\,}{\,D_z\,},\quad D_z=z^{(2)}_x-z^{(2)}_y z^{(1)}_x
+\neq 0.
+\]
+With this $a_0$ and the relation $w^{(2)}_x = w^{(2)}_y z^{(1)}_x$ one checks directly that (i) ho
+lds.
+With $a_2=0$ we have $z(0)=0$, and the choice of $a_1$ is exactly the unique solution of
+\(
+  z(-1) + w^{(1)}_y y(-1) + w^{(1)}_x(-1)=0,
+\)
+i.e. (ii). Then $\bar z(-1)=\bar z(0)=0$ (since $B(-1)=B(0)=-P_z$), so (iii) is automatic. Finally
+, with the chosen $a_3$ we get $\bar y(-1)=0$, so (iv) holds. Hence $-\nabla P(-1)+\nabla P(0)=0$.
+
+\emph{Case 3b (generic slope): $w^{(2)}_x \neq w^{(2)}_y z^{(1)}_x$.}
+Take
+\[
+   a_1=0,\qquad a_0=\frac{w^{(2)}_y-w^{(2)}_x}{\,w^{(2)}_y\,}=1-\frac{w^{(2)}_x}{w^{(2)}_y}.
+\]
+This makes (i) hold, and hence $\bar z(-1)=\bar z(0)=0$, so (iii) is automatic.
+To enforce (ii), solve the single linear equation
+\[
+   A(-1)=A(0)\;\Longleftrightarrow\; z(-1)+w^{(1)}_y y(-1)+w^{(1)}_x(-1)=0
+\]
+for $a_2$. Evaluating with $a_1=0$ and $a_0=1-\tfrac{w^{(2)}_x}{w^{(2)}_y}$ yields the explicit va
+lue
+\[
+   \boxed{\;
+   a_2
+   =
+   \frac{\big(z^{(2)}_x w^{(2)}_y - z^{(2)}_y w^{(2)}_x\big)\big(w^{(2)}_x - w^{(2)}_y z^{(1)}_x\big)
+         - w^{(2)}_y\big(w^{(1)}_y w^{(2)}_x - w^{(1)}_x w^{(2)}_y\big)}
+        {\,w^{(2)}_y\big(w^{(2)}_x - w^{(2)}_y z^{(1)}_x\big)\,}\;}
+\]
+(note the denominator $w^{(2)}_y\big(w^{(2)}_x - w^{(2)}_y z^{(1)}_x\big)$).
+With this $a_2$ we have (ii), and together with the earlier choices of $a_3,a_4$ this implies (iv)
+ as above. Hence $-\nabla P(-1)+\nabla P(0)=0$.
+
+\medskip
+In every case we have found $b,c$ with $b+c=-1$ and parameters $a_0,\dots,a_4$ (depending rational
+ly on the program coefficients) such that
+\[
+   \big[\,\nabla P(-1)\;\; \nabla P(0)\;\; \nabla P(1)\,\big]
+   \begin{bmatrix} b\\[2pt]1\\[2pt]c\end{bmatrix}
+   =0.
+\]
+Therefore the three columns are linearly dependent and the determinant is zero. This shows that th
+ree multiplications do not suffice for degree~6.
+
+\subsection{Towards a General Lower Bound (Work in Progress)}
+\label{sec:lower:general}
+
+This section outlines a potential approach to proving the general conjecture.
+The argument is incomplete; we include it to document the proof strategy and invite further work.
+
+We consider any straight-line program computing a polynomial
+given $x, a_0, a_1, \dots, a_{2n-1} \in \mathbb{F}$ as input.
+
+\begin{align}
+   u_0 &= x \\
+   u_1 &=
+      (\theta_{1,0} u_0 + \sum_i \gamma_{1,i} a_i)
+      (\theta'_{1,0} u_0 + \sum_i \gamma'_{1,i} a_i)
+   \\
+   u_2 &=
+      (\theta_{2,1} u_1 + \theta_{2,0} u_0 + \sum_i \gamma_{2,i} a_i)
+      (\theta'_{2,1} u_1 + \theta'_{2,0} u_0 + \sum_i \gamma'_{2,i} a_i)
+   \\
+   \dots
+   \\
+   P &= \sum_{i=0}^{n} \theta_{n,i} u_j + \sum_i \gamma_{n,i} a_i.
+\end{align}
+
+Here the $\theta$ and $\gamma$ coefficients are arbitrary constants in $\mathbb{F}$,
+which captures that we can do unlimited additions and subtractions for free.
+In a sense this is stronger than what we need, but it doesn't cause any issues in the proof.
+
+
+We get that $P_{\theta,\gamma}(x,a)$ is a polynomial in $x$ and $a_0, a_1, \dots, a_{2n-1}$.
+The goal is to show that for some two $x_1 \neq x_2$ there exist $a$ values such that
+\[
+   P_{\theta,\gamma}(x_1, a) = P_{\theta,\gamma}(x_2, a).
+\]
+We will show this, which implies the following theorem:
+
+\begin{theorem}
+\label{thm:lower-bound}
+   Assume $d$ is even and $d\ge 6$.
+   If for all sets of $d$ distinct values $x_0,\dots,x_{d-1}$
+   the map $F_x(a) = a \mapsto (P_a(x_0),\dots,P_a(x_{d-1}))$ is a polynomial automorphism,
+   then $m \ge d/2+1$.
+\end{theorem}
+
+Let
+\[
+   J = \begin{matrix}
+      \frac{dP(x_1)}{da_0}
+      &\frac{dP(x_2)}{da_0}
+      &\dots
+      \\
+      \frac{dP(x_1)}{da_1}
+      &\frac{dP(x_2)}{da_1}
+      &\dots
+      \\
+      \vdots
+      &\vdots
+      &\ddots
+   \end{matrix}
+\]
+by the Jacobian matrix of $P(x)$.
+The theorem follows if we can show that for some choice of $x_1,\dots,x_{2n}$ and $a_0,\dots,a_{2n
+-1}$ that for all $\gamma$ and $\theta$ we have
+a zero determinant:
+\[
+   |J|=0.
+\]
+\begin{proof}
+   Since P is an automorphism, we have
+   \(
+      P^{-1} \circ P = \mathrm{id}.
+   \)
+   Differentiate both sides at a point (x):
+   \[
+      D(P^{-1})(P(x)) \cdot DP(x) = I.
+   \]
+   Taking determinants:
+   \[
+      \det D(P^{-1})(P(x)) \cdot \det DP(x) = 1.
+   \]
+   This immediately implies:
+   \(
+      \det DP(x) \neq 0
+   \)
+   for all $x$.
+\end{proof}
+
+In the case of Motzkin's construction, we get
+$P(x,a) = x^4 + a_2 x^3 + (a_1 - a_0) x^2 + (a_2 - a_0 a_1) x + a_3$.
+It's easy to see that if we want $P(x) = x^4 + c_3 x^3 + c_2 x^2 + c_1 x + c_0$, we can
+take
+\begin{align}
+   a_3 &= c_0,
+   \\
+   a_0 &= c_3.
+   \\
+   a_1 &= c_2 + a_0 = c_2 + c_3,
+   \\
+   a_2 &= c_1 + a_0 a_1 = c_1 + c_3(c_2 + c_3).
+\end{align}
+We can thus define the polynomial ``decoder map'':
+\[
+   a = \Phi(c) = (c_3, c_2 + c_3, c_1 + c_3(c_2 + c_3), c_0).
+\]
+
+Whenever such a decoder map exists, we can assume we first diagonalize the $\gamma$ and $\gamma'$
+matrices.
+We can also assume that the first step is never $u_1 = (x+a_0) (x + a_1)$, since this would be sym
+metric in $a_0$ and $a_1$ and we would never be able to distinguish them.
+That allows us to assume the simpler form
+\begin{align}
+   u_0 &= x \\
+   u_1 &= x (x + a_0)
+   \\
+   u_2 &=
+      (\theta_{2,1} u_1 + \theta_{2,0} u_0 + a_1)
+      (\theta'_{2,1} u_1 + \theta'_{2,0} u_0 + a_2)
+   \\
+   \dots
+   \\
+   P &= \sum_{i=0}^{n} \theta_{n,i} u_j + a_{2n-1}.
+\end{align}
+To simplify further, we rewrite this as
+\begin{align}
+   u_0 &= x \\
+   u_1 &= x(R_{1,0} u_{0} + a_{1}) \\
+   \ell_i &= L_i u_{<i} + a_{i},
+   \quad
+   r_i = R_i u_{<i}+b_{i} \\
+   u_i &= \ell_i\,r_i
+    \quad (\text{for } i=2,\dots,m) \\
+   P &= C u_{\le m} + b_{1},
+\end{align}
+
+The goal is to find a vector $c\in \mathbb{F}^{2n}$ such that
+\[
+   J c = 0.
+\]
+
+As a first step, we write out the partial derivatives using the chain rule / back-propagation:
+Let's write $\bar u_i = \frac{dP}{du_i}$.
+Then by the chain rule we have
+\begin{align}
+   \bar{u_i} &= C_i + \sum_{j>i}
+   \bar u_j (L_{j,i} r_j + R_{j,i} \ell_j)
+   \\
+   \frac{dP}{da_1} &= \bar u_1 x \\
+   \frac{dP}{da_i} &= \bar u_i r_i, \quad
+   \frac{dP}{db_i} = \bar u_i \ell_i \quad \text{for } i=2,\dots,m
+   \\
+   \frac{dP}{db_1} &= 1
+\end{align}
+In particular we see
+\[
+   \bar u_m = C_m,
+   \quad\text{and}\quad
+   \bar u_{m-1} = C_{m-1} + \bar C_m (L_{m,m-1} r_m + R_{m,m-1} \ell_m).
+\]
+
+
+If we write up the Jacobian we get the following structure:
+\[
+   J =
+   \begin{bmatrix}
+      \bar{u_1}(x_1)x_1 &
+      \bar{u_1}(x_2)x_2 &
+       \dots &
+      \bar{u_1}(x_{2m})x_{2m} \\
+      \bar{u_2}(x_1) r_2(x_1) &
+      \bar{u_2}(x_2) r_2(x_2) &
+      \dots &
+      \bar{u_2}(x_{2m}) r_2(x_{2m}) \\
+      \bar{u_2}(x_1) \ell_2(x_1) &
+      \bar{u_2}(x_2) \ell_2(x_2) &
+      \dots &
+      \bar{u_2}(x_{2m}) \ell_2(x_{2m}) \\
+      \vdots & \vdots & \ddots & \vdots \\
+      \bar{u_m}(x_1) r_m(x_1) &
+      \bar{u_m}(x_2) r_m(x_2) &
+      \dots &
+      \bar{u_m}(x_{2m}) r_m(x_{2m}) \\
+      \bar{u_m}(x_1) \ell_m(x_1) &
+      \bar{u_m}(x_2) \ell_m(x_2) &
+      \dots &
+      \bar{u_m}(x_{2m}) \ell_m(x_{2m}) \\
+      1 & 1 & \dots & 1
+   \end{bmatrix}
+\]
+
+The first condition is $\langle 1, c\rangle=0$.
+
+Next we want to set
+\begin{align}
+0=
+\sum_{j=1}^{2n} c_j \bar{u_m}(x_j) \ell_m(x_j)
+&=
+C_m \sum_{j=1}^{2n} c_j (\langle L_m , u_{<m}(x_j)\rangle + a_m)
+\\&=
+C_m (\sum_{j=1}^{2n} c_j \langle L_m , u_{<m}(x_j) \rangle + a_m \sum_{j=1}^{2n} c_j)
+\\&=
+C_m \sum_{j=1}^{2n} c_j \langle L_m, u_{<m}(x_j)\rangle
+,
+\end{align}
+where we used $\sum_{j=1}^{2n} c_j = 0$
+by the first condition.
+I suppose the last sum is a bilinear form in $L_m$ and $c$.
+Note we also get
+\[
+   0 = C_m \sum_{j=1}^{2n} c_j \langle R_m, u_{<m}(x_j)\rangle
+\]
+by the other $\bar u_m$ row.
+Both of these form will have to be set to zero by choosing $c$ appropriately, as $a_m$ and $b_m$ d
+isappeared.
+
+Now we look at the $\bar u_{m-1}$ rows.
+We have the conditions
+\begin{align}
+   0&=
+   \sum_{j=1}^{2n} c_j \bar u_{m-1} (x_j) \ell_{m-1}(x_j)
+   \\&=
+   \sum_{j=1}^{2n} c_j
+      \left(
+         C_{m-1} + \bar u_m (x_j) (L_{m,m-1} r_m(x_j) + R_{m,m-1} \ell_m(x_j))
+      \right)
+      \ell_{m-1}(x_j)
+   \\&=
+   % expand r_m and \ell_
+   \sum_{j=1}^{2n} c_j
+      \left(
+         C_{m-1} + C_m (L_{m,m-1} (R_m u_{<m}(x_j) + b_m) + R_{m,m-1} (L_m u_{<m}(x_j) + a_m))
+      \right)
+      \ell_{m-1}(x_j)
+   \\&=
+   % then collect b_m and a_m
+   b_m \sum_{j=1}^{2n} c_j C_m L_{m,m-1} \ell_{m-1}(x_j)
+   \\&\quad
+   + a_m \sum_{j=1}^{2n} c_j C_m R_{m,m-1} \ell_{m-1}(x_j)
+   \\&\quad
+   + \sum_{j=1}^{2n} c_j
+      \left(
+         C_{m-1} + C_m (L_{m,m-1} R_m + R_{m,m-1} L_m) u_{<m}(x_j)
+      \right)
+      \ell_{m-1}(x_j)
+   ,
+\end{align}
+We see that we get two equations $d_1 a_m + d_2 b_m + d_3 = 0$ and $d_4 a_m + d_5 b_m + d_6 = 0$.
+It is important to notice that the $r$ and $\ell$ values depend only on $a_{<m}$ and $b_{<m}$, so
+we can freely pick $a_m$ and $b_m$ without changing them.
+We can solve these using just $a_m$ and $b_m$ (no requirements on $c$) unless the determinant is z
+ero:
+\[
+   \begin{vmatrix}
+      d_1 & d_2 \\
+      d_4 & d_5
+   \end{vmatrix}
+   =
+   C_m
+   \begin{vmatrix}
+       R_{m,m-1} \sum_{j=1}^{2n} c_j \ell_{m-1}(x_j) &
+       L_{m,m-1} \sum_{j=1}^{2n} c_j \ell_{m-1}(x_j) \\
+       R_{m,m-1} \sum_{j=1}^{2n} c_j r_{m-1}(x_j) &
+       L_{m,m-1} \sum_{j=1}^{2n} c_j r_{m-1}(x_j)
+   \end{vmatrix}
+   = 0
+   .
+\]
+However, it is always zero, so again we are out of luck.
+
+Maybe it's useful to introduce the notation $\langle f\rangle = \sum_{j=1}^{2n} c_j f(x_j)$?
+In that case the determinant is just
+\[
+   C_m
+   \begin{vmatrix}
+       R_{m,m-1} \langle \ell_{m-1} \rangle &
+       L_{m,m-1} \langle \ell_{m-1} \rangle \\
+       R_{m,m-1} \langle r_{m-1} \rangle &
+       L_{m,m-1} \langle r_{m-1} \rangle
+   \end{vmatrix}
+   =
+   0
+\]
+
+Maybe we should instead look at what happens in the last (first) row.
+We have
+\begin{align}
+   0 &= \langle \bar u_1 x \rangle
+   \\&=
+   \langle C_1 x + \sum_{j>1} \bar u_j (L_{j,1} r_j + R_{j,1} \ell_j) x \rangle
+   \\&=
+   \langle C_1 x \rangle
+   + \sum_{j=2}^{m} \langle \bar u_j (L_{j,1} r_j + R_{j,1} \ell_j) x \rangle
+\end{align}
+
+
+Can we do anything with the fact that we've already enforced
+\[
+   \langle \bar u_i r_i \rangle = 0,\quad
+   \langle \bar u_i \ell_i \rangle = 0,\quad \text{for } i=m,m-1,\dots,2?
+\]
+For example, this should imply that
+\[
+   \langle \bar u_{i} \rangle
+   = \langle C_{i} \rangle + \sum_{j>i} \langle \bar u_j (L_{j,i} r_j + R_{j,i} \ell_j) \rangle
+   = 0
+\]
+for $i=m,m-1,\dots,2$.
+
+But unfortunately that doesn't seem to simplify that last $\langle \bar u_1 x \rangle$ expression
+much.
+
+We also still haven't decided how we are going to use the freedom to set $a$ and $b$ values.
+
+I still feel like using the fact that there's a bijection on the coefficients is an interesting id
+ea.
+The fact that we can force $P(x) = x^{2n}$ for all $x$ seems like it should be useful.
+The main trouble is that $P$ doesn't really show up directly in the Jacobian, only its derivatives
+ do.
