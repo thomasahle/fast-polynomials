@@ -128,12 +128,20 @@ a sub-block $g=(g_0,\dots,g_{2w-1})$ with pair count $w\le W_s/2$,
 the sum being XOR of the $128$-bit carry-less products.  It involves only
 the first $2w$ key words $k'_0,\dots,k'_{2w-1}$ and is the empty sum $0$ when
 $w=0$.  For a full sub-block ($w=W_s/2$) this is \cite[eq.~(7)]{lemire2015clhash},
-computed by the four-accumulator loop \texttt{ph\_block}.  For a partial
+computed by \texttt{ph\_block}, whose loop XORs the four products of each
+$64$-byte group into two independent $128$-bit accumulators (one three-input
+XOR per accumulator and group).  For a partial
 sub-block, \texttt{ph\_tail} computes exactly the $w$ products of
 \eqref{eq:ph:clnh}: full $64$-byte groups and then whole $16$-byte pairs are
-loaded in place, and the partial pair (present iff $16\nmid r_t$) is loaded
-through a zero-filled $16$-byte stack copy of its $r_t-16(w-1)$ bytes, so the
-input is never read past byte $\ell$; the reference \texttt{chainhash\_ref.h}
+loaded in place, and the partial pair (present iff $16\nmid r_t$, and then
+the last $r_t-16(w-1)$ bytes of the message) is loaded in place as well, as
+the $16$ bytes ending at byte $\ell$ shifted by a \texttt{TBL} byte
+permutation whose out-of-range indices supply the zero padding
+(\texttt{load\_partial\_end}; $\ell\ge16$ whenever \texttt{ph\_tail}
+runs); a message of fewer than $16$ bytes is its own single padded pair,
+assembled from overlapping in-bounds lane loads and one \texttt{TBL} gather
+(\texttt{load\_small}).  There is no stack copy and no \texttt{memcpy},
+and no byte outside $[0,\ell)$ is ever read; the reference \texttt{chainhash\_ref.h}
 assembles the same zero-padded words byte by byte (\texttt{word\_at}).  XOR
 being associative and commutative, all of these compute \eqref{eq:ph:clnh}
 (test T1 of \texttt{test\_chainhash.cpp} compares the two on every
@@ -172,9 +180,10 @@ For $c\in\F^5$ let $f_c\in\F[X]$ be the polynomial computed by the circuit
   f_c=(X+c_2)(g_2+c_3)+c_4 ,
 \end{equation}
 evaluated exactly as written at $X=v$: three multiplications,
-$\lfloor5/2\rfloor+1$ as in \Cref{thm:main} (\texttt{chain<5>} in
-\texttt{chainhash.h}, where the intermediates are called \texttt{y},
-\texttt{z}, \texttt{t}).  It is monic of degree $5$ (\Cref{lem:ph:chain}).
+$\lfloor5/2\rfloor+1$ as in \Cref{thm:main} (\texttt{chain\_v<5>} in
+\texttt{chainhash.h}, whose comment names the intermediates \texttt{y},
+\texttt{z}, \texttt{t}; the code folds each addend into the reduction of
+the product it follows).  It is monic of degree $5$ (\Cref{lem:ph:chain}).
 The finalizer is applied not to the level-2 value itself but to its
 \emph{integer-add twist} $V_\kappa(m)\boxplus\tau$, where $v\boxplus\tau$
 denotes the addition modulo $2^{64}$ of the $64$-bit words $v,\tau$ read as
@@ -799,7 +808,12 @@ The untwisted degree-$5$ hash fails $22$ tests, all in the keysets Zeroes,
 Sparse, Permutation, TwoBytes and Bitflip; the twisted degree-$3$ hash fails
 $17$, in Zeroes, Permutation and SeedZeroes.  An output twist $h\boxplus\tau_{\mathrm{out}}$ adds
 nothing and was dropped.  The twist costs one integer addition, below the
-timing noise.  Degree $5$ with the input twist is therefore $15\%$ faster
+timing noise.  The cycle counts are those of the block level and tail loader
+of the time of the experiment; the optimised implementation shipped since
+(\Cref{rem:ph:gaps}(A7)) computes the same function bit for bit and measures
+$66$ cycles per small key ($72$ for the $1$\,KB configuration) and $20.7$
+($17.5$) bytes/cycle in bulk in the same benchmark.  Degree $5$ with the
+input twist is therefore $15\%$ faster
 than degree $7$ on short messages with the same test record; the bulk
 throughput on $256$\,KB messages does not depend on the finalizer (the six
 runs report $16.0$--$18.9$ bytes/cycle, varying with machine load, not with
@@ -1069,5 +1083,24 @@ slightly worse $d/(2^{64}-1)$.
       addition for the twist).  The empty message
       is one block of $S$ empty sub-blocks, each with CLNH sum the empty sum
       $0$, hashed with $\ell=0$ (so every stream pair is $(0,0)$).
+\item \emph{Evaluation schedule.}  \texttt{chainhash.h} computes
+      \Cref{def:ph:hash} exactly (bit for bit against the reference, tests
+      T1/T4) but orders the field operations for latency.  Every field
+      element lives in lane~$0$ of a NEON register, and every XOR that follows
+      a multiplication (the $a_t$ of a recurrence step, the finalizer
+      constants) is folded into that product's reduction.  Blocks
+      $1,\dots,n-1$ run without length logic on the shifted state
+      $Q_t=P_t+u$, i.e.\ $Q_t=(a_t+u)+(b_t+y)Q_{t-1}$, with the \texttt{EXT}
+      that positions $b_t+y$ kept off the loop-carried chain; the last block
+      is peeled and its final step takes $(a_p+\ell,\,b_p+y)$, yielding
+      $P_p$ itself.  A message of at most one sub-block ($256$ or $512$
+      bytes) takes a loop-free leaf path in which the key-only parts of the
+      $S$ steps are precomputed constants of the key; for $S=2$ the two steps
+      are fused into $P_2=(\ell+yu+y^2(z+u))+ay+by(z+u)$, two independent
+      products and one reduction.  For sub-blocks of at most $16$ words the
+      recurrence state is carried unreduced as a $128$-bit polynomial and
+      reduced once at the end.  In the $256$-byte configuration the block
+      key is register-resident and a block costs $56$ SIMD instructions and
+      $8$ paired loads.  None of this changes the function.
 \end{enumerate}
 \end{remark}

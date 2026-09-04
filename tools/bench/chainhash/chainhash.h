@@ -1,7 +1,7 @@
 /* ***********************************************************************
  * ChainHash -- fast arm64 (NEON PMULL) implementation, header-only.
  *
- *   PH (8*BLOCK_WORDS-byte blocks, 4 independent PMULL accumulators;
+ *   PH (8*BLOCK_WORDS-byte blocks, 2 independent PMULL accumulators (EOR3-fed);
  *       the last block is processed at PAIR granularity, see below)
  *     -> three-key injective GF(2^64) recurrence of sections/injective.tex
  *          P_0 = z,   P_i = a_i + (b_i + y)(P_{i-1} + u)

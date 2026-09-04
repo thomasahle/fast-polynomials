@@ -331,9 +331,9 @@ Polymur~\cite{polymur}                      & 4 & 57 & 19.7 & 16.2 \\
 \texttt{komihash} v5.34                     & 1 & $\ge32^*$ & 24.8 & 24.3 \\
 \hline
 \multicolumn{5}{l}{\emph{proven, key $> 8$ words}} \\
-ChainHash, 1\,KB blocks                     & 137 & 62 & 57.3 & 28.5 \\
-ChainHash, 256\,B blocks                    &  41 & 62 & 51.0 & 31.1 \\
-ChainHash, 64\,B blocks                     &  17 & 62 & 14.1 & 21.3 \\
+ChainHash, 1\,KB blocks                     & 137 & 62 & 61.7 & 40.5 \\
+ChainHash, 256\,B blocks                    &  41 & 62 & 57.7 & 36.8 \\
+ChainHash, 64\,B blocks                     &  17 & 62 & 26.6 & 27.4 \\
 UMASH-64~\cite{umash}                       &  38 & 55 & 40.7 & 32.9 \\
 UMASH-128 (128-bit output)                  &  38 & 83 & 23.9 & 19.7 \\
 CLNH (fixed length)~\cite{lemire2015clhash} & $L$ & 64 & 27.3 & 26.3 \\
@@ -351,7 +351,7 @@ which the running value is mixed, and that mixing is what lets one key be reused
 across the whole message instead of one key word per message word.  The message
 is split into blocks of $B$ bytes and each block into $S$ sub-blocks ($S=1$ for
 $B\le256$, $S=2$ for $1$\,KB blocks); each sub-block is hashed by carryless NH
-(one \texttt{PMULL} per $16$ bytes into four $128$-bit accumulators) and its
+(one \texttt{PMULL} per $16$ bytes into two $128$-bit accumulators) and its
 unreduced sum is consumed as one pair $(a_i,b_i)$ of the three-key recurrence
 $P_0=z$, $P_i=a_i+(b_i+y)(P_{i-1}+u)$, one field multiplication per
 sub-block; the byte length is XORed into the last $a_i$; one further key
@@ -392,12 +392,12 @@ interior words, over $2^{24}$ random seeds, $2^{30}$ in an extended tier) that
 \texttt{MUM} fails outright and \texttt{wyhash}, \texttt{rapidhash},
 \texttt{XXH3} and \texttt{XXH3-128} fail in the extended tier, while \texttt{komihash},
 Polymur, SipHash and the polynomial hashes pass (\Cref{app:adversarial}).
-With $1$\,KB blocks and a $137$-word key it runs at $57$\,GB/s on the M2 Pro,
-above every heuristic hash in the table and above UMASH, with a proof, and the
-rate is flat up to $64$\,MB messages; the block size is exactly the key-budget
-knob, and at $64$-byte blocks, close to the one-cache-line budget, the hybrid
-is slower than the fanned-out recurrence alone on long messages ($14.1$
-against $23.8$\,GB/s at $16$\,KB).  The implementation and a
+With $1$\,KB blocks and a $137$-word key it runs at $62$\,GB/s on the M2 Pro,
+above every heuristic hash in the table and above UMASH, with a proof; the
+block size is exactly the key-budget knob, and at $64$-byte blocks, closest to
+the one-cache-line budget ($17$ key words), the hybrid matches or beats the
+eight-lane recurrence on long messages ($26.6$ against $23.8$\,GB/s at
+$16$\,KB).  The implementation and a
 bit-serial reference are in \texttt{tools/bench/chainhash/} of the repository.
 
 \paragraph{Key expansion.}
