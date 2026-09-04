@@ -77,7 +77,12 @@
  *     are the field identity P_2 = (len + yu + yy(z+u)) + a y + b y(z+u),
  *     two independent products and one reduction;
  *   * the key holds the vectors these paths need (setup()), so no value
- *     ever moves between general and SIMD registers inside hash().
+ *     ever moves between general and SIMD registers inside hash();
+ *   * the multi-step path (hash_multi_v) is out of line and reached by a
+ *     tail call, so hash() is a leaf for every key that fits one sub-block;
+ *     blocks 0..n-2 run without length logic on the state Q = P + u, the
+ *     last block is peeled, and sub-blocks of <= 16 words (chain-bound)
+ *     carry the recurrence state unreduced (step_lazy, 8-cycle chain).
  *
  * Compile: clang++ -O3 -std=c++17 -march=native+crypto   (Apple clang:
  * plain -march=native does NOT enable the PMULL 'aes' feature).
@@ -479,62 +484,122 @@ static inline __attribute__((always_inline)) uint64x2_t step_q(uint64x2_t Q, uin
     return reduce_add(pmull_lo(vextq_u64(t, t, 1), Q), t, rr);
 }
 
+/* The same step on an UNREDUCED state: V = V[0] + V[1] x^64 (a 128-bit
+ * polynomial) represents the field element V mod f.  A state is only ever
+ * multiplied by a 64-bit factor, and reduction is GF(2)-linear, so it can be
+ * deferred to the end of the multi-step path: with bb = b + y in both lanes
+ *   bb V = pmull(bb, V) + x^64 pmull2(bb, V) = p + [0, q0] + q1 x^128,
+ *   x^128 = 27^2 = x^8 + x^6 + x^2 + 1 (0x145) mod f,
+ *   V' = p + [a + u, 0] + [0, q0] + pmull2(q, [*, 0x145])       (degree < 128).
+ * Loop-carried chain PMULL 3 + PMULL2 3 + EOR3 2 = 8 cycles instead of 11,
+ * for two more SIMD ops per step; gf_reduce(V) at the end (8 cycles, once). */
+static inline uint64x2_t gf_r2() { return vdupq_n_u64(0x145); }
+static inline __attribute__((always_inline)) uint64x2_t step_lazy(uint64x2_t V, uint64x2_t t, uint64x2_t r2) {
+    const uint64x2_t bb = vdupq_laneq_u64(t, 1);                              // [b + y, b + y]
+    const uint64x2_t au = vcombine_u64(vget_low_u64(t), vdup_n_u64(0));      // [a + u, 0]
+    const uint64x2_t p = pmull_lo(bb, V);                                     // (b + y) V[0]
+    const uint64x2_t q = pmull_hi(bb, V);                                     // (b + y) V[1] = q0 + q1 x^64
+    return xor3(veorq_u64(p, au), vextq_u64(vdupq_n_u64(0), q, 1), pmull_hi(q, r2));   // p + au + [0, q0] + q1 x^128
+}
+
 /* ------------------------------------------------------------------ */
 /* HASH(m, len)                                                        */
 /* ------------------------------------------------------------------ */
+/* Two evaluation paths, each returning the finished hash in lane 0 of a
+ * NEON register (lane 1 garbage, never read):
+ *   hash_small_v  len <= sub_bytes: every key <= 256 B / 512 B for the
+ *                 shipped variants.  All data sits in sub-block 0 of the
+ *                 only block; sub-blocks 1..S-1 are empty.  No loop, no
+ *                 length bookkeeping: the key-only parts of the S
+ *                 recurrence steps are constants of the key (setup()).
+ *   hash_multi_v  len > sub_bytes.  Blocks 0..n-2 are full and need no
+ *                 length logic (state Q = P + u, step_q); the last block is
+ *                 peeled and does the sub-block selects once, its final
+ *                 step taking [a + len, b + y] and yielding P_n directly.
+ * hash() below puts the multi-step path out of line and reaches it by a
+ * tail call, so that the small-key path it inlines is a leaf: no frame, no
+ * callee-saved spills, no stack instruction on any key that fits one
+ * sub-block. */
 template <int BLOCK_WORDS, int K, int S>
-static inline __attribute__((always_inline)) uint64_t hash(const Key<BLOCK_WORDS, K, S>& key, const void* data, size_t len) {
+static inline __attribute__((always_inline)) uint64x2_t hash_small_v(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
+    using key_t = Key<BLOCK_WORDS, K, S>;
+    constexpr int SW = key_t::sub_words;            // words per sub-block
+    const uint64x2_t rr = gf_rr();
+    const uint64x2_t acc = ph_first<SW>(key.k, p, len);   // [a, b]
+    uint64x2_t P;  // P_S, lane 0
+    if constexpr (S == 1) {
+        // P_1 = a + len + (b + y)(z + u) = (a + len + y(z+u)) + b (z+u): one PMULL2 on the accumulator
+        P = reduce_add(pmull_hi(acc, key.ZUZU), veorq_u64(acc, v64((uint64_t)len ^ key.yzu)), rr);
+    } else if constexpr (S == 2) {
+        // P_2 = len + y (P_1 + u) = (len + yu + yy(z+u)) + a y + b y(z+u): two independent products, one reduction
+        uint64x2_t pr = veorq_u64(pmull_lo(acc, key.YYZU), pmull_hi(acc, key.YYZU));
+        P = reduce_add(pr, v64((uint64_t)len ^ key.yyzu_yu), rr);
+    } else {
+        uint64x2_t Q = step_q(key.ZUZU, veorq_u64(acc, key.UY), rr);        // sub-block 0
+        for (int i = 1; i + 1 < S; i++) Q = step_q(Q, key.UY, rr);         // empty sub-blocks: (a, b) = (0, 0)
+        P = step_q(Q, vsetq_lane_u64((uint64_t)len, key.Yhi, 0), rr);      // last, empty: a + len = len
+    }
+    return chain_v<K>(key.c, vaddq_u64(P, key.TIN));   // chain_K(c, P_S + t_in)
+}
+
+template <int BLOCK_WORDS, int K, int S>
+static inline __attribute__((always_inline)) uint64x2_t hash_multi_v(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
     using key_t = Key<BLOCK_WORDS, K, S>;
     constexpr size_t BB = (size_t)key_t::block_bytes;
-    constexpr size_t SB = (size_t)key_t::sub_bytes;  // bytes per sub-block (== BB for S = 1)
-    constexpr int SW = key_t::sub_words;            // words per sub-block
-    const uint8_t* p = static_cast<const uint8_t*>(data);
-    const uint64x2_t rr = gf_rr();
-    uint64x2_t P;  // P_n, lane 0 (lane 1 garbage, never read)
-
-    if (__builtin_expect(len <= SB, 1)) {
-        /* All data sits in sub-block 0 of the only block; sub-blocks 1..S-1
-         * are empty.  No loop, no length bookkeeping: the key-only parts of
-         * the S recurrence steps are constants of the key (setup()). */
-        const uint64x2_t acc = ph_first<SW>(key.k, p, len);   // [a, b]
-        if constexpr (S == 1) {
-            // P_1 = a + len + (b + y)(z + u) = (a + len + y(z+u)) + b (z+u): one PMULL2 on the accumulator
-            P = reduce_add(pmull_hi(acc, key.ZUZU), veorq_u64(acc, v64((uint64_t)len ^ key.yzu)), rr);
-        } else if constexpr (S == 2) {
-            // P_2 = len + y (P_1 + u) = (len + yu + yy(z+u)) + a y + b y(z+u): two independent products, one reduction
-            uint64x2_t pr = veorq_u64(pmull_lo(acc, key.YYZU), pmull_hi(acc, key.YYZU));
-            P = reduce_add(pr, v64((uint64_t)len ^ key.yyzu_yu), rr);
-        } else {
-            uint64x2_t Q = step_q(key.ZUZU, veorq_u64(acc, key.UY), rr);        // sub-block 0
-            for (int i = 1; i + 1 < S; i++) Q = step_q(Q, key.UY, rr);         // empty sub-blocks: (a, b) = (0, 0)
-            P = step_q(Q, vsetq_lane_u64((uint64_t)len, key.Yhi, 0), rr);      // last, empty: a + len = len
-        }
-    } else {
-        /* Multi-step case on the state Q = P + u (step_q).  Blocks 0..n-2 are
-         * full and need no length logic; the last block is peeled and does
-         * the sub-block selects once, its final step taking [a + len, b + y]
-         * and yielding P_n directly. */
-        const size_t n = (len + BB - 1) / BB;  // >= 1 blocks (len > SB > 0)
-        const uint64x2_t UY = key.UY;
-        uint64x2_t Q = key.ZUZU;               // Q_0 = P_0 + u = z + u (lane 0)
-        for (size_t j = 0; j + 1 < n; j++) {
-            const uint8_t* blk = p + j * BB;
-            for (int i = 0; i < S; i++) Q = step_q(Q, veorq_u64(ph_block<SW>(key.k + i * SW, blk + i * SB), UY), rr);
-        }
-        const size_t off = (n - 1) * BB;
-        const size_t rem = len - off;  // bytes of input in the last block: 1..BB
-        for (int i = 0; i < S; i++) {
-            const size_t soff = (size_t)i * SB;                                       // sub-block start within the block
-            const size_t srem = (rem > soff) ? ((rem - soff < SB) ? rem - soff : SB) : 0;  // bytes of input in this sub-block
-            uint64x2_t acc;
-            if (srem >= SB)     acc = ph_block<SW>(key.k + i * SW, p + off + soff);         // full sub-block
-            else if (srem > 0)  acc = ph_tail<SW>(key.k + i * SW, p + off + soff, srem);    // W' = ceil(srem/16) pairs; len > SB >= 16
-            else                acc = vdupq_n_u64(0);                                      // no data: empty PH sum
-            if (i + 1 < S) Q = step_q(Q, veorq_u64(acc, UY), rr);
-            else P = step_q(Q, veorq_u64(acc, vsetq_lane_u64((uint64_t)len, key.Yhi, 0)), rr);  // [a + len, b + y]: P_n
-        }
+    constexpr size_t SB = (size_t)key_t::sub_bytes;
+    constexpr int SW = key_t::sub_words;
+    /* Recurrence state.  A sub-block of SW words costs ~1.5 SW + 7 SIMD ops
+     * against a loop-carried chain of 11 cycles (step_q), so for SW <= 16
+     * (128-byte sub-blocks) the loop is chain-bound and runs on the unreduced
+     * state of step_lazy (8-cycle chain: +36% at 16 KB for 64-byte blocks);
+     * the shipped 256 B / 512 B sub-blocks are bound by SIMD issue (56 ops per
+     * 256 B block) and only pay the lazy form's two extra ops (-2% measured),
+     * so they keep the direct step.  Same function either way. */
+    constexpr bool LAZY = (SW <= 16);
+    const uint64x2_t rr = gf_rr(), r2 = gf_r2();
+    auto step = [&](uint64x2_t st, uint64x2_t t) {
+        if constexpr (LAZY) return step_lazy(st, t, r2);
+        else                return step_q(st, t, rr);
+    };
+    const size_t n = (len + BB - 1) / BB;  // >= 1 blocks (len > SB > 0)
+    const uint64x2_t UY = key.UY;
+    // st_0 = Q_0 = P_0 + u = z + u: lane 0 for step_q, the exact 128-bit polynomial [z + u, 0] for step_lazy
+    uint64x2_t st = LAZY ? vcombine_u64(vget_low_u64(key.ZUZU), vdup_n_u64(0)) : key.ZUZU;
+    for (size_t j = 0; j + 1 < n; j++) {
+        const uint8_t* blk = p + j * BB;
+        for (int i = 0; i < S; i++) st = step(st, veorq_u64(ph_block<SW>(key.k + i * SW, blk + i * SB), UY));
     }
-    return vgetq_lane_u64(chain_v<K>(key.c, vaddq_u64(P, key.TIN)), 0);   // chain_K(c, P_n + t_in)
+    const size_t off = (n - 1) * BB;
+    const size_t rem = len - off;  // bytes of input in the last block: 1..BB
+    for (int i = 0; i < S; i++) {
+        const size_t soff = (size_t)i * SB;                                       // sub-block start within the block
+        const size_t srem = (rem > soff) ? ((rem - soff < SB) ? rem - soff : SB) : 0;  // bytes of input in this sub-block
+        uint64x2_t acc;
+        if (srem >= SB)     acc = ph_block<SW>(key.k + i * SW, p + off + soff);         // full sub-block
+        else if (srem > 0)  acc = ph_tail<SW>(key.k + i * SW, p + off + soff, srem);    // W' = ceil(srem/16) pairs; len > SB >= 16
+        else                acc = vdupq_n_u64(0);                                      // no data: empty PH sum
+        if (i + 1 < S) st = step(st, veorq_u64(acc, UY));
+        else st = step(st, veorq_u64(acc, vsetq_lane_u64((uint64_t)len, key.Yhi, 0)));  // [a + len, b + y] (no u): st = P_n
+    }
+    const uint64x2_t P = LAZY ? gf_reduce(st, rr) : st;   // P_n, lane 0
+    return chain_v<K>(key.c, vaddq_u64(P, key.TIN));       // chain_K(c, P_n + t_in)
+}
+
+/* The out-of-line multi-step path. */
+template <int BLOCK_WORDS, int K, int S>
+static __attribute__((noinline)) uint64_t hash_multi(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
+    return vgetq_lane_u64(hash_multi_v(key, p, len), 0);
+}
+
+/* hash(key, m, len): the 64-bit hash value.  (Storing lane 0 straight from
+ * the NEON register instead of returning through a general register was
+ * measured neutral on M2 -- 72.3 vs 72.6 cycles in the SMHasher3-style
+ * store-and-reload loop -- so there is no separate output-buffer API.) */
+template <int BLOCK_WORDS, int K, int S>
+static inline __attribute__((always_inline)) uint64_t hash(const Key<BLOCK_WORDS, K, S>& key, const void* data, size_t len) {
+    const uint8_t* p = static_cast<const uint8_t*>(data);
+    if (__builtin_expect(len > (size_t)Key<BLOCK_WORDS, K, S>::sub_bytes, 0)) return hash_multi(key, p, len);   // tail call
+    return vgetq_lane_u64(hash_small_v(key, p, len), 0);
 }
 
 /* Convenience functor.  Defaults = chainhash-256 (see the header comment):
