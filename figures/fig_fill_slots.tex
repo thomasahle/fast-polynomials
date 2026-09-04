@@ -1,0 +1,38 @@
+% One fill level, its pivot bands, and the well-founded mutual order.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,5.05) {(a) One fill level, $D=2^l$};
+  \node[fp recursive, minimum width=27mm] (input) at (1.45,4.18)
+    {input pair\\$(S_D^{(1)},S_D^{(2)})$};
+  \node[fp known, minimum width=33mm] (heads) at (4.65,4.18)
+    {heads $H_D+Q_{D/2-1}$\\and $H_D+\beta_D$};
+  \node[fp second, minimum width=31mm] (mid) at (8.2,4.18)
+    {multiply; add\\a fresh low $Q$-block};
+  \node[fp active, minimum width=30mm] (lower) at (11.75,4.18)
+    {intermediate pair\\at level $l-1$};
+  \draw[fp flow] (input) -- (heads);
+  \draw[fp flow] (heads) -- (mid);
+  \draw[fp flow] (mid) -- (lower);
+  \node[fp label, below=2mm of lower] {recurse, then output
+    $P=(x+\beta_0)A^{(1)}+A^{(2)}$};
+
+  \node[fp panel title] at (0,2.95) {(b) The three output pivot bands};
+  \draw[fp decode] (0,2.5) -- node[fp label, above] {descending coefficient degree}
+    (13.55,2.5);
+  \node[fp active, minimum width=38mm, anchor=west] (betas) at (0,1.78)
+    {$\beta_0,\ldots,\beta_D$\\unit pivots in the high band};
+  \node[fp recursive, minimum width=47mm, anchor=west] (old) at (3.8,1.78)
+    {input-pair pivots shifted by $2D-2$\\with their original slopes};
+  \node[fp second, minimum width=46mm, anchor=west] (alphas) at (8.5,1.78)
+    {$\alpha_{2D-3},\ldots,\alpha_0$\\unit pivots in the low band};
+  \draw[fp dependence] (betas.south east) to[bend right=10] (old.south west);
+  \draw[fp dependence] (old.south east) to[bend right=10] (alphas.south west);
+
+  \node[draw=black!50, line width=.45pt, inner sep=2pt, font=\scriptsize,
+    align=center, minimum width=105mm, minimum height=6mm] at (6.7,0.52)
+    {well-founded proof order:
+     $F_1\longrightarrow\mathsf Q_3\longrightarrow F_2
+      \longrightarrow\mathsf Q_4\longrightarrow F_3\longrightarrow\cdots$,
+     \quad$\mathsf Q_s$ means the decoder for $Q_{2^s-1}$};
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (0,-0.08)
+    {A smaller known-powers gadget builds the heads; the completed fill level then proves the next larger gadget.};
+\end{tikzpicture}

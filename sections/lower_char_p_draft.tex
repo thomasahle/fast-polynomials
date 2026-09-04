@@ -1,0 +1,803 @@
+% ---------------------------------------------------------------------------
+% lower_char_p_draft.tex -- DRAFT, not \input into main.tex.
+%
+% Lower bounds for chains with n multiplications over finite fields of every
+% characteristic, in the slot-space model of sections/lower_char2.tex (same
+% notation; all \eqref{eq:char2-*} and \Cref{thm:char2-lower} refer to that
+% file).  Contents:
+%   (1) Theorem charp-lower: no (2n,n) construction when p | 2n  (proof);
+%   (2) Theorem charp-n3:    no (6,3) construction when p >= 5    (proof);
+%       Corollary charp-n3-all: no (6,3) construction over any finite field
+%       with at least six elements;
+%   (3) Remark charp-regime: the regime p does not divide 2n for general n
+%       (false at n = 2, open for n >= 4, and why);
+%   (4) Proposition charp-reduction and Remark charp-map: reduction modulo p
+%       and the map of implications to characteristic zero;
+%   (5) Remark charp-verification: what was machine-checked.
+% Every algebraic identity used below is verified over Z (or Q with the stated
+% denominators) by tools/charp_gauge_ring_check.py, tools/charp_n3_synth_check.py
+% and the scripts named in Remark charp-verification; the counts quoted there
+% are exhaustive over the stated slot spaces.  Notes: notes/lower_char_p.md.
+% Needs one bib entry not yet in references.bib:
+%   @book{lidl1997finite, author={Lidl, Rudolf and Niederreiter, Harald},
+%     title={Finite Fields}, edition={2}, publisher={Cambridge University Press},
+%     year={1997}, series={Encyclopedia of Mathematics and its Applications}, volume={20}}
+% ---------------------------------------------------------------------------
+
+\section{Lower Bounds in Every Characteristic}
+\label{sec:lower-charp}
+
+The proof of \Cref{thm:char2-lower} uses the characteristic in exactly one place: the
+first two slots of $\mathcal T_c\mathbf z$ and $\mathcal G_t\mathbf z$ agree for $t=c$.
+Everything else---the gauge, its action law, the translation semantics and the
+identification of fibres with orbits---goes through over every field once a sign is
+inserted into the gauge.  What changes in odd characteristic $p$ is the combinatorics of
+the final count: translation orbits in $\F$ have $p$ elements instead of two, and when the
+first gate is a genuine quadratic, translations act \emph{freely} on the space of gauge
+orbits.  This gives the same conclusion whenever $p$ divides the number of evaluation
+points (\Cref{thm:charp-lower}).  When $p\nmid 2n$ the counting argument has nothing to
+count, and the statement itself changes character: it is \emph{false} for $n=2$ (Motzkin's
+quartic is a $(4,2)$ construction over every finite field of odd characteristic), it is
+\emph{true} for $n=3$ by a different, elimination-based argument (\Cref{thm:charp-n3}),
+and for $n\ge4$ it is open and at least as strong as the characteristic-zero conjecture of
+\Cref{sec:lower} (\Cref{rem:charp-regime}, \Cref{rem:charp-map}).
+
+Throughout, $\F$ is a finite field of characteristic $p$ (any prime), $Q=\abs{\F}$, and
+chains, slot vectors $\mathbf z=(u_1,v_1,\dots,u_n,v_n,w)$, the evaluation map $E_X$ and
+$(2n,n)$ constructions are exactly as in \eqref{eq:char2-gate}--\eqref{eq:char2-eval}: a
+chain admits a $(2n,n)$ construction, with preprocessing of any kind, exactly when $E_X$
+is surjective for every $2n$ distinct points $X$.  We write
+$\mathbf s=(u_2,v_2,\dots,u_n,v_n,w)\in\F^{2n-1}$ for the slots other than the first two,
+and
+\begin{equation}
+   \lambda=(p_{21},q_{21},\dots,p_{n1},q_{n1},r_1),
+   \qquad
+   \varepsilon=(\alpha_2,\beta_2,\dots,\alpha_n,\beta_n,\gamma)
+   \label{eq:charp-lambda-eps}
+\end{equation}
+for the fixed coefficients with which $G_1$, respectively $x$, enter the later factors and
+the output.
+
+\subsection{Every characteristic dividing the number of points}
+\label{sec:charp-divides}
+
+\begin{theorem}[No $(2n,n)$ construction when $p\mid 2n$]
+\label{thm:charp-lower}
+Let $\F$ be a finite field of characteristic $p$ with $Q=\abs{\F}\ge 2n$, and suppose
+that $p$ divides $2n$ and $(p,n)\neq(2,1)$.  Then no chain with $n$ multiplications is a
+$(2n,n)$ construction.  More precisely, fix $c\in\F\setminus\{0\}$ and let $X$ be any
+union of $2n/p$ distinct orbits of the translation $x\mapsto x+c$ of $\F$; then the
+evaluation map $E_X$ of \eqref{eq:char2-eval} is not surjective, so no preprocessing map,
+affine or otherwise, makes $\Phi_X=E_X\circ\mathbf z$ a bijection.
+\end{theorem}
+
+For $p=2$ the divisibility is automatic and the statement is \Cref{thm:char2-lower}.  For
+odd $p$ the hypothesis says $p\mid n$; in particular $n\ge p\ge3$, so $n>1$ is automatic,
+and $Q\ge 2n>p$ forces $Q\ge p^2$: in odd characteristic the theorem concerns extension
+fields only, never a prime field.  The smallest instance is $(6,3)$ over $\F_9$.  The
+theorem produces, for each chain, bad tuples $X$ of a specific shape (unions of
+translation orbits); it does not say that $E_X$ fails for \emph{every} $X$
+(cf.\ \Cref{rem:charp-map}).
+
+\subsubsection*{Proof of \Cref{thm:charp-lower}}
+
+\paragraph{The first gate is not scalar (any characteristic).}
+If $\alpha_1=\beta_1=0$ then $G_1=u_1v_1$ does not involve $x$ and enters each later
+factor and the output only through the fixed coefficients $\lambda$, so
+$f_{(u_1,v_1,\mathbf s)}=f_{(0,0,\mathbf s+\lambda u_1v_1)}$ identically: $f_{\mathbf z}$
+depends only on the $2n-1$ field elements $\mathbf s+\lambda u_1v_1$, and $E_X$ takes at
+most $Q^{2n-1}<Q^{2n}$ values for every $X$.  So assume $(\alpha_1,\beta_1)\neq(0,0)$ from
+now on and put
+\begin{equation}
+   \sigma'(\mathbf z)=\alpha_1v_1-\beta_1u_1,
+   \qquad
+   G_1=\alpha_1\beta_1x^2+(\alpha_1v_1+\beta_1u_1)\,x+u_1v_1 .
+   \label{eq:charp-firstgate}
+\end{equation}
+
+\paragraph{The gauge, with a sign.}
+For $t\in\F$ put $d_t(\mathbf z)=\sigma'(\mathbf z)\,t-\alpha_1\beta_1t^2$ and define
+\begin{equation}
+   \begin{aligned}
+   \mathcal G_t(u_1,v_1,\mathbf s)&=\bigl(u_1+\alpha_1t,\;v_1-\beta_1t,\;\mathbf s-\lambda\,d_t(\mathbf z)\bigr),\\
+   \mathcal T_c(u_1,v_1,\mathbf s)&=\bigl(u_1+\alpha_1c,\;v_1+\beta_1c,\;\mathbf s+\varepsilon c\bigr).
+   \end{aligned}
+   \label{eq:charp-gauge}
+\end{equation}
+The first two slots of $\mathcal G_t\mathbf z$ turn the first gate into
+\[
+   \bigl(\alpha_1(x+t)+u_1\bigr)\bigl(\beta_1(x-t)+v_1\bigr)
+   =\alpha_1\beta_1(x^2-t^2)+\alpha_1v_1(x+t)+\beta_1u_1(x-t)+u_1v_1
+   =G_1+d_t(\mathbf z):
+\]
+the two cross terms in $x$ cancel because the second factor is shifted by $-t$ where the
+first is shifted by $+t$, in \emph{every} characteristic.  So $G_1$ changes by the
+$x$-independent constant $d_t(\mathbf z)$, the corrections $-\lambda d_t(\mathbf z)$ remove
+it from every later factor and from the output, and by induction through the gates
+$G_i^{\mathcal G_t\mathbf z}=G_i^{\mathbf z}$ for $i\ge2$ and
+\begin{equation}
+   f_{\mathcal G_t\mathbf z}=f_{\mathbf z}\qquad\text{identically in }x .
+   \label{eq:charp-gauge-invariance}
+\end{equation}
+In characteristic two the signs are invisible and \eqref{eq:charp-gauge} is the gauge
+\eqref{eq:char2-gauge}; in odd characteristic the sign is forced, since
+$(\alpha_1(x+t)+u_1)(\beta_1(x+t)+v_1)-G_1=(\alpha_1v_1+\beta_1u_1+2\alpha_1\beta_1x)t+\alpha_1\beta_1t^2$
+is not $x$-independent when $\alpha_1\beta_1\neq0$.
+
+The second family translates the argument: for the first gate
+$(\alpha_1x+u_1+\alpha_1c)(\beta_1x+v_1+\beta_1c)=G_1^{\mathbf z}(x+c)$, and if
+$G_j^{\mathcal T_c\mathbf z}(x)=G_j^{\mathbf z}(x+c)$ for all $j<i$ then the left factor of
+$G_i$ at $\mathcal T_c\mathbf z$ is
+$\alpha_ix+\sum_{j<i}p_{ij}G_j^{\mathbf z}(x+c)+u_i+\alpha_ic
+=\alpha_i(x+c)+\sum_{j<i}p_{ij}G_j^{\mathbf z}(x+c)+u_i$, the left factor of $G_i^{\mathbf z}$
+at $x+c$; likewise for the right factor, and for the output with $\gamma c$.  Hence
+\begin{equation}
+   G_i^{\mathcal T_c\mathbf z}(x)=G_i^{\mathbf z}(x+c)\ \ (1\le i\le n),
+   \qquad
+   f_{\mathcal T_c\mathbf z}(x)=f_{\mathbf z}(x+c).
+   \label{eq:charp-translation}
+\end{equation}
+
+\paragraph{The gauges form a free action of $(\F,+)$ commuting with translation.}
+From \eqref{eq:charp-gauge},
+$\sigma'(\mathcal G_t\mathbf z)=\sigma'(\mathbf z)-2\alpha_1\beta_1t$, hence
+\[
+   d_t(\mathbf z)+d_s(\mathcal G_t\mathbf z)
+   =\sigma'(\mathbf z)(t+s)-\alpha_1\beta_1\bigl(t^2+2ts+s^2\bigr)
+   =d_{t+s}(\mathbf z),
+\]
+so $\mathcal G_s\circ\mathcal G_t=\mathcal G_{s+t}$ slot by slot: the gauges are an action
+of the additive group of $\F$ on slot space.  (In characteristic two the term
+$2\alpha_1\beta_1ts$ vanishes and this is the additivity $d_t+d_s=d_{t+s}$ used before; in
+odd characteristic $d_s$ must be evaluated at $\mathcal G_t\mathbf z$, and the cross term
+is exactly what closes the composition law.)  The action is free: $\mathcal G_t\mathbf
+z=\mathbf z$ forces $\alpha_1t=\beta_1t=0$, so $t=0$.  Every orbit therefore has exactly
+$Q$ elements.  Finally $\sigma'(\mathcal T_c\mathbf z)=\sigma'(\mathbf z)$, so
+$d_t(\mathcal T_c\mathbf z)=d_t(\mathbf z)$, and comparing the two sides slot by slot gives
+\begin{equation}
+   \mathcal T_c\circ\mathcal G_t=\mathcal G_t\circ\mathcal T_c .
+   \label{eq:charp-commute}
+\end{equation}
+Thus every translation permutes the gauge orbits.  All of this holds in every
+characteristic.
+
+\paragraph{If $E_X$ is onto, its fibres are the orbits (any characteristic).}
+Fix $2n$ distinct points $X$ and suppose $E_X$ is surjective.  By
+\eqref{eq:charp-gauge-invariance} the map $E_X$ is constant on gauge orbits, so each of its
+$Q^{2n}$ fibres is a nonempty union of orbits and has at least $Q$ elements.  The fibres
+partition the $Q^{2n+1}$ slot vectors, so every fibre has exactly $Q$ elements and is a
+single orbit:
+\begin{equation}
+   E_X(\mathbf z)=E_X(\mathbf z')
+   \iff
+   \mathbf z'=\mathcal G_t\mathbf z\ \text{ for some } t\in\F .
+   \label{eq:charp-fibres}
+\end{equation}
+
+\paragraph{The set $\mathcal A$, read off from the slots.}
+Fix $c\neq0$ and let
+\[
+   \mathcal A_c=\bigl\{\mathbf z\in\F^{2n+1}:\
+   \mathcal T_c\mathbf z=\mathcal G_t\mathbf z\text{ for some }t\in\F\bigr\},
+\]
+the set of slot vectors whose translate lies in their own gauge orbit.  By
+\eqref{eq:charp-gauge},
+\begin{equation}
+   \mathcal T_c\mathbf z-\mathcal G_t\mathbf z
+   =\bigl(\alpha_1(c-t),\;\beta_1(c+t),\;\varepsilon c+\lambda\,d_t(\mathbf z)\bigr).
+   \label{eq:charp-A-eq}
+\end{equation}
+This is the one place where the characteristic matters, and there are three cases.
+\begin{enumerate}
+\item[(i)] $\alpha_1\beta_1\neq0$.  The first two coordinates of \eqref{eq:charp-A-eq}
+   vanish only if $t=c$ and $t=-c$, i.e.\ $2c=0$.  In characteristic two this holds with
+   $t=c$, and the last coordinate then reads
+   $\varepsilon c=\lambda c(\sigma'(\mathbf z)+\alpha_1\beta_1c)$, the condition of
+   \Cref{thm:char2-lower}.  In odd characteristic $2c\neq0$, so
+   \[
+      \mathcal A_c=\emptyset\qquad(p\text{ odd},\ \alpha_1\beta_1\neq0):
+   \]
+   no gauge undoes a nonzero translation, and $\mathcal T_c$ acts freely on the set of
+   gauge orbits.
+\item[(ii)] $\beta_1=0\neq\alpha_1$.  Then $t=c$ is forced, $d_c(\mathbf z)=\alpha_1v_1c$,
+   and the last coordinate of \eqref{eq:charp-A-eq} vanishes exactly when
+   $\varepsilon=-\alpha_1v_1\,\lambda$ in $\F^{2n-1}$.
+\item[(iii)] $\alpha_1=0\neq\beta_1$.  Then $t=-c$ is forced, $d_{-c}(\mathbf z)=\beta_1u_1c$,
+   and the condition is $\varepsilon=-\beta_1u_1\,\lambda$.
+\end{enumerate}
+In cases (ii) and (iii) the condition has the form $\varepsilon=\ell(\mathbf z)\lambda$
+with $\ell$ a nonconstant linear form on slot space, and it does not involve $c$.  If
+$\lambda=0$ it holds for every $\mathbf z$ when $\varepsilon=0$ and for none otherwise.  If
+$\lambda\neq0$ it holds for no $\mathbf z$ unless $\varepsilon=\kappa\lambda$ for a scalar
+$\kappa$, and then it says $\ell(\mathbf z)=\kappa$, a fibre of a nonconstant linear form,
+which has $Q^{2n}$ elements.  Together with (i), and with \eqref{eq:char2-fix} for $p=2$,
+\begin{equation}
+   \abs{\mathcal A_c}\in\{0,\;Q^{2n},\;Q^{2n+1}\}\ \text{ in every characteristic, and }\
+   \mathcal A_c=\emptyset\ \text{ if $p$ is odd and }\alpha_1\beta_1\neq0 .
+   \label{eq:charp-fix}
+\end{equation}
+
+\paragraph{The set $\mathcal A$, read off from the values.}
+Now use $p\mid 2n$.  Since $c\neq0$, the translation $x\mapsto x+c$ has $pc=0$ and
+$kc\neq0$ for $0<k<p$, so all its orbits $\{r,r+c,\dots,r+(p-1)c\}$ have exactly $p$
+elements and there are $Q/p$ of them; as $Q\ge2n$, at least $2n/p$ are available.  Let
+$X$ be the union of $m=2n/p$ of them, listed orbit by orbit, and let $\pi$ be the
+permutation of the $2n$ coordinates with $x_{\pi(k)}=x_k+c$, a product of $m$ disjoint
+$p$-cycles.  By \eqref{eq:charp-translation}
+\begin{equation}
+   E_X\circ\mathcal T_c=\pi\circ E_X,
+   \qquad
+   (\pi\mathbf y)_k=y_{\pi(k)} .
+   \label{eq:charp-conjugacy}
+\end{equation}
+Suppose $E_X$ is surjective.  By \eqref{eq:charp-fibres}, $\mathbf z\in\mathcal A_c$
+exactly when $E_X(\mathcal T_c\mathbf z)=E_X(\mathbf z)$, i.e.\ by
+\eqref{eq:charp-conjugacy} when $E_X(\mathbf z)\in\operatorname{Fix}(\pi)$.  A vector is
+fixed by $\pi$ exactly when it is constant on each of the $m$ cycles, so
+$\abs{\operatorname{Fix}(\pi)}=Q^{m}$; since $E_X$ is onto and every fibre has $Q$
+elements,
+\begin{equation}
+   \abs{\mathcal A_c}=\abs{E_X^{-1}(\operatorname{Fix}\pi)}=Q^{\,2n/p+1}.
+   \label{eq:charp-count}
+\end{equation}
+
+\paragraph{Contradiction.}
+By \eqref{eq:charp-fix}, $\abs{\mathcal A_c}$ is $0$, $Q^{2n}$ or $Q^{2n+1}$, whereas
+\eqref{eq:charp-count} gives $Q^{2n/p+1}$, which is positive and at most $Q^{2n}$.  Equality
+$2n/p+1=2n$ means $2n(p-1)=p$, so $p-1$ divides $p$, which forces $p=2$ and then $n=1$,
+the excluded case.  Hence $E_X$ is not surjective for this $X$.  Since $c$ and the $2n/p$
+orbits were arbitrary, this holds for every $X$ that is a union of translation orbits.
+\qed
+
+\medskip
+For odd $p$ and $\alpha_1\beta_1\neq0$ the contradiction is starker than a mismatch of
+exponents: $\mathcal A_c$ is empty, while \eqref{eq:charp-count} would make it nonempty.
+In the language of orbits, if $E_X$ were onto it would induce a bijection
+$\bar E_X\colon\F^{2n+1}/\mathcal G\to\F^{2n}$ intertwining the induced translation
+$\bar{\mathcal T}_c$ with $\pi$, by \eqref{eq:charp-commute} and \eqref{eq:charp-conjugacy};
+conjugate permutations have the same number of fixed points, but $\pi$ has $Q^{2n/p}$ of
+them while $\bar{\mathcal T}_c$ has none (case (i)), or $Q^{2n-1}$ or $Q^{2n}$ (cases (ii),
+(iii)).
+
+\begin{remark}[Where the characteristic enters, and the hypotheses]
+\label{rem:charp-scope}
+Only two facts about $p$ are used.  First, a translation orbit in $\F$ has $p$ elements,
+so a $2n$-point set can be translation invariant only if $p\mid 2n$; this is what produces
+the value-side count \eqref{eq:charp-count}, and it is why the argument says nothing when
+$p\nmid 2n$---for instance about $(4,2)$ over $\F_{3^k}$, or about any $(2n,n)$ over a
+prime field $\F_p$ with $p$ odd, where $p\mid 2n$ and $2n\le p$ are incompatible.  (For
+$n=2$ the missing statement is in fact false, \Cref{rem:charp-regime}.)  Second, whether
+$c-t=0=c+t$ is solvable for $t$, i.e.\ whether $2c=0$, decides between the empty
+$\mathcal A_c$ of case (i) and the trichotomy of \Cref{thm:char2-lower}; both are
+compatible with the contradiction.  The hypothesis $Q\ge2n$ is exactly the condition for
+$2n$ distinct points to exist and cannot be weakened; the proof uses it only to find
+$2n/p$ disjoint orbits, and $Q/p\ge2n/p$ is the same inequality.  Translations are the
+only affine substitutions $x\mapsto ax+b$ that act on slot space: $a\neq1$ rescales the
+fixed coefficients $\alpha_i,\beta_i,\gamma$ of $x$ (already $a=-1$ changes their signs,
+and $\alpha_1$ or $\beta_1$ is nonzero), so it is not a change of slots.  Taking $X$ to be
+a union of cosets of a $j$-dimensional $\F_p$-subspace (possible when $p^j\mid 2n$) and
+intersecting the sets $\mathcal A_c$ over the subspace gives nothing new: such an $X$ is
+already a union of orbits of any single nonzero $c$ in the subspace.
+\end{remark}
+
+\begin{remark}[Finite-field analogue of the degree-six bound]
+\label{rem:charp-degree6}
+For $n=3$, \Cref{thm:char2-lower,thm:charp-lower} say that six evaluations of a chain with
+three multiplications never carry six field elements' worth of information over
+$\F_{2^k}$ ($k\ge3$) or $\F_{3^k}$ ($k\ge2$), whatever the preprocessing.  Together with
+\Cref{thm:charp-n3} below, which covers characteristic $\ge5$, this holds over
+\emph{every} finite field with at least six elements (\Cref{cor:charp-n3-all}), a
+finite-field counterpart of the lemma of \Cref{sec:lower}.
+\end{remark}
+
+\subsection{Three multiplications in characteristic at least five}
+\label{sec:charp-n3}
+
+When $p\nmid 2n$ the value-side count is unavailable, but for $n=3$ the chains are small
+enough to be eliminated by hand.  The proof below is the finite-field analogue of the
+degree-six Jacobian argument of \Cref{sec:lower}: the same normal form, the same case
+split by the degree profile of the last gate, and in place of ``$\det J$ vanishes
+somewhere'' the fact that a univariate quadratic or cubic is not a permutation of $\F_q$.
+
+\begin{theorem}[No $(6,3)$ construction in characteristic $\ge5$]
+\label{thm:charp-n3}
+Let $\F$ be a finite field of characteristic $p\ge5$ with $Q=\abs\F\ge7$ (for $Q=5$ there
+are no six distinct points).  Then for every chain with three multiplications and
+\emph{every} tuple $X$ of six distinct points of $\F$ the evaluation map
+$E_X\colon\F^7\to\F^6$ is not surjective.  More precisely, with $c_j$ the coefficient of
+$x^j$ in $f_{\mathbf z}$:
+\begin{enumerate}
+\item[(a)] if $\deg f_{\mathbf z}\le5$ for all $\mathbf z$, then $\abs{E_X(\F^7)}\le Q^5$;
+\item[(b)] if $f_{\mathbf z}$ has degree exactly $6$ with a fixed leading coefficient, then
+   $\abs{E_X(\F^7)}\le Q^6-(Q-1)Q^4$, with equality for Pan's sextic scheme of
+   \Cref{sec:lower};
+\item[(c)] if $f_{\mathbf z}$ has degree $8$, then $E_X$ is not injective on a set of
+   representatives of the gauge orbits, hence not surjective.
+\end{enumerate}
+No other degree profile occurs.
+\end{theorem}
+
+\begin{corollary}[$(6,3)$ over every finite field]
+\label{cor:charp-n3-all}
+Over every finite field with at least six elements, no chain with three multiplications
+is a $(6,3)$ construction: for $p=2$ and $p=3$ by \Cref{thm:char2-lower,thm:charp-lower}
+(some $X$), and for $p\ge5$ by \Cref{thm:charp-n3} (every $X$).
+\end{corollary}
+
+\subsubsection*{Proof of \Cref{thm:charp-n3}}
+
+Fix the chain and six distinct points $X$; write $q=Q$.
+
+\paragraph{Rescalings.}
+Multiplying one factor of gate $i$ by a nonzero constant $\rho$ (all its fixed coefficients
+and its slot) multiplies $G_i$ by $\rho$; dividing the coefficients $p_{ki},q_{ki}$ $(k>i)$
+and $r_i$ by $\rho$ compensates, and the new chain computes the same $f_{\mathbf z}$ at
+the slot vector with that one slot multiplied by $\rho$.  Multiplying the output by a
+nonzero constant is a bijection of value space.  Neither changes $\abs{E_X(\F^7)}$, so we
+may perform such rescalings freely.
+
+\paragraph{Normal form.}
+If $\alpha_1=\beta_1=0$ the image has at most $q^5$ elements (first paragraph of the proof
+of \Cref{thm:charp-lower}).  If exactly one of $\alpha_1,\beta_1$ is zero, $G_1$ has
+degree at most $1$ in $x$, so the factors of $G_2$ have degree at most $1$, those of
+$G_3$ at most $2$, and $\deg f_{\mathbf z}\le4$: $f_{\mathbf z}$ lies in the $q^5$-element
+space $\F[x]_{\le4}$ and $\abs{E_X(\F^7)}\le q^5$.  So let $\alpha_1\beta_1\neq0$; by
+rescaling both factors of the first gate, $\alpha_1=\beta_1=1$.  The gauge
+\eqref{eq:charp-gauge} acts freely, $E_X$ is constant on its orbits, and every orbit meets
+the slice $S=\{v_1=0\}\cong\F^6$ exactly once (at $t=v_1$); hence $E_X(\F^7)=E_X(S)$, and
+we may restrict to $S$, on which we write $s=u_1$, so
+\[
+   G_1=x(x+s).
+\]
+If $r_3=0$ then $f_{\mathbf z}=r_2G_2+r_1G_1+\gamma x+w$ has degree at most $4$ and
+$\abs{E_X(S)}\le q^5$; so $r_3\neq0$, and rescaling the output, $r_3=1$.  Finally, the
+slot $w$ shifts $f_{\mathbf z}$ by a constant, so $E_X$ is onto if and only if the
+coefficient vector $(c_5,\dots,c_1)$, for outputs monic of degree $6$, or the value vector,
+in general, takes $q^5$ values as the remaining five slots vary.
+
+\paragraph{Degree profile.}
+$G_1$ is monic of degree $2$.  Each factor of $G_2$ is $\pi G_1+\alpha x+u$ with fixed
+$(\pi,\alpha)$, of degree $2$, $1$ or $\le0$ according as $\pi\neq0$, $\pi=0\neq\alpha$,
+or $\pi=\alpha=0$, with a fixed leading coefficient; so $\deg G_2\in\{\le2,3,4\}$ is a
+chain constant with a fixed leading coefficient.  Each factor of $G_3$ is
+$\pi'G_2+\pi G_1+\alpha x+u$; if $\deg G_2\ge3$ its degree is that of the highest
+nonvanishing term, again fixed; if $\deg G_2\le2$ it has degree at most $2$.  Hence
+$\deg G_3\in\{\le5,6,8\}$, the degree-$6$ case arising only as a product of factors of
+degrees $2+4$ (with $\deg G_2=4$) or $3+3$ (with $\deg G_2=3$), and degree $8$ only as
+$4+4$; in each case the leading coefficient is a fixed nonzero constant, and degree $7$
+never occurs.  Since $r_3=1$ and $r_2G_2+r_1G_1+\gamma x+w$ has degree at most $4$,
+$f_{\mathbf z}$ has the degree and leading coefficient of $G_3$ whenever $\deg G_3\ge5$.
+
+\paragraph{Case (a): $\deg G_3\le5$.}
+Then $f_{\mathbf z}=\mathrm{const}\cdot x^5+(\text{degree}\le4)$ with a fixed constant,
+so $f_{\mathbf z}$ ranges over a set of at most $q^5$ polynomials, and
+$\abs{E_X(S)}\le q^5<q^6$.  (This uses nothing about the characteristic.)
+
+\paragraph{Monic sextics and Vandermonde.}
+In the two degree-$6$ cases the output is $f_{\mathbf z}=x^6+\sum_{j\le5}c_jx^j$ after
+rescaling, and $E_X(\mathbf z)=V_X(c_5,\dots,c_0)^{T}+(x_k^6)_k$ with $V_X$ the
+invertible Vandermonde matrix of $X$; so $\abs{E_X(S)}$ equals the number of coefficient
+vectors $(c_5,\dots,c_0)$ realised, for \emph{every} $X$, and we count those.  The
+coefficient $c_0$ is free ($w$), so it suffices to count $(c_5,\dots,c_1)$ over the five
+slots $(s,u_2,v_2,u_3,v_3)$.
+
+\paragraph{Case (b1): the $(2{+}4)$ family.}
+Here $\deg G_2=4$, i.e.\ both factors of $G_2$ use $G_1$; rescaling them,
+$G_2=(G_1+ax+u_2)(G_1+bx+v_2)$.  The degree-$2$ factor of $G_3$ uses $G_1$ but not
+$G_2$, the degree-$4$ factor uses $G_2$; rescaling both,
+\[
+   G_3=(G_1+hx+u_3)\,(G_2+kG_1+lx+v_3),\qquad
+   f_{\mathbf z}=G_3+r_2G_2+r_1G_1+\gamma x+w .
+\]
+Expanding (the identities of this and the next two paragraphs are polynomial identities
+over $\Z$ or $\Q$ with denominators $2,3$ only, checked symbolically, see
+\Cref{rem:charp-verification}):
+\begin{itemize}
+\item $c_5=3s+a+b+h$.  Since $3\neq0$, fixing $c_5$ fixes $s$.
+\item $c_4$ and $c_3$ are affine in $(u_2,v_2,u_3)$ (with $s$ fixed).  The three $2\times2$
+   minors of the $2\times3$ matrix of their linear parts are $a-b$, $a-h$, $b-h$, and the
+   vector $\kappa=(b-h,\,h-a,\,a-b)$ spans their common kernel.  If $a=b=h$ the matrix
+   has rank one, $c_3$ is a function of $(c_5,c_4)$, and at most $q^5$ coefficient vectors
+   occur.  Otherwise, for each $(c_5,c_4,c_3)$ the solutions form a line
+   $\{\mathbf z_0+y\kappa: y\in\F\}$ in $(u_2,v_2,u_3)$-space.
+\item $c_2=v_3+(\text{terms free of }v_3)$, so fixing $c_2$ fixes $v_3$ on that line.
+\item On the line, $c_1=Ay^2+By+C$ with
+   \begin{gather*}
+      A=-(a-b)^2(a+b-2h),\\
+      \frac{\partial B}{\partial c_3}=a-b,\qquad
+      \frac{\partial B}{\partial c_2}=0,\qquad
+      B\equiv0\ \text{if }a=b .
+   \end{gather*}
+\end{itemize}
+Now count.  If $A\neq0$: for each $(c_5,c_4,c_3,c_2)$ the quadratic $y\mapsto Ay^2+By+C$
+takes exactly $(q+1)/2$ values, so at most $q^4\cdot\frac{q+1}2\cdot q$ coefficient
+vectors occur, and $q^5(q+1)/2\le q^6-(q-1)q^4$ for $q\ge2$.  If $A=0$ and $a\neq b$,
+then $a+b=2h$ and $B$ is affine in $c_3$ with slope $a-b\neq0$ and independent of $c_2$:
+for each $(c_5,c_4,c_2)$ exactly one value $c_3^*$ makes $B=0$, and then only $c_1=C$ is
+reached, so the number of coefficient vectors is at most
+$q^3\bigl[(q-1)\,q+1\bigr]\,q=q^6-(q-1)q^4$.  If $a=b$ then $A=B=0$, $c_1$ is constant
+on the line, and at most $q^5$ vectors occur.  Pan's scheme is the sub-case $a+b=2h$
+(with $a=-1,b=1,h=0$), and there the bound is attained
+(\Cref{rem:charp-verification}); it is the finite-field shadow of Pan's hypersurface
+$D=0$, on which the decoder of \Cref{sec:lower} is undefined.
+
+\paragraph{Case (b2): the $(3{+}3)$ family.}
+Here $\deg G_2=3$: one factor of $G_2$ uses $G_1$ and the other does not but has a
+nonzero $x$-coefficient; after rescaling and possibly swapping the two factors,
+$G_2=(G_1+ax+u_2)(x+v_2)$.  Both factors of $G_3$ use $G_2$; rescaling,
+\begin{gather*}
+   G_3=(G_2+eG_1+hx+u_3)\,(G_2+e'G_1+h'x+v_3),\\
+   f_{\mathbf z}=G_3+r_2G_2+r_1G_1+\gamma x+w .
+\end{gather*}
+Then:
+\begin{itemize}
+\item $c_5=2(s+v_2+a)+e+e'$: fixing $c_5$ fixes $t:=s+v_2$.
+\item $c_4=2(u_2+\dots)+\dots$ is affine in $u_2$ with coefficient $2$: fixing $c_4$ fixes
+   $u_2$ as a function of $s$ (and the targets).
+\item $c_3=u_3+v_3+(\text{terms free of }u_3,v_3)$: fixing $c_3$ fixes $K:=u_3+v_3$.
+\item Given $K$, $c_2$ is affine in $u_3$ with slope $e'-e$.
+\end{itemize}
+\emph{Sub-case $e=e'$.}  With $t=s+v_2$, $m=u_2+v_2(s+a)+es$ and $K=2u_2v_2+u_3+v_3$, the
+four coefficients $(c_5,c_4,c_3,c_2)$ are functions of $(t,m,K)$ alone, independent of $s$
+and $v_3$; explicitly $c_2-(a+e+t)c_3=(m+h)(m+h')-2(a+e+t)^2m-(a+e+t)^2(h+h')-r_2e+r_1$.
+Since $(v_2,u_2,u_3)\mapsto(t,m,K)$ is a triangular bijection for each fixed $(s,v_3)$,
+at most $q^3$ values of $(c_5,\dots,c_2)$ occur and at most $q^5$ coefficient vectors.
+
+\emph{Sub-case $e\neq e'$.}  Solving successively for $v_2,u_2,u_3,v_3$ leaves $s$ free,
+and $c_1=F(s)$ is a cubic in $s$ whose coefficients are polynomials in
+$(c_5,c_4,c_3,c_2)$ and the chain constants:
+\begin{align*}
+   [s^3]F&=\frac{(e-e')^2}{4},\\
+   [s^2]F&=-\frac{(e-e')\bigl(c_5(e-e')-3h+3h'\bigr)}{4},\\
+   [s^1]F&=c_2+(\text{terms free of }c_2),
+\end{align*}
+the coefficients of $s^3$ and $s^2$ being free of $c_2$.  Since $2,3\neq0$, completing the
+cube ($\sigma=s+[s^2]F/(3[s^3]F)$) gives
+$F=\alpha\bigl(\sigma^3+\gamma\sigma\bigr)+\delta$ with $\alpha=(e-e')^2/4\neq0$ and
+$\partial\gamma/\partial c_2=1/\alpha\neq0$.  Hence for fixed $(c_5,c_4,c_3)$ there is
+exactly one $c_2^*$ with $\gamma=0$, and for every other $c_2$ \Cref{lem:charp-cubic}
+says that $\sigma\mapsto\sigma^3+\gamma\sigma$ takes at most $q-1$ values.  Therefore the
+number of coefficient vectors is at most $q^3\bigl[q+(q-1)(q-1)\bigr]q=q^6-(q-1)q^4$.
+
+\begin{lemma}[cubics are not permutations]
+\label{lem:charp-cubic}
+Let $q=p^k$ with $p\ge5$ and $\gamma\in\F_q$, $\gamma\neq0$.  Then
+$\sigma\mapsto\sigma^3+\gamma\sigma$ is not a permutation of $\F_q$; in fact the number
+$N$ of $(\sigma,\sigma')\in\F_q^2$ with $\sigma^2+\sigma\sigma'+\sigma'^2=-\gamma$ is
+$q-\chi(-3)$, where $\chi$ is the quadratic character of $\F_q$, and at most two of these
+lie on the diagonal.  (For $\gamma=0$ the map is a permutation iff $q\not\equiv1\pmod3$;
+for $\gamma=0$ the count $N$ is $2q-1$ or $1$; for $p=3$ the form is $(\sigma-\sigma')^2$
+and $N\in\{0,q,2q\}$; for $p=2$ the count is $q\pm1$ according to the parity of $k$.
+None of these degenerate cases is used.)
+\end{lemma}
+
+\begin{proof}
+$(\sigma^3+\gamma\sigma)-(\sigma'^3+\gamma\sigma')=(\sigma-\sigma')(\sigma^2+\sigma\sigma'+\sigma'^2+\gamma)$,
+so off-diagonal points of the conic are collisions.  Since $2$ is invertible,
+$4(\sigma^2+\sigma\sigma'+\sigma'^2)=(2\sigma+\sigma')^2+3\sigma'^2$ and
+$(\sigma,\sigma')\mapsto(2\sigma+\sigma',\sigma')$ is a bijection, so $N$ is the number of
+solutions of $X^2+3Y^2=-4\gamma$, which is $q-\chi(-3)$ because $-3\neq0$ and $-4\gamma\neq0$
+(\cite[Thm.~6.26]{lidl1997finite}: $X^2-aY^2=c$ has $q-\chi(a)$ solutions for $a,c\neq0$).
+Diagonal points satisfy $3\sigma^2=-\gamma$, at most two of them.  As $q\ge7$,
+$N\ge q-1\ge6>2$, so a collision exists.  The parenthetical cases follow from the same
+factorisation, or from Dickson's list of normalised permutation polynomials of degree
+three \cite[Table~7.1]{lidl1997finite}.
+\end{proof}
+
+\paragraph{Case (c): the $(4{+}4)$ family.}
+Here $\deg G_2=4$ and both factors of $G_3$ use $G_2$; rescaling,
+\[
+   G_2=(G_1+ax+u_2)(G_1+bx+v_2),\qquad
+   G_3=(G_2+A)(\mu G_2+B),\qquad \mu\neq0,
+\]
+with $A=eG_1+hx+u_3$, $B=e'G_1+h'x+v_3$, and $f_{\mathbf z}=G_3+r_2G_2+r_1G_1+\gamma x+w$,
+of degree $8$ with leading coefficient $\mu$.  The coefficient map is no longer tied to
+$E_X$ by a Vandermonde matrix (indeed for many such chains $\mathbf z\mapsto f_{\mathbf z}$
+is injective on $S$, \Cref{rem:charp-verification}), so we exhibit a collision of $E_X$
+on $S$ directly.  Complete the square:
+\begin{gather*}
+   f_{\mathbf z}=\mu H^2+K,\qquad
+   H=G_2+\frac{\mu A+B+r_2}{2\mu},\\
+   K=AB-\frac{(\mu A+B+r_2)^2}{4\mu}+r_1G_1+\gamma x+w .
+\end{gather*}
+$K$ does not involve $u_2,v_2$, and in terms of $\sigma_\pm=u_3\pm v_3/\mu$ it satisfies
+$\partial K/\partial\sigma_+=-r_2/2$.  Put $R_a=x(x+s+a)$, $R_b=x(x+s+b)$, so that
+$G_2=R_aR_b+u_2R_b+v_2R_a+u_2v_2$ and
+\[
+   H=R_aR_b+E,\qquad
+   E=u_2R_b+v_2R_a+u_2v_2+\tfrac12\bigl(e+\tfrac{e'}{\mu}\bigr)G_1+\tfrac12\bigl(h+\tfrac{h'}{\mu}\bigr)x+\tfrac{\sigma_+}{2}+\tfrac{r_2}{2\mu},
+\]
+a quadratic in $x$ whose three coefficients are $\bigl(u_2+v_2+\text{const},\
+u_2(s+b)+v_2(s+a)+\text{const},\ u_2v_2+\sigma_+/2+\text{const}\bigr)$: the map
+$(u_2,v_2,\sigma_+)\mapsto E$ has Jacobian determinant $(a-b)/2$, and when $a\neq b$ it is
+a bijection onto the quadratics (solve the first two coordinates, which are linear with
+determinant $b-a$, then the third).  If $a=b$, then $G_2$ and hence $f_{\mathbf z}$ is
+symmetric in $(u_2,v_2)$, and swapping $u_2\neq v_2$ gives two points of $S$ with the same
+$f_{\mathbf z}$; so let $a\neq b$.
+
+Now let $X=\{\rho_1,\rho_2,\tau_1,\tau_2,\tau_3,\tau_4\}$ be any partition of the six
+points, and choose $s=-\tfrac12(\tau_1+\tau_2+\tau_3+\tau_4+a+b)$.  Then
+$R_aR_b=x^4+(2s+a+b)x^3+\dots$ and $P:=\prod_i(x-\tau_i)=x^4-(\sum_i\tau_i)x^3+\dots$ have
+the same two leading coefficients, so $T:=2P-2R_aR_b$ is a quadratic.  Let
+$D=(x-\rho_1)(x-\rho_2)$.  Choose $\mathbf z\in S$ with this $s$, any $\sigma_-$ and $w$,
+and $E=(T+D)/2$; choose $\mathbf z'\in S$ with the same $s$ and $\sigma_-$, with
+$E'=(T-D)/2$, and with $w'=w-\tfrac{r_2}2(\sigma_+-\sigma'_+)$ so that $K=K'$.  Then
+\[
+   f_{\mathbf z}-f_{\mathbf z'}=\mu(H-H')(H+H')=\mu D\,(2R_aR_b+T)=2\mu DP,
+\]
+which vanishes at all six points of $X$: $E_X(\mathbf z)=E_X(\mathbf z')$.  And
+$\mathbf z\neq\mathbf z'$, because the $x^2$-coefficients of $E$ and $E'$ differ by $1$,
+i.e.\ $(u_2+v_2)-(u_2'+v_2')=1$.  So $E_X$ is not injective on the $q^6$-element set $S$,
+hence not onto $\F^6$.  Since the six points were arbitrary and $s$ was free, this holds
+for every $X$.  \qed
+
+\begin{remark}[What the three cases share with \Cref{sec:lower}]
+The univariate cores of cases (b1) and (b2) are exactly where the Jacobian of the
+coefficient map degenerates: for the $(2{+}4)$ family $\det J=3(a-b)\cdot(\text{affine
+form in the slots})$, and for the $(3{+}3)$ family $\det J=-2(e-e')\cdot(\text{affine
+form})$.  Over an infinite field the lemma of \Cref{sec:lower} finds a point of
+$\det J=0$ and concludes that no everywhere-defined rational decoder exists; over $\F_q$
+a pointwise singular Jacobian is compatible with bijectivity (\Cref{rem:charp-map}),
+and the statement ``a quadratic, resp.\ cubic, in one variable is not a permutation of
+$\F_q$'' replaces it.  Case (c), the degree-$8$ family, has no counterpart in
+\Cref{sec:lower} (whose model is monic degree six); over $\F_q$ its coefficient map can
+be injective on $S$ while $E_X$ misses more than a third of $\F_q^6$ for every $X$.
+\end{remark}
+
+\subsection{The regime $p\nmid 2n$ for general $n$}
+\label{sec:charp-regime}
+
+\begin{remark}[What is known when $p$ does not divide $2n$]
+\label{rem:charp-regime}
+\leavevmode
+\begin{enumerate}
+\item[(i)] \emph{False at $n=2$.}  For every odd $p$ we have $p\nmid4$, and the statement
+   of \Cref{thm:charp-lower} fails: Motzkin's chain $G_1=(x+u_1)(x+v_1)$,
+   $G_2=(G_1+x+u_2)(G_1+v_2)$, $f=G_2+w$ (constants $\alpha=(1,1)$, $\beta=(1,0)$,
+   $p_{21}=q_{21}=1$, $\gamma=0$, $r=(0,1)$) with the affine preprocessing
+   $(a_0,a_1,a_2,a_3)\mapsto(u_1,v_1,u_2,v_2,w)=(0,a_0,a_1,a_2,a_3)$ computes the monic
+   quartic with $c_3=2a_0+1$, $c_2=a_0^2+a_0+a_1+a_2$, $c_1=a_0(a_1+a_2)+a_2$,
+   $c_0=a_1a_2+a_3$ (\Cref{sec:lower}), and the decoder there is a two-sided polynomial
+   inverse over $\Z[1/2]$.  Hence over every field in which $2$ is invertible the
+   coefficient map is a polynomial automorphism of $\F^4$, and by Vandermonde $E_X$ is
+   onto for every four distinct points.  So any odd-characteristic analogue of
+   \Cref{thm:char2-lower} must assume $n\ge3$, exactly as the conjecture of
+   \Cref{sec:lower} does.  (In characteristic $2$ the identity $c_3=2a_0+1$ collapses to
+   $c_3=1$ and $\abs{E_X(\F^5)}=Q^3$ for every $X$, as \Cref{thm:char2-lower} demands.)
+   For $n=2$ and odd $q$ the surjective chains are characterised exactly:
+   $\abs{E_X(\F^5)}=Q^4$ iff $\alpha_1\beta_1\neq0$, $r_2\neq0$, $p_{21}q_{21}\neq0$ and
+   $\alpha_2q_{21}\neq\beta_2p_{21}$, for every $X$; otherwise $\abs{E_X(\F^5)}\le Q^3$
+   (\Cref{rem:charp-verification}).
+\item[(ii)] \emph{True at $n=3$} (\Cref{thm:charp-n3}), for every $X$.
+\item[(iii)] \emph{Open for $n\ge4$}, and what the symmetries do give.  Let $p$ be odd,
+   $n\ge2$, and suppose $E_X$ is onto for some $X$.  By \eqref{eq:charp-fibres} the
+   fibres are the gauge orbits, and one shows that every translation $\mathcal T_c$,
+   $c\neq0$, acts \emph{freely} on the orbit space: in case (i) of the proof of
+   \Cref{thm:charp-lower} directly; in cases (ii)/(iii), the condition
+   $\varepsilon=\ell(\mathbf z)\lambda$ does not involve $c$, so if it held on a
+   hyperplane $\ell=\kappa$ then the $Q^{2n-1}$ orbits in that hyperplane would all
+   consist of $c$-periodic, hence constant, functions for every $c$, contradicting
+   injectivity of $E_X$ on orbits as soon as $Q^{2n-1}>Q$; and $\lambda=0$ gives
+   $\abs{E_X(\F^{2n+1})}\le Q^{2n-1}$.  Consequently the family
+   $\mathcal C=\{f_{\mathbf z}\}$ of computed polynomials has exactly $Q^{2n}$ members,
+   contains no periodic function (in particular no constant), is invariant under
+   $x\mapsto x+c$ and under adding constants, and, if the chain is a $(2n,n)$
+   construction (every $X$), any two members agree in at most $2n-1$ points.  If moreover
+   the output has degree exactly $2n$ with a fixed leading coefficient $a$ (as in the
+   model of \Cref{sec:model}), then $\mathcal C\subseteq ax^{2n}+\F[x]_{<2n}$ and the
+   count forces equality: \emph{every degree-$2n$ construction over $\F_q$ computes all
+   polynomials of degree $2n$ with leading coefficient $a$}.  This is the precise
+   obstruction: the family $ax^{2n}+\F[x]_{<2n}$ satisfies every consequence of the gauge
+   and translation symmetries, and it is realised at $n=2$.  A proof for $n\ge4$ must
+   therefore use that $n$ gates cannot produce this family (or a non-affine family with
+   the same agreement property), i.e.\ it must engage the coefficient map, as the proof
+   of \Cref{thm:charp-n3} does.  Frobenius, scalings $x\mapsto\lambda x$ (which only
+   permute the family of $X$) and the extra gauges of gates whose two factors are
+   proportional modulo constants add nothing for $p\nmid 2n$.
+\item[(iv)] \emph{How hard is it?}  By \Cref{rem:charp-map}, the pointwise statement for
+   all large $p$ implies the characteristic-zero conjecture of \Cref{sec:lower} in
+   automorphism form, and is not implied by it: a chain whose elimination ends in a
+   univariate core $y\mapsto y^3$ would be bijective over $\F_q$ whenever
+   $q\equiv2\pmod3$ without being a polynomial automorphism.  At $n=3$ this does not
+   happen because the target coefficient $c_2$ enters the cubic core in its linear term
+   (so $\gamma\neq0$ for all but one $c_2$) rather than in its constant term; nothing
+   prevents it a priori for $n\ge4$, and it is the concrete structure to screen for
+   numerically (surjectivity at $p\equiv2$ but not at $p\equiv1\pmod3$).
+\item[(v)] \emph{Data at $n=3$, $p\nmid6$.}  In samples of $28{,}000$ (over $\F_7$),
+   $3{,}100$ ($\F_{11}$) and $700$ ($\F_{13}$) chain evaluations, no chain was surjective
+   and the largest image was exactly $Q^6-(Q-1)Q^4$ in all three fields---the bound of
+   \Cref{thm:charp-n3}(b), attained by Pan-type chains; the degree-$8$ chains stayed
+   below $0.68\,Q^6$ (\Cref{rem:charp-verification}).  Whether $Q^6-(Q-1)Q^4$ is the
+   maximum over \emph{all} three-multiplication chains reduces to a quantitative bound
+   for the $(4{+}4)$ family, which \Cref{thm:charp-n3}(c) does not provide.
+\end{enumerate}
+\end{remark}
+
+\subsection{Reduction to characteristic zero}
+\label{sec:charp-reduction}
+
+The conjecture of \Cref{sec:lower} concerns rational decoding over a field of
+characteristic zero; the open problem of \texttt{lower\_bound\_problem.tex} concerns
+polynomial automorphisms.  Over an algebraically closed field the two coincide (an
+everywhere-defined rational function has, by the Nullstellensatz, a constant denominator),
+so we use the automorphism form.  A chain over a field $K$ with a polynomial preprocessing
+map $\mathbf z\colon K^{2n}\to K^{2n+1}$ is an \emph{automorphism construction in monic
+form} if $f_{\mathbf z(p)}=x^{2n}+\sum_{j<2n}\Phi_j(p)x^j$ identically and
+$\Phi\colon K^{2n}\to K^{2n}$ has a two-sided polynomial inverse $\Psi$, and \emph{in
+points form at $X$} if $\Phi_X=E_X\circ\mathbf z$ has a two-sided polynomial inverse.
+(A one-sided polynomial inverse is automatically two-sided,
+\Cref{lem:polynomial-left-inverse-automorphism}.)
+
+\begin{proposition}[reduction modulo $p$]
+\label{prop:charp-reduction}
+Let $K$ be a number field, and let a chain over $K$ with $n$ multiplications admit an
+automorphism construction $(\mathbf z,\Psi)$ in monic form, or in points form at $X$.
+Let $N\in\Z_{>0}$ be such that the chain constants, the coefficients of $\mathbf z$ and
+$\Psi$, and, in points form, the $x_k$ and $(x_k-x_l)^{-1}$, all lie in
+$\mathcal O_K[1/N]$.  Then for every prime $p\nmid N$ and every prime $\mathfrak p$ of
+$\mathcal O_K$ above $p$, with residue field $\kappa=\mathcal O_K/\mathfrak p$, the
+reduced chain is a $(2n,n)$ construction, with affine preprocessing, over every finite
+field $\F\supseteq\kappa$ with $\abs\F\ge2n$ (monic form: every $X$; points form: at the
+reduced $\bar X$).
+\end{proposition}
+
+\begin{proof}
+All identities---monicity, $\Psi\circ\Phi=\mathrm{id}$, $\Phi\circ\Psi=\mathrm{id}$---hold
+in polynomial rings over $\mathcal O_K[1/N]$, since $K$ is infinite.  Reduction modulo
+$\mathfrak p$ is a ring homomorphism $\mathcal O_K[1/N]\to\kappa$ ($N$ is a unit in
+$\kappa$), applied coefficientwise it commutes with substitution and with extracting
+coefficients of $x^j$, so the reduced chain computes a monic polynomial of degree exactly
+$2n$ whose coefficient map $\bar\Phi$ has the two-sided polynomial inverse $\bar\Psi$.
+Evaluating the identities at points of $\F^{2n}$ (a ring homomorphism) shows $\bar\Phi$ is
+a bijection of $\F^{2n}$ for every $\F\supseteq\kappa$, and Vandermonde makes
+$E_{X'}\circ\bar{\mathbf z}$ a bijection for every $2n$ distinct points $X'\subset\F$.  In
+points form the $\bar x_k$ stay distinct because $(x_k-x_l)^{-1}$ reduces.  Finally the
+polynomial preprocessing can be replaced by the affine section $(0,v_1',\mathbf s')$ of
+the gauge normal form: with $\alpha_1\neq0$, the map
+$\nu(u_1,v_1,\mathbf s)=(v_1+\tfrac{\beta_1}{\alpha_1}u_1,\ \mathbf s+\lambda u_1v_1)$
+satisfies $E_X=E'_X\circ\nu$ for a chain $E'_X$ on $2n$ slots with first gate
+$x(\beta_1x+v_1')$, and $\nu$ has the affine section $\iota(v_1',\mathbf s')=(0,v_1',\mathbf s')$;
+if $\Psi$ inverts $E_X\circ\mathbf z$ then $E'_X\circ(\nu\circ\mathbf z\circ\Psi)=\mathrm{id}$,
+so $E'_X=E_X\circ\iota$ is itself an automorphism.  (A scalar first gate admits no
+automorphism construction, by Krull dimension.)
+\end{proof}
+
+\begin{corollary}[integrality]
+\label{cor:charp-integrality}
+For $n\ge2$, every automorphism construction of a chain with $n$ multiplications over a
+number field has, among the constants listed in \Cref{prop:charp-reduction}, one that is
+non-integral above $2$ and one non-integral above every prime divisor of $n$.  This is
+sharp at $n=2$: Motzkin's decoder has coefficient denominators $\{1,2,4,8,64\}$.
+\end{corollary}
+
+\begin{proof}
+Otherwise $N$ can be taken prime to $p$ ($p=2$ or $p\mid n$), and reduction at a prime
+above $p$ gives a $(2n,n)$ construction over $\F_{p^{fk}}$ for every $k$, with affine
+preprocessing; take $p^{fk}\ge2n$ and apply \Cref{thm:char2-lower} or
+\Cref{thm:charp-lower}.  (For outputs of unrestricted degree, the theorems provide a bad
+$X$ of a special shape, which suffices in monic form and, in points form, whenever the
+output has degree exactly $2n$.)
+\end{proof}
+
+\begin{remark}[The map of implications]
+\label{rem:charp-map}
+Fix $n\ge2$ and consider, for a prime $p$: $\mathsf A_p$ (resp.\ $\mathsf A'_p$): over
+every finite field of characteristic $p$ with at least $2n$ elements, every chain with $n$
+multiplications has \emph{some} (resp.\ \emph{every}) $2n$-tuple $X$ with $E_X$ not
+surjective; $\mathsf G_p$ (resp.\ $\mathsf G'_p$): no chain over $\overline{\F}_p$ admits
+an automorphism construction in monic (resp.\ points) form; $\mathsf C$ (resp.\
+$\mathsf C'$): the same over fields of characteristic zero---$\mathsf C$ is the
+conjecture of \Cref{sec:lower} in automorphism form and $\mathsf C'$ that of
+\texttt{lower\_bound\_problem.tex}.  Then:
+\begin{enumerate}
+\item[(a)] $\mathsf A'_p\Rightarrow\mathsf A_p$, $\mathsf G'_p\Rightarrow\mathsf G_p$,
+   $\mathsf C'\Rightarrow\mathsf C$ (Vandermonde), and
+   $\mathsf A_p\Rightarrow\mathsf G_p$, $\mathsf A'_p\Rightarrow\mathsf G'_p$ (an
+   automorphism over $\overline\F_p$ is defined over some $\F_q$ and bijective on every
+   $\F_{q^k}$).
+\item[(b)] $\mathsf C\iff(\mathsf G_p$ for all large $p)\iff(\mathsf G_p$ for infinitely
+   many $p)$, and likewise for $\mathsf C',\mathsf G'_p$: by the gauge normal form the
+   existence of an automorphism construction is a single first-order sentence in the
+   language of rings (the inverse has degree at most $(2^{n-1})^{2n-1}$ by the
+   Bass--Connell--Wright bound, Cor.~1.4 of their 1982 survey, valid over every field),
+   and the Lefschetz principle applies.
+\item[(c)] $(\mathsf A_p$ for infinitely many $p)\Rightarrow\mathsf C$ and
+   $(\mathsf A'_p$ for infinitely many $p)\Rightarrow\mathsf C'$, effectively: a given
+   construction over a number field is refuted by $\mathsf A_p$ at a single $p\nmid N$
+   (\Cref{prop:charp-reduction}).
+\item[(d)] $\mathsf A_p$ for the finitely many $p\mid2n$ (\Cref{thm:char2-lower,thm:charp-lower})
+   yields exactly \Cref{cor:charp-integrality} and decides nothing about $\mathsf C$:
+   at $n=2$, $\mathsf A_2$ holds and $\mathsf C$ fails.  Large primes essentially never
+   divide $2n$, so the regime $p\nmid2n$ is precisely what a proof of $\mathsf C$ through
+   finite fields needs.
+\item[(e)] $\mathsf G'_p$ does not imply $\mathsf A_p$: a polynomial map can be bijective
+   on $\F_q$-points with a singular Jacobian ($x\mapsto x^3$ on $\F_5$), and the
+   degree-six Jacobian lemma of \Cref{sec:lower}, which holds over every field with
+   $2\neq0$, gives $\mathsf G'_p$ for $n=3$ at every odd $p$ but no pointwise statement.
+   Pan's sextic shows the gap concretely: its reduction modulo $p\ge5$ is injective and
+   onto off the hypersurface $\bar D=0$, hits only $p^4$ of the $p^5$ points of that
+   hypersurface, and has image $p^6-p^5+p^4$---the bound of \Cref{thm:charp-n3}(b).
+\item[(f)] Status: $n=2$, $\mathsf A_2$ true, $\mathsf A_p$ false for odd $p$, $\mathsf C$
+   false.  $n=3$: $\mathsf A_2$, $\mathsf A_3$ (some $X$) and $\mathsf A'_p$ for all
+   $p\ge5$ (\Cref{thm:charp-n3}); hence $\mathsf C'$ by (c), consistent with
+   \Cref{sec:lower}.  $n\ge4$: $\mathsf A_p$ for $p\mid2n$ only; $\mathsf C$ open, and a
+   pointwise theorem for infinitely many $p\nmid2n$ would settle it.
+\end{enumerate}
+\end{remark}
+
+\begin{remark}[On the normal-form paragraph of \Cref{sec:lower}]
+\label{rem:charp-lower-gap}
+The paragraph ``Reduction to a normal form'' in \Cref{sec:lower} rewrites the first gate
+as $(Ax+a)(Bx+b)=A\,x(Bx+b)+a(Bx+b)$ and absorbs $a(Bx+b)$ into later affine uses; but
+$a(Bx+b)=aBx+ab$ changes the $x$-coefficient of every later factor using $u_1$ by
+$L_{i,1}aB$, which depends on the parameter $a$, whereas the normal form treats those
+coefficients as fixed.  The characteristic-free identity that does what is wanted is the
+gauge form $(Ax+a)(Bx+b)=A\,x\bigl(Bx+b+\tfrac{B}{A}a\bigr)+ab$: the correction $ab$ is
+$x$-free and goes into the later \emph{constant} slots, at the price that the normal-form
+slots are quadratic in the parameters.  The lemma remains true for an arbitrary affine
+parameterisation $H$ of the seven slots by six parameters: if $H$ is not injective, $J_F$
+is singular everywhere (the $\ker M$ argument of \Cref{sec:lower}); otherwise, since
+$\nu\circ H$ is quadratic, two parameter points whose images lie on one gauge orbit force
+$J_F$ to be singular at their (rational) midpoint, an orbit inside $H$ makes $J_F$ singular
+along it, and in the remaining case ($H$ transversal to the orbits, an explicit condition
+on the coefficients of $H$) $\nu|_H$ is an explicit quadratic automorphism onto the six
+normal-form slots and the formalised statement applies after transporting the left
+inverse.  The
+Lean development is unaffected (it takes the normal form as the definition of the
+circuit); the text should be corrected.
+\end{remark}
+
+\begin{remark}[Verification]
+\label{rem:charp-verification}
+\emph{Identities.}  The identities \eqref{eq:charp-firstgate}--\eqref{eq:charp-commute} and
+\eqref{eq:charp-A-eq}, the two degenerate resolutions of \eqref{eq:charp-A-eq}, the
+scalar-first-gate identity, and the fact that \eqref{eq:charp-gauge} differs from the
+characteristic-two gauge \eqref{eq:char2-gauge} by a vector with even integer coefficients,
+are checked as identities in $\Z[\text{constants},\text{slots},x,t,c]$ with every chain
+constant and slot a free symbol, fully expanded, for $n\le4$
+(\texttt{tools/}\allowbreak\texttt{charp\_gauge\_ring\_check.py}, $56$ identities), and as a machine-checked
+induction step (gate-local, with the earlier gates abstract) for $n\le8$; with random
+integer chain constants the fully expanded identities hold for $n=5$ as well.  The
+elimination facts of \Cref{thm:charp-n3}---$c_5$, the minors and kernel of $(c_4,c_3)$,
+the coefficients $A$ and $\partial B/\partial c_3$, $\partial B/\partial c_2$ of the
+$(2{+}4)$ core; $c_5$, the slopes $2$ and $e'-e$, the cubic core's three top coefficients
+and the $e=e'$ reduction of the $(3{+}3)$ family; the decomposition $f=\mu H^2+K$, the
+independence of $K$ from $(u_2,v_2)$, $\partial K/\partial\sigma_+=-r_2/2$ and the
+Jacobian $(a-b)/2$ of the $(4{+}4)$ family; and the two identities of
+\Cref{lem:charp-cubic}---are polynomial identities over $\Q$ with denominators in
+$\{2,3,\mu,a-b\}$, checked by \texttt{tools/}\allowbreak\texttt{charp\_n3\_synth\_check.py}; the conic count
+of \Cref{lem:charp-cubic} was tabulated for all $97$ prime powers $q\le400$ and for
+$q\in\{512,529,625,729,841,961,1024,2401\}$, for every $\gamma\in\F_q$: it equals
+$q-\chi(-3)$ exactly when $p\ge5$ and $\gamma\neq0$, and takes the degenerate values listed
+in the lemma otherwise (\texttt{tools/}\allowbreak\texttt{charp\_conic\_count.py}).  The
+degree profile (no degree $7$; degree $6$ only as $2{+}4$ or $3{+}3$; degree $8$ only as
+$4{+}4$; fixed leading coefficient whenever the degree is at least $5$) was enumerated
+symbolically over all $1024$ zero patterns of the chain constants.
+
+\emph{Counts.}  \Cref{thm:charp-lower}: over $\F_9$ with $n=3$ and
+$X=\{0,1,2\}\cup\{y,y+1,y+2\}$, all $9^7$ slot vectors of each of $25$ chains ($12$ random
+covering the four patterns of $(\alpha_1,\beta_1)$, $5$ designed to realise each branch of
+\eqref{eq:charp-fix}, $8$ random on a non-invariant $X$): $\abs{E_X(\F^7)}\le356{,}481<9^6$,
+$\abs{\mathcal A_c}$ equal to its predicted value in every non-scalar case, and
+$\mathcal A_c\subseteq E_X^{-1}(\operatorname{Fix}\pi)$ always; the slot-side trichotomy
+was confirmed over $\F_9$ ($n=2$, $14$ chains) and $\F_{25}$ ($n=2$, $6$ chains), and
+independently re-implemented over $GF(4),GF(8),GF(16),\F_9,\F_{25}$ ($594$ checks,
+\texttt{tools/charp\_count\_recheck.py}).  \Cref{thm:charp-n3}: over $\F_7$ and $\F_{11}$,
+random $(2{+}4)$ and $(3{+}3)$ chains had coefficient images within the stated bounds
+(maxima $7^6-6\cdot7^4=103{,}243$ and $11^6-10\cdot11^4=1{,}625{,}151$, attained by
+Pan-type chains), $e=e'$ chains had image exactly $Q^5$ ($38$ chains over
+$\F_7,\F_{11},\F_{13}$), the $(4{+}4)$ collision was verified pointwise for $120$ random
+chains and all $7$ six-subsets of $\F_7$ and $6$ chains and all $462$ six-subsets of
+$\F_{11}$ ($3{,}612$ collisions, $0$ failures; \texttt{tools/charp\_44\_step4\_recheck.py}),
+and for $20$ random $(4{+}4)$ chains over $\F_7$ the coefficient map was injective on $S$
+($7^6$ distinct polynomials) while $\abs{E_X(S)}\le75{,}271<0.64\cdot7^6$ for every $X$.
+Motzkin's chain: $E_X$ onto for all four-subsets $X$ of $\F_5,\F_7,\F_9,\F_{11},\F_{13}$
+and for sampled $X$ over $\F_{25},\F_{27}$; image exactly $Q^3$ for all $X$ over
+$GF(4),GF(8)$.  The $n=2$ characterisation was verified on all $5^9$ chains over $\F_5$
+and on complete reduced sweeps over $\F_7,\F_9,\F_{11},\F_{13}$ for every affine class of
+$X$, and derived symbolically (\texttt{tools/charp\_n2\_algebra.py}).  Samples at $n=3$:
+$28{,}000$ evaluations over $\F_7$, $3{,}100$ over $\F_{11}$, $700$ over $\F_{13}$, none
+surjective, maxima $Q^6-(Q-1)Q^4$ (\texttt{tools/charp\_image.py}).  These samples cover a
+vanishing fraction of the $q^{16}$ chains; the theorem, not the sample, is the evidence
+of non-surjectivity.
+\end{remark}

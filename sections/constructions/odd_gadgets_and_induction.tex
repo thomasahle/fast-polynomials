@@ -1,0 +1,781 @@
+\subsection{Odd-degree gadgets from known powers}
+\begin{algorithm}[H]
+    \caption{Odd-degree gadget $Q_{2^{l+1}k+(2^l-1)}$ from the known powers
+        $(H_2,\ldots,H_{2^l})$, for $k\ge1$ and $l\ge2$.}
+    \label{alg:constr-Q-odd}
+      \begin{algorithmic}
+          \State $\hat{H}_{2^l} = H_{2^l} + Q_{2^{l - 1} - 1}[\alpha_{2^{l + 1} k - 1}, \ldots, \alpha_{2^{l + 1}k + 2^{l - 1} - 3}](x, H_2, \ldots, H_{2^{l - 2}})$
+          \State $S^{(1)}_{2^l} = T^{(1)}_{2 k, 2^{l}}[\alpha_{2^{l} - 2}, \ldots, \alpha_{2^{l + 1}k - 3}](x, H_2, \ldots, \hat{H}_{2^l})$
+          \State $S^{(2)}_{2^l} = T^{(2)}_{2 k, 2^{l}}[\alpha_{2^{l} - 2}, \ldots, \alpha_{2^{l + 1}k - 3}](x, H_2, \ldots, \hat{H}_{2^l}, \hat{H}_{2^l} + \alpha_{2^{l + 1}k - 2})$
+          \State $Q_{2^{l + 1}k + (2^l - 1)}[\alpha_0, \ldots, \alpha_{2^{l + 1}k + 2^l - 2}](x, H_2, \ldots, H_{2^l})$
+          \Statex \hspace{\algorithmicindent}$= A_{2^{l-1}}[\alpha_0, \ldots, \alpha_{2^l - 3}, \alpha_{2^{l + 1}k + 2^{l - 1} - 2}, \ldots, \alpha_{2^{l + 1}k + 2^l - 2}](S^{(1)}_{2^l}, S^{(2)}_{2^l}, (x, H_2, \ldots, H_{2^{l-1}}))$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}\label{lem:Q-odd-degree-with-powers}
+    Let $k\ge 1$ and $l\ge 2$, put
+    $d=2^{l+1}k+(2^l-1)$, and assume that $\mathbb F$ is $d$-admissible.
+    Then \Cref{alg:constr-Q-odd} outputs a polynomial $Q_{2^{l+1}k+(2^l-1)}$ that is decodable given $(H_2,\ldots,H_{2^l})$.
+\end{lemma}
+\begin{proof}
+    Let $n\coloneqq\deg S^{(1)}_{2^l}=\deg S^{(2)}_{2^l}=2^{l+1}k$.
+    Since $n<d$, $d$-admissibility implies $n$-admissibility.  The internal
+    call has parameters $(M,D)=(2k,2^l)$, so its size is exactly $MD=n$;
+    moreover $M$ is even, and therefore the exceptional shared odd base is
+    irrelevant.  Consequently \Cref{lem:causal-perturbed-T} applies to this
+    call.
+    The internal $T_{2k,2^l}$ call that defines $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ uses the perturbed power
+    $\hat H_{2^l}=H_{2^l}+Q_{2^{l-1}-1}$ (with $\deg Q_{2^{l-1}-1}=2^{l-1}-1$) and its scalar shift
+    $\tilde H_{2^l}=\hat H_{2^l}+\alpha_{2^{l+1}k-2}$.
+    Apply \Cref{lem:causal-perturbed-T} to this internal call, with
+    $D=2^l$, $M=2k$, and $r=2^{l-1}$.  It gives, without treating the
+    perturbed power as an already-known constant, that
+    \[
+      (S^{(1)}_{2^l},S^{(2)}_{2^l})
+      \text{ is compatible on }G=\rng{n-r}
+    \]
+    given $(H_2,\ldots,H_{2^l})$.  The same lemma gives a cutoff-respecting
+    recovery of $\hat H_{2^l}$ and $\tilde H_{2^l}$ from the coefficients of
+    $xS^{(1)}_{2^l}+S^{(2)}_{2^l}$ and the given powers.
+    Thus the internal call is handled directly by
+    \Cref{lem:causal-perturbed-T}; no compatibility assertion is imported
+    from the recursive program without its cutoff proof.
+
+      Applying \Cref{lem:fill-correctness} at level $l-1$ to the outer $A_{2^{l-1}}$ call shows that the parameters appearing explicitly in that call are extractable from $Q_{2^{l+1}k+(2^l-1)}$ given $(H_2,\ldots,H_{2^l})$, and that $(S^{(1)}_{2^l},S^{(2)}_{2^l})$ is derivable from this given power data.
+
+    It remains to extract the parameters inside the definitions of
+    $\hat H_{2^l}$ and the internal $T$ call.  Since the outer fill decoder
+    derives $(S^{(1)}_{2^l},S^{(2)}_{2^l})$, it also derives their combined
+    polynomial.  The recovery part of \Cref{lem:causal-perturbed-T} therefore
+    gives $\hat H_{2^l}$ and $\tilde H_{2^l}$ directly.  Their difference
+    extracts the scalar
+    $\alpha_{2^{l+1}k-2}=\tilde H_{2^l}-\hat H_{2^l}$.
+
+    Next, from the derived $\hat H_{2^l}$ we obtain the polynomial
+    \[
+      Q_{2^{l-1}-1}=\hat H_{2^l}-H_{2^l}.
+    \]
+    This is exactly the $Q_{2^{l-1}-1}$ instance in the definition of $\hat H_{2^l}$, so decodability of $Q_{2^{l-1}-1}$ given $(H_2,\ldots,H_{2^{l-2}})$ extracts the corresponding parameter block.
+
+    Finally, we isolate the combined remainder polynomial for the $T_{2k,2^l}$ call:
+    \[
+      xR^{(1)}_{2k,2^l}+R^{(2)}_{2k,2^l}
+        = \bigl(xS^{(1)}_{2^l}+S^{(2)}_{2^l}\bigr) - \bigl(x\hat H_{2^l}^{2k}+\tilde H_{2^l}^{2k}\bigr).
+    \]
+    By \Cref{lem:Rk2l}(3), the remaining block of parameters inside $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ is extractable from this polynomial given $(H_2,\ldots,H_{2^{l-1}},\hat H_{2^l},\tilde H_{2^l})$, and all these polynomials are derivable from the data we already have.
+    Applying \Cref{lem:discharge-side-information} substitutes those derived
+    powers into the conditional remainder decoder.
+    Therefore all parameters are extractable from $Q_{2^{l+1}k+(2^l-1)}$ given $(H_2,\ldots,H_{2^l})$, proving that the output is decodable.
+\end{proof}
+
+\subsection{Induction steps}
+
+The $8k+3$ induction step and the special case $n=31$ require a small auxiliary ingredient: a degree-$15$ polynomial that is decodable given only $(H_2,H_4)$.
+We define the explicit barred gadgets needed when the available power list
+does not contain the next power.  In the induction steps below this choice is
+abbreviated by the selected-gadget notation $\mathcal Q_d$.
+\Cref{fig:odd-gadgets} summarizes both gadget families and their decoders.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_odd_gadgets}}
+  \caption{Ordinary and barred odd-degree gadgets.  When the full power
+  list is available, a smaller $Q$ perturbs the top power, an even $T$ call
+  supplies a compatible pair, and a fill call closes the gadget.  When only
+  $(H_2,H_4)$ is available, the barred construction first synthesizes
+  $H_8$ and uses a fixed $A_4$ shell.  Its decoder consists of three unit
+  pivots, one explicit constant-determinant block solve, the two power
+  shifts, the internal remainder decoder when that block is nonempty, and
+  the low fill slots.}
+  \label{fig:odd-gadgets}
+\end{figure}
+
+\begin{lemma}[A decodable $\bar Q_{8k+7}$ given $(H_2,H_4)$]\label{lem:barQ8k+7}
+    Let $k\ge 1$, assume that $\mathbb F$ is $(8k+7)$-admissible, and let
+    $H_2,H_4\in\mathbb{F}[x]$ be monic with $\deg H_2=2$ and $\deg H_4=4$.
+
+    Define
+    \[
+      H_8 \coloneqq \bigl(H_4+(x+\alpha_1)\bigr)\bigl(H_4+(H_2+\alpha_2)\bigr)+\alpha_0,
+      \qquad
+      \tilde H_8 \coloneqq H_8+\alpha_3.
+    \]
+    When $k=1$, the interval $\alpha_4,\ldots,\alpha_{8k-5}$ below is empty,
+    and the $T$ base is $T^{(1)}_{1,8}=H_8$,
+    $T^{(2)}_{1,8}=\widetilde H_8$.
+    Let
+    \[
+      \begin{aligned}
+      S^{(1)}&\coloneqq
+        T^{(1)}_{k,8}[\alpha_4,\ldots,\alpha_{8k-5}]
+          (x,H_2,H_4,H_8),\\
+      S^{(2)}&\coloneqq
+        T^{(2)}_{k,8}[\alpha_4,\ldots,\alpha_{8k-5}]
+          (x,H_2,H_4,H_8,\widetilde H_8),
+      \end{aligned}
+    \]
+    and define
+    \[
+      \begin{aligned}
+      &\bar Q_{8k+7}[\alpha_0,\ldots,\alpha_{8k+6}](x,H_2,H_4)\\
+      &\qquad\coloneqq
+      A_{4}[\alpha_{8k-4},\ldots,\alpha_{8k+1},
+            \alpha_{8k+2},\ldots,\alpha_{8k+6}]
+           (S^{(1)},S^{(2)},(x,H_2,H_4)).
+      \end{aligned}
+    \]
+    Then $\bar Q_{8k+7}$ is decodable given $(H_2,H_4)$.
+\end{lemma}
+\begin{proof}
+    % The input pair contains the unknown coefficients of H_8, so applying the
+    % general fill lemma here would be circular.  We instead give the finite
+    % top-down decoder explicitly.
+    Put $N=8k$ and write
+    \[
+      \begin{aligned}
+      H_2&=x^2+r_1x+r_0,&
+      H_4&=x^4+s_3x^3+s_2x^2+s_1x+s_0,\\
+      u&=\alpha_1,&v&=\alpha_2,&w&=\alpha_0,&\rho&=\alpha_3.
+      \end{aligned}
+    \]
+    If $k=1$, the defining base of the $T$ recursion gives
+    $S^{(1)}=H_8$, $S^{(2)}=\widetilde H_8$, and both internal remainders
+    vanish.  If $k\ge2$, then $N<8k+7$, so the admissibility hypothesis
+    implies $N$-admissibility and
+    \Cref{lem:Rk2l,lem:Rk2l-top-boundary} apply to the internal $T_{k,8}$
+    call.  Its level is $l=3$, so it does not use the exceptional shared odd
+    base.
+    For the outer $A_4$ call put
+    \[
+      b_i=\alpha_{N+2+i}\ (0\le i\le4),\qquad
+      a_i=\alpha_{N-4+i}\ (0\le i\le5).
+    \]
+    Thus the six $a_i$'s are the consecutive parameters in the $Q_3$ and
+    additive slots, while the five $b_i$'s are the scalar slots.  More
+    explicitly, the outer expression is
+    \[
+    \begin{aligned}
+      U_0&=(H_4+b_3)S^{(1)}+(x+a_5)(H_2+a_4)+a_3,\\
+      V_0&=(H_4+b_4)S^{(2)}+a_2,\\
+      C_1&=(H_2+b_1)U_0+a_1,
+      &C_2&=(H_2+b_2)V_0+a_0,\\
+      \bar Q_{N+7}&=(x+b_0)C_1+C_2.
+    \end{aligned}
+    \]
+    (The notation in this display is just a relabelling of the eleven
+    parameters $\alpha_{N-4},\ldots,\alpha_{N+6}$ used by $A_4$.)
+
+    We use the following top-coefficient notation.  If $X$ has degree $N$, let
+    \[
+      \widehat X(t)=x^{-N}X(x)\big|_{x=t^{-1}},
+      \qquad
+      p_r=[x^{N+7-r}]\bar Q_{N+7}\quad(0\le r\le7).
+    \]
+    Equality modulo $t^8$ below means equality of the top eight coefficients.
+    For $k=1$ the two $S$-polynomials are exactly $H_8$ and
+    $\widetilde H_8$; for $k\ge2$ their remainders have degree $N-8$ by
+    \Cref{lem:Rk2l}.  In either case, the coefficients of
+    $\widehat S^{(1)}$ and $\widehat S^{(2)}$ through $t^7$ are those of
+    $H_8^k$ and $\widetilde H_8^k$, respectively.
+
+    The first three rows have unit pivots:
+    \[
+      \begin{array}{c|ccc}
+        \text{coefficient of }\bar Q_{N+7}&[x^{N+6}]&[x^{N+5}]&[x^{N+4}]\\ \hline
+        \text{new parameter}&b_0&b_1&b_2\\
+        \text{slope}&1&1&1
+      \end{array}
+    \]
+    All entries to the right of a pivot in this table involve only parameters
+    already recovered.  This follows directly by expanding the monic factors
+    in the displayed definition of $\bar Q_{N+7}$.
+
+    We next solve simultaneously for $(b_3,b_4,u,v)$.  For a compact
+    verification of the four pivots, put
+    \[
+      c_j\coloneqq [x^{N-j}]
+        \bigl((H_4+x)(H_4+H_2)\bigr)^k
+        \quad(0\le j\le3).
+    \]
+    These are known from $H_2,H_4$ (and $c_1=2ks_3$).  The coefficients of
+    $S^{(1)}$ and $S^{(2)}$ in the first eight degrees below their leading
+    term are those of the corresponding powers.  In the normalized variable
+    $t=x^{-1}$, the second branch carries an additional factor $t$ because
+    it has degree $N+6$ rather than $N+7$; retaining this shift is essential
+    in the convolution below.  Since $u$ and $v$ first
+    enter $H_8$ four degrees below its leading term, the four rows
+    $p_4,p_5,p_6,p_7$ are affine in $(b_3,b_4,u,v)$, where
+    $p_r=[x^{N+7-r}]\bar Q_{N+7}$.  After the first three pivots, direct
+    convolution gives
+    \[
+      \begin{pmatrix}p_4\\p_5\\p_6\\p_7\end{pmatrix}
+       =\begin{pmatrix}p^0_4\\p^0_5\\p^0_6\\p^0_7\end{pmatrix}
+        +M\begin{pmatrix}b_3\\b_4\\u\\v\end{pmatrix},
+    \]
+    with
+    \[
+    \begin{gathered}
+      A_1=b_0+r_1+c_1,\qquad D=r_1+c_1,\\
+      C=b_0(c_1+r_1)+c_2+r_1c_1+r_0+b_1,\qquad
+      F=c_2+r_1c_1+r_0+b_2,\\
+      E=b_0(c_2+r_1c_1+r_0+b_1)+c_3+r_1c_2
+        +(r_0+b_1)c_1,\\
+      L=b_0+2r_1+(2k-1)s_3+1,
+    \end{gathered}
+    \]
+    and
+    \[
+      M=
+      \begin{pmatrix}
+        1&0&k&k\\
+        A_1&1&k(A_1+1)&k(A_1+1)\\
+        C&D&k(C+D)&k(C+D-1)\\
+        E&F&k(E+F-1)&k(E+F-L)
+      \end{pmatrix}.
+    \]
+    Replacing the last two columns by
+    $C_3-kC_1-kC_2$ and $C_4-kC_1-kC_2$ gives
+    $(0,0,0,-k)^{\mathsf T}$ and $(0,0,-k,-kL)^{\mathsf T}$.
+    Since the upper $2\times2$ block in the first two columns has determinant
+    one, this proves $\det M=-k^2$.  Thus this block is
+    inverted by the explicit decoder
+    \[
+      \begin{pmatrix}b_3\\b_4\\u\\v\end{pmatrix}
+        =-\frac1{k^2}\operatorname{adj}(M)
+          \left(
+            \begin{pmatrix}p_4\\p_5\\p_6\\p_7\end{pmatrix}
+            -\begin{pmatrix}p^0_4\\p^0_5\\p^0_6\\p^0_7\end{pmatrix}
+          \right).
+    \]
+    The only division is by the fixed field constant $k^2$, which is
+    invertible under $(8k+7)$-admissibility; there is no data-dependent
+    division.
+
+    It remains to recover $w$ and $\rho$, and then, when $k\ge2$, the
+    internal $T$ block.  For $k\ge2$, the next two coefficients include the
+    parameter-free boundary rows of the two internal remainders; these are
+    known by \Cref{lem:Rk2l-leading-coeff,lem:Rk2l-top-boundary}.  For $k=1$
+    the remainders vanish.  Thus in both cases every contribution other than
+    the indicated scalar shifts is already known after the preceding steps.
+    Indeed, writing
+    $H_8=H_8^0+w$, the first term of $(H_8^0+w)^k$ containing $w$ is
+    $kw(H_8^0)^{k-1}$, of degree $N-8$; multiplication by the monic
+    degree-$7$ factor $A$ places it in degree $N-1$.  Terms containing two
+    copies of $w$ are at least eight degrees lower.  Likewise the first term
+    containing $\rho$ in $(H_8+\rho)^k$ is
+    $k\rho H_8^{k-1}$, and the monic degree-$6$ factor $B$ places it in
+    degree $N-2$.  Therefore
+    \[
+      [x^{N-1}]\bar Q_{N+7}=kw+K_{N-1},\qquad
+      [x^{N-2}]\bar Q_{N+7}=k\rho+K_{N-2}(w),
+    \]
+    for known polynomials $K_{N-1},K_{N-2}$.  Thus $w$ and then $\rho$ are
+    recovered (the first boundary coefficient of $H_8^k$ contributes $kw$;
+    the second branch contributes $k(w+\rho)$ one row later).
+    Consequently $H_8$ and $\widetilde H_8$ are now known.
+
+    Subtract the known main terms and set
+    \[
+      A=(x+b_0)(H_2+b_1)(H_4+b_3),\qquad
+      B=(H_2+b_2)(H_4+b_4).
+    \]
+    Then
+    \[
+      \bar Q_{N+7}-AH_8^k-B\widetilde H_8^k
+       =AR^{(1)}_{k,8}+BR^{(2)}_{k,8}+F,\qquad \deg F\le6,
+    \]
+    where
+    \[
+      F=(x+b_0)\bigl((H_2+b_1)Q_3+a_1\bigr)+(H_2+b_2)a_2+a_0.
+    \]
+    If $k=1$, then $R^{(1)}_{1,8}=R^{(2)}_{1,8}=0$ and the internal parameter
+    interval $\alpha_4,\ldots,\alpha_{N-5}$ is empty, so the displayed
+    residual is simply $F$.  Suppose now that $k\ge2$.  Since $A$ and $B$
+    are monic of degrees $7$ and $6$, respectively, the
+    coefficient in degree $j+6$ of the first two terms is
+    \[
+      [x^j]\bigl(xR^{(1)}_{k,8}+R^{(2)}_{k,8}\bigr)
+      +\text{a polynomial in higher coefficients of }R^{(1)},R^{(2)}.
+    \]
+    Descending through degrees $N-3,N-4,\ldots,6$ therefore transfers the
+    triangular decoder of \Cref{lem:Rk2l}(3) to the internal parameter block
+    $\alpha_4,\ldots,\alpha_{N-5}$.  This explicitly handles the overlap of
+    the two multiplied remainder polynomials; no fill-compatibility lemma is
+    invoked.  At the final row (degree $6$, corresponding to the inner
+    coefficient of degree $0$), the low term has only its known leading
+    contribution $[x^6]F=1$; subtracting this constant leaves the same
+    triangular pivot.  The unknown coefficients of $F$ start in degree at
+    most $5$.
+
+    (For $k=1$ this entire internal descent is void.)  After reconstructing
+    $S^{(1)},S^{(2)}$, compute the low residual $F$.
+    Its coefficients in degrees $5,4,3,2,1,0$ have the unit-triangular pivot
+    table
+    \[
+      \begin{array}{c|cccccc}
+        \text{degree}&5&4&3&2&1&0\\ \hline
+        \text{new parameter}&a_5&a_4&a_3&a_2&a_1&a_0\\
+        \text{slope}&1&1&1&1&1&1.
+      \end{array}
+    \]
+    (The coefficient in degree $6$ is the known monic leading term.)  A direct
+    expansion of $Q_3=(x+a_5)(H_2+a_4)+a_3$ verifies the table, so these six
+    parameters are recovered in descending order.  Together with the already
+    recovered internal block and $(w,u,v,\rho)$ this is every parameter in
+    $\bar Q_{N+7}$, proving decodability given $(H_2,H_4)$.
+\end{proof}
+
+\begin{corollary}[The degree-$15$ barred gadget]\label{lem:barQ15}
+    The polynomial $\bar Q_{15}$ is decodable given $(H_2,H_4)$ over every
+    $15$-admissible field.
+\end{corollary}
+\begin{proof}
+    Specialize \Cref{lem:barQ8k+7} to $k=1$.
+\end{proof}
+
+\begin{lemma}[Odd-degree gadgets from $(H_2,H_4)$]\label{lem:odd-gadgets-H2H4}
+    Let $H_2,H_4\in\mathbb{F}[x]$ be monic with $\deg H_2=2$ and $\deg H_4=4$.
+    For each degree $n$ asserted below, assume that $\mathbb F$ is
+    $n$-admissible.
+    Then:
+    \begin{enumerate}
+        \item If $n\equiv 1\pmod 4$ and $n\ge 5$, then $Q_n$ is decodable given $H_2$ by \Cref{lem:Q4k+1-from-H2}.
+        \item The base degrees $n=3$ and $n=7$ are the explicit $Q_3$ and
+        $Q_7$ constructions above.  If
+        $n\equiv 3\pmod 8$ and $n\ge 11$, then $Q_n$ is decodable given
+        $(H_2,H_4)$ by the known-powers construction with $l=2$ (i.e.
+        \Cref{alg:constr-known-2n-1} and \Cref{lem:Q-odd-degree-with-powers}
+        specialized to $l=2$).
+        \item If $n\equiv 7\pmod 8$ and $n\ge 15$, then $\bar Q_n$ is
+        decodable given $(H_2,H_4)$ by \Cref{lem:barQ8k+7}; its $k=1$
+        specialization is the degree-$15$ gadget
+        \Cref{lem:barQ15}.
+    \end{enumerate}
+\end{lemma}
+\begin{proof}
+    For $n\equiv 1\pmod 4$, write $n=4k+1$ and apply \Cref{lem:Q4k+1-from-H2}.
+
+    The cases $n=3,7$ are the explicit $Q_3,Q_7$ constructions.  For
+    $n\equiv 3\pmod 8$
+    with $n\ge11$, write $n=2^{l+1}k+(2^l-1)$ with $l=2$ and apply the
+    construction \Cref{alg:constr-known-2n-1} together with
+    \Cref{lem:Q-odd-degree-with-powers} (specialized to $l=2$).
+
+    For $n\equiv 7\pmod 8$ and $n\ge 15$, write $n=8k+7$ with $k\ge1$
+    and apply \Cref{lem:barQ8k+7}.
+\end{proof}
+
+\paragraph{Selected odd gadget notation.}
+In the two final induction steps, the degree of an auxiliary odd gadget is
+not always of the Mersenne form for which the required higher powers have
+already been built.  To avoid hiding this distinction in the algorithm
+captions, write $\mathcal Q_d$ for the following degree-$d$ gadget (with a
+fresh, consecutive parameter block):
+\[
+\mathcal Q_d\coloneqq
+\begin{cases}
+ Q_1, & d=1,\\
+ Q_3, & d=3,\\
+ Q_7, & d=7,\\
+ Q_d, & d\equiv1\pmod4,\\
+ Q_d, & d\equiv3\pmod8,\\
+ \bar Q_d, & d\equiv7\pmod8\text{ and }d\ge15.
+\end{cases}
+\]
+Here the first two non-base lines use respectively
+\Cref{lem:Q4k+1-from-H2} and the known-powers construction with
+$(H_2,H_4)$; the first three lines are the explicit $Q_1,Q_3,Q_7$ bases,
+and the final line uses the barred construction
+\Cref{lem:barQ15,lem:barQ8k+7}.  If additional powers are available, the
+standard known-powers $Q_d$ may be used instead of $\mathcal Q_d$.
+In every case $\mathcal Q_d$ is monic, decodable from the displayed known
+powers, and has the cost $\lfloor d/2\rfloor$ recorded below.
+
+\begin{lemma}[Exact costs of the auxiliary odd gadgets]
+\label{lem:odd-gadgets-count}
+    Assume the indicated known powers are already available.
+    \begin{enumerate}
+      \item $\mathcal Q_{4k+1}(x,H_2)=Q_{4k+1}(x,H_2)$ uses $2k$
+      multiplications.
+      \item For $l\ge2$, the known-powers construction
+      $Q_{2^{l+1}k+(2^l-1)}$ uses
+      \[
+        2^l k+2^{l-1}-1
+        =\left\lfloor\frac{2^{l+1}k+(2^l-1)}2\right\rfloor
+      \]
+      multiplications.
+      \item $\mathcal Q_{8k+7}(x,H_2,H_4)=\bar Q_{8k+7}(x,H_2,H_4)$ uses
+      $4k+3$ multiplications; this includes $\bar Q_{15}$ when $k=1$.
+    \end{enumerate}
+    Consequently every auxiliary odd-degree $Q$-gadget used in the two final
+    induction steps has cost $\lfloor d/2\rfloor$, where $d$ is its degree.
+\end{lemma}
+\begin{proof}
+    The first construction consists of the call $T_{2k,2}$, whose cost is
+    $2k-1$ by \Cref{lem:T-multiplication-count}, followed by the one product
+    $(x+\beta)T^{(1)}$.
+
+    For the second construction, forming
+    $\hat H_{2^l}=H_{2^l}+Q_{2^{l-1}-1}$ costs
+    $2^{l-2}-1$ multiplications.  The internal $T_{2k,2^l}$ call costs
+    $(2k-1)2^{l-1}$, and the outer $A_{2^{l-1}}$ call costs
+    $3\cdot2^{l-2}$ (the formula in \Cref{lem:fill-Q-count}, with the direct
+    $A_2$ base when $l=2$).  Their sum is
+    \[
+      (2^{l-2}-1)+(2k-1)2^{l-1}+3\cdot2^{l-2}
+      =2^lk+2^{l-1}-1.
+    \]
+
+    Finally, $\bar Q_{8k+7}$ uses one product to form $H_8$, then
+    $4(k-1)$ products for $T_{k,8}$, and six products for $A_4$.  Thus its
+    cost is $1+4(k-1)+6=4k+3$.  The remaining auxiliary cases
+    $Q_{2^r-1}$ have cost $2^{r-1}-1=\lfloor(2^r-1)/2\rfloor$ by
+    \Cref{lem:fill-Q-count}; together these cases cover the gadgets listed in
+    \Cref{lem:odd-gadgets-H2H4} (including $Q_1,Q_3,Q_7$).
+\end{proof}
+
+\subsubsection{The $8k+7$ step}
+
+\Cref{fig:odd-induction-steps} pictures the two induction steps.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_odd_induction_steps}}
+  \caption{The two recursive odd-degree steps.  For $8k+7$, two square
+  shells are peeled in succession and leave the smaller polynomial
+  $P_{2k+1}$.  For $8k+3$, the outer shell exposes a compatible squared
+  smaller pair; its monic square roots recover the smaller instance, whose
+  decoder reconstructs the powers needed by the low auxiliary gadget.  The
+  red cells are the fixed leading-coefficient corrections at shared
+  boundaries.}
+  \label{fig:odd-induction-steps}
+\end{figure}
+
+\begin{algorithm}[H]
+    \caption{
+        Extending a compatible joint realization from $2k+1$ to $8k+7$.
+        The odd-degree auxiliary calls below use the selected gadgets
+        $\mathcal Q_d$ of \Cref{lem:odd-gadgets-H2H4}; they require only the
+        displayed $H_2,H_4$ (and only $H_2$ in the $d\equiv1\pmod4$ case).
+    }
+    \label{alg:constr-8k+7}
+
+    \begin{algorithmic}
+        \State $S^{(1)}_1 = T^{(1)}_{2k + 1}[\alpha_{0}, \ldots, \alpha_{2k}](x)$ \Comment{The smaller construction records the $H_2,H_4$ used below.}
+        \State $S^{(1)}_2 = \mathcal Q_{2k + 1}[\alpha_{2k + 1}, \ldots, \alpha_{4k + 1}](x, H_2(x), H_4(x))$
+        \State $S^{(1)}_3 = \mathcal Q_{4k + 3}[\alpha_{4k + 2}, \ldots, \alpha_{8k + 4}](x, H_2(x), H_4(x))$
+        \State Put $s=\alpha_{8k+5}$, $d=\alpha_{8k+6}$ and, for the
+        decoder, $a=(s-d)/2$, $b=(s+d)/2$.
+        \State $T^{(1)}_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            = (S^{(1)}_3 + S^{(1)}_2)(S^{(1)}_3 - S^{(1)}_2) + S^{(1)}_1
+            = (S^{(1)}_3)^2 - (S^{(1)}_2)^2 + S^{(1)}_1$
+        \\
+        \State $S^{(2)}_1 = T^{(2)}_{2k + 1}[\alpha_{0}, \ldots, \alpha_{2k}](x)$
+        \State For the identities put $S^{(2)}_2=S^{(1)}_2+a$ and
+        $S^{(2)}_3=S^{(1)}_3+b$; the circuit does not materialize these two
+        shifted polynomials.
+        \State $T^{(2)}_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            = \bigl((S^{(1)}_3+S^{(1)}_2)+s\bigr)
+              \bigl((S^{(1)}_3-S^{(1)}_2)+d\bigr)+S^{(2)}_1
+            = (S^{(2)}_3 + S^{(2)}_2)(S^{(2)}_3 - S^{(2)}_2) + S^{(2)}_1
+            = (S^{(2)}_3)^2 - (S^{(2)}_2)^2 + S^{(2)}_1$
+
+        \State \begin{align}
+            P_{8k + 7}[\alpha_0, \ldots, \alpha_{8k + 6}](x)
+            &= x T^{(1)}_{8k + 7} + T^{(2)}_{8k + 7}
+            \\&=x(S^{(1)}_3)^2+(S^{(1)}_3+b)^2
+                 -x(S^{(1)}_2)^2\notag\\
+            &\quad -(S^{(1)}_2+a)^2
+                 +xS^{(1)}_1+S^{(2)}_1
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[The $8k+7$ induction step is decodable (and preserves compatibility)]\label{lem:8k+7-splittable}
+    Let $k\ge2$ and assume that $\mathbb{F}$ is $(8k+7)$-admissible.
+    Suppose that $P_{2k+1}=xT^{(1)}_{2k+1}+T^{(2)}_{2k+1}$ is decodable, and that the auxiliary polynomials $S^{(1)}_2,S^{(1)}_3$ in \Cref{alg:constr-8k+7} are decodable given the relevant known-power data.
+    Assume moreover that the underlying pair
+    $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ is compatible on some window $G$
+    with no auxiliary data, and that its construction records the monic
+    polynomials $H_2,H_4$ used by the two auxiliary gadgets as polynomial
+    byproducts of the smaller parameter block.
+    Define
+    \[
+      G_{8k+7}\coloneqq \{2k+1,\ldots,4k+3\}\cup\{4k+3,\ldots,8k+6\}\cup G.
+    \]
+    Then the polynomial $P_{8k+7}$ produced by the construction is decodable,
+    and the output pair $(T^{(1)}_{8k+7},T^{(2)}_{8k+7})$ is compatible on
+    $G_{8k+7}$ with no auxiliary data.  If the smaller pair has a joint
+    $m$-realization recording $H_2,H_4$, then the displayed construction has
+    a joint $(m+3k+3)$-realization and records the same two powers.
+\end{lemma}
+\begin{proof}
+    Write $S_2\coloneqq S^{(1)}_2$ and
+    $S_3\coloneqq S^{(1)}_3$ for brevity.  The two scalar parameter
+    coordinates are $s=\alpha_{8k+5}$ and $d=\alpha_{8k+6}$; put
+    $a=(s-d)/2$ and $b=(s+d)/2$, so that $a+b=s$ and $b-a=d$.
+    This is an invertible fixed linear change of coordinates because the
+    admissibility hypothesis makes $2$ invertible.
+
+    Since $S_3=\mathcal Q_{4k+3}$ is monic of degree $4k+3$, the polynomial $xS_3^2+(S_3+b)^2$ has degree $8k+7$.
+    All remaining summands in the explicit formula for $P_{8k+7}$ have degree at most $4k+3$:
+    indeed, $S_2=\mathcal Q_{2k+1}$ has degree $2k+1$, so $xS_2^2$ has degree $4k+3$ and $(S_2+a)^2$ has degree $4k+2$, while $xS^{(1)}_1+S^{(2)}_1=P_{2k+1}$ has degree $2k+1$.
+    Therefore we may write
+    \[
+        P_{8k+7} = \underbrace{xS_3^2 + (S_3+b)^2}_{\text{square gadget at degree }4k+3}
+            \;+\; E_3
+    \]
+    where $\deg E_3\le 4k+3$.
+    The boundary coefficient of this error is fixed:
+    $[x^{4k+3}]E_3=-1$.  Therefore
+    \Cref{lem:square-gadget-boundary}, with this supplied boundary
+    coefficient, derives $S_3$ and $b$ from $P_{8k+7}$.
+
+    Subtracting the derived square-gadget polynomial $xS_3^2+(S_3+b)^2$ from $P_{8k+7}$ leaves
+    \[
+        P' \coloneqq -xS_2^2 - (S_2+a)^2 + P_{2k+1}.
+    \]
+    Equivalently, $-P' = xS_2^2 + (S_2+a)^2 + E_2$ with $E_2=-P_{2k+1}$ and $\deg E_2\le 2k+1=\deg S_2$.
+    Its boundary coefficient is again fixed, $[x^{2k+1}]E_2=-1$.
+    Applying \Cref{lem:square-gadget-boundary}, with this boundary
+    coefficient, derives $S_2$ and $a$ from $P'$, and by
+    construction both polynomials are now available without using their
+    internal known-power data.
+
+    Finally,
+    \[
+        P_{2k+1} = P' + xS_2^2 + (S_2+a)^2
+    \]
+    is derivable from $P_{8k+7}$, so decodability of $P_{2k+1}$ extracts all
+    parameters of the $2k+1$ block.  We can then recompute the recorded
+    byproducts $H_2,H_4$ of that smaller construction.  Only at this point do
+    we invoke decodability of the auxiliary gadgets: from the already derived
+    polynomials $S_2,S_3$ and their now-known powers,
+    \Cref{lem:discharge-side-information} extracts their parameter blocks;
+    the reconstructed $H_2,H_4$ are thereby discharged rather than silently
+    treated as fixed auxiliary data.
+    Together with $s=a+b$ and $d=b-a$, this extracts
+    $\alpha_0,\ldots,\alpha_{8k+6}$ and proves decodability.
+
+    For compatibility we retain the row cutoffs in those two peelings.  If
+    $S$ is monic of degree $e$, the descending recurrence in
+    \Cref{lem:square-gadget-boundary} first reads the coefficient
+    $[x^q]S$ in row $e+q+1$; the scalar shift is read in row $e$.
+    Consequently $[x^j]S^2$ is recovered using only rows at least $j+1$,
+    while $[x^j](S+\delta)^2$ uses only rows at least $j$.  Subtracting a
+    recovered square gadget at row $j$ also uses only rows at least $j$, so
+    the same statement remains true for the second peeling and for the
+    residual $P_{2k+1}$.
+
+    Now apply the unconditional compatibility hypothesis for the smaller
+    pair to that residual.  It recovers
+    $[x^j]T^{(1)}_{2k+1}$ from output rows at least $j+1$ and
+    $[x^j]T^{(2)}_{2k+1}$ from rows at least $j$.  Substitution in
+    \[
+      T^{(1)}_{8k+7}=S_3^2-S_2^2+T^{(1)}_{2k+1},\qquad
+      T^{(2)}_{8k+7}=(S_3+b)^2-(S_2+a)^2+T^{(2)}_{2k+1}
+    \]
+    gives exactly the two required cutoffs on $G_{8k+7}$.  No coefficients
+    of the internal powers used to define $S_2,S_3$ occur in this
+    reconstruction, so the output compatibility is unconditional.
+
+    Finally run the smaller $m$-realization once.  The two selected auxiliary
+    gadgets cost $k$ and $2k+1$ products by
+    \Cref{lem:odd-gadgets-count}; they reuse the recorded $H_2,H_4$ wires.
+    The two displayed difference-of-squares outputs cost one product each.
+    Hence the joint cost is $m+k+(2k+1)+2=m+3k+3$, and the inherited power
+    wires remain recorded outputs.
+\end{proof}
+
+\begin{example}[Worked example: $k=7$ (constructing $63$)]
+    Instantiating the construction with $k=7$ gives $2k+1=15$, $4k+3=31$, and $8k+7=63$.
+    Let $(T^{(1)}_{15},T^{(2)}_{15})$ be the compatible seven-product joint
+    realization from \Cref{sec:special-cases}, which records $H_2,H_4$, and
+    let $\bar Q_{15}$ and
+    $\bar Q_{31}$ be the selected degree-$15$ and degree-$31$ gadgets from
+    the convention above.
+    Put $s\coloneqq\alpha_{61}$, $d\coloneqq\alpha_{62}$ and
+    $a=(s-d)/2$, $b=(s+d)/2$.  The construction specializes to
+    \[
+      \begin{aligned}
+        T^{(1)}_{63}
+          &=\bar Q_{31}^2-\bar Q_{15}^2+T^{(1)}_{15},\\
+        T^{(2)}_{63}
+          &=(\bar Q_{31}+\bar Q_{15}+s)
+            (\bar Q_{31}-\bar Q_{15}+d)+T^{(2)}_{15}\\
+          &=(\bar Q_{31}+b)^2-(\bar Q_{15}+a)^2+T^{(2)}_{15}.
+      \end{aligned}
+    \]
+    and hence
+    \[
+        P_{63}=xT^{(1)}_{63}+T^{(2)}_{63}
+        = x\bar Q_{31}^2 + (\bar Q_{31}+b)^2
+          -x\bar Q_{15}^2-(\bar Q_{15}+a)^2+P_{15}.
+    \]
+    The parameter blocks are
+    \[
+      \begin{array}{c|c}
+        \alpha_0,\ldots,\alpha_{14}&(T^{(1)}_{15},T^{(2)}_{15})\\
+        \alpha_{15},\ldots,\alpha_{29}&\bar Q_{15}\\
+        \alpha_{30},\ldots,\alpha_{60}&\bar Q_{31}\\
+        \alpha_{61},\alpha_{62}&s,d.
+      \end{array}
+    \]
+\end{example}
+
+\subsubsection{The $8k+3$ step}
+\begin{algorithm}[H]
+    \caption{
+        Extending a compatible joint realization from $2k+1$ to $8k+3$.
+        The call to $\mathcal Q_{2k-1}$ below uses the selected gadget of
+        \Cref{lem:odd-gadgets-H2H4}: it needs only the $H_2,H_4$ made
+        derivable by the preceding two calls (with the explicit $Q_3,Q_7$
+        bases in the small cases).
+    }
+    \label{alg:constr-8k+3}
+
+    \begin{algorithmic}
+        \State $S^{(1)}_1 = T^{(1)}_{2k + 1}[\alpha_{2k}, \ldots, \alpha_{4k}](x)$ \Comment{The smaller construction records $H_2(x)$.}
+        \State $S^{(1)}_2 = Q_{4k + 1}[\alpha_{4k + 2}, \ldots, \alpha_{8k + 2}](x, H_2(x))$ \Comment{This call records the quartic $H_4(x)$.}
+        \If{$k > 1$}
+            \State $S^{(1)}_3 = \mathcal Q_{2k - 1}[\alpha_{1}, \ldots, \alpha_{2k - 1}](x, H_2(x), H_4(x))$
+        \Else
+            \State $S^{(1)}_3 = \alpha_1$
+        \EndIf
+        \State $T^{(1)}_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            = (S^{(1)}_2 + S^{(1)}_1)(S^{(1)}_2 - S^{(1)}_1) + S^{(1)}_3
+            = (S^{(1)}_2)^2 - (S^{(1)}_1)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = T^{(2)}_{2k + 1}[\alpha_{2k}, \ldots, \alpha_{4k}](x)$
+        \State $S^{(2)}_2 = S^{(1)}_2 + \alpha_{4k + 1}$
+        \State $S^{(2)}_3 = \alpha_{0}$
+        \State $T^{(2)}_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            = (S^{(2)}_2 + S^{(2)}_1)(S^{(2)}_2 - S^{(2)}_1) + S^{(2)}_3
+            = (S^{(2)}_2)^2 - (S^{(2)}_1)^2 + S^{(2)}_3$
+
+        \State \begin{align}
+            P_{8k + 3}[\alpha_0, \ldots, \alpha_{8k + 2}](x)
+            &= x T^{(1)}_{8k + 3} + T^{(2)}_{8k + 3}
+            \\&=x(S^{(1)}_2)^2+(S^{(1)}_2+\alpha_{4k+1})^2
+                 -x(S^{(1)}_1)^2\notag\\
+            &\quad -(S^{(2)}_1)^2+xS^{(1)}_3+S^{(2)}_3
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[The $8k+3$ induction step is decodable (and preserves compatibility)]\label{lem:8k+3-splittable}
+    Let $k\ge1$ and assume that $\mathbb{F}$ is $(8k+3)$-admissible.
+    Suppose that $P_{2k+1}=xT^{(1)}_{2k+1}+T^{(2)}_{2k+1}$ is decodable,
+    and that the underlying pair
+    $(T^{(1)}_{2k+1},T^{(2)}_{2k+1})$ is compatible on some $G$ with no
+    auxiliary data.  Assume that the smaller construction records its monic
+    quadratic $H_2$ as a polynomial byproduct.  Assume also that the auxiliary polynomials
+    $S^{(1)}_2$ and $S^{(1)}_3$ in \Cref{alg:constr-8k+3} are decodable once
+    their indicated known powers are supplied.
+    Define
+    \[
+      G_{8k+3}\coloneqq
+      \{4k+1,\ldots,8k+2\}\cup (2k+G)\cup \rng{2k+1}.
+    \]
+    Then the polynomial $P_{8k+3}$ produced by the construction is decodable,
+    and the output pair $(T^{(1)}_{8k+3},T^{(2)}_{8k+3})$ is compatible on
+    $G_{8k+3}$ with no auxiliary data.  If the smaller pair has a joint
+    $m$-realization recording $H_2$, then the displayed construction has a
+    joint $(m+3k+1)$-realization and records both $H_2$ and the quartic $H_4$
+    formed by its $Q_{4k+1}$ call.
+\end{lemma}
+\begin{proof}
+    Write $S_2\coloneqq S^{(1)}_2$, $S_3\coloneqq S^{(1)}_3$, and $a\coloneqq \alpha_{4k+1}$ for the scalar shift.
+
+    From the explicit formula in the algorithm we have
+    \[
+        P_{8k+3} = \underbrace{xS_2^2 + (S_2+a)^2}_{\text{square gadget at degree }4k+1} + E,
+    \]
+    where $\deg E\le 4k+1$ (all remaining terms involve only the $2k+1$-block and $xS_3+\alpha_0$).
+    The boundary coefficient of this error is fixed:
+    $[x^{4k+1}]E=-1$.  Therefore
+    \Cref{lem:square-gadget-boundary}, with this supplied boundary
+    coefficient, derives $S_2$ and $a$ from $P_{8k+3}$.
+
+    Subtracting the derived square-gadget polynomial
+    $xS_2^2+(S_2+a)^2$ yields
+    \[
+      P'=-\Psi+xS_3+\alpha_0,
+      \qquad
+      \Psi\coloneqq x(S^{(1)}_1)^2+(S^{(2)}_1)^2,
+    \]
+    where $S^{(i)}_1=T^{(i)}_{2k+1}$.  The last two terms have degree at
+    most $2k$.  Hence $[x^d]\Psi=-[x^d]P'$ for $d>2k$.  At $d=2k$ the
+    only correction is the fixed leading coefficient of $xS_3$: it is zero
+    for $k=1$, and one for $k>1$.  Thus every coefficient of $\Psi$ in the
+    window $2k+G$ is recoverable from $P'$ without knowing any coefficient of
+    the internal powers.
+
+    The unconditional compatibility hypothesis and
+    \Cref{lem:compatible-power} show that
+    $((S^{(1)}_1)^2,(S^{(2)}_1)^2)$ is compatible on $2k+G$, again with no
+    auxiliary data.  Its decoder therefore recovers both squares from the
+    displayed $\Psi$-window.  Taking the descending monic square roots
+    recovers $S^{(1)}_1,S^{(2)}_1$, and hence
+    $P_{2k+1}=xS^{(1)}_1+S^{(2)}_1$.  Decodability of $P_{2k+1}$ now extracts
+    its parameter block, after which the recorded polynomial $H_2$ can be
+    recomputed.
+
+    Finally, with $(S^{(1)}_1,S^{(2)}_1)$ derived, we can isolate
+    \[
+        xS_3+\alpha_0 = P' + x(S^{(1)}_1)^2 + (S^{(2)}_1)^2.
+    \]
+    The constant term of $xS_3+\alpha_0$ equals $\alpha_0$, so $\alpha_0$ is extractable.
+    Subtracting $\alpha_0$ then derives $xS_3$, and hence $S_3$ (by shifting coefficients).
+    Decode the already recovered polynomial
+    $S_2=Q_{4k+1}(x,H_2)$ first.  By
+    \Cref{lem:Q4k+1-from-H2}, this both extracts the parameter block of $S_2$
+    and reconstructs its internal quartic $H_4$.  With $(H_2,H_4)$ now
+    available, decodability of $S_3$ extracts its parameter block (for $k=1$,
+    $S_3=\alpha_1$ is already read directly).  Thus neither auxiliary decoder
+    is invoked before the powers it requires have actually been reconstructed;
+    \Cref{lem:discharge-side-information} then substitutes those reconstructed
+    powers into the two conditional decoders.
+
+    Together with $a$ and $\alpha_0$, these are all parameters, proving
+    decodability.
+
+    It remains to verify the causal cutoffs.  For a monic degree-$e$
+    polynomial $S$, the square-gadget recurrence first reads $[x^q]S$ in
+    row $e+q+1$ and reads its scalar shift in row $e$.  Consequently
+    $[x^j]S^2$ is recoverable from output rows at least $j+1$, while
+    $[x^j](S+\delta)^2$ is recoverable from rows at least $j$.  This applies
+    to $S_2$ on the top window $\{4k+1,\ldots,8k+2\}$.
+
+    For the middle block, recovering $[x^r]\Psi$ from $P'$ uses only the
+    output row $r$ and the fixed monic boundary correction at $r=2k$.
+    The cutoff conclusion of \Cref{lem:compatible-power} therefore gives
+    \[
+      \begin{aligned}
+      [x^j](S^{(1)}_1)^2
+        &\polyfrom([x^r]P_{8k+3}:r\in G_{8k+3},\ r\ge j+1),\\
+      [x^j](S^{(2)}_1)^2
+        &\polyfrom([x^r]P_{8k+3}:r\in G_{8k+3},\ r\ge j).
+      \end{aligned}
+    \]
+    Finally, after those squares have been subtracted,
+    $xS_3+\alpha_0$ is read coefficient by coefficient on
+    $\rng{2k+1}$: $[x^j]S_3$ is read in row $j+1$, and $\alpha_0$ in row
+    zero.  Substitution in
+    \[
+      T^{(1)}_{8k+3}=S_2^2-(S^{(1)}_1)^2+S_3,
+      \qquad
+      T^{(2)}_{8k+3}=(S_2+a)^2-(S^{(2)}_1)^2+\alpha_0
+    \]
+    gives the required first-component cutoff $j+1$ and second-component
+    cutoff $j$.  No internal known power occurs in these formulas, so the
+    output compatibility is unconditional.
+
+    For the joint cost, run the smaller circuit once.  The selected gadgets
+    of degrees $4k+1$ and $2k-1$ cost $2k$ and $k-1$ products by
+    \Cref{lem:odd-gadgets-count} (the second cost is zero when $k=1$), and
+    the two displayed difference-of-squares outputs cost one product each.
+    The total is $m+2k+(k-1)+2=m+3k+1$.  The first auxiliary call forms and
+    records $H_4$, while the smaller circuit's $H_2$ wire is retained.
+\end{proof}
+

@@ -1,0 +1,32 @@
+% Four reusable top-window decoding primitives.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,4.65) {(a) Monic division};
+  \node[fp active, minimum width=32mm, anchor=west] (f) at (0,3.95) {top rows of $F=QD+R$};
+  \node[fp known, minimum width=19mm, anchor=west] (d) at (3.45,3.95) {$D=x^d+\cdots$};
+  \node[fp pivot, minimum width=29mm, anchor=west] (q) at (1.25,3.08) {$q_t,q_{t-1},\ldots$};
+  \draw[fp decode] (f.south) -- node[fp label, left] {leading $1$} (q.north);
+  \node[fp label, anchor=west] at (0,2.52) {each row exposes the next coefficient of $Q$};
+
+  \node[fp panel title] at (7.05,4.65) {(b) Monic root};
+  \node[fp active, minimum width=34mm, anchor=west] (pow) at (7.05,3.95) {top $n$ rows of $P^m$};
+  \node[fp pivot, minimum width=28mm, anchor=west] (proot) at (8.35,3.08) {$p_{n-1},\ldots,p_0$};
+  \draw[fp decode] (pow.south) -- node[fp label, left] {pivot $m$} (proot.north);
+  \node[fp label, anchor=west] at (7.05,2.52) {$[x^{nm-s}]P^m=mp_{n-s}+$ earlier terms};
+
+  \node[fp panel title] at (0,1.78) {(c) One boundary error};
+  \node[fp active, minimum width=31mm, anchor=west] at (0,1.08) {clean top window};
+  \node[fp seam, minimum width=9mm, anchor=west] at (3.1,1.08) {$E_b$};
+  \node[fp unread, minimum width=17mm, anchor=west] at (4.0,1.08) {lower error};
+  \draw[fp decode] (0,0.45) -- node[fp label, above]
+    {subtract the named seam, then use (b)} (5.7,0.45);
+
+  \node[fp panel title] at (7.05,1.78) {(d) Square gadget};
+  \node[fp active, minimum width=27mm, anchor=west] (sq) at (7.05,1.08) {recover monic $S$};
+  \node[fp seam, minimum width=11mm, anchor=west] (delta) at (9.75,1.08) {$\delta$};
+  \node[fp recursive, minimum width=21mm, anchor=west] (low) at (10.85,1.08) {low remainder};
+  \draw[fp decode] (sq.south) -- ++(0,-.55);
+  \draw[fp decode] (delta.south) -- ++(0,-.55);
+  \draw[fp decode] (low.south) -- ++(0,-.55);
+  \node[fp label, anchor=west] at (7.05,0.14)
+    {$xS^2+(S+\delta)^2+E$: peel $S$, then $\delta$, then $E$};
+\end{tikzpicture}

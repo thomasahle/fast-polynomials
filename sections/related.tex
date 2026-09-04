@@ -2,11 +2,21 @@
 \label{sec:related}
 
 \paragraph{Polynomial evaluation with preprocessing.}
-Horner's rule evaluates a degree-$n$ polynomial with $n$ multiplications~\cite{knuth1962evaluation}.
-Allowing preprocessing of the coefficients can reduce the number of multiplications; a classical general-purpose method is Paterson--Stockmeyer~\cite{paterson1973evaluation}.
-Motzkin gave explicit low-degree constructions achieving roughly $n/2$ multiplications for monic polynomials, but over general fields such constructions often rely on solving polynomial systems.
-Kedlaya and Umanski~\cite{kedlaya2011fast} gave asymptotically fast algorithms with preprocessing.
-Rabin and Winograd introduced \emph{rational preprocessing}~\cite{rabin1972number}, where preprocessing uses only field operations and division, obtaining $n/2+O(\log n)$ multiplications.
+Horner's rule evaluates a degree-$n$ polynomial with $n$ multiplications, and Pan showed that without preprocessing this is optimal~\cite{pan1966methods}.
+Motzkin~\cite{motzkin1955evaluation} introduced \emph{preconditioning}: if the same polynomial is evaluated at many points, the coefficients may be transformed for free in advance.
+Motzkin~\cite{motzkin1955evaluation} and Belaga~\cite{belaga1958some,belaga1961evaluation} proved that even with preconditioning $\lfloor n/2\rfloor+1$ multiplications and $n$ additions are necessary for a general polynomial of degree $n\ge2$ (Theorems~M, A and~C in Knuth~\cite[\S4.6.4]{knuth1997seminumerical}; Belaga's note states the multiplicative bound as $\lceil n/2\rceil$, and Pan~\cite{pan1966methods} sharpened it to $\lfloor n/2\rfloor+1$);
+Motzkin, Belaga, Eve and Knuth~\cite{motzkin1955evaluation,belaga1958some,eve1964evaluation,knuth1962evaluation} gave schemes with $\lceil n/2\rceil+1$ multiplications for a general polynomial of degree $n$, that is $\lceil n/2\rceil$ for a monic one (Belaga's Theorem~1, displayed as scheme~(0.5) and Theorem~3.2 of Pan's survey~\cite{pan1966methods}; Knuth's Theorem~E states the count as $\lfloor n/2\rfloor+2$, one more when $n$ is even), but their preprocessing requires finding roots of polynomials, so the transformed coefficients generally live in an algebraic extension of the field.
+These schemes attain the multiplicative lower bound for even $n$; for odd $n\ge9$ it is attained with complex parameters by Revah~\cite{revah1975number} and Pan~\cite{pan1978complex}.
+Pan~\cite{pan1961schemes} also gave a scheme for sextics with three multiplications whose preprocessing is rational but undefined on a hypersurface of coefficient vectors; we return to it in \Cref{sec:lower}.
+Pan's survey~\cite{pan1966methods} and the monograph of B\"urgisser, Clausen and Shokrollahi~\cite[Chapter~5]{burgisser1997algebraic} give the classical picture, including the transcendence-degree argument behind the lower bounds.
+Rabin and Winograd introduced \emph{rational preprocessing}~\cite{rabin1972number}, where preprocessing uses only field operations and division, obtaining $n/2+O(\log n)$ multiplications; the $O(\log n)$ term pays for computing $x^2,x^4,\ldots,x^{2^{\lfloor\log n\rfloor}}$ by repeated squaring.
+A general-purpose method that instead minimises \emph{non-scalar} multiplications is Paterson--Stockmeyer~\cite{paterson1973evaluation}, and Kedlaya and Umans~\cite{kedlaya2011fast} gave asymptotically fast algorithms with preprocessing.
+In cryptography, Bernstein's BRW polynomials~\cite{Bernstein:2011:RW} specialise the Rabin--Winograd recursion to message authentication: the message blocks become the coefficients and the evaluation point becomes the key, and $m$ blocks are hashed with $\lfloor m/2\rfloor$ multiplications after $\lceil\log_2 m\rceil$ squarings of the key, amortised over every message authenticated under that key; see Ghosh and Sarkar~\cite{ghosh2019evaluating} and Chakraborty et al.~\cite{chakrabortyefficient} for software and hardware evaluation.
+The two schemes serve different purposes.
+Rabin--Winograd preprocessing is a \emph{bijection} between coefficient vectors and parameter vectors, so a random parameter vector corresponds to a uniformly random monic polynomial and the scheme yields $k$-wise independent hashing.
+BRW is only \emph{injective}: distinct messages give distinct polynomials, but not every polynomial arises, which suffices for almost-universal hashing (an ``authenticator'') but not for $k$-independence.
+Our main construction is of the first kind: it keeps a bijective rational preprocessing and removes the logarithmic number of squarings, evaluating with $\lfloor n/2\rfloor+1$ multiplications while matching the logarithmic multiplicative depth of the recursion (\Cref{thm:construction-height-peeled}).
+Its injective counterpart, an almost-universal hash with half the multiplications of Horner's method, is the subject of \Cref{sec:injective}, where we compare it with BRW.
 
 \paragraph{Hashing.}
 Polynomial evaluation over finite fields is a standard tool for $k$-wise independent hashing and universal hashing~\cite{wegman1981new}.
@@ -17,9 +27,9 @@ CLHASH~\cite{lemire2015clhash} adapts the NH construction to carryless multiplic
 achieving very high throughput by exploiting the independence of all multiplications;
 however, it requires $O(n)$ random keys to hash $n$ values, compared to $O(1)$ keys for polynomial-based methods.
 We include CLHASH (denoted CLNH) in our experimental comparisons as a throughput baseline.
+Recent work by Degabriele et al.~\cite{degabriele2026multivariate} explores two-level univariate/multivariate polynomial hash designs and benchmarks many variants over binary and prime fields.
 
 \paragraph{Cryptographic workloads.}
 Fast evaluation of low-degree polynomials over finite fields appears in symmetric cryptography (e.g.\ polynomial representations of S-boxes and analyses of masking schemes~\cite{DBLP:conf/fse/CarletGPQR12}) and in threshold secret sharing~\cite{shamir1979share}.
 Section~\ref{sec:experiments:crypto} benchmarks our constructions on share-generation and polynomial-PRF style workloads.
 
-% Longer scratch material is kept in notes/related_notes.tex (not part of the paper build).

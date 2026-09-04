@@ -1,0 +1,36 @@
+% The tower of "known powers" behind T_{k,2^l}: each rung is one product per
+% branch and turns H_{2^l} into a monic H_{2^{l+1}} = H_{2^l}^2 + lower-degree
+% corrections carrying fresh parameters; k halves at every rung.
+\begin{tikzpicture}[>=Latex, font=\small,
+    pow/.style={fp active, rounded corners, minimum width=22mm,
+      minimum height=7mm, font=\small},
+    gad/.style={fp second, rounded corners, font=\footnotesize,
+      align=center, inner sep=2pt}]
+  \node[pow] (H2) at (0,0) {$H_2 = x^2+\dots$};
+  \node[pow] (H4) at (0,1.7) {$H_4 = H_2^2+\dots$};
+  \node[pow] (H8) at (0,3.4) {$H_8 = H_4^2+\dots$};
+  \node[pow] (H16) at (0,5.1) {$H_{16} = H_8^2+\dots$};
+  \node at (0,6.1) {$\vdots$};
+
+  \draw[fp flow] (H2) -- node[right, xshift=1mm, font=\footnotesize]
+    {$(H_2+S_1)(H_2-S_1)+S_2$} (H4);
+  \draw[fp flow] (H4) -- node[right, xshift=1mm, font=\footnotesize]
+    {$(H_4+S_1)(H_4-S_1)+S_2$} (H8);
+  \draw[fp flow] (H8) -- node[right, xshift=1mm, font=\footnotesize]
+    {$\bigl((H_8+S_1)+S_2\bigr)\bigl((H_8+S_1)-S_2\bigr)+S_3$} (H16);
+
+  % gadgets feeding the corrections (left column)
+  \node[gad, left=12mm of H4] (g4) {$S_1 = x+a,\; S_2=e$\\ (even step, $l{=}1$)};
+  \node[gad, left=12mm of H8] (g8) {$S_1 = H_2+Q_1,\; S_2 = Q_1$\\ (even step, $l{=}2$)};
+  \node[gad, left=12mm of H16] (g16) {$S_1=H_4+Q_3,\; S_2=H_2+Q_1,\; S_3=Q_1$\\ (odd step, $l{=}3$)};
+  \draw[fp dependence] (g4) -- ($(H2)!0.5!(H4)$);
+  \draw[fp dependence] (g8) -- ($(H4)!0.5!(H8)$);
+  \draw[fp dependence] (g16) -- ($(H8)!0.5!(H16)$);
+
+  \node[font=\footnotesize, text=black!85, align=left, text width=118mm,
+    anchor=north west] at (-4.6,-0.7)
+    {One product per branch per rung; only the two identified bases share
+     products.  The parameters inside $S_1,S_2,S_3$ are fresh and sit
+     strictly below the leading term, so the top of $T$ equals $H^{\,k}$ and
+     the corrections are read off top-down.};
+\end{tikzpicture}

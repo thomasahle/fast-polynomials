@@ -1,148 +1,1047 @@
 \section{Optimized Polynomial Circuits}\label{appendix:polynomials}
 
-This appendix presents optimized arithmetic circuits for computing bijective polynomials of degrees $n = 4$ through $n = 9$.
-The circuits were found using randomized search, optimizing for both structural complexity (number of addition operations)
-and critical path depth (height).
+This appendix records optimized candidate circuits with four through eleven
+multiplication gates.  A circuit with $m$ products below has $2m-1$ keys and
+outputs a monic polynomial of degree $2m-1$.  The circuits were found by
+randomized search, optimizing both the number of additions and the critical
+path depth.  Explicit inverses are proved below for the displayed characteristic-$2$
+circuits of degrees $7$, $15$, $17$, $19$, and $21$, and for separately displayed
+alternatives of degrees $9$, $11$, and $13$.  The other search results are not used in
+the proof of the main theorem.  In particular, a constant nonzero Jacobian found
+by the search is only a diagnostic (and a necessary condition for a
+polynomial automorphism), not a proof of bijectivity.
 
-\subsection{Characteristic 2 ($\F_{2^{64}}$)}
+\subsection{Characteristic 2 (\texorpdfstring{$\F_{2^{64}}$}{GF(2\^{}64)})}
 
 Each circuit computes a polynomial $P(x)$ over $\F_{2^{64}}$ using carryless multiplications,
 parameterized by keys $a_0, a_1, \ldots$.
 All additions are XOR, and each multiplication uses Galois field reduction.
-Benchmarks measured on Apple M1 using ARM NEON PMULL.
+Timings are medians over $10^6$ random inputs on an Apple M2 Pro using ARM NEON
+\texttt{PMULL} (\texttt{tools/bench/appendix\_char2\_circuits\_arm.cpp}).
 
 \medskip
 \noindent
-\begin{tabular}{@{}p{0.47\textwidth}@{\hspace{0.06\textwidth}}p{0.47\textwidth}@{}}
-\textbf{Degree 4} (7 keys) &
-\textbf{Degree 5} (9 keys) \\[2pt]
-$y = (x + 0)(x + a_0)$ &
-$y = (x + 0)(x + 0)$ \\
-$z = (x + a_1)(y + a_2)$ &
-$z = (x + y + a_0)(x + a_1)$ \\
-$t = (x + y + z + a_3)$ &
-$t = (z + a_2)(y + z + a_3)$ \\
-$\quad\; \cdot(x + y + z + 0)$ &
-$u = (x + z + t + a_4)$ \\
-$u = (x + a_4)(y + t + a_5)$ &
-$\quad\; \cdot(x + y + z + a_5)$ \\
-$P = u + a_6$ &
-$v = (x + a_6)(y + a_7)$ \\
-&
-$P = u + v + a_8$ \\[2pt]
-\emph{6.04 ns, h=4, 12 XORs} &
-\emph{7.36 ns, h=4, 16 XORs} \\[6pt]
-\textbf{Degree 6} (11 keys) &
-\textbf{Degree 7} (13 keys) \\[2pt]
-$y = (x + 0)(x + a_0)$ &
-$y = (x + 0)(x + 0)$ \\
-$z = (x + y + a_1)(x + y + 0)$ &
-$z = (y + a_0)(x + y + a_1)$ \\
-$t = (x + z + a_2)(z + a_3)$ &
-$t = (x + z + a_2)(x + a_3)$ \\
-$u = (t + a_4)(x + a_5)$ &
-$u = (x + y + a_4)(x + t + a_5)$ \\
-$v = (x + y + z + t + u + a_6)$ &
-$v = (y + z + a_6)(u + a_7)$ \\
-$\quad\; \cdot(y + a_7)$ &
-$w = (y + z + t + a_8)$ \\
-$w = (x + a_8)(y + z + t + a_9)$ &
-$\quad\; \cdot(x + u + a_9)$ \\
-$P = z + v + w + a_{10}$ &
-$s = (x + z + u + v + w + a_{10})$ \\
-&
-$\quad\; \cdot(x + a_{11})$ \\
-&
-$P = t + s + a_{12}$ \\[2pt]
-\emph{3.22 ns, h=5, 22 XORs} &
-\emph{5.57 ns, h=6, 26 XORs} \\[6pt]
-\textbf{Degree 8} (15 keys) &
-\textbf{Degree 9} (17 keys) \\[2pt]
-$y = (x + 0)(x + a_0)$ &
-$y = (x + 0)(x + a_0)$ \\
-$z = (x + a_1)(x + y + a_2)$ &
-$z = (x + y + a_1)(y + a_2)$ \\
-$t = (y + z + a_3)(x + z + a_4)$ &
-$t = (y + a_3)(x + a_4)$ \\
-$u = (x + t + a_5)(y + z + t + a_6)$ &
-$u = (x + y + z + t + a_5)$ \\
-$v = (x + y + z + u + a_7)(y + a_8)$ &
-$\quad\; \cdot(x + y + t + a_6)$ \\
-$w = (y + a_9)(z + a_{10})$ &
-$v = (t + a_7)(x + y + z + t + u + a_8)$ \\
-$s = (x + y + z + t + u + w + a_{11})$ &
-$w = (t + a_9)(x + y + a_{10})$ \\
-$\quad\; \cdot(x + y + a_{12})$ &
-$s = (y + u + a_{11})(x + z + u + 0)$ \\
-$r = (x + 0)(x + y + v + w + a_{13})$ &
-$r = (x + t + w + s + a_{12})(x + t + a_{13})$ \\
-$P = s + r + a_{14}$ &
-$q = (t + u + a_{14})(z + t + a_{15})$ \\
-&
-$P = y + v + r + q + a_{16}$ \\[2pt]
-\emph{6.38 ns, h=6, 34 XORs} &
-\emph{14.09 ns, h=5, 40 XORs}
-\end{tabular}
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{4 products, degree 7} (7 keys)
+\[
+\begin{aligned}
+y &= (x + 0)(x + a_0) \\
+z &= (x + a_1)(y + a_2) \\
+t &= (x + y + z + a_3) \\
+  &\quad\cdot(x + y + z + 0) \\
+u &= (x + a_4)(y + t + a_5) \\
+P &= u + a_6
+\end{aligned}
+\]
+\emph{2.3 ns, h=4, 12 XORs}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{5 products, degree 9} (9 keys)
+\[
+\begin{aligned}
+y &= (x + 0)(x + 0) \\
+z &= (x + y + a_0)(x + a_1) \\
+t &= (z + a_2)(y + z + a_3) \\
+u &= (x + z + t + a_4) \\
+  &\quad\cdot(x + y + z + a_5) \\
+v &= (x + a_6)(y + a_7) \\
+P &= u + v + a_8
+\end{aligned}
+\]
+\emph{3.1 ns, h=4, 16 XORs}
+\end{minipage}
 
-\subsection{Characteristic 0 ($\Z/(2^{89}-1)\Z$)}
+\begin{lemma}[Direct inverse for the first characteristic-2 circuit]\label{lem:first-char2-circuit-inverse}
+Let $\F$ be a perfect field of characteristic $2$, for example $\F_{2^{64}}$.
+Fix distinct $x_0,\ldots,x_6\in\F$.
+For the first circuit above, the map
+\[
+    (a_0,\ldots,a_6)
+        \longmapsto
+    \bigl(P_{a_0,\ldots,a_6}(x_0),\ldots,P_{a_0,\ldots,a_6}(x_6)\bigr)
+\]
+is a bijection $\F^7\to\F^7$.
+\end{lemma}
+\begin{proof}
+Given values $v_i=P(x_i)$, first recover the coefficients $p_0,\ldots,p_6$ of the unique monic degree-$7$ polynomial
+\[
+    P(x)=x^7+\sum_{j=0}^6 p_jx^j
+\]
+with $P(x_i)=v_i$.
+Equivalently, solve the Vandermonde system
+\[
+    \sum_{j=0}^6 p_jx_i^j = v_i+x_i^7,
+    \qquad i=0,\ldots,6.
+\]
+The system is invertible because the $x_i$ are distinct.
 
-For characteristic 0 implementations, we use the Mersenne prime $M_{89} = 2^{89} - 1$.
-Each circuit uses 89-bit modular arithmetic with keys $a_0, a_1, \ldots \in [0, M_{89})$.
-The bijectivity of these polynomials is verified using the Jacobian determinant test.
+We now recover the keys from the $p_j$.
+Since the square map is bijective over $\F$, write $r^{1/2}$ for the unique square root of $r$.
+Set
+\[
+\begin{aligned}
+    a_4 &= p_6,\\
+    b &= p_5^{1/2},\\
+    a_3 &= p_4+a_4p_5,\\
+    c &= \bigl(p_3+a_3b+1+a_4a_3\bigr)^{1/2},\\
+    a_0 &= p_2+a_3c+a_4(c^2+a_3b+1),\\
+    a_1 &= b+1+a_0,\\
+    a_2 &= c+1+a_0+a_0a_1,\\
+    d &= a_1a_2,\\
+    a_5 &= p_1+d^2+a_3d+a_4(a_3c+a_0),\\
+    a_6 &= p_0+a_4(d^2+a_3d+a_5).
+\end{aligned}
+\]
+To verify these formulas, define
+\[
+    b=1+a_0+a_1,\qquad
+    c=1+a_0+a_2+a_0a_1,\qquad
+    d=a_1a_2.
+\]
+Then
+\[
+    x+y+z=x^3+bx^2+cx+d.
+\]
+Using characteristic $2$,
+\[
+    t=(x+y+z+a_3)(x+y+z)=(x+y+z)^2+a_3(x+y+z),
+\]
+and hence
+\[
+    y+t+a_5
+    =x^6+b^2x^4+a_3x^3+(c^2+a_3b+1)x^2+(a_3c+a_0)x+(d^2+a_3d+a_5).
+\]
+Multiplying by $x+a_4$ and adding $a_6$ gives
+\[
+\begin{aligned}
+    p_6 &= a_4,\\
+    p_5 &= b^2,\\
+    p_4 &= a_3+a_4b^2,\\
+    p_3 &= c^2+a_3b+1+a_4a_3,\\
+    p_2 &= a_3c+a_0+a_4(c^2+a_3b+1),\\
+    p_1 &= d^2+a_3d+a_5+a_4(a_3c+a_0),\\
+    p_0 &= a_4(d^2+a_3d+a_5)+a_6.
+\end{aligned}
+\]
+The displayed recovery procedure solves these equations in order, so it recovers a unique key tuple.
+Conversely, applying the recovered keys gives the same coefficients $p_j$, hence the same values at the $x_i$.
+\end{proof}
 
 \medskip
 \noindent
-\begin{tabular}{@{}p{0.47\textwidth}@{\hspace{0.06\textwidth}}p{0.47\textwidth}@{}}
-\textbf{Degree 4} (7 keys) &
-\textbf{Degree 5} (9 keys) \\[2pt]
-$y = (x + 0) \cdot (x + a_0)$ &
-$y = (x + 0) \cdot (x + 0)$ \\
-$z = (x + a_1) \cdot (y + a_2)$ &
-$z = (x + y + a_0) \cdot (y + a_1)$ \\
-$t = (x + z + a_3) \cdot (x + 0)$ &
-$t = (y + z + a_2) \cdot (x + a_3)$ \\
-$u = (t + a_4) \cdot (z + a_5)$ &
-$u = (z + a_4) \cdot (t + a_5)$ \\
-$P = y + u + a_6$ &
-$v = (x + a_6) \cdot (y + a_7)$ \\
-&
-$P = u + v + a_8$ \\[2pt]
-\emph{Height 4, 9 additions} &
-\emph{Height 4, 12 additions} \\[6pt]
-\textbf{Degree 6} (11 keys) &
-\textbf{Degree 7} (13 keys) \\[2pt]
-$y = (x + 0) \cdot (x + a_0)$ &
-$y = (x + 0) \cdot (x + 0)$ \\
-$z = (y + a_1) \cdot (x + y + a_2)$ &
-$z = (y + a_0) \cdot (x + y + a_1)$ \\
-$t = (y + z + a_3) \cdot (x + a_4)$ &
-$t = (y + z + a_2) \cdot (x + a_3)$ \\
-$u = (y + t + a_5) \cdot (t + a_6)$ &
-$u = (y + z + a_4) \cdot (z + a_5)$ \\
-$v = (y + a_7) \cdot (z + a_8)$ &
-$v = (z + t + a_6) \cdot (z + u + a_7)$ \\
-$w = (u + a_9) \cdot (x + 0)$ &
-$w = (y + a_8) \cdot (x + a_9)$ \\
-$P = v + w + a_{10}$ &
-$s = (x + y + z + t + u + w + a_{10})$ \\
-&
-$\quad\; \cdot(x + a_{11})$ \\
-&
-$P = v + s + a_{12}$ \\[2pt]
-\emph{Height 5, 15 additions} &
-\emph{Height 4, 24 additions} \\[6pt]
-\textbf{Degree 8} (15 keys) & \\[2pt]
-$y = (x + 0) \cdot (x + a_0)$ & \\
-$z = (y + a_1) \cdot (x + 0)$ & \\
-$t = (z + a_2) \cdot (x + y + z + a_3)$ & \\
-$u = (y + t + a_4) \cdot (z + t + a_5)$ & \\
-$v = (t + a_6) \cdot (x + t + a_7)$ & \\
-$w = (t + a_8) \cdot (x + a_9)$ & \\
-$s = (z + a_{10}) \cdot (x + y + v + a_{11})$ & \\
-$r = (y + a_{12}) \cdot (u + v + a_{13})$ & \\
-$P = w + s + r + a_{14}$ & \\[2pt]
-\emph{Height 5, 25 additions} &
-\end{tabular}
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{6 products, degree 11} (11 keys)
+\[
+\begin{aligned}
+y &= (x + 0)(x + a_0) \\
+z &= (x + y + a_1)(x + y + 0) \\
+t &= (x + z + a_2)(z + a_3) \\
+u &= (t + a_4)(x + a_5) \\
+v &= (x + y + z + t + u + a_6) \\
+  &\quad\cdot(y + a_7) \\
+w &= (x + a_8)(y + z + t + a_9) \\
+P &= z + v + w + a_{10}
+\end{aligned}
+\]
+\emph{4.4 ns, h=5, 22 XORs}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{7 products, degree 13} (13 keys)
+\[
+\begin{aligned}
+y &= (x + 0)(x + 0) \\
+z &= (y + a_0)(x + y + a_1) \\
+t &= (x + z + a_2)(x + a_3) \\
+u &= (x + y + a_4)(x + t + a_5) \\
+v &= (y + z + a_6)(u + a_7) \\
+w &= (y + z + t + a_8) \\
+  &\quad\cdot(x + u + a_9) \\
+s &= (x + z + u + v + w + a_{10}) \\
+  &\quad\cdot(x + a_{11}) \\
+P &= t + s + a_{12}
+\end{aligned}
+\]
+\emph{5.5 ns, h=6, 26 XORs}
+\end{minipage}
 
 \medskip
-\noindent\textbf{Note:} For characteristic 0, multiplications by $x+0$ correspond to squaring operations, which can be computed more efficiently than general multiplications using the identity $(a+b)^2 = a^2 + 2ab + b^2 \pmod{M_{89}}$.
+\noindent
+The three benchmarked circuits above are retained as search candidates.  For
+the proofs, we use the following separately optimized alternatives; unlike the
+candidate circuits, each comes with the explicit inverse below.
+\[
+\begin{array}{c|l}
+9 &
+\begin{aligned}
+y&=x(x+a_0),& z&=x(y+a_1),& t&=(y+z+a_2)(z+a_3),\\
+u&=(x+z+a_4)(t+a_5),& v&=(y+a_6)(z+a_7),& P&=u+v+a_8;
+\end{aligned}\\[2ex]
+11 &
+\begin{aligned}
+y&=x(x+a_0),& z&=(y+a_1)(x+y+a_2),& t&=x(y+a_3),\\
+u&=(t+a_4)(z+a_5),&v&=(x+y+t+u+a_6)(z+t+a_7),\\
+w&=(t+a_8)(y+u+a_9),&P&=v+w+a_{10};
+\end{aligned}\\[2ex]
+13 &
+\begin{aligned}
+y&=x^2,&z&=(x+y+a_{12})(y+a_{11}),&w&=(y+z+a_{10})(z+a_9),\\
+v&=(y+z+a_8)(w+a_7),&u&=(z+v+a_6)(x+a_5),\\
+t&=(x+y+a_4)(x+a_3),&s&=(w+t+a_2)(y+a_1),&P&=u+v+s+a_0.
+\end{aligned}
+\end{array}                                                     \tag{A.0}
+\]
+Their respective $(\text{height},\text{XOR count})$ pairs are
+$(4,12)$, $(4,18)$, and $(5,21)$; these alternatives were not included in
+the timing run quoted above.
+
+\begin{lemma}[Explicit inverses for the degree-$9$ and degree-$11$ circuits]
+\label{lem:char2-small-staircase-butterfly}
+Over every field of characteristic $2$, the coefficient map of the displayed
+degree-$9$ circuit is a polynomial bijection.  Over every perfect field of
+characteristic $2$, the coefficient map of the displayed degree-$11$ circuit is
+a bijection.  Consequently their evaluation maps at respectively nine and
+eleven distinct points are bijections.
+\end{lemma}
+\begin{proof}
+We give the inverse maps.  This also makes clear where perfectness is used.
+
+For degree $9$, write
+\(P=x^9+\sum_{j=0}^8c_jx^j\), and first set
+\[
+\begin{aligned}
+ a_0&=c_8+1,\\
+ a_1&=c_7+1+a_0+a_0^2,\\
+ r&=c_6+1+a_0^2+a_0^3,\\
+ s&=c_5+1+a_0^2+a_0^3+a_0^2a_1+a_1^2,\\
+ q&=c_4+a_0^2+a_0^2r+a_0a_1^2+a_1+a_1^2.
+\end{aligned}                                                    \tag{9.1}
+\]
+Expanding the first four products gives the constant block
+\[
+ r=a_2+a_3+a_4,\qquad s=a_3+a_4,\qquad q=a_2+a_3.
+\]
+Its inverse is
+\[
+ a_2=r+s,\qquad a_3=q+a_2,\qquad a_4=s+a_3.             \tag{9.2}
+\]
+Let $B$ be the output of the same circuit after setting
+$a_5=a_6=a_7=a_8=0$, with the recovered $a_0,\ldots,a_4$ left in place,
+and write $b_j=[x^j]B$.  The remaining descent is
+\[
+\begin{aligned}
+ h&=c_3+b_3,\\
+ a_7&=c_2+b_2+a_0h,\\
+ a_5&=c_1+b_1+a_1h+a_0a_7,\\
+ a_6&=h+a_5,\\
+ a_8&=c_0+b_0+a_4a_5+a_6a_7.
+\end{aligned}                                                    \tag{9.3}
+\]
+Indeed, after subtracting the baseline, rows $3,2,1,0$ are respectively
+\[
+ a_5+a_6,\quad
+ a_7+a_0(a_5+a_6),\quad
+ a_5+a_1(a_5+a_6)+a_0a_7,\quad
+ a_8+a_4a_5+a_6a_7.
+\]
+Thus every step in (9.1)--(9.3) has unit slope; no root or division is used.
+
+For degree $11$, write
+\(P=x^{11}+\sum_{j=0}^{10}c_jx^j\), and put
+\[
+ a_0=c_{10},\qquad a_3=c_9+1,\qquad a_4=c_8+a_0,
+ \qquad s=a_1+a_2,qquad h=a_5+a_7+a_8.
+\]
+Define the already-known expressions
+\[
+\begin{aligned}
+ K_7&=1+a_0^2+a_0^4+a_3,\\
+ K_6&=1+a_0+a_0^3+a_0^5+a_4,\\
+ K_5&=a_0+a_0^2+a_0^4a_3+a_0^2a_3+a_3.
+\end{aligned}
+\]
+The next three rows are
+\[
+\begin{aligned}
+ c_7&=K_7+s^2+h,\\
+ c_6&=K_6+a_0s^2+(a_0+1)h,\\
+ c_5&=K_5+a_0^2(s^2+h)+s+a_1^2+a_3s^2+sh+a_3h.
+\end{aligned}                                                    \tag{11.1}
+\]
+Since the field is perfect, Frobenius is invertible.  Hence
+\[
+\begin{aligned}
+ r&=c_7+K_7,\\
+ h&=c_6+K_6+a_0r,\\
+ s&=(r+h)^{1/2},\\
+ a_1&=\bigl(c_5+K_5+a_0^2r+s+a_3s^2+sh+a_3h\bigr)^{1/2},\\
+ a_2&=s+a_1.
+\end{aligned}                                                    \tag{11.2}
+\]
+To expose the lower butterfly, let $B_0$ be the circuit output with
+\[
+ (a_5,a_6,a_7,a_8,a_9,a_{10})=(0,0,0,h,0,0).
+\]
+Then $a_6=c_4+[x^4]B_0$.  Recompute this baseline with the recovered $a_6$
+in place and call it $B$; put $d_j=c_j+[x^j]B$.  A direct cancellation of
+the two final branches gives
+\[
+ P+B=\kappa(t+a_4)+a_5y+a_7(x+t+a_6)+a_9(t+a_8)+a_{10},
+ \quad
+ \kappa=a_5(h+a_5),\quad a_8=h+a_5+a_7.              \tag{11.3}
+\]
+Consequently
+\[
+\begin{aligned}
+ a_5&=d_2+a_0d_3,\\
+ \kappa&=a_5(h+a_5),\\
+ a_7&=d_1+a_3d_3+a_0a_5,\\
+ a_9&=d_3+\kappa+a_7,\\
+ a_8&=h+a_5+a_7,\\
+ a_{10}&=d_0+\kappa a_4+a_7a_6+a_9a_8.
+\end{aligned}                                                    \tag{11.4}
+\]
+This recovers all eleven keys.  The only non-polynomial-looking operations are
+the two inverse-Frobenius steps in (11.2), and these are unique over a perfect
+field.
+
+In either degree, evaluation at distinct points is the coefficient map followed
+by the corresponding invertible Vandermonde map.
+\end{proof}
+
+\begin{lemma}[Unitriangular inverse for the degree-$13$ circuit]
+\label{lem:char2-degree13-inverse}
+Over every field of characteristic $2$, the coefficient map of the displayed
+degree-$13$ circuit is a polynomial bijection.  Consequently its evaluation
+map at any thirteen distinct points is a bijection.
+\end{lemma}
+\begin{proof}
+Make the invertible linear change of key coordinates
+\[
+\begin{aligned}
+(q_0,\ldots,q_{12})={}&(a_5, a_{11}+a_{12}, a_{12}, a_9, a_8, a_{10},
+ a_1,\\
+&a_7, a_3, a_4, a_6, a_2, a_0),
+\end{aligned}                                                    \tag{13.1}
+\]
+and order the coefficient rows as
+\[
+ (d_0,\ldots,d_{12})=(12,11,10,7,6,9,8,5,4,3,1,2,0).
+                                                               \tag{13.2}
+\]
+After expressing the original keys through (13.1), define the explicit
+baseline
+\[
+ K_i(q_0,\ldots,q_{i-1})
+   =[x^{d_i}]P(q_0,\ldots,q_{i-1},0,\ldots,0).
+                                                               \tag{13.3}
+\]
+The seven gate identities give the following unitriangular certificate:
+\[
+ [x^{d_i}]P=q_i+K_i(q_0,\ldots,q_{i-1})qquad(0\le i\le12).
+                                                               \tag{13.4}
+\]
+For reference, its complete pivot table is
+\[
+\begin{array}{c|rrrrrrrrrrrrr}
+i&0&1&2&3&4&5&6&7&8&9&10&11&12\\ \hline
+d_i&12&11&10&7&6&9&8&5&4&3&1&2&0\\
+q_i&a_5&a_{11}{+}a_{12}&a_{12}&a_9&a_8&a_{10}&a_1&a_7&a_3&a_4&a_6&a_2&a_0
+\end{array}                                                     \tag{13.5}
+\]
+The first three rows, for example, are
+\[
+ [x^{12}]P=q_0,\qquad [x^{11}]P=q_0+q_1,
+ \qquad [x^{10}]P=1+q_0+q_0q_1+q_2.
+\]
+We record the only coupled cancellation behind the nonmonotone middle of
+(13.5).  If
+\[
+ W_p=(A+p)B,\qquad V_t=(A+t)(W_p+\ell),\qquad
+ F_{p,t}=RV_t+SW_p+E,
+\]
+then characteristic $2$ gives the literal identity
+\[
+ F_{p,t}+F_{0,0}
+  =(p+t)RAB+ptRB+tR\ell+pSB.                         \tag{13.6}
+\]
+In the circuit take
+\[
+ A=z+y,\quad B=z+a_9,\quad R=x+a_5+1,\quad S=y+a_1,\quad
+ p=a_{10},\quad t=a_8,\quad \ell=a_7.
+\]
+The row-$6$ coefficients of both $RAB$ and $SB$ are $1$, so their $p$
+terms cancel: row $6$ exposes $a_8$.  Row $9$ then exposes $a_{10}$, and
+row $5$ exposes $a_7$.  The remaining entries of (13.5) are the ordinary
+unit offsets in unequal-degree factors; their later offsets lie strictly
+below the indicated row.  This proves (13.4) without a Jacobian argument.
+
+The inverse is now the explicit recurrence
+\[
+ q_i=[x^{d_i}]P+K_i(q_0,\ldots,q_{i-1})qquad(0\le i\le12),
+\]
+followed by the inverse of (13.1).  It uses only addition and multiplication,
+so it works over every characteristic-$2$ field.  The evaluation claim again
+follows from Vandermonde interpolation.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{8 products, degree 15} (15 keys)
+\[
+\begin{aligned}
+y &= x^2, \\
+z &= (y+a_0)(x+y+a_1), \\
+t &= (x+a_2)(z+a_3), \\
+u &= (y+t+a_4)(z+t+a_5), \\
+v &= (x+z+a_6)(z+a_7), \\
+w &= (x+y+z+a_8)(y+v+a_9), \\
+s &= (z+a_{10})(v+a_{11}), \\
+r &= (t+a_{12})(u+a_{13}), \\
+P &= w+s+r+a_{14}.
+\end{aligned}
+\]
+\emph{$h=5$, 24 XORs}
+\end{minipage}
+
+\smallskip
+\noindent
+The next decoder is unitriangular: like those of degrees $19$ and $21$ below,
+and unlike the degree-$7$ and degree-$17$ decoders, it requires no Frobenius
+roots.
+
+\begin{lemma}[Uniform inverse for the degree-$15$ characteristic-$2$ circuit]
+\label{lem:char2-degree15-inverse}
+Let $\F$ be any field of characteristic $2$.  The coefficient map of
+the displayed degree-$15$ circuit is a bijection from $\F^{15}$ to the monic
+degree-$15$ polynomials.  Consequently, for any fifteen distinct
+$x_0,\ldots,x_{14}\in\F$, its evaluation map at those points is a bijection
+$\F^{15}\to\F^{15}$.
+\end{lemma}
+\begin{proof}
+Write $P=x^{15}+\sum_{j=0}^{14}c_jx^j$.  Replace the gate offsets by the
+following invertible linear coordinates:
+\[
+\begin{array}{lll}
+q_0=a_2, & q_1=a_0+a_1, & q_2=a_0,\\
+q_3=a_3, & q_4=a_4+a_5+a_{12}, & q_5=a_5,\\
+q_6=a_8+a_{10}, & q_7=a_{12}, & q_8=a_6+a_7,\\
+q_9=a_{13}, & q_{10}=a_9+a_{11}, & q_{11}=a_7,\\
+q_{12}=a_9+a_{10}, & q_{13}=a_9, & q_{14}=a_{14}.
+\end{array}                                                       \tag{A.1}
+\]
+For reference, its inverse is
+\[
+\begin{array}{lll}
+a_0=q_2, & a_1=q_1+q_2, & a_2=q_0,\\
+a_3=q_3, & a_4=q_4+q_5+q_7, & a_5=q_5,\\
+a_6=q_8+q_{11}, & a_7=q_{11},
+  & a_8=q_6+q_{12}+q_{13},\\
+a_9=q_{13}, & a_{10}=q_{12}+q_{13},
+  & a_{11}=q_{10}+q_{13},\\
+a_{12}=q_7, & a_{13}=q_9, & a_{14}=q_{14}.
+\end{array}                                                       \tag{A.2}\label{eq:char2-15-q-inverse}
+\]
+
+Let $\mathcal P(\mathbf q)$ denote the circuit after the substitution
+\eqref{eq:char2-15-q-inverse}.  For $0\le i\le14$, define the explicitly
+evaluable baseline
+\[
+ K_i(q_0,\ldots,q_{i-1})
+ =\coeff{\mathcal P(q_0,\ldots,q_{i-1},0,\ldots,0)}{14-i}.
+                                                                    \tag{A.3}\label{eq:char2-15-baseline}
+\]
+Collecting coefficients in the nine displayed assignments gives the
+unitriangular identities
+\[
+ \coeff{\mathcal P(\mathbf q)}{14-i}
+   =q_i+K_i(q_0,\ldots,q_{i-1})
+   \qquad(0\le i\le14).                                           \tag{A.4}\label{eq:char2-15-triangular}
+\]
+Here is a compact certificate for the collection: it records the branch in
+which each new pivot first survives after the preceding rows have been
+removed.
+\[
+\begin{gathered}
+\begin{array}{c|rrrrrrrr}
+\text{row}&14&13&12&11&10&9&8&7\\ \hline
+\text{pivot}&q_0&q_1&q_2&q_3&q_4&q_5&q_6&q_7\\
+\text{branch}&r&r&r&r&r&r&w+s&r
+\end{array}\\[3pt]
+\begin{array}{c|rrrrrrr}
+\text{row}&6&5&4&3&2&1&0\\ \hline
+\text{pivot}&q_8&q_9&q_{10}&q_{11}&q_{12}&q_{13}&q_{14}\\
+\text{branch}&w+s&r&w+s&w+s&w+s&w+s&\mathrm{out}
+\end{array}
+\end{gathered}                                                    \tag{A.5}\label{eq:char2-15-pivot-table}
+\]
+The two cancellations responsible for the alternating lower rows are
+\[
+\begin{aligned}
+u&=t^2+(y+z+a_4+a_5)t+(y+a_4)(z+a_5),\\
+w+s&=(x+y+a_8+a_{10})v
+ +(x+y+z+a_8)(y+a_9)+(z+a_{10})a_{11}.
+\end{aligned}                                                     \tag{A.6}
+\]
+Thus the common $zv$ term disappears from $w+s$; the remaining products have
+distinct degrees.  Descending through the rows in
+\eqref{eq:char2-15-pivot-table}, the displayed
+factor degrees give the named pivot with slope one, while every other term
+contains only coordinates from an earlier column.  This proves
+\eqref{eq:char2-15-triangular}
+without any nonzero-slope or field-size assumption.
+
+The inverse is now literal.  For $i=0,\ldots,14$, successively set
+\[
+ q_i=c_{14-i}+K_i(q_0,\ldots,q_{i-1}),                            \tag{A.7}\label{eq:char2-15-decoder}
+\]
+and then recover the original offsets from
+\eqref{eq:char2-15-q-inverse}.  Equations
+\eqref{eq:char2-15-triangular} and \eqref{eq:char2-15-decoder} are mutually
+inverse polynomial maps, so the
+coefficient map is a polynomial automorphism over every characteristic-$2$
+field.  Finally, evaluation at fifteen distinct points is an invertible
+Vandermonde transformation of the fifteen nonleading coefficients.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{9 products, degree 17} (17 keys)
+\[
+\begin{aligned}
+y &= x(x+a_0),\\
+z &= (x+a_1)(x+y+a_2),\\
+t &= (y+a_3)(x+y+a_4),\\
+u &= (y+z+a_5)(z+t+a_6),\\
+v &= (x+z+a_7)(x+z+t+u+a_8),\\
+h &= (y+a_9)x,\\
+j &= (y+a_{10})(x+a_{11}),\\
+\ell &= (t+a_{12})(h+a_{13}),\\
+w &= (x+u+a_{14})(u+v+a_{15}),\\
+P &= j+\ell+w+a_{16}.
+\end{aligned}
+\]
+\emph{$h=5$, 29 XORs}
+\end{minipage}
+
+\begin{lemma}[Uniform inverse for the degree-$17$ characteristic-$2$ circuit]
+\label{lem:char2-degree17-inverse}
+Let $\F$ be a perfect field of characteristic $2$.  The coefficient map of
+the displayed degree-$17$ circuit is a bijection from $\F^{17}$ to the monic
+degree-$17$ polynomials.  Consequently, for any seventeen distinct
+$x_0,\ldots,x_{16}\in\F$, its evaluation map at those points is a bijection
+$\F^{17}\to\F^{17}$.
+\end{lemma}
+\begin{proof}
+Write $[f]_i=[x^i]f$.  We first replace the gate offsets by normalized gate
+coordinates
+\[
+\begin{aligned}
+q_0&=[y]_1,
+&(q_1,q_2)&=([z]_2,[z]_1),
+&(q_3,q_4)&=([t]_2,[t]_1),\\
+(q_5,q_6)&=([u]_4,[u]_3),
+&(q_7,q_8)&=([v]_7,[v]_3),
+&q_9&=[h]_1,\\
+(q_{10},q_{11})&=([j]_2,[j]_1),
+&(q_{12},q_{13})&=([\ell]_4,[\ell]_3),
+&(q_{14},q_{15})&=([w]_{10},[w]_7),
+\end{aligned}                                                     \tag{A.8}
+\]
+and $q_{16}=a_{16}$.  These are polynomial coordinates on the original
+keys.  Indeed, the first three gates give
+\[
+\begin{aligned}
+a_0&=q_0,\\
+a_1&=q_1+q_0+1,
+&a_2&=q_2+(q_0+1)a_1,\\
+\sigma&=q_3+q_0^2+q_0,
+&a_3&=q_4+q_0\sigma,
+&a_4&=\sigma+a_3.
+\end{aligned}                                                     \tag{A.9}
+\]
+For every remaining two-offset gate use the following unit-pivot identity.
+If $A,B$ are already known and monic, $0<\deg A<\deg B$, and
+$G=(A+\alpha)(B+\beta)$, then
+\[
+ \alpha=[G]_{\deg B}+[AB]_{\deg B},\qquad
+ \beta=[G]_{\deg A}+[AB+\alpha B]_{\deg A}.                     \tag{A.10}
+\]
+It applies successively to $u,v,j,\ell,w$ (placing the lower-degree factor
+first); also $a_9=q_9$.  Thus (A.8)--(A.10) explicitly recover every
+$a_i$ from the $q_i$, without division or a nonvanishing hypothesis.
+
+Now make the elementary coordinate change
+\[
+ s=q_0+q_3,\qquad r=q_5+q_7,\qquad e=q_4+q_5^2+q_5,               \tag{A.11}
+\]
+and order the resulting coordinates as
+\[
+\begin{aligned}
+(z_1,\ldots,z_{17})={}&
+(q_1,q_2,s,r,q_0,e,q_{14},q_6,q_5,q_{15},\\
+&\hspace{34mm}q_8,q_9,q_{12},q_{13},q_{10},q_{11},q_{16}).
+\end{aligned}                                                     \tag{A.12}
+\]
+This change is polynomially invertible:
+$q_3=s+q_0$, $q_7=r+q_5$, and $q_4=e+q_5^2+q_5$.
+
+We record the coefficient calculation in a form that is both compact and an
+explicit decoder.  For each $i$, let $P_i$ be the output of the same displayed
+circuit after retaining $z_1,\ldots,z_{i-1}$ and setting
+$z_i,\ldots,z_{17}$ to zero; its original keys are obtained explicitly from
+(A.9)--(A.12).  If $P=x^{17}+\sum_{d=0}^{16}c_dx^d$, direct collection of
+the indicated rows gives
+\[
+\begin{array}{c|c|c@{\qquad\qquad}c|c|c}
+i&d_i&c_{d_i}+[P_i]_{d_i}&i&d_i&c_{d_i}+[P_i]_{d_i}\\ \hline
+1&16&z_1   &10&7&z_{10}\\
+2&15&z_2   &11&6&z_{11}\\
+3&13&z_3^2 &12&5&z_{12}\\
+4&14&z_4   &13&4&z_{13}\\
+5&12&z_5   &14&3&z_{14}\\
+6&11&z_6   &15&2&z_{15}\\
+7&10&z_7   &16&1&z_{16}\\
+8&9 &z_8^2 &17&0&z_{17}\\
+9&8 &z_9^4 &&&
+\end{array}                                                       \tag{A.13}
+\]
+For example, the first six identities before baseline notation are
+\[
+\begin{aligned}
+c_{16}&=q_1,\\
+c_{15}&=q_2+q_1^2,\\
+c_{13}&=s^2+q_1^2q_2+q_2^2+q_2,\\
+c_{14}&=r+sq_1+q_1^3+q_1^2+q_2,\\
+c_{12}&=q_0+rq_1^2+r+s^2q_1+sq_1^3+sq_1
+          +q_1^4+q_1^2q_2+q_1^2+q_1q_2^2+q_2,\\
+c_{11}&=e+r+s^2q_2+s^2+s+q_0+q_1^2q_2+q_1^2+q_1
+          +q_2^3+q_2^2+q_2+1.
+\end{aligned}                                                     \tag{A.14}
+\]
+The remaining rows of (A.13) are obtained in exactly the same way: substitute
+the nine gate assignments, set the current and later coordinates to zero for
+the baseline, and collect one coefficient.  Thus (A.13) is a list of literal
+polynomial identities, rather than a Jacobian or finite-field test.  The
+companion script \texttt{char2/verify\_n17\_uniform\_symbolic.py} independently
+expands all seventeen identities in $\F_2[z_1,\ldots,z_{17}]$.
+
+Equation (A.13) recovers the $z_i$ in its displayed order.  All slopes are
+one except for the three Frobenius pivots $z_3^2,z_8^2,z_9^4$; these have
+unique inverses over a perfect field.  Equations (A.9)--(A.12) then recover
+the original keys.  Conversely, applying this procedure to arbitrary
+$c_0,\ldots,c_{16}$ makes the reconstructed circuit agree with those
+coefficients in all seventeen rows, so the inverse is two-sided.  The final
+evaluation claim follows from the invertible Vandermonde map at seventeen
+distinct points.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{10 products, degree 19} (19 keys)
+\[
+\begin{aligned}
+y &= x^2,\\
+z &= (y+a_0)(x+y+a_1),\\
+t &= (x+a_2)(z+a_3),\\
+u &= (y+t+a_4)(z+t+a_5),\\
+v &= (x+z+a_6)(z+a_7),\\
+w &= (x+y+z+a_8)(y+v+a_9),\\
+s &= (x+a_{10})(y+a_{11}),\\
+r &= (x+a_{12})(y+a_{13}),\\
+q &= (v+a_{14})(t+v+s+a_{15}),\\
+\ell &= (s+a_{16})(u+w+q+a_{17}),\\
+P &= r+\ell+a_{18}.
+\end{aligned}
+\]
+\emph{$h=5$, 31 XORs}
+\end{minipage}
+
+\begin{lemma}[Uniform inverse for the degree-$19$ characteristic-$2$ circuit]
+\label{lem:char2-degree19-inverse}
+Let $\F$ be any field of characteristic $2$.  The coefficient map of
+the displayed degree-$19$ circuit is a polynomial automorphism from $\F^{19}$
+to the monic degree-$19$ polynomials.  Consequently, for any nineteen
+distinct $x_0,\ldots,x_{18}\in\F$, its evaluation map at those points is a
+bijection $\F^{19}\to\F^{19}$.
+\end{lemma}
+\begin{proof}
+Write $P=x^{19}+\sum_{j=0}^{18}c_jx^j$.  Use the following polynomial key
+coordinates:
+\[
+\begin{array}{lll}
+q_0=a_{10},&q_1=a_{11},&q_2=a_{16},\\
+q_3=a_2,&q_4=a_0+a_1,&q_5=a_0,\\
+q_6=a_3+a_6+a_7,
+ &q_7=a_{14}+a_{15}+a_8+a_3^2+a_3,&q_8=a_3,\\
+q_9=a_6,&q_{10}=a_{14}+a_4+a_5,&q_{11}=a_4+a_9,\\
+q_{12}=a_4+a_5,&q_{13}=a_8,&q_{14}=a_5,\\
+q_{15}=a_{17},&q_{16}=a_{12},&q_{17}=a_{13},\\
+q_{18}=a_{18}.&&
+\end{array}                                                       \tag{A.15}\label{eq:char2-19-q-forward}
+\]
+This change is polynomially invertible.  Explicitly,
+\[
+\begin{array}{lll}
+a_0=q_5,&a_1=q_4+q_5,&a_2=q_3,\\
+a_3=q_8,&a_4=q_{12}+q_{14},&a_5=q_{14},\\
+a_6=q_9,&a_7=q_6+q_8+q_9,&a_8=q_{13},\\
+a_9=q_{11}+q_{12}+q_{14},&a_{10}=q_0,&a_{11}=q_1,\\
+a_{12}=q_{16},&a_{13}=q_{17},&a_{14}=q_{10}+q_{12},\\
+a_{15}=q_7+q_{10}+q_{12}+q_{13}+q_8^2+q_8,
+ &a_{16}=q_2,&a_{17}=q_{15},\\
+a_{18}=q_{18}.&&
+\end{array}                                                       \tag{A.16}\label{eq:char2-19-q-inverse}
+\]
+
+Put
+\[
+ S=s+a_{16},\qquad C=u+w+q+a_{17},\qquad \ell=SC.                 \tag{A.17}\label{eq:char2-19-shell}
+\]
+The point of this factorization is that the top of $C$ is fixed.  Indeed,
+directly from the displayed gates,
+\[
+\begin{aligned}
+s&=x^3+q_0x^2+q_1x+q_0q_1,\\
+r&=x^3+q_{16}x^2+q_{17}x+q_{16}q_{17},\\
+v&=z^2+xz+(a_6+a_7)z+a_7x+a_6a_7,\\
+q&=v^2+(t+s+a_{14}+a_{15})v+a_{14}(t+s+a_{15}).
+\end{aligned}                                                     \tag{A.18}\label{eq:char2-19-terminal}
+\]
+Thus $v$ is monic of degree $8$ and $[v]_7=0$, while
+$t+s+a_{14}+a_{15}$ is monic of degree $5$.  Since $u$ and $w$ have degrees
+$10$ and $12$, respectively, it follows that
+\[
+ [C]_{16}=1,\qquad [C]_{15}=[C]_{14}=0,\qquad [C]_{13}=1.         \tag{A.19}\label{eq:char2-19-signature}
+\]
+This is the cubic-shell invariant: the square contributes no odd rows, the
+missing subleading coefficient of $v$ kills row $14$, and the monic product
+$(t+s)v$ supplies row $13$.
+
+Now
+\[
+ S=x^3+q_0x^2+q_1x+(q_0q_1+q_2).
+\]
+Using \eqref{eq:char2-19-signature} in $P=SC+r+a_{18}$ gives the first three
+decoder steps explicitly:
+\[
+ q_0=c_{18},\qquad q_1=c_{17},\qquad
+ q_2=c_{16}+q_0q_1+1.                                            \tag{A.20}\label{eq:char2-19-shell-top}
+\]
+Hence $S$ is known.  The rows $19$ down to $4$ of $P$ equal those of $SC$,
+because $\deg(r+a_{18})\le3$.  Top-down division by the known monic cubic
+$S$ therefore recovers $[C]_{16},\ldots,[C]_1$.  At the final boundary,
+$[r+a_{18}]_3=1$, so $[SC]_3=c_3+1$ and the same division recurrence recovers
+$[C]_0$.  Thus the whole polynomial $C$ is known.
+
+It remains to decode the inner crown.  Let $\mathcal C(\mathbf q)$ denote
+$C$ after the substitution \eqref{eq:char2-19-q-inverse}.  For
+$3\le i\le15$, define the explicit baseline
+\[
+ B_i(q_0,\ldots,q_{i-1})
+ =\coeff{\mathcal C(q_0,\ldots,q_{i-1},0,\ldots,0)}{15-i}.
+                                                                    \tag{A.21}\label{eq:char2-19-inner-baseline}
+\]
+Substitution in the six inner gates and coefficient collection gives the
+thirteen unit-pivot identities
+\[
+ [C]_{15-i}=q_i+B_i(q_0,\ldots,q_{i-1})\qquad(3\le i\le15).      \tag{A.22}\label{eq:char2-19-inner-triangular}
+\]
+Their complete pivot table is
+\[
+\begin{array}{c|rrrrrrrrrrrrr}
+\text{coefficient of }C&12&11&10&9&8&7&6&5&4&3&2&1&0\\ \hline
+\text{pivot}&q_3&q_4&q_5&q_6&q_7&q_8&q_9&q_{10}&q_{11}&q_{12}&q_{13}&q_{14}&q_{15}.
+\end{array}                                                       \tag{A.23}\label{eq:char2-19-inner-table}
+\]
+Equations \eqref{eq:char2-19-inner-baseline}--
+\eqref{eq:char2-19-inner-triangular} are literal polynomial identities:
+after the already decoded coordinates are substituted, set the later ones to
+zero and collect the named row.  They give the explicit recurrence
+\[
+ q_i=[C]_{15-i}+B_i(q_0,\ldots,q_{i-1})\qquad(3\le i\le15).      \tag{A.24}\label{eq:char2-19-inner-decoder}
+\]
+The companion calculation
+\texttt{char2/verify\_n19\_unitriangular\_symbolic.py} expands all thirteen
+identities exactly in $\F_2[q_0,\ldots,q_{18}][x]$; its finite-field
+enumeration is only a separate diagnostic.
+
+Finally subtract the now-known shell:
+\[
+ P+SC=r+a_{18}
+ =x^3+q_{16}x^2+q_{17}x+(q_{16}q_{17}+q_{18}).                   \tag{A.25}\label{eq:char2-19-low-tail}
+\]
+Rows $2,1,0$ recover $q_{16},q_{17},q_{18}$ in that order.  The inverse
+coordinate change \eqref{eq:char2-19-q-inverse} then recovers every original
+offset.  Every operation in this decoder is polynomial, so it is a two-sided
+inverse over every characteristic-$2$ field; no root, division by a scalar, or
+Jacobian inference is involved.  Finally, evaluation at nineteen distinct
+points is an invertible Vandermonde transformation of the nonleading
+coefficients.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{11 products, degree 21} (21 keys)
+\[
+\begin{aligned}
+y &= x^2,\\
+z &= (y+a_0)(x+y+a_1),\\
+t &= (x+a_2)(z+a_3),\\
+u &= (y+t+a_4)(z+t+a_5),\\
+v &= (x+z+a_6)(z+a_7),\\
+w &= (x+y+z+a_8)(y+v+a_9),\\
+s &= (x+a_{10})(y+a_{11}),\\
+r &= (x+a_{12})(y+a_{13}),\\
+q &= (v+a_{14})(t+v+s+a_{15}),\\
+\ell &= (s+a_{16})(u+w+q+a_{17}),\\
+m &= (t+s+a_{18})(z+u+w+q+a_{19}),\\
+P &= m+z+r+\ell+a_{20}.
+\end{aligned}
+\]
+\emph{$h=5$, 39 XORs}
+\end{minipage}
+
+\begin{lemma}[Uniform inverse for the degree-$21$ characteristic-$2$ circuit]
+\label{lem:char2-degree21-inverse}
+Let $\F$ be any field of characteristic $2$.  The coefficient map of the
+displayed degree-$21$ circuit is a polynomial automorphism from $\F^{21}$ to
+the monic degree-$21$ polynomials.  Consequently its evaluation map at any
+twenty-one distinct field elements is a bijection $\F^{21}\to\F^{21}$.
+\end{lemma}
+\begin{proof}
+Write $P=x^{21}+\sum_{j=0}^{20}c_jx^j$.  The decoder uses the following
+polynomial coordinates:
+\[
+\begin{array}{lll}
+q_0=a_2,&q_1=a_0+a_1,&q_2=a_0,\\
+q_3=a_3,&q_4=a_{16}+a_{18},&q_5=a_{10},\\
+q_6=a_3+a_6+a_7+a_{11},&q_8=a_{11},&q_9=a_6,\\
+q_{10}=a_{14}+a_4+a_5,&q_{11}=a_4+a_9,&q_{12}=a_4+a_5,\\
+q_{13}=a_8,&q_{14}=a_5,&q_{15}=a_{19},\\
+q_{16}=a_{18},&q_{17}=a_{17},&q_{18}=a_{12},\\
+q_{19}=a_{13},&q_{20}=a_{20}.&
+\end{array}                                                       \tag{A.26}\label{eq:char2-21-q-forward}
+\]
+The one longer coordinate is
+\[
+ q_7=a_{14}+a_{15}+a_8+a_3^2+a_3+a_{11}+a_{11}^2
+       +a_2a_{11}+a_{10}a_{11}.                                 \tag{A.27}
+\]
+This change has the explicit polynomial inverse
+\[
+\begin{array}{lll}
+a_0=q_2,&a_1=q_1+q_2,&a_2=q_0,\\
+a_3=q_3,&a_4=q_{12}+q_{14},&a_5=q_{14},\\
+a_6=q_9,&a_7=q_6+q_8+q_3+q_9,&a_8=q_{13},\\
+a_9=q_{11}+q_{12}+q_{14},&a_{10}=q_5,&a_{11}=q_8,\\
+a_{12}=q_{18},&a_{13}=q_{19},&a_{14}=q_{10}+q_{12},\\
+a_{16}=q_4+q_{16},&a_{17}=q_{17},&a_{18}=q_{16},\\
+a_{19}=q_{15},&a_{20}=q_{20}.&
+\end{array}                                                       \tag{A.28}
+\]
+The omitted long row is
+\[
+ a_{15}=q_7+q_8+q_8^2+q_0q_8+q_5q_8+q_{10}+q_{12}+q_{13}
+          +q_3^2+q_3.                                           \tag{A.29}
+\]
+Substitution in either direction verifies (A.26)--(A.29) without division.
+
+Here is a compact explicit certificate for all twenty-one pivots.  Let
+$\mathcal P(q_0,\ldots,q_{20})$ be the displayed circuit after substituting
+(A.28)--(A.29), and define
+\[
+ K_i(q_0,\ldots,q_{i-1})
+  =\coeff{\mathcal P(q_0,\ldots,q_{i-1},0,\ldots,0)}{20-i}.
+                                                                    \tag{A.30}\label{eq:char2-21-baseline}
+\]
+Literal expansion in $\F_2[q_0,\ldots,q_{20}][x]$ gives
+\[
+ c_{20-i}=q_i+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le20).       \tag{A.31}\label{eq:char2-21-triangular}
+\]
+For clarity, its first eight rows are
+\[
+\begin{aligned}
+c_{20}&=1+q_0,\\
+c_{19}&=q_0+q_1,\\
+c_{18}&=1+q_2+q_0q_1,\\
+c_{17}&=q_3+q_2^2+q_0q_2+q_1q_2,\\
+c_{16}&=q_4+q_0^2+q_0q_3+q_0q_2^2+q_0q_1q_2,\\
+c_{15}&=1+q_1+q_5,\\
+c_{14}&=1+q_1+q_2+q_3+q_5+q_6+q_0q_1+q_0q_5,\\
+c_{13}&=q_2+q_3+q_4+q_5+q_7+q_1^4+q_2^2+q_6^2
+          +q_0q_1+q_0q_2+q_0q_5+q_1q_2+q_1q_5.
+\end{aligned}                                                     \tag{A.32}
+\]
+The full pivot order, split across two lines for readability, is
+\[
+\begin{gathered}
+\begin{array}{c|rrrrrrrrrrr}
+\text{row}&20&19&18&17&16&15&14&13&12&11&10\\ \hline
+\text{pivot}&q_0&q_1&q_2&q_3&q_4&q_5&q_6&q_7&q_8&q_9&q_{10}
+\end{array}\\[1ex]
+\begin{array}{c|rrrrrrrrrr}
+\text{row}&9&8&7&6&5&4&3&2&1&0\\ \hline
+\text{pivot}&q_{11}&q_{12}&q_{13}&q_{14}&q_{15}&q_{16}&q_{17}&q_{18}&q_{19}&q_{20}.
+\end{array}
+\end{gathered}                                                     \tag{A.33}
+\]
+Thus the decoder is the descending recurrence
+\[
+ q_i=c_{20-i}+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le20).      \tag{A.34}
+\]
+The baseline in \eqref{eq:char2-21-baseline} is an explicit polynomial:
+substitute already decoded coordinates, set the later coordinates to zero,
+and collect the named row.  The companion script
+\texttt{char2/verify\_n21\_unitriangular\_symbolic.py} expands every identity
+in \eqref{eq:char2-21-triangular} exactly.  Its exhaustive $\F_2$ check is a
+separate diagnostic and is not used in the proof.
+
+Finally, (A.28)--(A.29) recover the original keys.  Hence the coefficient map
+has a two-sided polynomial inverse over every characteristic-$2$ field; no
+root extraction, scalar division, or Jacobian inference occurs.  Evaluation
+at distinct points is then an invertible Vandermonde transformation.
+\end{proof}
+
+\subsection{Large-prime implementation (\texorpdfstring{$\F_{2^{89}-1}$}{GF(2\textasciicircum 89-1)})}
+
+To implement the formulas intended for characteristic zero, we use the
+Mersenne prime $M_{89}=2^{89}-1$.  The resulting computation is over the
+finite field $\F_{M_{89}}$---it is not literally characteristic zero---and
+uses 89-bit modular arithmetic with keys
+$a_0,a_1,\ldots\in[0,M_{89})$.  Since $M_{89}$ is larger than every degree
+displayed here, it lies in the large-characteristic regime covered by the
+proved constructions elsewhere in the paper.  That fact does not certify
+these separately optimized candidates: the search also checked a constant
+nonzero Jacobian determinant, which is necessary for a polynomial inverse but
+does not by itself prove one.  These candidates would require explicit
+decoders before being used as bijective families.
+
+\medskip
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{4 products, degree 7} (7 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + a_0) \\
+z &= (x + a_1) \cdot (y + a_2) \\
+t &= (x + z + a_3) \cdot (x + 0) \\
+u &= (t + a_4) \cdot (z + a_5) \\
+P &= y + u + a_6
+\end{aligned}
+\]
+\emph{Height 4, 9 additions}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{5 products, degree 9} (9 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + 0) \\
+z &= (x + y + a_0) \cdot (y + a_1) \\
+t &= (y + z + a_2) \cdot (x + a_3) \\
+u &= (z + a_4) \cdot (t + a_5) \\
+v &= (x + a_6) \cdot (y + a_7) \\
+P &= u + v + a_8
+\end{aligned}
+\]
+\emph{Height 4, 12 additions}
+\end{minipage}
+
+\medskip
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{6 products, degree 11} (11 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + a_0) \\
+z &= (y + a_1) \cdot (x + y + a_2) \\
+t &= (y + z + a_3) \cdot (x + a_4) \\
+u &= (y + t + a_5) \cdot (t + a_6) \\
+v &= (y + a_7) \cdot (z + a_8) \\
+w &= (u + a_9) \cdot (x + 0) \\
+P &= v + w + a_{10}
+\end{aligned}
+\]
+\emph{Height 5, 15 additions}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{7 products, degree 13} (13 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + 0) \\
+z &= (y + a_0) \cdot (x + y + a_1) \\
+t &= (y + z + a_2) \cdot (x + a_3) \\
+u &= (y + z + a_4) \cdot (z + a_5) \\
+v &= (z + t + a_6) \cdot (z + u + a_7) \\
+w &= (y + a_8) \cdot (x + a_9) \\
+s &= (x + y + z + t + u + w + a_{10}) \\
+  &\quad\cdot(x + a_{11}) \\
+P &= v + s + a_{12}
+\end{aligned}
+\]
+\emph{Height 4, 24 additions}
+\end{minipage}
+
+\medskip
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{8 products, degree 15} (15 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + a_0) \\
+z &= (y + a_1) \cdot (x + 0) \\
+t &= (z + a_2) \cdot (x + y + z + a_3) \\
+u &= (y + t + a_4) \cdot (z + t + a_5) \\
+v &= (t + a_6) \cdot (x + t + a_7) \\
+w &= (t + a_8) \cdot (x + a_9) \\
+s &= (z + a_{10}) \cdot (x + y + v + a_{11}) \\
+r &= (y + a_{12}) \cdot (u + v + a_{13}) \\
+P &= w + s + r + a_{14}
+\end{aligned}
+\]
+\emph{Height 5, 25 additions}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\textbf{9 products, degree 17} (17 keys)
+\[
+\begin{aligned}
+y &= (x + 0) \cdot (x + a_{16}) \\
+z &= (x + y + a_{13}) \\
+  &\quad\cdot(-x + y + a_{15}) \\
+t &= (x + y + z + a_{11}) \\
+  &\quad\cdot(-x - y + z + a_{12}) \\
+u &= (y + z + a_{10}) \cdot (-y + z + a_{14}) \\
+v &= (x + a_{7}) \cdot (y + a_{6}) \\
+w &= (x + a_{3}) \cdot (y + a_{2}) \\
+s &= (x + z + t + v + a_{5}) \\
+  &\quad\cdot(x - z + t - v + a_{9}) \\
+r &= (z + u + a_{4}) \cdot (-z + u + a_{8}) \\
+q &= (w + s + a_{1}) \cdot (x + 0) \\
+P &= r + q + a_{0}
+\end{aligned}
+\]
+\emph{Height 5, 35 additions}
+\end{minipage}
+
+\smallskip
+\noindent Unlike the searched candidates above, the degree-17 circuit is not a
+search result: it is the degree-17 instance of the proved general family,
+printed by \texttt{tools/polychain.py chain 17 --reduced} after a
+unit-triangular key normalization that makes every gate constant a single
+fresh key.  Its decoder is the paper's final decoder, and bijectivity of the
+key map is covered by \Cref{cor:all-odd-decodable}; no separate
+certification is needed.
+
+\medskip
+\noindent\textbf{Note:} In the large-prime implementation, multiplications
+by $x+0$ correspond to squaring operations, which can be computed more
+efficiently than general multiplications using
+$(a+b)^2=a^2+2ab+b^2\pmod{M_{89}}$.

@@ -1,0 +1,208 @@
+\section{Adversarial inputs for heuristic hashes}
+\label{app:adversarial}
+
+This appendix records the inputs behind the heuristic rows of
+\Cref{tab:injective:adversarial}: for each hash, the message pair we used, the
+measured collision rate, and the number of random secrets it was measured over.
+All code is in \texttt{tools/bench/adversarial/} of the accompanying repository
+(self-contained C++17; every competitor hash is re-implemented from its
+published algorithm and checked against published test vectors, e.g.\
+\texttt{XXH3} against the official sanity vectors for lengths
+$12, 24, 48, 80, 195$ with seed $0$ and seed \texttt{PRIME64}).  Measurements
+were taken on an Apple M2 Pro with Apple clang~17 at \texttt{-O3}.
+
+\paragraph{Model and methodology.}
+As in \Cref{sec:injective:experiments}, the secret (seed or secret array) is
+drawn uniformly at random per trial and hidden; the attacker chooses a
+\emph{fixed} pair of messages; the reported quantity is the fraction of secrets
+for which the pair collides.  A random function gives $2^{-64}$.  Attacks that
+need a hash's \emph{public} default constants (the shipped \texttt{wyhash} and
+\texttt{rapidhash} secret arrays, \texttt{XXH3}'s \texttt{kSecret} with seed
+$0$) do not count in this model and are listed separately at the end.  A
+message is a byte string whose length is a multiple of $16$, read as
+little-endian 64-bit words $w_0,w_1,\ldots$; $M$ denotes the all-ones word, and
+``complementing'' a word means XORing it with $M$.  Heuristic hashes were run
+at $2^{29}$ trials per cell in the site scan and $2^{31}$ trials per cell in the
+length scan; the proven baselines at $2^{27}$ and $2^{29}$ respectively.
+
+\paragraph{The multiply--fold differential.}
+All four heuristic hashes share a $64\times64\to128$-bit multiply whose two
+halves are folded together, $\mathrm{lo}_{64}(uQ)\oplus\mathrm{hi}_{64}(uQ)$
+(\texttt{wyhash}, \texttt{rapidhash}, \texttt{XXH3}) or
+$\mathrm{lo}_{64}(uQ)+\mathrm{hi}_{64}(uQ)$ (\texttt{MUM}).  The operands
+$u,Q$ are a message word combined with a secret or state word, so an attacker
+controls only the difference $(\delta,\varepsilon)$ that the two messages impose
+on $(u,Q)$, while $(u,Q)$ themselves are uniform.  The relevant quantity is
+therefore $P(\delta,\varepsilon)=\Pr_{u,Q}[\mathrm{fold}(u,Q)=
+\mathrm{fold}(u\oplus\delta,Q\oplus\varepsilon)]$, which
+\texttt{fold\_search.cpp} evaluates exhaustively for $8$- and $16$-bit operands
+and by $2^{34}$ samples at $24$--$64$ bits.  For the XOR fold the best
+differences are $(M,M)$ and $(M,0)$: at $64$ bits they collide with probability
+$2^{-26.7}$ and $2^{-26.8}$, and the exponent scales as $P\approx2^{-0.42n}$ in
+the operand width $n$ rather than the ideal $2^{-n}$.  For the additive fold of
+\texttt{MUM} the difference $(M,M)$ collides with probability $0.667$ and the
+additive difference $(0x55\cdots5,0)$ with probability $0.185$, both
+\emph{independent of the operand width}.  Complementing an operand is the single
+most powerful difference we found.
+
+\paragraph{\texttt{wyhash} and \texttt{rapidhash} (random secret).}
+Versions: \texttt{wyhash} final v4.3 (with \texttt{WYHASH\_\allowbreak CONDOM=1}) and
+\texttt{rapidhash} v1.0, both with a uniformly random secret array in place of
+the shipped one.  The first step of both hashes is
+$\mathrm{mix}(w_0\oplus\mathrm{secret}, w_1\oplus\mathrm{state})$, so
+complementing $w_0$ and $w_1$ imposes the $(M,M)$ difference on the first fold.
+Measured over $2^{31}$ random secrets per length, the pair collides with
+probability $2^{-26.6}$, $2^{-26.7}$, $2^{-26.2}$, $2^{-26.6}$, $2^{-26.4}$
+(\texttt{wyhash}) and $2^{-26.4}$, $2^{-26.5}$, $2^{-26.5}$, $2^{-26.2}$,
+$2^{-26.8}$ (\texttt{rapidhash}) at $32$, $48$, $64$, $96$ and $160$ bytes: flat
+in the message length and unaffected by the random secret, as the
+fold analysis predicts.  Complementing a single interior word instead
+propagates through two folds and drops to the noise floor of these trial counts.
+
+\paragraph{\texttt{XXH3} (random seed).}
+\texttt{XXH3\_64bits\_withSeed} on the $9$--$240$-byte paths, seed drawn at
+random per trial.  Complementing $w_0$ and $w_1$ (the operands of the first
+\texttt{mix16B}) collides with probability $2^{-26.3}$, $2^{-25.8}$,
+$2^{-26.1}$, $2^{-26.2}$, $2^{-26.2}$ at $32$, $48$, $64$, $96$, $160$ bytes
+($2^{31}$ seeds per length).  Single-word complements of $w_1$, $w_2$, $w_3$ in
+a $32$-byte message give $2^{-26.4}$, $2^{-27.0}$, $2^{-28.0}$ ($2^{29}$
+seeds; these three rest on only $6$, $4$ and $2$ observed collisions, so they
+locate the rate only to within a factor of about two).  A re-test against the
+newest upstream release (v0.8.3, byte-identical to the packaged header) and the
+development branch, with $2^{30}$ seeds per cell, reproduced these rates and
+sharpened the picture: for the $64$-bit variant the effect lives entirely in
+the multiply--fold, so complementing $w_0$ alone, or both words with an
+unrelated $w_1$, collides at comparable rates, and the rate then depends on the
+rest of the message; one $128$-byte pair reached $2^{-23.3}$ ($97$ and $109$
+collisions in two independent runs of $2^{30}$ seeds), which is the entry in
+\Cref{tab:injective:adversarial}.  A uniformly random $192$-byte secret in
+place of the seed changes nothing.  We reported the differential upstream as
+xxHash issue~\#1127.\footnote{\url{https://github.com/Cyan4973/xxHash/issues/1127}}
+
+\paragraph{\texttt{XXH3-128}.}
+The $128$-bit variant does not escape the differential.  On its $17$--$128$-byte
+path each of the two accumulators adds the multiply--fold of one $16$-byte
+chunk and XORs in the \emph{raw word sum} of the other chunk.  Choosing
+$w_1=\lnot w_0$ makes that sum invariant under complementing both words, so
+one accumulator is unchanged deterministically and the other collides exactly
+when the fold does.  Measured over $2^{29}$ random seeds, the full $128$-bit
+output collides with probability $2^{-27.0}$, $2^{-27.0}$, $2^{-26.2}$,
+$2^{-26.0}$, $2^{-26.4}$ and $2^{-26.0}$ at $32$, $48$, $64$, $100$, $128$ and
+$160$ bytes, every collision being a joint collision of both halves;
+complementing $w_0$ alone, or both words with an unrelated $w_1$, gave none.
+Doubling the output width therefore buys nothing against this input pair, and
+\texttt{XXH3-128} scores $28.5$ bits in \Cref{tab:injective:adversarial}, barely above the $27.3$ of \texttt{XXH3}.
+
+\paragraph{\texttt{komihash} (random seed).}
+\texttt{komihash} v5.34 (checked against its $63$ published test vectors)
+resisted every differential we tried: the $(M,M)$ and $(M,0)$ complements on
+the fold operands of its minimal-diffusion path for $8$--$15$-byte messages,
+single- and double-word complements in every $16$-byte block position,
+length-boundary and zero-padding pairs, and the structural pairs used against
+\texttt{MUM}.  Every surface gave $0$ collisions in $2^{32}$ random seeds,
+consistent with the $2^{-64}$ baseline.  We therefore list it as ``$\ge32$'' in
+\Cref{tab:injective:adversarial}: the search shows only that no pair we found
+exceeds $2^{-32}$, and is not a proof.
+
+\paragraph{\texttt{MUM} v3.}
+\texttt{mum.h} with its default macros, in both the unroll-8 (x86-64) and
+unroll-16 (aarch64) configurations.  The additive fold satisfies
+$\_\mathrm{mum}(v,p)+\_\mathrm{mum}(\lnot v,p)\in\{2^{64}-1,\,2^{64}-2\}$ (mod~$2^{64}$)
+for every $v$ (the second value occurs exactly when the low halves of $vp$ and
+$(\lnot v)p$ carry, i.e.\ for a $p/2^{64}$ fraction of the $v$---between $0.15$
+and $0.87$ for \texttt{MUM}'s primes; \texttt{selftest.cpp} checks the analogous
+identity for complementing both operands), so complementing an input
+word toggles that word's contribution to the XOR accumulator by
+approximately~$M$.  Complementing any single interior word of a $32$-byte
+message therefore collides with probability $2^{-1}$ (the finalizer maps the
+flipped and unflipped states together about half the time), and complementing
+\emph{two adjacent} interior words $w_1,w_2$ cancels the two toggles and
+collides for \emph{every} seed: $2^{-0.0}$ over $2^{29}$ seeds, i.e.\ a
+key-free collision.  The shortest key-free pair we know is a single $8$-byte
+word: $w=\texttt{0xb0899b7198a95479}$ and $w'=\texttt{0x08eb9f259b16692d}$
+satisfy $\_\mathrm{mum}(w,p_0)=\_\mathrm{mum}(w',p_0)$ (found by a Brent
+$\rho$ search on $v\mapsto\_\mathrm{mum}(v,p_0)$ and checked over $2^{20}$
+seeds), which is what places \texttt{MUM} at $0$ bits in
+\Cref{tab:injective:adversarial}.  Two further seed-independent constructions were found: a
+pair of values $w_1$ that collide under $\_\mathrm{mum}(\cdot,p_1)$ (a
+$\rho$-collision located after $2^{37}$ evaluations), and, at $160$ bytes, a
+rotation clique $w_0=p_0\oplus2^k$, $w_1=\mathrm{rotr}(Q,k)\oplus p_1$ of
+$K=64$ messages that are pairwise colliding for all $1020$ seeds tried.
+
+\paragraph{The paper's own fold variant.}
+For completeness, the recurrence of \Cref{sec:injective} with the field product
+replaced by the MUM fold (the throughput data point of
+\Cref{sec:injective:experiments}) is subject to the same differential:
+complementing the last $b$-word imposes $(M,0)$ on the final fold and collides
+with probability $2^{-27.5}$, $2^{-26.7}$, $2^{-27.1}$, $2^{-27.3}$,
+$2^{-27.1}$ at $32$--$160$ bytes ($2^{31}$ keys).  This is the variant the text
+explicitly excludes from the Schwartz--Zippel guarantee.
+
+\paragraph{Shipped defaults (excluded from the model).}
+With the \emph{published} constants, forced collisions exist: placing
+$\mathrm{secret}[1]$ at byte offset $\mathrm{len}-16$ annihilates the final
+multiplication of \texttt{wyhash} and \texttt{rapidhash} (rate $1.000$ over
+$2^{20}$ seeds, at $32$ and $160$ bytes); $w_0=\mathrm{secret}[1]$
+(\texttt{wyhash}) or $w_0=\mathrm{secret}[2]$ (\texttt{rapidhash}) zeroes the
+block state so that messages differing only in $w_1$ collide; and for
+unseeded \texttt{XXH3}, $w_0=\texttt{kSecret}[0..8)$ zeroes
+\texttt{mix16B} of the first chunk.  Each of these yields a set of $K=256$
+messages that collide pairwise for all $1020$ seeds tried.  A random secret
+removes all of them (rate $0$ in the same experiments), which is why they are
+excluded from \Cref{tab:injective:adversarial}; \texttt{MUM}'s constructions
+have no secret to randomize and remain.
+
+\paragraph{Proven baselines and controls.}
+On every differential site, length, annihilation attempt and blocking set
+above, the field version of our recurrence over $\F_{2^{64}}$, its Mersenne
+variant, and Dietzfelbinger's vector multiply-shift produced $0$ collisions
+($2^{24}$--$2^{29}$ trials per cell, and $1020$ seeds for the blocking sets), consistent with their $d/|\F|$ and
+$2^{-64}$ bounds.  On two \emph{uniformly random} messages every hash,
+heuristic or proven, produced $0$ collisions at $32$ and $160$ bytes
+($2^{30}$ trials for the heuristic hashes, $2^{28}$ for the proven ones): the
+elevated rates above are entirely input-specific.
+
+\paragraph{A seeded-differential test for SMHasher3.}
+SMHasher3 runs every hash under fixed seeds, so the input-specific rates above
+are invisible to it: they are probabilities over the \emph{seed} for a fixed
+pair of inputs.  We added a test (\texttt{SeedDifferential}, in the paper's
+fork of SMHasher3) that draws $2^{24}$ uniformly random seeds ($2^{30}$ in an
+extended tier) and counts full-output collisions of fixed structured pairs
+derived from a base message whose second word is the complement of its first:
+complementing the first two words, single words, or adjacent interior pairs,
+at lengths from $16$ bytes to $1$\,KB.  A row fails when its count exceeds
+$\max(3,\,E+6\sqrt{E})$ for the expected count $E=N2^{-w}$.  In the extended
+tier \texttt{wyhash}, \texttt{rapidhash}, \texttt{XXH3} and \texttt{XXH3-128}
+fail at about $2^{-26}$ on the complemented leading pair and every
+\texttt{MUM} variant fails on the adjacent pairs at rate $1$, while
+\texttt{komihash}, Polymur, SipHash, \texttt{t1ha2}, FarmHash, CityHash, the
+Mersenne polynomial hash and ChainHash show no collision in $2^{30}$ seeds.
+
+\paragraph{Caveat.}
+The rates reported here are for the worst inputs \emph{we found}, by a
+differential search restricted to word complements and additive differences on
+the fold operands, together with one-line annihilation constructions.  They are
+lower bounds on the true worst-case collision probability of each hash; inputs
+with a higher rate may exist.  Each $2^{-26}$--$2^{-27}$ entry rests on roughly
+$20$--$35$ observed collisions in $2^{31}$ trials, so its exponent carries a
+statistical uncertainty of about $\pm0.3$; the differences between lengths and
+between the three XOR-fold hashes are within that noise.  What the experiments
+establish is a lower bound of order $2^{-27}$ (\texttt{wyhash},
+\texttt{rapidhash}, \texttt{XXH3}) and $1$ (\texttt{MUM}) on the worst case,
+against a proven upper bound of $n/2^{64}$ for the three-key field version of
+our hash on $n$ word pairs ($(3n-1)/2^{64}$ with a single key word).
+
+\paragraph{Truncated Mersenne outputs.}
+A polynomial hash over $\F_p$ with $p=2^{89}-1$ must not be shortened by
+keeping the low $64$ bits of the residue.  Two messages that differ only in
+the final additive word, by $2^{64}-1$, have residues that differ by exactly
+that constant; whenever the sum wraps past $p$, the wrap subtracts
+$p\equiv-1\pmod{2^{64}}$ and the low $64$ bits coincide.  This happens
+whenever the residue lies in the top $2^{64}$ values of $[0,p)$, so the pair
+so, over a random key, the pair collides with probability about $2^{64}/p=2^{-25}$, whatever the remaining words of the message (we measured
+$4$ collisions in $2^{26}$ random keys).  The same mechanism gives
+$2^{32}/(2^{61}-1)=2^{-29}$ for the low $32$ bits of a residue modulo
+$2^{61}-1$ (measured $1$ in $2^{30}$).  The Mersenne rows of
+\Cref{tab:injective:adversarial} therefore output the full residue; a
+shorter output needs a universal post-hash, for instance one multiply-shift
+step or a degree-$k$ chain as in \Cref{sec:main-theorem}.

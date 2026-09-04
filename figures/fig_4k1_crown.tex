@@ -1,0 +1,46 @@
+% Forward construction and inverse five-row crown for the 4k+1 family.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,5.05) {(a) Forward construction};
+  \node[fp active, minimum width=28mm] (h2) at (1.55,4.22)
+    {$H_2=(x+b)x+c$\\one product};
+  \node[fp second, minimum width=37mm] (h4) at (5.2,4.22)
+    {$H_4=H_2^2-(x+a)^2+e$\\one shared product};
+  \node[fp pivot, minimum width=26mm] (ht) at (8.72,4.22)
+    {$\widetilde H_4=H_4+\rho$\\no product};
+  \node[fp recursive, minimum width=27mm] (t) at (11.75,4.22)
+    {$(U,V)=T_{k,4}$\\recursive core};
+  \draw[fp flow] (h2) -- (h4);
+  \draw[fp flow] (h4) -- (ht);
+  \draw[fp flow] (ht) -- (t);
+  \node[fp label, below=2mm of t] {$P_{4k+1}=xU+V$};
+
+  \node[fp panel title] at (0,3.05) {(b) Inverse coefficient crown};
+  \draw[fp decode] (0,2.62) -- node[fp label, above]
+    {top five rows, then the $T$ remainder} (13.55,2.62);
+  \node[fp active, minimum width=15mm, anchor=west] (b) at (0,1.92)
+    {$b$\\$2k$};
+  \node[fp active, minimum width=15mm, anchor=west] (c) at (1.5,1.92)
+    {$c$\\$2k$};
+  \node[fp second, minimum width=15mm, anchor=west] (a) at (3.0,1.92)
+    {$a$\\$-2k$};
+  \node[fp second, minimum width=15mm, anchor=west] (e) at (4.5,1.92)
+    {$e$\\$k$};
+  \node[fp pivot, minimum width=15mm, anchor=west] (rho) at (6.0,1.92)
+    {$\rho$\\$k$};
+  \node[fp recursive, minimum width=52mm, anchor=west] (inner) at (7.5,1.92)
+    {$x(U-H_4^k)+(V-\widetilde H_4^k)$\\apply the $(R^{(1)}_{k,4},R^{(2)}_{k,4})$ decoder};
+
+  \node[fp known, minimum width=25mm] (dh2) at (1.5,0.72) {reconstruct $H_2$};
+  \node[fp known, minimum width=25mm] (dh4) at (4.5,0.72) {reconstruct $H_4$};
+  \node[fp known, minimum width=24mm] (dht) at (7.15,0.72) {form $\widetilde H_4$};
+  \draw[fp dependence] (b.south) -- (dh2.north west);
+  \draw[fp dependence] (c.south) -- (dh2.north east);
+  \draw[fp dependence] (a.south) -- (dh4.north west);
+  \draw[fp dependence] (e.south) -- (dh4.north east);
+  \draw[fp dependence] (rho.south) -- (dht.north);
+  \draw[fp dependence] (dh2.east) -- (dh4.west);
+  \draw[fp dependence] (dh4.east) -- (dht.west);
+  \draw[fp dependence] (dht.east) -- (inner.south west);
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (9.05,0.72)
+    {subtract the recovered powers\\before entering the inner rows};
+\end{tikzpicture}

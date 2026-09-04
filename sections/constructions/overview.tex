@@ -1,0 +1,183 @@
+
+This appendix provides costed compatible joint realizations of the
+splittable-pair constructions for all odd degrees except~$7$; for $n=7$ we
+use a separate decodable septic base.  Algebraic splittability itself is not
+exceptional at degree~$7$; the missing object is a cost-optimal joint
+realization, as explained in \Cref{rem:canonical-split}.
+The results hold over fields of characteristic zero and, for target degree
+$n$, over fields of characteristic $p>n$.
+The resulting degree-$n$ circuit uses exactly
+$\lfloor n/2\rfloor+1$ multiplications and, after sharing affine forms,
+at most
+\[
+   \min\!\left\{2n,\ \frac54n+6\lceil\log_2n\rceil^2+1\right\}
+\]
+additions or subtractions, with multiplicative height
+$2\lceil\log_2 n\rceil+4$ for odd $n$ ($+5$ for even $n$, whose lift
+adds one product) under the peeled scheduling of
+\Cref{sec:peeled-Q}.  Thus the construction has leading arithmetic
+cost $n/2$ multiplications and $5n/4$ additions on a critical path of
+logarithmic length.  The preceding
+decoder-calculus appendix supplies the common recovery language.  This appendix
+certifies the construction, the multiplication count, and the logarithmic
+height of the peeled scheduling; the separate addition-accounting appendix
+proves the two stated addition bounds and the sequential baseline's height
+from the same shared schedules.
+
+\paragraph{Characteristic boundary.}
+The recovery and circuit interfaces are characteristic-free.  The formulas
+below are not: square peels and scalar pivots require~$2$ and several small
+integers to be units.  A characteristic-$2$ treatment can reuse those
+interfaces, but needs a separate recursive family rather than exceptional
+branches of the $T_{k,2^l}$ recurrence.  Every helper that divides by~$2$
+states that hypothesis explicitly.
+
+\paragraph{Proof architecture.}
+Although the formulas are recursive, the proof uses one decoder pattern
+throughout:
+\[
+\begin{aligned}
+  \text{construction identity}
+    &\Longrightarrow \text{degree and support bounds}\\
+    &\Longrightarrow \text{descending pivot table}
+     \Longrightarrow \text{polynomial decoder}.
+\end{aligned}
+\]
+The decoder calculus of \Cref{appendix:decoder-calculus} records polynomial
+recovery and its causal version.  The fill construction supplies the known-powers gadgets
+$Q_{2^s-1}$; the depth-balanced peeled variant of \Cref{sec:peeled-Q}
+computes the same family at the identical ledger with height $s$.  The central $T_{k,2^l}$ lemma proves one
+coefficient-triangular remainder invariant by three stage tables (even,
+shared odd base, and ordinary odd).  The remaining lemmas attach small outer
+gadgets and close a strong induction on the target degree.  Decoder summaries
+after the longer proofs collect their steps; the proofs themselves establish
+every pivot and information cutoff.
+
+\paragraph{Construction atlas.}
+The appendix can be read as the following small collection of circuit moves.
+Each entry says both what the construction computes and how its inverse exposes
+the hidden block.  On a first reading, this atlas together with the decoder
+figures gives the logical spine; the intervening coefficient calculations
+certify the stated arrows.
+\begin{multicols}{2}
+\small
+\raggedcolumns
+\noindent\textbf{Compatible closures.}
+Sum, multiply, or square two pairs; descend through the translated windows
+and peel the unique unresolved row.  These are the composition rules.
+
+\smallskip\noindent\textbf{Fill $A_l$.}
+Attach monic heads above and below a pair; decode upper head
+$\to$ shifted input window $\to$ lower head.  Iterating this move gives the
+Mersenne gadgets $Q_{2^s-1}$.
+
+\smallskip\noindent\textbf{Peeled $Q^{\mathrm{peel}}$.}
+Two half-size children under one keyed glue factor; decode by peeling
+against the known monic $H$, reading $\gamma$ at the top row, and
+subtracting.  Same ledger as the fill route, height $k$.
+
+\smallskip\noindent\textbf{The $T_{k,2^l}$ recursion.}
+Halve the exponent and attach a fresh tail; decode tail pivots
+$\to$ shifted recursive block $\to$ low $Q$-block.  This is the central
+compatible-pair construction.
+
+\smallskip\noindent\textbf{The $Q_{4k+1}$ crown.}
+Place a $T_{2k,2}$ pair under an affine crown; read five crown pivots and
+then run the recovered $T$ decoder.  This handles degrees $1\pmod4$.
+
+\smallskip\noindent\textbf{The barred gadget $\bar Q_{8k+7}$.}
+Place a $T_{k,8}$ pair inside one level-$4$ fill; decode its top scalar/block
+pivots $\to$ two seam rows $\to$ inner $T$ block $\to$ low rows.
+
+\smallskip\noindent\textbf{Outer induction.}
+Wrap a smaller pair in one or two difference-of-squares shells; peel the
+shells, decode the smaller pair and its recorded powers, and only then decode
+the auxiliary gadgets.
+
+\smallskip\noindent\textbf{Finite bases.}
+The fused circuits at $7,15,27,31$ use the same top-down shell and pivot
+rules; they bridge the degrees at which a generic branch would miss the
+optimal multiplication count.
+\end{multicols}
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_decoder_language}}
+  \caption{The visual language used in this appendix.  Coefficient degree
+  decreases from left to right, which is also the order in which a decoder
+  runs.  A causal pivot reads the current observed row and quantities decoded
+  strictly earlier, but never a lower row.  Larger constructions are drawn as
+  nested monic shells: peel the highest shell, subtract it (including any
+  displayed boundary correction), and continue with the newly exposed
+  block.  Colours distinguish blocks, while labels and line styles carry the
+  same information in monochrome.}
+  \label{fig:decoder-language}
+\end{figure}
+
+For concision, call a field $d$-\emph{admissible} if it has characteristic
+zero or characteristic $p>d$.  This is a convenient sufficient condition,
+not the exact one (\Cref{rem:char2}).  Every decoder displayed in this
+appendix is a composition of unit pivots, monic divisions, and affine
+pivots, root extractions and block solves whose slopes, root indices and
+determinants are fixed integers; it is therefore defined, and inverts the
+construction, over every field in which those integers are units.
+Replaying the routing of \Cref{alg:final-construction} lists them exactly.
+Along the recursive calls made for degree~$n$, every integer divided by is
+one of
+\begin{equation}
+\label{eq:bad-primes}
+  2,\qquad 2k,\qquad k\ (k\text{ even})\ \text{or}\ k(k-1)\ (k\text{ odd}),
+  \qquad k^2,
+\end{equation}
+for an internal index $k$, and these occur as follows.
+\begin{itemize}
+  \item $2$: every monic square root, square gadget and scalar shift
+    (\Cref{lem:monic-from-power,lem:square-gadget-boundary,lem:scalar-shift-square}),
+    the septic base (\Cref{lem:septic-base}) and the finite bases $15,27,31$
+    (\Cref{lem:special-cases-splittable}).
+  \item $2k$: the five crown slopes $2k,2k,-2k,k,k$ of the $4k+1$ branch
+    (\Cref{lem:4k+1-splittable}) and of $Q_{4k+1}(x,H_2)$
+    (\Cref{lem:Q4k+1-from-H2}), and the slope $M=2k$ of a perturbed
+    $T_{2k,2^l}$ call (\Cref{lem:causal-perturbed-T}).
+  \item $k$ or $k(k-1)$: the $T$ recursion at index $k$
+    (\Cref{lem:Rk2l,lem:Rk2l-leading-coeff}), followed down its halving
+    chain $k\mapsto\lfloor k/2\rfloor$.  For even $k$ the stage table has
+    slopes $-k$ and $k/2$ together with one square root and one scalar
+    shift; for odd $k$ it has slopes $-k(k-1)$, $-(k-1)$ and $(k-1)/2$; the
+    leading coefficient $\gamma_k$ divides $k(k-1)$ in both cases.
+  \item $k^2$: the block determinant $\det M=-k^2$ and the two slopes $k$
+    of the barred gadget $\bar Q_{8k+7}$ (\Cref{lem:barQ8k+7}).
+\end{itemize}
+The seam corrections $\gamma_m$,
+$\binom m2$, $\tau=k(k-1)(k-2)/3=2\binom k3$ and $\theta_m$ are integers
+that are subtracted, never divided by, and the fill gadgets $A_{2^l}$, the
+known-powers gadgets $Q_{2^t-1}$ with their peeled variant, the gadgets
+$Q_1,Q_3,Q_7$, the degree-$3$ base and the even lift use only unit pivots
+and monic division.  Let $\mathrm{Bad}(n)$ be the set of primes dividing at
+least one integer in \eqref{eq:bad-primes} along the routing for degree
+$n$.  Then the construction and the decoder of $P_n$ are valid over every
+field in which the elements of $\mathrm{Bad}(n)$ are units, i.e.\ whose
+characteristic is not in $\mathrm{Bad}(n)$.  Every internal index $k$ in
+\eqref{eq:bad-primes} is at most $(n-1)/4$, so every odd element of
+$\mathrm{Bad}(n)$ is at most $(n-1)/4$ and $n$-admissibility is sufficient.
+The script \texttt{tools/bad\_primes.py} replays the routing and prints
+the pivot list; for instance
+\[
+\begin{aligned}
+  &\mathrm{Bad}(5)=\mathrm{Bad}(9)=\mathrm{Bad}(15)=\mathrm{Bad}(17)
+    =\mathrm{Bad}(31)=\{2\},\\
+  &\mathrm{Bad}(13)=\mathrm{Bad}(27)=\{2,3\},\qquad
+  \mathrm{Bad}(21)=\{2,5\},\qquad
+  \mathrm{Bad}(29)=\{2,3,7\}.
+\end{aligned}
+\]
+Thus $\mathrm{Bad}(n)=\{2\}$ for $n\in\{5,\dots,12\}$ and, e.g., for
+$n=31,\,47,\,79$.  As a check, the reference decoder
+\texttt{tools/polychain.py} completes its encode--decode round trip over
+$\mathrm{GF}(p)$ for every odd $n\le75$ (and selected $n\le127$) and
+every prime $5\le p\le31$ with $p\notin\mathrm{Bad}(n)$, including many
+pairs with $p<n$; for $p\in\mathrm{Bad}(n)$ the displayed decoder divides
+by zero.  (At $p=3$ that implementation additionally evaluates $\tau$ by a
+division, which the paper's decoder does not need.)
+No characteristic restriction beyond \eqref{eq:bad-primes} is hidden in
+the recursion.

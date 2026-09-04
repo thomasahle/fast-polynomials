@@ -1,0 +1,200 @@
+\section{A Lower Bound in Characteristic Two}
+\label{sec:lower-char2}
+
+The lower bound of \Cref{sec:lower} uses that $2$ is invertible, and it settles a single
+degree.  In characteristic~$2$ a different argument is available, and it is both simpler
+and much stronger: it rules out $n$ multiplications for bijective evaluation at $2n$
+points at \emph{every} $n>1$, with no assumption on the degree or the leading coefficient
+of the computed polynomial, and---unlike \Cref{sec:lower}---with no restriction on the
+preprocessing: no map from $2n$ parameters to the slots of the chain, whether affine,
+rational or arbitrary, makes the evaluation bijective.  The mechanism is a symmetry of
+slot space rather than a Jacobian: in characteristic~$2$ a chain admits a one-parameter
+group of slot changes that leaves the computed polynomial \emph{exactly} fixed, and a
+second family that translates the argument.  If the evaluation map were onto, its fibres
+would be exactly the orbits of the first group, and a set cut out by the two families
+could then be counted in two incompatible ways.  The argument, including the statement for
+arbitrary preprocessing maps, is machine-checked in Lean (\Cref{rem:char2-formalization}).
+
+\subsection{Model}
+
+Fix a finite field $\F$ of characteristic~$2$ with $Q=\abs{\F}$, and let $n\ge1$.  A
+\emph{chain with $n$ multiplications} is given by fixed constants
+$\alpha_i,\beta_i,p_{ij},q_{ij},\gamma,r_j\in\F$; on a slot vector
+$\mathbf z=(u_1,v_1,\dots,u_n,v_n,w)\in\F^{2n+1}$ it computes
+\begin{align}
+   G_i &=
+   \Bigl(\alpha_i x+\sum_{j<i}p_{ij}G_j+u_i\Bigr)
+   \Bigl(\beta_i x+\sum_{j<i}q_{ij}G_j+v_i\Bigr),
+   \qquad 1\le i\le n,
+   \label{eq:char2-gate}\\
+   f_{\mathbf z}(x) &= \gamma x+\sum_{j=1}^{n}r_jG_j+w .
+   \label{eq:char2-output}
+\end{align}
+As in \Cref{sec:lower}, only the $n$ displayed products are charged; additions and
+multiplications by the fixed constants are free, and the parameters enter only through the
+$2n+1$ additive slots.  For $2n$ distinct points $X=(x_1,\dots,x_{2n})$ let
+\begin{equation}
+   E_X\colon\F^{2n+1}\to\F^{2n},
+   \qquad
+   E_X(\mathbf z)=\bigl(f_{\mathbf z}(x_1),\dots,f_{\mathbf z}(x_{2n})\bigr)
+   \label{eq:char2-eval}
+\end{equation}
+be the evaluation map on slot space.  A \emph{$(2n,n)$ construction} is such a chain
+together with a \emph{preprocessing map} $\mathbf z\colon\F^{2n}\to\F^{2n+1}$---affine,
+polynomial, rational, or an arbitrary function---such that for every $2n$ distinct points
+the composite $\Phi_X=E_X\circ\mathbf z\colon\F^{2n}\to\F^{2n}$ is a bijection.  A
+bijective $\Phi_X$ makes $E_X$ onto, and conversely any right inverse of an onto $E_X$ is
+a preprocessing map with bijective $\Phi_X$; so a chain admits a $(2n,n)$ construction
+exactly when $E_X$ is surjective for every $X$.  Over a finite field this is the natural
+formulation: it says the $2n$ parameters carry exactly as much information as $2n$
+evaluations, which is what the hashing applications of \Cref{sec:experiments} require.
+
+\begin{theorem}[No $(2n,n)$ construction in characteristic two]
+\label{thm:char2-lower}
+Let $\F$ be a finite field of characteristic~$2$ with $Q=\abs{\F}\ge 2n$ and $n>1$.  Then
+no chain with $n$ multiplications is a $(2n,n)$ construction: for every such chain there
+are $2n$ distinct points $X$ for which the evaluation map $E_X$ of \eqref{eq:char2-eval}
+is not surjective, so no preprocessing map, affine or otherwise, makes $\Phi_X$ a
+bijection.
+\end{theorem}
+
+The hypothesis $n>1$ cannot be removed: $f_{a,b}(x)=ax+b$ uses one multiplication and its
+evaluation at two distinct points is invertible.
+
+\subsection{Proof}
+
+Throughout, write $\mathbf s=(u_2,v_2,\dots,u_n,v_n,w)\in\F^{2n-1}$ for the slots other
+than the first two.
+
+\paragraph{The first gate is not scalar.}
+If $\alpha_1=\beta_1=0$ then $G_1=u_1v_1$ is a constant, and for each later factor and for
+the output it enters through a fixed coefficient $\lambda_j$, so replacing
+$s_j$ by $s_j+\lambda_ju_1v_1$ leaves $f$ unchanged.  The polynomial $f_{\mathbf z}$ then
+depends only on the $2n-1$ field elements $\mathbf s+\lambda u_1v_1$, so $E_X$ takes at most
+$Q^{2n-1}<Q^{2n}$ values and is not surjective for any $X$.  Hence we may assume
+$(\alpha_1,\beta_1)\neq(0,0)$, and we write, with $\sigma=\alpha_1v_1+\beta_1u_1$,
+\begin{equation}
+   G_1=\alpha_1\beta_1x^2+\sigma x+u_1v_1 .
+   \label{eq:char2-firstgate}
+\end{equation}
+
+\paragraph{Two families of slot changes.}
+Let $\lambda,\varepsilon\in\F^{2n-1}$ collect, for each slot of $\mathbf s$, the fixed
+coefficient with which $G_1$, respectively $x$, enters the corresponding later factor or
+the output.  For $t\in\F$ put $d_t=\sigma t+\alpha_1\beta_1t^2$ and define
+\begin{equation}
+   \mathcal G_t(u_1,v_1,\mathbf s)=(u_1+\alpha_1t,\;v_1+\beta_1t,\;\mathbf s+\lambda d_t),
+   \qquad
+   \mathcal T_c(u_1,v_1,\mathbf s)=(u_1+\alpha_1c,\;v_1+\beta_1c,\;\mathbf s+\varepsilon c).
+   \label{eq:char2-gauge}
+\end{equation}
+The first is a \emph{gauge}: expanding
+$(\alpha_1x+u_1+\alpha_1t)(\beta_1x+v_1+\beta_1t)=G_1+d_t$, the two cross terms in $x$
+cancel \emph{because the characteristic is two}, so $G_1$ changes by the constant $d_t$,
+which the corrections $\lambda d_t$ undo in every later factor and in the output.  Hence
+$f_{\mathcal G_t(\mathbf z)}=f_{\mathbf z}$ identically.  The second translates the
+argument: induction through the gates gives $G_i^{\mathcal T_c(\mathbf z)}(x)=G_i^{\mathbf
+z}(x+c)$ and therefore $f_{\mathcal T_c(\mathbf z)}(x)=f_{\mathbf z}(x+c)$.
+
+\paragraph{The gauges form a free group action that commutes with translation.}
+Because the characteristic is two,
+$\sigma(\mathcal G_t\mathbf z)=\sigma(\mathbf z)+2\alpha_1\beta_1t=\sigma(\mathbf z)$ and
+likewise $\sigma(\mathcal T_c\mathbf z)=\sigma(\mathbf z)$; moreover
+$d_t+d_s=d_{t+s}$, since the cross term $2\alpha_1\beta_1ts$ vanishes.  Consequently
+$\mathcal G_s\circ\mathcal G_t=\mathcal G_{s+t}$ and
+$\mathcal T_c\circ\mathcal G_t=\mathcal G_t\circ\mathcal T_c$: the gauges are an action of
+the additive group of $\F$ on slot space, and every translation permutes its orbits.  The
+action is free, because $\mathcal G_t\mathbf z=\mathbf z$ forces
+$\alpha_1t=\beta_1t=0$ and hence $t=0$; so every orbit has exactly $Q$ elements.
+
+\paragraph{If $E_X$ is onto, its fibres are the orbits.}
+Fix $2n$ distinct points $X$ and suppose $E_X$ is surjective.  Since
+$f_{\mathcal G_t\mathbf z}=f_{\mathbf z}$, the map $E_X$ is constant on orbits, so each of
+its $Q^{2n}$ fibres is a nonempty union of orbits and has at least $Q$ elements.  The
+fibres partition the $Q^{2n+1}$ slot vectors, so every fibre has exactly $Q$ elements and
+is a single orbit:
+\begin{equation}
+   E_X(\mathbf z)=E_X(\mathbf z')
+   \iff
+   \mathbf z'=\mathcal G_t\mathbf z\ \text{ for some } t\in\F .
+   \label{eq:char2-fibres}
+\end{equation}
+
+\paragraph{Counting one set in two ways.}
+Fix $c\neq0$.  Since $Q\ge2n$, translation by $c$ has at least $n$ disjoint two-element
+orbits: choose $r_1,\dots,r_n$ with $r_1,r_1+c,\dots,r_n,r_n+c$ distinct, let $X$ be that
+tuple, and let $\pi$ swap the two entries of each pair.  By
+$f_{\mathcal T_c(\mathbf z)}(x)=f_{\mathbf z}(x+c)$,
+\begin{equation}
+   E_X\circ\mathcal T_c=\pi\circ E_X .
+   \label{eq:char2-conjugacy}
+\end{equation}
+Suppose $E_X$ is surjective, and consider
+\[
+   \mathcal A=\bigl\{\mathbf z\in\F^{2n+1}:\
+   \mathcal T_c\mathbf z=\mathcal G_t\mathbf z\text{ for some }t\in\F\bigr\}.
+\]
+On one hand, by \eqref{eq:char2-fibres} and \eqref{eq:char2-conjugacy},
+$\mathbf z\in\mathcal A$ exactly when $E_X(\mathcal T_c\mathbf z)=E_X(\mathbf z)$, that is,
+when $\pi(E_X(\mathbf z))=E_X(\mathbf z)$, that is, when
+$E_X(\mathbf z)\in\operatorname{Fix}(\pi)$.  A vector is fixed by $\pi$ exactly when the
+entries of every pair agree, so $\abs{\operatorname{Fix}(\pi)}=Q^n$, and each fibre has
+$Q$ elements; hence
+\[
+   \abs{\mathcal A}=Q^{n+1}.
+\]
+On the other hand $\mathcal A$ can be read off from \eqref{eq:char2-gauge}.  The first two
+slots of $\mathcal T_c\mathbf z$ and $\mathcal G_t\mathbf z$ agree only if
+$\alpha_1c=\alpha_1t$ and $\beta_1c=\beta_1t$, which forces $t=c$; the remaining slots
+then agree exactly when
+$\varepsilon c=\lambda d_c(\mathbf z)=\lambda c\bigl(\sigma(\mathbf z)+\alpha_1\beta_1c\bigr)$,
+that is,
+\[
+   \varepsilon=\lambda\bigl(\sigma(\mathbf z)+\alpha_1\beta_1c\bigr)
+   \qquad\text{in }\F^{2n-1}.
+\]
+If $\lambda=0$ this holds for every $\mathbf z$ (when $\varepsilon=0$) or for none.  If
+$\lambda\neq0$ it holds for no $\mathbf z$ unless $\varepsilon=\kappa\lambda$ for a scalar
+$\kappa$, and then it says $\sigma(\mathbf z)=\kappa+\alpha_1\beta_1c$, a fibre of the
+nonconstant linear form $\sigma$, which has $Q^{2n}$ elements.  Hence
+\begin{equation}
+   \abs{\mathcal A}\in\{0,\;Q^{2n},\;Q^{2n+1}\}.
+   \label{eq:char2-fix}
+\end{equation}
+For $n>1$ the value $Q^{n+1}$ is none of these.  This contradiction shows that $E_X$ is
+not surjective for this $X$, which proves \Cref{thm:char2-lower}.\qed
+
+For $n=1$ the two counts agree, $Q^{n+1}=Q^{2n}$, as they must: $ax+b$ is a construction.
+
+\begin{remark}[Formalization]
+\label{rem:char2-formalization}
+\Cref{thm:char2-lower} is machine-checked in Lean~4
+(\texttt{FastPoly/\allowbreak LowerBoundChar2/}).  The fibre-counting proof above is
+formalized verbatim in \texttt{General.lean}: \texttt{no\_surjective\_eval}
+states that for every $n$-gate chain over a finite field of characteristic two
+with $|\F|\ge2n$ and $n>1$ there is an injective point set $X$ at which the
+evaluation map on slot space is not surjective, and
+\texttt{no\_construction\_general} derives from it that no preprocessing map
+whatsoever (an arbitrary function from any parameter type into slot space)
+makes evaluation surjective at every $X$; the development proves the model
+\eqref{eq:char2-gate}--\eqref{eq:char2-eval}, the gauge identity with its
+characteristic-two cancellation, the freeness of the gauge action, the
+translation semantics, the orbit-equals-fibre step, and the two counts of the
+coincidence set.  An earlier development in the same directory treats the
+case of an affine preprocessing map through a transversality lemma and the
+conjugacy step \eqref{eq:char2-conjugacy}.  Both top-level statements depend
+only on Lean's standard axioms (\texttt{propext}, \texttt{Classical.choice},
+\texttt{Quot.sound}).  A companion file exhibits the
+one-multiplication chain $f_{a,b}(x)=ax+b$ as a $(2,1)$ construction inside the same
+model, so the hypothesis $n>1$ is necessary and the model is not vacuous.
+\end{remark}
+
+\begin{remark}[Scope]
+\label{rem:char2-scope}
+\Cref{thm:char2-lower} concerns an even number of evaluation points and bijective
+evaluation over a finite field, and it constrains the chain alone: no preprocessing of
+any kind circumvents it.  \Cref{sec:lower} concerns rational decoding over an infinite
+field of characteristic $\neq2$.  Neither implies the other, and the fixed-degree
+constructions of \Cref{appendix:polynomials} are unaffected: they use
+$\lfloor n/2\rfloor+1$ multiplications, one more than \Cref{thm:char2-lower} forbids.
+\end{remark}

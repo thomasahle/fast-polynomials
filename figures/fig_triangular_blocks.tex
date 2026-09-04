@@ -1,0 +1,38 @@
+% The two structural operations used to assemble coefficient-triangular tables.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,4.1) {(a) Shift through a monic factor};
+  \node[fp active, minimum width=42mm] (old) at (2.15,2.55)
+    {old pivots $\eta_{e-1},\ldots,\eta_0$};
+  \node[fp known, minimum width=24mm] (factor) at (2.15,3.42)
+    {$L=x^h+\cdots$};
+  \node[fp label, right=1mm of factor] {leading coefficient $1$};
+  \node[fp active, minimum width=42mm] (shifted) at (1.55,1.05)
+    {same pivots $\alpha_{h+e-1},\ldots,\alpha_h$};
+  \node[fp known, minimum width=16mm, right=0pt of shifted]
+    {rows $<h$};
+  \draw[fp decode] (old.south) -- node[fp label, right]
+    {$\times L$: shift by $h$} (shifted.north);
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (0,0.22)
+    {monicity preserves every pivot slope $\lambda_i$};
+
+  \node[fp panel title] at (7.15,4.1) {(b) Concatenate descending blocks};
+  \draw[fp decode] (7.15,3.42) -- node[fp label, above]
+    {decoding order} (13.55,3.42);
+  \node[fp active, minimum width=22mm, anchor=west] (tail) at (7.15,2.55)
+    {new tail};
+  \node[fp second, minimum width=27mm, anchor=west] (inner) at (9.35,2.55)
+    {shifted recursion};
+  \node[fp recursive, minimum width=18mm, anchor=west] (low) at (12.05,2.55)
+    {low block};
+  \draw[fp dependence] (tail.south) to[bend right=12]
+    node[fp label, below] {decoded side data} (inner.south);
+  \draw[fp dependence] (inner.south) to[bend right=12] (low.south);
+  \node[fp label] at (8.25,1.18)
+    {$I_{s-1}$ decoded first};
+  \node[fp label] at (10.7,1.18)
+    {then $I_{s-2},\ldots$};
+  \node[fp label] at (12.95,1.18)
+    {finally $I_0$};
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (7.15,0.22)
+    {higher-block formulas may be substituted into every lower block};
+\end{tikzpicture}

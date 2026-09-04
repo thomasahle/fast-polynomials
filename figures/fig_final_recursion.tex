@@ -1,0 +1,45 @@
+% Routing diagram for the strong induction and the final multiplication.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp active, rounded corners, minimum width=30mm, minimum height=8mm]
+    (n) at (6.75,5.2) {odd target degree $n\ge3$};
+
+  \node[fp known, rounded corners, minimum width=19mm] (seven) at (0.9,3.75)
+    {$n=7$\\direct septic};
+  \node[fp second, rounded corners, minimum width=30mm] (bases) at (3.45,3.75)
+    {$3$ base; $15$ fused $k=1$\\$27,31$ septic bridges};
+  \node[fp active, rounded corners, minimum width=23mm] (one) at (6.35,3.75)
+    {$n\equiv1\pmod4$\\$T_{2k,2}$ crown};
+  \node[fp active, rounded corners, minimum width=23mm] (three) at (9.05,3.75)
+    {$n\equiv3\pmod8$\\$8k+3$ shell};
+  \node[fp active, rounded corners, minimum width=23mm] (sevenmod) at (11.85,3.75)
+    {$n\equiv7\pmod8$\\$8k+7$ shells};
+
+  % Route through one branch bus: the five cases are mutually exclusive, and
+  % the common trunk avoids the visually misleading crossings of five curves.
+  \coordinate (route) at (6.75,4.55);
+  \draw[line width=.65pt, draw=black!75] (n.south) -- (route)
+    -- (0.9,4.55) -- (11.85,4.55);
+  \draw[fp flow] (0.9,4.55) -- (seven.north);
+  \draw[fp flow] (3.45,4.55) -- (bases.north);
+  \draw[fp flow] (6.35,4.55) -- (one.north);
+  \draw[fp flow] (9.05,4.55) -- (three.north);
+  \draw[fp flow] (11.85,4.55) -- (sevenmod.north);
+
+  \node[fp recursive, rounded corners, minimum width=28mm] (small3) at (8.75,2.1)
+    {smaller pair at\\$m=(n+1)/4$};
+  \node[fp recursive, rounded corners, minimum width=28mm] (small7) at (11.95,2.1)
+    {smaller pair at\\$m=(n-3)/4$};
+  \draw[fp flow] (small3.north) -- node[fp label, right] {insert} (three.south);
+  \draw[fp flow] (small7.north) -- node[fp label, right] {insert} (sevenmod.south);
+  \node[fp label, anchor=west] at (8.0,1.4)
+    {$m<n$, and the explicit exceptions ensure $m\ne7$};
+
+  \node[fp recursive, minimum width=73mm, minimum height=7mm] (pair) at (4.2,0.55)
+    {shared construction of $(T_n^{(1)},T_n^{(2)})$: $(n-1)/2$ products};
+  \node[fp gate] (mul) at (8.65,0.55) {$\times$};
+  \node[fp active, minimum width=34mm, minimum height=7mm] (out) at (11.3,0.55)
+    {$P_n=xT_n^{(1)}+T_n^{(2)}$\\$(n+1)/2$ products total};
+  \node[fp label, above=1mm of mul] {multiply by $x$};
+  \draw[fp flow] (pair.east) -- (mul.west);
+  \draw[fp flow] (mul.east) -- (out.west);
+\end{tikzpicture}

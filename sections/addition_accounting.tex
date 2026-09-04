@@ -1,0 +1,540 @@
+\section{Addition Accounting}
+\label{sec:addition-count}
+
+The preceding theorem optimizes the expensive gates, but the displayed
+circuits also give a useful addition bound.  We record it separately because
+the answer is recursive rather than a single expression such as
+$\lfloor n/2\rfloor+1$.
+
+Here is the conclusion before the bookkeeping: the same circuits use
+\[
+  A_n\le
+  \min\left\{2n,\ \frac54n+6\lceil\log_2 n\rceil^2+1\right\}
+\]
+additions or subtractions.  Thus the uniform constant is~$2$, while the
+asymptotic leading constant is~$5/4$.  The first part of this section records
+the exact, share-aware recurrences and then proves these two bounds
+(the closing subsection treats multiplicative height);
+a reader interested only in the headline estimate may skip directly to
+\Cref{thm:construction-addition-count,thm:construction-addition-asymptotic}.
+
+Let $\mathcal A$ count binary additions and subtractions of field values.
+Negation, copying a wire, and multiplication by a fixed field constant are
+free, as in the straight-line-program model of \Cref{sec:model}; every
+data-dependent shift such as $U+\alpha$ costs one addition.  A let-bound
+subexpression used more than once is charged only once.  Thus this is an
+ordinary DAG count, not a count of plus signs after fully expanding a
+formula.  If fixed integer multiples must themselves be synthesized from
+additions, one may add the length of a chosen addition--subtraction chain at
+each displayed multiple $(k-1)U$; this hardware-dependent variant is not the
+cost model used here.
+
+Write
+\[
+ q_1=1,\qquad q_s=5\,2^{s-2}-2\quad(s\ge2)
+\]
+for the addition count of $Q_{2^s-1}$, and
+\[
+ f_1=6,\qquad
+ f_s=5(2^{s-1}+2^{s-2})-2\quad(s\ge2)
+\]
+for that of the full fill $A_{2^s}$.  The $s\ge2$ formulas are
+\Cref{lem:fill-Q-count}; the two omitted direct bases are
+$Q_1=x+\alpha_0$ and
+\[
+ A_2=(x+\beta_0)\bigl((H_2+\beta_1)S^{(1)}+\alpha_1\bigr)
+       +(H_2+\beta_2)S^{(2)}+\alpha_0.
+\]
+
+There are two small sharing improvements in the shared $T$ bases.  Every
+costed level-one call is supplied as
+$\widetilde H_2=H_2+\rho$, so the circuit retains $\rho$ instead of
+materializing $\widetilde H_2$ and later subtracting $H_2$ again.  It forms
+$\widetilde H_4=H_4+\rho$ directly.  At the following shared odd base, put
+\[
+ F_1=H_4-(k-1)U_1.
+\]
+Since $U_2=U_1-\rho$ and $\widetilde H_4=H_4+\rho$, the second factor is
+not formed independently:
+\begin{equation}
+ \widetilde H_4-(k-1)U_2=F_1+k\rho.
+ \label{eq:shared-factor}
+\end{equation}
+Both rewrites preserve the construction identities and all decoder pivots;
+they only remove redundant affine gates.  The proof-only quantity
+$W_2=W_1+z$ is likewise not materialized, since the circuit directly forms
+$\widetilde H_8=H_8+z$.
+
+Let $\tau(k,l)$ be the additions used by this shared schedule for
+$(T^{(1)}_{k,2^l},T^{(2)}_{k,2^l})$, with the power inputs already
+available (and with the scalar shift retained at the two shared bases).
+The algorithms give the exact recurrence
+\begin{align}
+ \tau(1,l)&=0, \label{eq:T-add-one}\\
+ \tau(2m,1)&=\tau(m,2)+5, \label{eq:T-add-even-base}\\
+ \tau(2m,l)&=\tau(m,l+1)+2q_{l-1}+8
+     &&(l\ge2), \label{eq:T-add-even}\\
+ \tau(2m+1,2)&=\tau(m,3)+15
+     &&(m\ge1), \label{eq:T-add-odd-base}\\
+ \tau(2m+1,l)&=\tau(m,l+1)+q_{l-1}+2q_{l-2}+q_l+16
+     &&(m\ge1,\ l\ge3). \label{eq:T-add-odd}
+\end{align}
+For example, the $5$ in \eqref{eq:T-add-even-base} consists of four
+additions for
+$(H_2+(x+a))(H_2-(x+a))+e$ and one for $H_4+\rho$.
+In \eqref{eq:T-add-odd-base}, the $Q_3$ call costs three, the two affine
+inputs $U_1,V_1$ cost three, the common octic costs four, the shifted octic
+costs one, and the two factors and two tails cost four by
+\eqref{eq:shared-factor}, for a total of fifteen.
+The constants $8$ and $16$ in the ordinary branches are obtained by the
+same literal count of their two difference-of-squares products and output
+assemblies.  Hence the recurrence charges every displayed gate exactly once.
+
+For reference, let $g_d$ denote the addition count of the selected
+degree-$d$ auxiliary gadget $\mathcal Q_d$.  The three gadget constructions
+give
+\begin{align}
+ g_1&=1,&g_3&=3,&g_7&=8,\label{eq:g-add-bases}\\
+ g_{4k+1}&=\tau(2k,1)+3 &&(k\ge1),\label{eq:g-add-4k1}\\
+ g_{8k+3}&=\tau(2k,2)+9 &&(k\ge1),\label{eq:g-add-8k3}\\
+ g_{8k+7}&=\tau(k,3)+19 &&(k\ge1).\label{eq:g-add-8k7}
+\end{align}
+Indeed, \eqref{eq:g-add-4k1} charges one addition for
+$\widehat H_2=H_2+\gamma$ and two for
+$(x+\beta)S^{(1)}+S^{(2)}$; the scalar difference is passed directly to
+the shared base.  The known-powers construction in full generality costs
+\[
+ q_{l-1}+2+\tau(2k,l)+f_{l-1}
+ \tag{known-powers-additions}
+\]
+for degree $2^{l+1}k+(2^l-1)$; setting $l=2$ gives
+\eqref{eq:g-add-8k3}.  Finally, the barred gadget uses five additions for
+$H_8$, one for $\widetilde H_8$, thirteen for $A_4$, and
+$\tau(k,3)$ internally, proving \eqref{eq:g-add-8k7}.
+The low slot in the $8k+3$ construction has one deliberate exception:
+when $k=1$ the algorithm uses the scalar $\alpha_1$, not the polynomial
+$Q_1=x+\alpha_1$.  Accordingly, put
+\[
+  g_d^{\mathrm{lo}}=g_d\quad(d\ge3),
+  \qquad g_1^{\mathrm{lo}}=0.
+\]
+
+Let $a_n$ be the additions used to jointly produce the compatible pair in
+odd degree $n\ne7$.  The finite ledgers and the three induction branches are
+then
+\begin{equation}
+ \begin{gathered}
+ a_3=3,\qquad a_{15}=23,\\
+ a_{27}=43,\qquad a_{31}=43.
+ \end{gathered}
+ \label{eq:pair-add-bases}
+\end{equation}
+\begin{align}
+ a_{4k+1}&=\tau(2k,1)+2,
+ \label{eq:pair-add-4k1}\\
+ a_{8k+3}&=a_{2k+1}+g_{4k+1}+g^{\mathrm{lo}}_{2k-1}+7,
+ \label{eq:pair-add-8k3}\\
+ a_{8k+7}&=a_{2k+1}+g_{2k+1}+g_{4k+3}+6.
+ \label{eq:pair-add-8k7}
+\end{align}
+The first two recursive lines apply for $k\ge1$ (with $k\ne3$ in the
+$8k+3$ line), and the last for $k\ge2$, $k\ne3$.
+Here $a_{4k+1}$ includes the two additions forming $H_2$; the scalar
+$\rho$ is passed to the shared $T$ base without first forming
+$\widetilde H_2$.  The constants $7$ and $6$ are the literal costs of the
+two outer difference-of-squares assemblies in the $8k+3$ and $8k+7$
+algorithms.  In the latter, the two common forms
+$S^{(1)}_3\mathbin{\pm}S^{(1)}_2$ are reused and the two scalar coordinates
+are $s=a+b,d=b-a$.  This fixed linear reparameterization is invertible under
+the admissibility hypothesis, so it does not change decodability.  For the
+finite cases, the corresponding ledgers are
+\[
+\begin{array}{c|l|c}
+ n&\text{addition costs, with shared producers charged once}&a_n\\ \hline
+ 3&H_2:2,\ T^{(2)}=H_2+\alpha_0:1&3\\
+ 15&H_2:2,\ H_4:4,\ Q_7:8,\ \text{outer assemblies}:9&23\\
+ 27&H_2:2,\ Q_{13}:23,\ Q_3:3,\ Q_7:8,\
+       \text{outer assemblies}:7&43\\
+ 31&H_2,H_4:6,\ \bar Q_{15}:19,\ Q_7:8,\ Q_3:3,\
+       \text{outer assemblies}:7&43.
+\end{array}
+\]
+
+Finally let $A_n$ count additions in the complete degree-$n$ polynomial.
+At top level in degree three we use the direct $Q_3$ circuit with
+$H_2=x^2$; it costs three additions, one fewer than first producing the
+degree-three pair and then combining it.  (The pair is still used inside
+the recursion.)  The displayed septic circuit has eleven additions, but an
+invertible affine change of its first three coordinates saves one.  Namely,
+with fresh coordinates $\beta_i$, replace its last line by
+\[
+ P^{\rm add}_7=\beta_0+y+
+   (\beta_2+x+z)(\beta_1+w).
+\]
+This is exactly the septic of \Cref{lem:septic-base} after the substitution
+\[
+ \alpha_0=\beta_0+\beta_1,\qquad
+ \alpha_1=\beta_1,\qquad
+ \alpha_2=\beta_2-1,
+ \qquad \alpha_i=\beta_i\ (3\le i\le6).
+\]
+Thus its explicit decoder, followed by
+$\beta_0=\alpha_0-\alpha_1$, $\beta_1=\alpha_1$,
+$\beta_2=\alpha_2+1$, proves decodability.  The new last line costs two
+additions instead of three, so the optimized septic costs ten.  In every
+other odd pair case the final combination costs one addition, as does the
+even lift, so
+\begin{equation}
+ \begin{aligned}
+ A_1&=1,\qquad A_2=2,\qquad A_3=3,\qquad A_7=10,\\
+ A_n&=a_n+1 &&(n\text{ odd},\ n\notin\{3,7\}),\\
+ A_n&=A_{n-1}+1 &&(n\ge4\text{ even}).
+ \end{aligned}
+ \label{eq:full-add-recurrence}
+\end{equation}
+Equations
+\eqref{eq:T-add-one}--\eqref{eq:full-add-recurrence} are an exact,
+share-aware addition count for every construction in the theorem.
+
+\begin{theorem}[Uniform addition bound]
+\label{thm:construction-addition-count}
+The optimized schedules above compute every complete degree-$n$
+construction with at most $2n$ additions or subtractions.  More precisely,
+$a_n\le2n-1$ for every costed odd compatible pair, and $A_n\le2n$ for
+every $n\ge1$.
+\end{theorem}
+\begin{proof}
+We include the short numerical induction so that the bound does not rest on
+experimental enumeration.  Substituting the formulas for $q_s$ into
+\eqref{eq:T-add-even}--\eqref{eq:T-add-odd} and inducting strongly on $k$
+gives
+\begin{align}
+ \tau(k,2)&\le8(k-1)+2,\label{eq:T-add-bound-2}\\
+ \tau(k,l)&\le2(k-1)2^l-\bigl(3\,2^{l-2}-4\bigr)
+       &&(k\ge2,\ l\ge3),\label{eq:T-add-bound-high}\\
+ \tau(2k,1)&\le8k-1.\label{eq:T-add-bound-1}
+\end{align}
+For clarity, the fresh nonrecursive costs used in that induction are
+$5,10,5\,2^{l-2}+4$ in the three even cases
+$l=1,l=2,l\ge3$, and $15,29,5\,2^{l-1}+8$ in the odd cases
+$l=2,l=3,l\ge4$.  These are respectively no larger than the difference
+between the right-hand side at $(k,l)$ and the right-hand side at the
+smaller recursive argument.  This proves the three displayed inequalities;
+at $l\ge3$ the worst boundary case is $k=2$, where
+\eqref{eq:T-add-bound-high} is an equality.
+
+Splitting $k$ by parity, and once more by its residue modulo four when
+needed to select \eqref{eq:g-add-8k3} or \eqref{eq:g-add-8k7}, the same
+three bounds give
+\begin{align}
+ g_{4k+1}+g^{\mathrm{lo}}_{2k-1}&\le12k-3 &&(k\ge1),
+ \label{eq:g-pair-bound-3}\\
+ g_{2k+1}+g_{4k+3}&\le12k+3 &&(k\ge2).
+ \label{eq:g-pair-bound-7}
+\end{align}
+Here are the only estimates used in that residue check.  If $k\ge3$ is odd,
+$g_{4k+1}\le8k-1$ and
+$g^{\mathrm{lo}}_{2k-1}\le4k-2$; if $k$ is even,
+$g_{4k+1}\le8k+2$ and
+$g^{\mathrm{lo}}_{2k-1}\le4k-5$.  The case $k=1$ is checked directly.
+For the second line, writing $k=2r$ gives the exact upper ledger
+\[
+ g_{2k+1}+g_{4k+3}
+ \le \tau(r,2)+\tau(r,3)+27\le24r+3=12k+3;
+\]
+when $k=2r+1$, the estimates
+$g_{4r+3}\le8r+3$ and
+$g_{8r+7}\le16r+1$ for $r\ge2$ give a stronger bound, and the case $r=1$
+is direct.  Thus \eqref{eq:g-pair-bound-3}--\eqref{eq:g-pair-bound-7}
+follow without a finite search.
+
+We now use strong induction on the odd target degree.  The four values in
+\eqref{eq:pair-add-bases} satisfy $a_n\le2n-1$.  For $n=4k+1$,
+\eqref{eq:T-add-bound-1} and \eqref{eq:pair-add-4k1} give
+$a_n\le8k+1=2n-1$.  In the $8k+3$ branch, the induction hypothesis and
+\eqref{eq:g-pair-bound-3} give
+\[
+ a_{8k+3}\le(4k+1)+(12k-3)+7=16k+5=2(8k+3)-1.
+\]
+In the $8k+7$ branch, \eqref{eq:g-pair-bound-7} gives
+\[
+ a_{8k+7}\le(4k+1)+(12k+3)+6
+     =16k+10<2(8k+7)-1.
+\]
+This proves the pair bound.  Adding the final combination gives
+$A_n\le2n$ for odd $n\notin\{3,7\}$; the direct cubic and septic have
+$A_3=3$ and $A_7=10$.  The other two small bases are immediate, and an
+even lift adds only one gate, so
+$A_n=A_{n-1}+1\le2(n-1)+1<2n$.  The theorem follows.
+\end{proof}
+
+The uniform factor-two statement is convenient for small degrees, but it
+does not describe the asymptotic behaviour of the same schedules.  Their
+leading addition constant is in fact $5/4$, not~$2$.
+
+\begin{theorem}[Sharper asymptotic addition bound]
+\label{thm:construction-addition-asymptotic}
+Put
+\[
+  L(n)=\lceil\log_2 n\rceil,
+  \qquad L(1)=0.
+\]
+The optimized schedules above satisfy
+\[
+  A_n\le \frac54n+6L(n)^2+1.
+\]
+Consequently
+\[
+  A_n\le
+  \min\left\{2n,\ \frac54n+6\lceil\log_2n\rceil^2+1\right\},
+\]
+so they use at most $\frac54n+O((\log n)^2)$ additions.  In particular,
+$A_n\le\frac32n$ for every $n\ge4096$.
+\end{theorem}
+\begin{proof}
+We first sharpen the coarse estimates on the $T$ recursion.  The following
+slightly stronger high-level estimate is convenient:
+\begin{equation}
+ \tau(k,l)\le
+ 5\,2^{l-2}(k-1)+8L(k)-4
+ \qquad(k\ge2,\ l\ge4).
+ \label{eq:T-add-sharp-high}
+\end{equation}
+This follows by strong induction on $k$.  Put $p=2^{l-2}$.  At an even
+step the fresh cost is $5p+4$, while at an odd step it is $10p+8$.
+The case $k=2$ is an equality.  If $k=2m$ with $m\ge2$, apply the
+induction hypothesis to $(m,l+1)$ and use
+$L(2m)=L(m)+1$; the resulting bound is four smaller than the right-hand
+side of \eqref{eq:T-add-sharp-high}.  If $k=2m+1$, the case $m=1$ is
+direct, and for $m\ge2$ the induction hypothesis together with
+$L(2m+1)\ge L(m)+1$ gives the claimed bound directly.
+
+The exceptional level $l=3$ has fresh costs $14$ and $29$.  Applying
+\eqref{eq:T-add-sharp-high} at level four (and checking $k=1,2,3$
+directly) gives
+\begin{equation}
+ \tau(k,3)\le10(k-1)+8L(k)
+ \qquad(k\ge1).
+ \label{eq:T-add-sharp-three}
+\end{equation}
+For $l=2$, use
+\[
+ \tau(2m,2)=\tau(m,3)+10,
+ \qquad
+ \tau(2m+1,2)=\tau(m,3)+15.
+\]
+Together with $L(2m)=L(m)+1$ and
+$L(2m+1)\ge L(m)+1$, these give the same bound
+\begin{equation}
+ \tau(k,2)\le5(k-1)+8L(k).
+ \label{eq:T-add-sharp-two}
+\end{equation}
+
+Substitution in \eqref{eq:g-add-bases}--\eqref{eq:g-add-8k7} now gives one
+uniform estimate for every selected odd gadget:
+\[
+  g_d\le\frac54d+8L(d).
+  \tag{gadget-sharp-bound}
+\]
+For example,
+$g_{4k+1}=\tau(k,2)+8$,
+$g_{8k+3}=\tau(2k,2)+9$, and
+$g_{8k+7}=\tau(k,3)+19$; the three direct bases are immediate.
+
+We next prove
+\[
+  a_n\le\frac54n+6L(n)^2
+  \tag{pair-sharp-bound}
+\]
+by strong induction over the costed odd pairs.  The four finite bases satisfy
+it directly.  If $n=4k+1$, then
+\[
+ a_n=\tau(k,2)+7
+   \le5(k-1)+8L(k)+7
+   \le\frac54n+6L(n)^2.
+\]
+In either of the remaining branches let $m=2k+1$ be the smaller pair and
+let $d_1,d_2$ be the two auxiliary-gadget degrees (with the degree-one low
+slot omitted when $k=1$).  In both cases
+\[
+ d_1+d_2\le n-m-2,
+ \qquad L(m)\le L(n)-2.
+\]
+The outer assembly costs at most seven additions.  Writing $L=L(n)$, the
+induction hypothesis and (gadget-sharp-bound) therefore give
+\[
+ \begin{aligned}
+  a_n
+  &\le \frac54m+6(L-2)^2
+       +\frac54(d_1+d_2)+16L+7\\
+  &\le \frac54n+6(L-2)^2+16L+\frac92
+   \le \frac54n+6L^2.
+ \end{aligned}
+\]
+The last inequality is $8L\ge57/2$; every recursive target here has
+$L\ge4$.  This proves (pair-sharp-bound).
+
+For an odd complete construction, the last combination adds one, except
+for the already smaller direct cubic and septic bases.  An even lift also
+adds one and satisfies $L(n-1)\le L(n)$.  Hence
+$A_n\le\frac54n+6L(n)^2+1$ for every $n$.  Combining this with
+\Cref{thm:construction-addition-count} proves the minimum displayed in the
+statement.  Finally,
+$6L(n)^2+1\le n/4$ for $n\ge4096$ (check the first two dyadic boundary
+points; thereafter the right-hand side doubles while the left grows
+quadratically in $L$), which gives the last assertion.
+\end{proof}
+
+\begin{remark}[What would be needed for an $n+o(n)$ addition bound]
+The remaining quarter is structural in the present schedule, not an artefact
+of the final estimate: already the Mersenne block has the exact count
+\[
+ \mathcal A(Q_{2^s-1})=5\,2^{s-2}-2
+   =\frac54(2^s-1)-\frac34.
+\]
+The affine sharing above removes repeated shifts and outer assembly gates,
+but it does not change this leading term.  Reaching $n+o(n)$ additions while
+retaining the exact $\lfloor n/2\rfloor+1$ multiplication count would
+therefore require a genuinely more addition-efficient fill (or a different
+known-powers gadget), rather than a sharper analysis of the current DAG.
+Rabin and Winograd obtain $n+o(n)$ additions when an additional
+$O(\log n)$ multiplications are allowed~\cite{rabin1972number}; eliminating
+both overheads simultaneously remains open here.
+\end{remark}
+
+\subsection*{Multiplicative height}
+
+Gate counts do not describe the parallel (or pipelined) cost of the same
+schedules, so we also record their \emph{height}: the maximum number of
+nonscalar multiplications on a directed path from an input to the output of
+the chain, in the same cost model as above (additions, subtractions,
+negations and fixed scalar multiples are free).  Horner's rule has height
+$n-1$, and the hand-optimized circuits of the appendix have height close to
+$\log_2n$.  The shipped schedules match this: the peeled known-powers
+gadget of \Cref{sec:peeled-Q} gives height $2\lceil\log_2n\rceil+4$ for odd
+$n$ and $2\lceil\log_2n\rceil+5$ for even $n$ at the identical gate ledger
+(\Cref{thm:construction-height-peeled}).  The
+original sequential-fill scheduling, analyzed below as the baseline, has
+height $\Theta((\log n)^2)$, with a small leading constant.
+
+\begin{theorem}[Height of the sequential baseline schedules]
+\label{thm:construction-height}
+Let $L=L(n)=\lceil\log_2n\rceil$.  The sequential-fill schedules above compute
+every complete degree-$n$ construction with height at most
+\[
+  \tfrac14L^2+L+2 \quad (n\text{ odd}),\qquad
+  \tfrac14L^2+L+3 \quad (n\text{ even}).
+\]
+\end{theorem}
+\begin{proof}
+Write $h(U)$ for the height of a wire $U$, so $h(x)=0$ and every displayed
+product raises the maximum operand height by exactly one.  The proof is a
+ledger induction parallel to \Cref{thm:construction-addition-count}, with
+four invariants.
+
+\emph{Fill.}  The first component of the fill $A_{2^\ell}$
+(\Cref{alg:constr-fill}) multiplies $S^{(1)}$ by one factor at each level
+$\ell,\ell-1,\dots,1$ and finishes with the outer $(x+\beta_0)$ gate, a
+sequential chain of $\ell+1$ products; the factor consumed at level $j$ is
+$H_{2^j}+Q_{2^{j-1}-1}$, and the second component is the same chain with
+scalar-shifted factors.  Given the tower and known-powers invariants below
+for all indices $\le\ell$, this yields
+\begin{equation}
+  h\bigl(A_{2^\ell}(S^{(1)},S^{(2)})\bigr)
+  \le\max\Bigl(h(S^{(1)}),\,h(S^{(2)}),\,
+    \bigl\lfloor\tfrac{\ell^2}{4}\bigr\rfloor+1\Bigr)+\ell+1.
+  \label{eq:fill-height}
+\end{equation}
+
+\emph{Tower and known powers.}  By simultaneous induction,
+\begin{equation}
+  h(H_{2^i})\le\bigl\lfloor\tfrac{i^2}{4}\bigr\rfloor+1
+  \quad(i\ge1),
+  \qquad
+  h(Q_{2^t-1})\le\bigl\lfloor\tfrac{(t+1)^2}{4}\bigr\rfloor
+  \quad(t\ge1).
+  \label{eq:tower-height}
+\end{equation}
+Indeed, every displayed power step forms $H_{2^{\ell+1}}$ with one new
+product whose operands involve $H_{2^\ell}$ and blocks of index at most
+$\ell-1$, so
+$h(H_{2^{\ell+1}})
+  \le1+\max\bigl(\lfloor\ell^2/4\rfloor+1,\lfloor\ell^2/4\rfloor\bigr)
+  =\lfloor\ell^2/4\rfloor+2
+  \le\lfloor(\ell+1)^2/4\rfloor+1$
+for $\ell\ge2$, and the two shared bases are checked directly.  For the
+known-powers gadget at $t\ge4$,
+$Q_{2^t-1}=A_{2^{t-2}}\bigl(H_{2^{t-1}}+Q_{2^{t-2}-1},\,
+H_{2^{t-1}}+\alpha\bigr)$, so \eqref{eq:fill-height} gives
+$h(Q_{2^t-1})\le\bigl(\lfloor(t-1)^2/4\rfloor+1\bigr)+(t-1)
+  =\lfloor(t+1)^2/4\rfloor$,
+and $t\le3$ is direct.  The tilde towers and the good-polynomial gadgets
+$\bar Q$ use the same fills and one square-difference per level with
+operands of index at most $\ell$, so they satisfy the same two bounds.
+
+\emph{The $T$ recursion.}  For $T_{k,2^\ell}$ put
+$\lambda=\ell+\lceil\log_2k\rceil$ and let $s(k)\le\lceil\log_2k\rceil$ be
+the number of odd values exceeding $1$ in the halving chain of $k$.  Then
+\begin{equation}
+  h\bigl(T^{(1)}_{k,2^\ell}\bigr),\,
+  h\bigl(T^{(2)}_{k,2^\ell}\bigr)
+  \le\bigl\lfloor\tfrac{\lambda^2}{4}\bigr\rfloor+1+s(k).
+  \label{eq:T-height}
+\end{equation}
+The base $k=1$ is the tower bound; an even step recurses at $(k/2,\ell+1)$
+with the same $\lambda$ after one tower step; an odd step multiplies the
+recursive pair by factors of height at most
+$\lfloor(\ell+1)^2/4\rfloor\le\lfloor\lambda^2/4\rfloor+1+s\bigl(\tfrac{k-1}2\bigr)$
+and adds a $Q$ block, contributing exactly the $+1$ that separates $s(k)$
+from $s\bigl(\tfrac{k-1}2\bigr)$.
+
+\emph{Assembly.}  Let $B(L)=\lfloor L^2/4\rfloor+L+1$.  By strong induction
+on the odd degree, every costed pair of degree $m$ has height at most
+$B\bigl(L(m)\bigr)$: the $4k+1$ family is \eqref{eq:T-height} with
+$\lambda=1+\lceil\log_2 2k\rceil\le L$ for $T_{2k,2}$ and $s\le\lambda-1$, giving height at most $\lfloor L^2/4\rfloor+L<B(L)$; the $8k+3$ and $8k+7$ steps add one
+square-difference on top of $Q$ or $\bar Q$ blocks at level $\le L-1$
+(height $\le\lfloor L^2/4\rfloor+1$ by \eqref{eq:tower-height}) and of a
+recursive pair of degree $\le(n-1)/2$ (height $\le B(L-1)$); and the
+special cases $15$, $27$, $31$ are checked directly.  The final combination
+$P_n=x\cdot T^{(1)}+T^{(2)}$ adds one product, giving
+$B(L)+1=\lfloor L^2/4\rfloor+L+2\le\frac14L^2+L+2$.  For even $n$ the
+lift $c_0+xQ_{n-1}$ of \Cref{thm:construction-count} adds one further
+product on top of the odd-degree schedule, and $L(n-1)\le L(n)$.
+\end{proof}
+
+\begin{remark}[The order $(\log n)^2$ is genuine]
+The quadratic term comes from the sequential fill chains: level $\ell$ of
+the tower waits for a fill of length $\Theta(\ell)$ whose factors wait for
+the tower below it.  The bound reflects the schedules themselves, not slack
+in the analysis: the exact heights (reported by
+\texttt{tools/polychain.py}, whose \texttt{selftest} subcommand also
+checks the bound of \Cref{thm:construction-height} for every
+$3\le n\le N$ with $N=120$ by default; the heights quoted here were
+computed for $3\le n\le6001$) grow as
+$\Theta((\log n)^2)$, e.g.\ height $5$ at $n=17$, $10$ at $n=63$, $12$ at
+$n=127$, $16$ at $n=253$, $25$ at $n=1021$ and $36$ at $n=4093$; the
+observed heights over $3\le n\le6001$ never exceed
+$\lfloor L^2/4\rfloor+3$ (attained only at the even lifts $n=8,16,32$; for
+$7\le L\le12$ the per-$L$ maximum is $\lfloor L^2/4\rfloor+1$, attained at
+$n=2^L-2$), and the best case (near $n=2^{L-1}+3$) is
+$\approx L^2/6$.  As with the addition constant, this is a property of the
+fill.
+
+Depth-balanced decodable known-powers gadgets exist at no gate cost at
+all: the peeled recursion \eqref{eq:peeled-Q} matches the ledger of
+\Cref{lem:fill-Q-count} exactly, with height $k$ in place of the quadratic
+growth, and substituting it at every known-powers site --- leaving the
+keyed tower spine, seam fills and good-polynomial gadgets byte-for-byte
+unchanged, so the multiplication count remains exactly
+$\lfloor n/2\rfloor+1$ and no Rabin--Winograd-style key-free squarings
+appear --- removes the quadratic term entirely; see \Cref{sec:peeled-Q}, \Cref{fig:peeled-Q},
+and \Cref{thm:construction-height-peeled}.
+\end{remark}
+
+\begin{corollary}[All odd degrees have a decodable construction]
+\label{cor:all-odd-decodable}
+Over every $n$-admissible field, each odd $n\ge3$ has a decodable monic
+degree-$n$ construction.  For $n=7$ use
+\Cref{lem:septic-base}; for every other odd degree use
+\Cref{thm:odd-realizable-pairs}.
+\end{corollary}

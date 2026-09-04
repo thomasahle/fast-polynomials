@@ -22,9 +22,9 @@ while universal hashing uses $O(1)$ keys to hash messages of any length.
 
 We benchmark on two platforms:
 \begin{itemize}
-    \item \textbf{ARM}: Apple M1 Pro (ARM64) running macOS, using ARM NEON intrinsics
+    \item \textbf{ARM}: Apple M2 Pro (ARM64) running macOS, using ARM NEON intrinsics
           for carryless multiplication via the \texttt{PMULL} instruction.
-    \item \textbf{x86}: AMD EPYC 9R14 (x86-64) running Linux, using Intel intrinsics
+    \item \textbf{x86}: Intel Xeon Platinum 8375C (Ice Lake, x86-64) running Linux, using Intel intrinsics
           for carryless multiplication via the \texttt{PCLMULQDQ} instruction.
 \end{itemize}
 Both instructions compute the product of two 64-bit polynomials over $\mathbb{F}_2$
@@ -49,7 +49,10 @@ We compare the following evaluation methods, all operating over $\mathbb{F}_{2^{
           This achieves $\lceil n/2 \rceil + O(\log n)$ multiplications.
     \item \textbf{This Paper}: Our optimized polynomial chains,
           using the minimum number of multiplications for each degree
-          as described in this paper.
+          as described in this paper.  By \Cref{thm:construction-height-peeled}
+          these schedules can moreover be arranged with multiplicative height
+          $2\lceil\log_2 k\rceil+O(1)$ at the same gate counts, so they do not
+          trade critical-path depth for the lower multiplication count.
 \end{itemize}
 
 Each algorithm was benchmarked by hashing $10^6$ random 64-bit integers,
@@ -58,16 +61,20 @@ With 100 repetitions, the $95\%$ confidence interval for the mean is approximate
 We measure evaluation time only; key setup and preprocessing (when applicable) are excluded.
 
 \paragraph{Platform scope.}
-We report results for both ARM (Apple M1 Pro) and x86 (AMD EPYC 9R14).
-The qualitative trade-offs (depth vs.\ total multiplications, and the cost of modular reduction)
+We report results for both ARM (Apple M2 Pro) and x86 (Intel Xeon Platinum 8375C).
+The qualitative trade-offs (critical-path structure and the cost of modular reduction)
 are consistent across platforms, though quantitative speedups vary with microarchitecture.
 
 \paragraph{Reproducibility.}
-The ARM benchmarks are in \texttt{tools/bench/\allowbreak carryless\_arm.cpp}, compiled with
+\begin{sloppypar}
+The ARM benchmarks are in \texttt{tools/bench/carryless\_arm.cpp}, compiled with
 \texttt{Apple clang 17.0.0} using \texttt{-O3 -std=c++17 -march=armv8-a+crypto}.
-The x86 benchmarks are in \texttt{tools/bench/\allowbreak carryless.cpp}, compiled with
-\texttt{GCC 11.5.0} using \texttt{-O3 -std=c++17 -mpclmul -march=native}.
+The x86 benchmarks are in \texttt{tools/bench/carryless.cpp}, compiled with
+\texttt{clang 21.1.8} using \texttt{-O3 -std=c++17 -march=native}; the x86
+header \texttt{injective\_hashing.h} is a line-for-line port of the ARM one,
+checked bit-for-bit against it on the same inputs.
 We use the same input sequence across methods and include a warmup phase before timing.
+\end{sloppypar}
 
 \paragraph{Implementation Details.}
 Our ARM implementation uses several key optimizations:
@@ -83,43 +90,35 @@ Our ARM implementation uses several key optimizations:
 We evaluate the monic degree-$k$ polynomial family $h(x) = x^k + a_{k-1}x^{k-1} + \cdots + a_1 x + a_0$ over $\mathbb{F}_{2^{64}}$.
 Here the $k$ coefficients $(a_0, \ldots, a_{k-1})$ are the random key, and we hash a single data point $x$.
 
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\columnwidth]{figures/bench_all.pdf}
-    \caption{Comparison across finite fields: Mersenne prime (left) vs.\
-             carryless $\mathbb{F}_{2^{64}}$ (right).
-             Carryless multiplication is $3$--$5\times$ faster due to
-             hardware support via \texttt{PMULL}/\texttt{PCLMULQDQ}.}
-    \label{fig:bench_all}
-\end{figure}
-
 Table~\ref{tab:kwise_both} shows the carryless hashing results on both platforms.
-Our polynomial chains are the fastest method for most values of $k$, except at $k=7$ where Rabin--Winograd performs best.
+Our polynomial chains are the fastest method for every $k\ge5$ on both platforms; on ARM, Rabin--Winograd ties our method at $k=7$.
+At $k=3$ the monic cubic admits no saving (two multiplications either way), and plain Horner (ARM) or Lemire's reduction (x86) is fastest.
 
 \begin{table}[!htbp]
 \centering
 \caption{$k$-wise carryless hashing (\textmu s per $10^6$ hashes).
          Best method in bold for each platform.}
 \label{tab:kwise_both}
+\small
 \begin{tabular}{c|rrrrr|rrrrr}
-    & \multicolumn{5}{c|}{ARM (Apple M1 Pro)} & \multicolumn{5}{c}{x86 (AMD EPYC 9R14)} \\
+    & \multicolumn{5}{c|}{ARM (Apple M2 Pro)} & \multicolumn{5}{c}{x86 (Intel Xeon 8375C)} \\
     $k$ & Horner & Lemire & Estrin & R--W & Ours & Horner & Lemire & Estrin & R--W & Ours \\
     \hline
-    3 & 852 & 1144 & 1330 & 1537 & \textbf{914} & 3277 & \textbf{2198} & 3278 & 2281 & 2285 \\
-    5 & 1931 & 2911 & 3075 & 3125 & \textbf{1521} & 6558 & 5653 & 6558 & 6140 & \textbf{4214} \\
-    7 & 3354 & 5558 & 4002 & \textbf{2346} & 2346 & 10501 & 10005 & 8745 & \textbf{6236} & 6074 \\
-    9 & 5188 & 9082 & 5856 & 4716 & \textbf{2833} & 14754 & 14489 & 12546 & 10300 & \textbf{7303} \\
+    3 & \textbf{825} & 882 & 1137 & 900 & 870 & 1930 & \textbf{1649} & 2190 & 1930 & 1750 \\
+    5 & 1895 & 2149 & 2326 & 2204 & \textbf{1434} & 4816 & 4223 & 4621 & 4504 & \textbf{3090} \\
+    7 & 3225 & 4115 & 3126 & \textbf{2235} & \textbf{2241} & 8535 & 7749 & 6217 & 5074 & \textbf{4880} \\
+    9 & 4869 & 6694 & 4910 & 3996 & \textbf{2641} & 12817 & 12031 & 8709 & 8250 & \textbf{5952} \\
 \end{tabular}
 \end{table}
-For $k = 9$, our method achieves a speedup of $1.83\times$ over Horner on ARM and $2.02\times$ on x86.
-For smaller $k$, we use Motzkin's method for $k=4$ (2 multiplications) and direct evaluation for $k=3$ (1 multiplication).
+For $k = 9$, our method achieves a speedup of $1.84\times$ over Horner on ARM and $2.15\times$ on x86.
+For smaller $k$, we use Motzkin's quartic for $k=4$ (2 multiplications) and the two-multiplication cubic of \Cref{sec:main-theorem:outline} for $k=3$ (the same count as Horner).
 The speedup increases with $k$ because our polynomial chains save more multiplications
 at higher degrees: for monic degree $n$, Horner uses $n-1$ multiplications while our
-chains use only $\lfloor n/2\rfloor+1$ multiplications (by \cref{thm:main}).
+chains use only $\lfloor n/2\rfloor+1$ multiplications (by \Cref{thm:main}).
 
 \paragraph{Discussion.}
-The Rabin--Winograd method performs best at $k = 7$ where its recursive structure
-aligns well with the degree, achieving performance competitive with Estrin.
+The Rabin--Winograd method is strongest at $k = 7$, where its recursive structure
+aligns well with the degree, tying our method on ARM.
 For other values of $k$, Rabin--Winograd is slower than our method but remains competitive
 with standard approaches.
 Estrin's scheme provides modest speedup at higher degrees due to its parallelism,
@@ -132,8 +131,8 @@ Our method achieves the best performance by combining two key insights:
 and (2) optimizing the implementation to avoid unnecessary data movement between
 scalar and vector registers.
 
-On x86 (AMD EPYC 9R14), similar trends hold: our method achieves $2.02\times$ speedup
-over Horner at $k=9$ (vs.\ $1.81\times$ on ARM).
+On x86 (Intel Xeon 8375C), similar trends hold: our method achieves $2.15\times$ speedup
+over Horner at $k=9$ (vs.\ $1.84\times$ on ARM).
 Rabin--Winograd is competitive at $k=7$ on both platforms.
 Notably, Lemire's table-lookup reduction is faster than Horner on x86,
 unlike ARM where \texttt{PMULL} outperforms memory access.
@@ -162,16 +161,15 @@ ns/update & 5.49 & 4.96 & \textbf{4.33} & 38.3 & 24.9 & \textbf{23.7}
 \end{center}
 On ARM, our method achieves $1.27\times$ speedup over Horner.
 On x86, the speedup is $1.62\times$, reflecting the larger benefit from reducing multiplications.
-The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_countsketch\_arm.cpp} (ARM) and
-\texttt{tools/bench/\allowbreak app\_countsketch\_x86.cpp} (x86).
+The benchmark is implemented in \texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak arm.cpp} (ARM) and
+\texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak x86.cpp} (x86).
 
 \subsection{Application-Level Throughput: Hash Tables}
 \label{sec:experiments:hashtable}
 
-Finally, we benchmark a simple linear-probing hash table, measuring both insertion throughput
-(table construction) and lookup throughput at load factor $70\%$.
-This stresses both hashing and memory probing; as expected, improvements are smaller than the
-microbenchmarks, but still measurable.
+Finally, we benchmark a simple linear-probing hash table,
+measuring insertion throughput (table construction) and lookup throughput at load factor $70\%$.
+As expected, improvements are smaller than in the microbenchmarks but still measurable.
 
 With table size $2^{20}$, we obtain:
 \begin{center}
@@ -228,11 +226,11 @@ multiply is a full field multiplication), and
 Both correspond to real cryptographic use cases; the second is also a proxy for polynomial-based
 PRFs / universal hashing keyed by the (preprocessed) coefficients.
 
-On an Apple M1 Pro, we observe consistent $2.0\times$--$2.5\times$ speedups over full-field Horner
+On an Apple M2 Pro, we observe consistent $2.0\times$--$2.5\times$ speedups over full-field Horner
 evaluation for degrees $13$--$21$ in both regimes; see the benchmark implementation in
-\texttt{tools/bench/shamir\_sharegen\_mersenne.cpp}.
+\texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne.cpp}.
 Including the cost of writing shares to memory gives essentially the same speedups; see
-\texttt{tools/bench/shamir\_sharegen\_mersenne\_store.cpp}.
+\texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne\_\allowbreak store.cpp}.
 
 \begin{center}
 \begin{tabular}{c|ccccc}
@@ -277,11 +275,23 @@ table lookups, providing excellent performance for applications that only requir
 low independence.
 On ARM, simple tabulation (8 tables of 256 entries) achieves
 1660$\pm$12\,\textmu s per $10^6$ hashes; on x86, it achieves 6952$\pm$5\,\textmu s.
+The absolute polynomial timings in this subsection come from the separate
+non-polynomial comparison harness (which gives every method the same wrapper
+and batching), so they should not be compared directly with the evaluation-only
+microbenchmark in Table~\ref{tab:kwise_both}.
 
 Notably, our 3-wise independent hash function runs in 914$\pm$4\,\textmu s on ARM---nearly $2\times$ faster than
 tabulation with the same independence guarantee.
 On x86, our method (2285\,\textmu s) is $3\times$ faster than tabulation.
 Our 4-wise hash (using Motzkin's method) is still faster than 3-wise tabulation on both platforms.
+
+We also compare against Dietzfelbinger's polynomial hashing over integers~\cite{dietzfelbinger1996universal},
+which evaluates $g(x) = \sum_{i=0}^{k-1} a_i x^i \bmod 2^W$ using standard integer arithmetic
+and extracts the top 64 bits as the hash.
+For $k$-wise independence with 64-bit input/output, this requires $W \geq 127 + \lceil\log_2\binom{k}{2}\rceil$,
+so $W=128$ suffices only for $k=2$; we use $W=192$ for $k \geq 3$.
+The 192-bit arithmetic requires 3 multiplications per Horner step versus 1 carryless multiply for our method,
+explaining the performance gap.
 
 \begin{center}
 \begin{tabular}{l|rr|rr}
@@ -291,6 +301,9 @@ Our 4-wise hash (using Motzkin's method) is still faster than 3-wise tabulation 
     MurmurHash3 & 593$\pm$8 & none & 1042$\pm$2 & none \\
     xxHash64 & 1174$\pm$5 & none & 1862$\pm$4 & none \\
     Tabulation & 1660$\pm$12 & 3-wise & 6952$\pm$5 & 3-wise \\
+    Dietzfelbinger ($k=3$) & 1569$\pm$36 & 3-wise & 3498$\pm$2 & 3-wise \\
+    Dietzfelbinger ($k=5$) & 3205$\pm$39 & 5-wise & 8219$\pm$4 & 5-wise \\
+    Dietzfelbinger ($k=7$) & 4993$\pm$58 & 7-wise & 13633$\pm$9 & 7-wise \\
     This Paper ($k=3$) & 914$\pm$4 & 3-wise & 2285$\pm$3 & 3-wise \\
     This Paper ($k=4$) & 1036$\pm$13 & 4-wise & 3930$\pm$4 & 4-wise \\
     This Paper ($k=5$) & 1521$\pm$8 & 5-wise & 4214$\pm$3 & 5-wise \\
@@ -306,9 +319,21 @@ with modular reduction (Figure~\ref{fig:bench_all}).
 For the Mersenne baseline, we use the optimized Horner implementation
 from Ahle et al.~\cite{ahle2020power}, which employs fast branch-free
 modular reduction and delays the final reduction to the end of the computation.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/bench_all.pdf}
+    \caption{Comparison across finite fields: Mersenne prime $\mathbb{F}_{2^{89}-1}$ (left) vs.\
+             carryless $\mathbb{F}_{2^{64}}$ (right).
+             Carryless multiplication is $3$--$5\times$ faster due to
+             hardware support via \texttt{PMULL}/\texttt{PCLMULQDQ}.
+             Same $k$ on both panels; the vertical scales differ by
+             $3$--$5\times$.  This Paper is the rightmost bar in each group.}
+    \label{fig:bench_all}
+\end{figure}
 The carryless multiplication methods over $\mathbb{F}_{2^{64}}$ are consistently
 $3$--$5\times$ faster than their Mersenne counterparts.
-This speedup comes from hardware support for carryless multiplication (via \texttt{PMULL} on Apple M1 Pro),
+This speedup comes from hardware support for carryless multiplication (via \texttt{PMULL} on Apple M2 Pro),
 which computes a 64-bit carryless product directly,
 whereas Mersenne arithmetic requires multiple standard multiplications
 and careful handling of the 89-bit modulus.
@@ -323,9 +348,9 @@ We briefly summarize the injective polynomial construction from Section~\ref{sec
 before the comprehensive comparison in Section~\ref{sec:experiments:universal}.
 The recurrence
 \[
-    P_0 = x, \quad P_i = a_i + (b_i + y)(P_{i-1} + x^2)
+    P_0 = x, \quad P_i = a_i + (b_i + x^3)(P_{i-1} + x^2)
 \]
-uses only two random keys $(x, y)$ to hash $2N$ message values $(a_1, b_1, \ldots, a_N, b_N)$
+uses a single random key $x$ (the single-key specialization~\eqref{eq:injective-single-key} of \Cref{def:injective:recurrence}, with $z=x$, $y=x^3$, $u=x^2$) to hash $2N$ message values $(a_1, b_1, \ldots, a_N, b_N)$
 with $N$ multiplications---half the $2N-1$ required by Horner.
 
 \begin{table}[!htbp]
@@ -334,18 +359,19 @@ with $N$ multiplications---half the $2N-1$ required by Horner.
          Times in \textmu s per $10^6$ hashes (mean$\pm$std).}
 \label{tab:injective}
 \begin{tabular}{c|rrr|rrr}
-    & \multicolumn{3}{c|}{ARM (Apple M1 Pro)} & \multicolumn{3}{c}{x86 (AMD EPYC 9R14)} \\
+    & \multicolumn{3}{c|}{ARM (Apple M2 Pro)} & \multicolumn{3}{c}{x86 (Intel Xeon 8375C)} \\
     $2N$ & Horner & Injective & Speedup & Horner & Injective & Speedup \\
     \hline
-    8  & 5560$\pm$20 & 3960$\pm$30 & $1.40\times$ & 16115$\pm$6 & 13672$\pm$6 & $1.18\times$ \\
-    16 & 21030$\pm$160 & 9950$\pm$50 & $2.11\times$ & 48811$\pm$41 & 30413$\pm$9 & $1.61\times$ \\
-    32 & 73720$\pm$240 & 40430$\pm$70 & $1.82\times$ & 134847$\pm$15 & 66778$\pm$27 & $2.02\times$ \\
-    64 & 226910$\pm$940 & 114960$\pm$350 & $1.97\times$ & 310923$\pm$85 & 165921$\pm$27 & $1.87\times$ \\
+    8  & 5380$\pm$70 & 3830$\pm$50 & $1.40\times$ & 13390$\pm$20 & 11940$\pm$10 & $1.12\times$ \\
+    16 & 20320$\pm$370 & 9600$\pm$110 & $2.12\times$ & 45610$\pm$30 & 24270$\pm$30 & $1.88\times$ \\
+    32 & 72010$\pm$980 & 39780$\pm$500 & $1.81\times$ & 140650$\pm$30 & 60100$\pm$20 & $2.34\times$ \\
+    64 & 218100$\pm$1540 & 111260$\pm$980 & $1.96\times$ & 362870$\pm$50 & 175840$\pm$50 & $2.06\times$ \\
 \end{tabular}
 \end{table}
 
 The speedup approaches $2\times$ as expected from the multiplication count.
-On x86, the gains are similar, ranging from $1.18\times$ at $2N=8$ to $2.02\times$ at $2N=32$.
+On x86, the speedup grows from $1.12\times$ at $2N=8$ to a peak of
+$2.34\times$ at $2N=32$, and is $2.06\times$ at $2N=64$.
 For parallel variants and comparison with other methods (CLNH, BRW, etc.),
 see Section~\ref{sec:experiments:universal}.
 
@@ -371,10 +397,11 @@ On CPUs where multiplication has multi-cycle latency, this sequential
 dependency chain leaves execution units idle.
 
 \paragraph{Horner-Unrolled.}
-We process four message values per iteration using Estrin-style grouping:
-\[
-h \cdot x^4 + (m_i \cdot x + m_{i+1}) \cdot x^2 + (m_{i+2} \cdot x + m_{i+3}).
-\]
+We process four values per iteration using Estrin-style grouping:
+\begin{align}
+& h x^4 + (m_i x + m_{i+1}) x^2 \nonumber\\
+&\quad + (m_{i+2} x + m_{i+3}). \nonumber
+\end{align}
 The terms $(m_i \cdot x + m_{i+1})$ and $(m_{i+2} \cdot x + m_{i+3})$ can be computed
 in parallel, exposing instruction-level parallelism (ILP) within each 4-element group.
 This reduces effective critical path by $\approx 4\times$ with minimal overhead.
@@ -394,21 +421,45 @@ This requires $O(n)$ total multiplications but only $O(\log n)$ on the critical 
 
 Our injective construction from Section~\ref{sec:injective} uses the recurrence:
 \[
-P_0 = x, \quad P_i = a_i + (b_i + y)(P_{i-1} + x^2).
+P_0 = x, \quad P_i = a_i + (b_i + x^3)(P_{i-1} + x^2).
 \]
-The message $(a_1, b_1, \ldots, a_N, b_N)$ has $2N$ values, and the keys are $(x, y)$---just
-two field elements regardless of message length.
-Each step requires one multiplication (computing $(b_i + y)(P_{i-1} + x^2)$),
+The message $(a_1, b_1, \ldots, a_N, b_N)$ has $2N$ values, and the key is the single field element $x$ (with the derived
+constants $x^2,x^3$) regardless of message length; the three-key family of \Cref{def:injective:recurrence} keeps three.
+Each step requires one multiplication (computing $(b_i + x^3)(P_{i-1} + x^2)$),
 so $N$ multiplications hash $2N$ values.
 This is nearly $2\times$ fewer than Horner's $2N-1$ multiplications.
 
 \paragraph{Injective-Parallel.}
-The recurrence $P_i = a_i + c_i(P_{i-1} + x^2)$ where $c_i = b_i + y$ has transfer functions
+The recurrence $P_i = a_i + c_i(P_{i-1} + x^2)$ where $c_i = b_i + x^3$ has transfer functions
 $(c_i, d_i)$ with $d_i = a_i + c_i \cdot x^2$.
 Unlike Horner, the coefficients $c_i$ vary, so we cannot simply precompute powers.
 Instead, we compute all $(c_i, d_i)$ pairs in parallel (Phase~1: $N$ multiplications),
 then perform parallel prefix reduction (Phase~2: $2N$ multiplications in $O(\log N)$ depth).
 Total work is $3N$ multiplications, but critical path is only $O(\log N)$.
+
+\paragraph{Injective-Lanes.}
+The prefix scan pays for parallelism with multiplications.  Instead, deal the
+$N$ pairs round-robin to $L$ independent copies of the sequential recurrence,
+so that the $L$ multiplications of each round are independent, and combine the
+lane results once at the end.  With a single key the lanes are combined as
+$\sum_j P^{(j)}(x)\,x^{jD}$ with $D=3\lceil N/L\rceil+3$, above the degree of
+every lane polynomial, so the lanes occupy disjoint degree ranges and the map
+stays injective; the cost is $N+L-1$ multiplications plus $O(\log N)$ for
+$x^D$, about half of parallel Horner's.  Two alternatives trade key size for a
+tighter bound: an independent second key $y$ with $\sum_j P^{(j)}(x)\,y^j$
+(collision probability at most $(3\lceil N/L\rceil+L+2)/|\F|$ by bivariate
+Schwartz--Zippel), or an independent key per lane with
+$\bigoplus_j x_j\,P^{(j)}(x_j)$ (at most $(3\lceil N/L\rceil+3)/|\F|$, the
+per-lane degree, since conditioning on the other keys leaves a nonzero
+polynomial in one variable, at the price of $3L$ key words).  In the last form
+the multiplication by $x_j$ is essential: the final $a$-word enters every lane
+with coefficient~$1$, so a plain XOR of the lanes has key-free collisions
+(change the last $a$-word of two lanes by the same amount).  All three forms do
+the same work per pair; we benchmark the single-key form with $L=\min(N,8)$.
+With the three-key recurrence in every lane the bounds tighten to
+$(\lceil N/L\rceil+L-1)/|\F|$ for a shared key triple plus one combining key
+and $\lceil N/L\rceil/|\F|$ for independent triples per lane (messages of
+equal length).
 
 \subsubsection{CLNH (Multilinear Hashing)}
 
@@ -462,29 +513,11 @@ Even with decimation, BRW variants remain slower than Horner-Unrolled and Inject
 The recursive structure still prevents optimal code generation.
 
 \subsubsection{Comprehensive Comparison}
-Table~\ref{tab:universal_full} compares all methods across message sizes.
-Times are in \textmu s per $10^5$ hashes, shown as mean$\pm$std over 50 runs.
+\Cref{tab:injective:universal} in \Cref{sec:injective:experiments} compares all
+methods across message sizes on both architectures; the observations below
+refer to its ARM block.
 
-\begin{table}[!htbp]
-\centering
-\caption{Universal hashing comparison (\textmu s per $10^5$ hashes).
-         CLNH uses $O(N)$ keys; all others use $O(1)$ keys.
-         Best $O(1)$-key method in bold.}
-\label{tab:universal_full}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{c|rrr|rr|r|rrr}
-    & \multicolumn{3}{c|}{Horner variants} & \multicolumn{2}{c|}{Injective} & CLNH & \multicolumn{3}{c}{BRW variants} \\
-    $2N$ & Seq & Unroll & Par & Seq & Par & & BRW & 2-dec & 4-dec \\
-    \hline
-    8   & 556$\pm$2 & 465$\pm$0 & 2475$\pm$14 & \textbf{396$\pm$3} & 831$\pm$7 & 185$\pm$1 & 1233$\pm$12 & 1449$\pm$13 & 405$\pm$2 \\
-    16  & 2103$\pm$16 & 1048$\pm$8 & 3483$\pm$46 & \textbf{995$\pm$5} & 1552$\pm$5 & 348$\pm$2 & 2337$\pm$18 & 2505$\pm$18 & 3116$\pm$10 \\
-    32  & 7372$\pm$24 & 2710$\pm$15 & 6681$\pm$109 & 4043$\pm$7 & \textbf{2710$\pm$16} & 1078$\pm$13 & 4511$\pm$25 & 4690$\pm$26 & 5845$\pm$27 \\
-    64  & 22691$\pm$94 & 6648$\pm$23 & 13053$\pm$179 & 11496$\pm$35 & \textbf{5166$\pm$25} & 2119$\pm$11 & 8872$\pm$45 & 10949$\pm$44 & 10309$\pm$52 \\
-    128 & 64521$\pm$313 & 13662$\pm$83 & 22687$\pm$516 & 27862$\pm$442 & \textbf{10294$\pm$66} & 4225$\pm$19 & 17682$\pm$150 & 23764$\pm$290 & 20756$\pm$150 \\
-    256 & 147845$\pm$793 & 34238$\pm$95 & 21313$\pm$225 & 71052$\pm$369 & \textbf{21619$\pm$131} & 8869$\pm$53 & 35177$\pm$347 & 39859$\pm$337 & 47505$\pm$8187 \\
-\end{tabular}
-}
-\end{table}
+
 
 \paragraph{Key Observations.}
 \begin{enumerate}
@@ -493,8 +526,10 @@ Times are in \textmu s per $10^5$ hashes, shown as mean$\pm$std over 50 runs.
     \begin{itemize}
         \item \textbf{Small messages ($2N \le 16$)}: Sequential Injective wins due to minimal overhead
               and half the multiplications of Horner.
-        \item \textbf{Large messages ($2N \ge 32$)}: Injective-Parallel wins by exploiting ILP.
-              At $2N = 256$, it achieves $6.8\times$ speedup over sequential Horner.
+        \item \textbf{Large messages ($2N \ge 32$)}: Injective-Lanes is fastest, $1.2$--$1.5\times$
+              ahead of the next $O(1)$-key method (Horner-Unrolled at $2N=32$, Injective-Parallel
+              at $2N=64$--$128$, Horner-Parallel at $2N=256$), $10\times$ faster than sequential
+              Horner at $2N=256$, and there within $1.6\times$ of CLNH.
         \item Horner-Unrolled is a good middle ground: simple to implement, $4.3\times$ faster than Horner.
     \end{itemize}
     \item \textbf{BRW underperforms} despite optimal $O(\log N)$ depth.
@@ -506,7 +541,7 @@ Times are in \textmu s per $10^5$ hashes, shown as mean$\pm$std over 50 runs.
 \end{enumerate}
 
 \paragraph{Parallelization Strategy.}
-The injective recurrence $P_i = a_i + c_i \cdot (P_{i-1} + x^2)$ where $c_i = b_i + y$
+The injective recurrence $P_i = a_i + c_i \cdot (P_{i-1} + x^2)$ where $c_i = b_i + x^3$
 can be expressed as transfer functions $(c_i, d_i)$ where $d_i = a_i + c_i \cdot x^2$.
 With $T_{c,d}(h)\coloneqq h\cdot c + d$, the same composition rule applies:
 $T_{c_2,d_2}\!\circ T_{c_1,d_1} = T_{c_1c_2,\; d_1c_2 + d_2}$.
@@ -516,17 +551,19 @@ parallel prefix scan (Phase~2), achieving $O(\log N)$ critical path depth.
 Unlike Horner where $c = x$ for all steps (allowing power precomputation),
 the injective recurrence has varying $c_i$, requiring $3N$ multiplications total.
 Despite $3\times$ more work than sequential ($N$ multiplications),
-Injective-Parallel is $3.3\times$ faster at $2N = 256$ because Apple M1 can
-execute multiple independent \texttt{PMULL} instructions per cycle.
+Injective-Parallel is $3.2\times$ faster at $2N = 256$ on the M2 Pro because the
+core can execute multiple independent \texttt{PMULL} instructions per cycle;
+the lane form (Injective-Lanes) keeps the count at $N+L$ and is $5.0\times$
+faster than sequential.
 
 \subsection{Implementation Insights}
 \label{sec:experiments:implementation}
 
 Our benchmarks reveal several microarchitectural insights for polynomial evaluation
-on Apple M1 Pro (and, qualitatively, on other out-of-order CPUs with carryless multiplication):
+on Apple M2 Pro (and, qualitatively, on other out-of-order CPUs with carryless multiplication):
 
 \paragraph{Latency vs.\ Throughput.}
-The \texttt{PMULL} instruction on Apple M1 has $\approx 3$ cycle latency but the
+The \texttt{PMULL} instruction on the Apple M2 Pro has $\approx 3$ cycle latency but the
 processor can issue multiple independent \texttt{PMULL}s per cycle.
 Sequential algorithms like Horner are \emph{latency-bound}: each multiplication
 depends on the previous result, leaving execution units idle.
@@ -545,9 +582,13 @@ instructions.
 In contrast, recursive algorithms like BRW (Bernstein-Rabin-Winograd) suffer from
 function call overhead and irregular control flow that inhibit optimization.
 
-At $2N = 256$, Injective-Parallel ($21619 \pm 131$\,\textmu s) outperforms BRW ($35177 \pm 347$\,\textmu s)
+At $2N = 256$, Injective-Parallel ($22144$\,\textmu s per $10^5$ hashes, \Cref{tab:injective:universal}) outperforms BRW ($34879$\,\textmu s)
 by $1.6\times$ despite BRW having theoretically optimal $O(\log N)$ depth,
 because the iterative structure admits better code generation.
+(The depth advantage is also no longer unique: the schedules of
+\Cref{thm:construction-height-peeled} achieve $O(\log N)$ multiplicative
+depth at the minimum multiplication count, though the entrants benchmarked
+here are the injective variants.)
 
 \paragraph{Memory Layout.}
 Storing keys as scalar 64-bit integers rather than 128-bit SIMD vectors improves

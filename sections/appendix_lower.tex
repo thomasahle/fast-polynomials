@@ -1,0 +1,371 @@
+\section{Proof of the Degree-Six Lower Bound}
+\label{appendix:lower}
+
+This appendix proves the $6$-parameter lemma of \Cref{sec:lower}
+(\Cref{lem:six-params}): over an infinite field of characteristic $\neq2$, no
+straight-line program with three nonscalar multiplications and six parameters
+has an everywhere-defined rational inverse from its values at six fixed points.
+The notation is that of \Cref{sec:lower}.
+
+\begin{proof}[Proof of \Cref{lem:six-params}]
+\noindent\textbf{Proof method (Jacobian obstruction).}
+Let $J(p)$ be the Jacobian matrix of $F$, i.e., $J_{k,i}(p)=\frac{\partial P_p(x_k)}{\partial p_i}$.
+We will show that for every such three-multiplication program there exists a choice of parameters $p$ such that $\det J(p)=0$.
+On the other hand, suppose $F$ had an everywhere-defined rational left inverse,
+with coordinates $g_i/h_i$ where no $h_i$ has a zero in $\mathbb{F}^6$.  Clearing
+denominators, $g_i(F(p))=p_i\,h_i(F(p))$ for every $p\in\mathbb{F}^6$, hence
+identically as polynomials because $\mathbb{F}$ is infinite.  Let $p_0$ be a point
+with $\det J(p_0)=0$ and pick $v\neq0$ with $J(p_0)v=0$.  Differentiating the
+identity at $p_0$ in the direction $v$, every term on the left and the second term
+on the right carry a factor $J(p_0)v=0$, leaving
+\[
+   0=v_i\,h_i(F(p_0))\qquad(1\le i\le 6).
+\]
+Since $h_i$ vanishes nowhere, $v=0$, a contradiction.  (Note that no
+Nullstellensatz step is needed, so $\mathbb{F}$ need only be infinite; and ruling
+out a left inverse is stronger than ruling out a two-sided one.)
+
+\medskip
+\noindent\textbf{Reduction to a normal form.}
+Consider an arbitrary straight-line program that uses three nonscalar multiplications.
+Topologically order the multiplication gates and denote their outputs by $u_1,u_2,u_3$.
+Since additions and scalar multiplications are free, each multiplicand at gate $i$ is an affine form in $x$ and the earlier $u_j$'s.
+For the first multiplication (which is nonscalar), both inputs depend on $x$, so it has the form $(Ax+a)(Bx+b)$ with $(A,B)\neq(0,0)$.
+Then (swapping the two factors if needed) we may assume $A\neq 0$ and rewrite it as
+\[
+   (Ax+a)(Bx+b) = A\cdot x(Bx+b) + a(Bx+b),
+\]
+so after defining $u_1:=x(Bx+b)$ (one nonscalar multiplication) we can absorb the affine correction $a(Bx+b)$ into later affine uses of the old product (since later uses are only through affine combinations).
+Thus we may assume the first multiplication has the form $u_1=x(R_{1,0}x+a_1)$.
+
+Finally, allow the six preprocessing degrees of freedom to enter as arbitrary linear combinations at the constant slots.
+Let $p\in\mathbb{F}^6$ be the underlying parameter vector, and let the six constant slots in the form below be linear forms in $p$, i.e.,
+\[
+   (a_1,a_2,b_2,a_3,b_3,b_1)=Mp
+\]
+for a $6\times 6$ matrix $M$ over $\mathbb{F}$.
+If $\det M=0$, then there is a nonzero direction $v\in\ker M$ along which all six slots (hence the entire program output) are unchanged, so the Jacobian has a nontrivial kernel and is singular.
+Otherwise $\det M\neq 0$ and we may reparameterize by the invertible linear change of coordinates $p\mapsto (a_1,a_2,b_2,a_3,b_3,b_1)$, which puts the program into the form below; Jacobian singularity is preserved since $J_p = J\,M$.
+
+Thus we may write the program in the following form (all other scalars are fixed circuit constants):
+\begin{align}
+   u_0 &= x
+   \\
+   u_1 &= x(R_{1,0} x + a_1)
+   \\
+   u_2 &= \ell_2\,r_2
+   =(L_{2,1} u_1 + L_{2,0} x + a_2)
+       (R_{2,1} u_1 + R_{2,0} x + b_2)
+      \\
+   u_3 &= \ell_3\,r_3
+   =(L_{3,2} u_2 + L_{3,1} u_1 + L_{3,0} x + a_3)
+       (R_{3,2} u_2 + R_{3,1} u_1 + R_{3,0} x + b_3)
+   \\
+   P &= s_3 u_3 + s_2 u_2 + s_1 u_1 + s_0 x + b_1.
+\end{align}
+Note that multiplications by the fixed circuit constants $L_{i,j}$, $R_{i,j}$ and
+$s_i$ are scalar multiplications and are not counted.
+
+Define $\bar u_i = \frac{\partial P}{\partial u_i}$.
+By the chain rule we have
+$\bar u_i = s_i + \sum_{j>i} \bar u_j (L_{j,i} r_j + R_{j,i} \ell_j)$
+and so in particular
+\begin{align}
+   \bar u_3 &= s_3, \\
+   \bar u_2 &= s_2 + \bar u_3 (L_{3,2} r_3 + R_{3,2} \ell_3), \\
+   \bar u_1 &= s_1 + \bar u_2 (L_{2,1} r_2 + R_{2,1} \ell_2)
+      + \bar u_3 (L_{3,1} r_3 + R_{3,1} \ell_3).
+\end{align}
+and the sensitivities of $P$ to the program parameters are
+\[
+   \frac{\partial P}{\partial b_1}=1,\qquad
+   \frac{\partial P}{\partial b_3}=s_3 \ell_3,\qquad
+   \frac{\partial P}{\partial a_3}=s_3 r_3,
+\]
+\[
+   \frac{\partial P}{\partial b_2}=\bar u_2 \ell_2,\qquad
+   \frac{\partial P}{\partial a_2}=\bar u_2 r_2,\qquad
+   \frac{\partial P}{\partial a_1}=\bar u_1 x.
+\]
+
+We split into two cases, depending on
+\[
+   D = \left|
+   \begin{matrix}
+      L_{3,2} & R_{3,2} \\
+      L_{3,1} & R_{3,1} \\
+   \end{matrix}
+   \right|.
+\]
+
+We already fixed six distinct evaluation points $x_0,\dots,x_5$.
+To show the $6\times 6$ Jacobian is singular, it suffices to make two of its rows equal, or to make three of its rows linearly dependent.
+First, if $D\neq 0$, we will show that two rows can be set equal.
+Second, if $D=0$, we will show that three rows are linearly dependent.
+
+\medskip
+\noindent\textbf{Case $D\neq 0$.}
+Pick two distinct evaluation points $x_0\neq x_1$ from the fixed set.
+We will choose parameters so that the Jacobian rows at $x_0$ and $x_1$ are equal.
+
+\smallskip
+\noindent\textbf{Step 1: Make $\ell_3$ and $r_3$ agree at $x_0,x_1$.}
+The conditions $\ell_3(x_0)=\ell_3(x_1)$ and $r_3(x_0)=r_3(x_1)$ are equivalent to
+\begin{align}
+   L_{3,2} (u_2(x_0)-u_2(x_1)) + L_{3,1} (u_1(x_0)-u_1(x_1)) + L_{3,0}(x_0-x_1) &= 0, \\
+   R_{3,2} (u_2(x_0)-u_2(x_1)) + R_{3,1} (u_1(x_0)-u_1(x_1)) + R_{3,0}(x_0-x_1) &= 0.
+\end{align}
+Since $D\neq 0$, the matrix
+\(
+\begin{bmatrix}
+   L_{3,2} & L_{3,1} \\
+   R_{3,2} & R_{3,1} \\
+\end{bmatrix}
+\)
+is invertible, so this uniquely determines the required differences
+$(u_2(x_0)-u_2(x_1),\,u_1(x_0)-u_1(x_1))$.
+Now $u_1(x)=x(R_{1,0}x+a_1)$, so
+\[
+   u_1(x_0)-u_1(x_1) = (x_0-x_1)(R_{1,0}(x_0+x_1)+a_1),
+\]
+and we can choose $a_1$ to match the required value.
+
+To match the required value of $u_2(x_0)-u_2(x_1)$, write
+\[
+   A_k = R_{2,1}u_1(x_k)+R_{2,0}x_k,\qquad
+   B_k = L_{2,1}u_1(x_k)+L_{2,0}x_k,
+\]
+so $u_2(x_k)=(B_k+a_2)(A_k+b_2)$ and hence
+\[
+   u_2(x_0)-u_2(x_1)
+   = (B_0A_0-B_1A_1) + a_2(A_0-A_1) + b_2(B_0-B_1).
+\]
+If
+\(
+   \left|
+   \begin{matrix}
+      L_{2,0} & L_{2,1} \\
+      R_{2,0} & R_{2,1} \\
+   \end{matrix}
+   \right|
+   = 0
+\)
+then the two rows $(L_{2,0},L_{2,1})$ and $(R_{2,0},R_{2,1})$ are proportional.
+If $(L_{2,0},L_{2,1})=(0,0)$ then $\ell_2=a_2$ is constant, and choosing $a_2=0$ makes $\frac{\partial P}{\partial b_2}=\bar u_2\ell_2$ vanish identically, so the Jacobian is singular; the case $(R_{2,0},R_{2,1})=(0,0)$ is symmetric with $b_2=0$.
+Otherwise $(R_{2,0},R_{2,1})=\alpha(L_{2,0},L_{2,1})$ for some $\alpha$, and choosing $b_2=\alpha a_2$ makes $r_2=\alpha \ell_2$.
+In that case $\frac{\partial P}{\partial a_2}=\alpha \frac{\partial P}{\partial b_2}$, so the Jacobian is singular and we are done.
+Otherwise this determinant is nonzero, and then $(A_0-A_1,B_0-B_1)\neq (0,0)$ (since $(A_0-A_1,B_0-B_1)$ is an invertible linear transform of $(u_1(x_0)-u_1(x_1),x_0-x_1)$).
+Thus we can solve for $(a_2,b_2)$.
+
+\smallskip
+\noindent\textbf{Step 2: Make $\bar u_2$ and $\bar u_1$ vanish at $x_0$.}
+With $\ell_3(x_0)=\ell_3(x_1)$ and $r_3(x_0)=r_3(x_1)$ we have $\bar u_2(x_0)=\bar u_2(x_1)$.
+We now choose $(a_3,b_3)$ so that $\bar u_2(x_0)=0$ and $\bar u_1(x_0)=0$.
+If $s_3=0$, then $\frac{\partial P}{\partial a_3}=\frac{\partial P}{\partial b_3}=0$ and the Jacobian is singular, so assume $s_3\neq 0$.
+At the fixed point $x_0$, both $\bar u_2(x_0)$ and $\bar u_1(x_0)$ are affine in $(a_3,b_3)$:
+\[
+	   \bar u_2(x_0) = C_2 + s_3(R_{3,2} a_3 + L_{3,2} b_3),\qquad
+	   \bar u_1(x_0) = C_1 + s_3\bigl((R_{3,1}+R_{3,2}T)a_3 + (L_{3,1}+L_{3,2}T)b_3\bigr),
+\]
+where $C_1,C_2$ do not depend on $(a_3,b_3)$ and
+\[
+   T = (L_{2,1} r_2 + R_{2,1} \ell_2)(x_0).
+\]
+Since
+\(
+\det\!\begin{bmatrix}
+	   R_{3,2} & L_{3,2} \\
+	   R_{3,1}+R_{3,2}T & L_{3,1}+L_{3,2}T
+\end{bmatrix}
+= -D\neq 0,
+\)
+there is a unique solution $(a_3,b_3)$ to $\bar u_2(x_0)=\bar u_1(x_0)=0$.
+Then also $\bar u_2(x_1)=\bar u_1(x_1)=0$.
+
+\smallskip
+\noindent\textbf{Conclusion.}
+With these choices, the sensitivities agree at $x_0$ and $x_1$:
+\[
+   \frac{\partial P}{\partial b_1}=1,\qquad
+   \frac{\partial P}{\partial a_1}=\bar u_1 x=0,\qquad
+   \frac{\partial P}{\partial a_2}=\bar u_2 r_2=0,
+\]
+\[
+   \frac{\partial P}{\partial b_2}=\bar u_2 \ell_2=0,\qquad
+   \frac{\partial P}{\partial a_3}=s_3 r_3,\qquad
+   \frac{\partial P}{\partial b_3}=s_3 \ell_3,
+\]
+and $\ell_3(x_0)=\ell_3(x_1)$, $r_3(x_0)=r_3(x_1)$.
+Thus the Jacobian rows at $x_0$ and $x_1$ are identical, so the Jacobian is singular.
+
+\medskip
+\noindent\textbf{Case $D=0$.}
+
+In this case we will show that three rows of the Jacobian are linearly dependent.
+Pick three distinct evaluation points $x_0,x_1,x_2$ from the fixed set.
+We use the functional
+\[
+   \langle f \rangle = (x_1 - x_2) f(x_0) + (x_2 - x_0) f(x_1) + (x_0 - x_1) f(x_2),
+\]
+such that $\langle 1 \rangle = 0$ and $\langle x \rangle = 0$.
+(For $x_k=0,1,2$ the weights are $\lambda=(-1,2,-1)$, a second difference.)
+Note that $\langle x^2\rangle = (x_0 - x_1)(x_0 - x_2)(x_1 - x_2) \neq 0$.
+
+\smallskip
+\noindent\textbf{Subcase $L_{3,2}R_{3,2}=0$.}
+Assume $L_{3,2}R_{3,2}=0$.
+If $L_{3,2}=R_{3,2}=0$, then the top multiplication does not use $u_2$, so $\ell_3,r_3$ have degree at most $2$ and one checks that all six sensitivity polynomials have degree at most $3$.
+Otherwise, exactly one of $L_{3,2},R_{3,2}$ is nonzero; without loss of generality $R_{3,2}\neq 0$ and $L_{3,2}=0$.
+Since we are in Case $D=0$, the condition
+\(
+D=L_{3,2}R_{3,1}-R_{3,2}L_{3,1}=0
+\)
+forces $L_{3,1}=0$, so $\ell_3$ is affine in $x$.
+(The case $L_{3,2}\neq 0$ and $R_{3,2}=0$ is symmetric.)
+In either situation, one checks that each of the six sensitivity polynomials has degree at most $4$ in $x$, hence they all lie in $\mathrm{span}\{1,x,x^2,x^3,x^4\}$.
+Evaluated at any six distinct points, the corresponding Jacobian columns (evaluation vectors) lie in a subspace of dimension at most $5$, so the $6\times 6$ Jacobian is singular.
+Thus we may assume $L_{3,2}R_{3,2}\neq 0$ in the remainder.
+
+We will choose program parameters such that $\bar u_1$ is constant for $k\in\{0,1,2\}$, $\bar u_2(x_k) = 0$ for $k\in\{0,1,2\}$, and $\langle \ell_3 \rangle = \langle r_3 \rangle = 0$.
+This is nearly the same strategy as in the previous case, just using three evaluation points.
+The only difference is $\bar u_1$ where we use $\langle \bar u_1 x \rangle = \bar u_1 \langle x \rangle = 0$ when $\bar u_1$ is constant.
+Another difference is that we will take $a_1=0$, that is, we won't use this parameter to adjust anything.
+
+Note that we can assume
+\(
+\left|
+\begin{matrix}
+   L_{2,0} & L_{2,1} \\
+   R_{2,0} & R_{2,1} \\
+\end{matrix}
+\right|
+\neq 0
+\),
+as otherwise the columns $\frac{\partial P}{\partial a_2}$ and $\frac{\partial P}{\partial b_2}$ would be linearly dependent.
+Assume also $s_3\neq 0$; otherwise the $a_3$ and $b_3$ columns of the Jacobian are identically $0$.
+Since $D=0$ and $L_{3,2}R_{3,2}\neq 0$, we can write
+$(R_{3,2}, R_{3,1}) = \alpha (L_{3,2}, L_{3,1})$ for some $\alpha \in \mathbb{F}$.
+Under the functional $\langle\cdot\rangle$, constants and the $x$-term vanish, so $\langle r_3 \rangle = \alpha \langle \ell_3 \rangle$.
+Therefore, whenever $\langle \bar u_2 \rangle = 0$ we get
+\[
+   0
+   = \langle \bar u_2 \rangle
+   = s_3(L_{3,2} \langle r_3 \rangle + R_{3,2} \langle \ell_3 \rangle)
+   = s_3(\alpha L_{3,2} + R_{3,2}) \langle \ell_3 \rangle
+   = 2s_3 R_{3,2} \langle \ell_3 \rangle,
+\]
+and since $\mathrm{char}(\mathbb{F})\neq 2$ and $R_{3,2}\neq 0$, it follows that
+$\langle \ell_3 \rangle = 0$ and hence also $\langle r_3 \rangle = 0$.
+
+So we focus on showing $\bar u_2 = 0$ point-wise on all three $x_k$.
+Let
+\[
+   f(x) = L_{3,2} r_3(x) + R_{3,2} \ell_3(x),
+\]
+so that $\bar u_2(x)=s_2+s_3 f(x)$.
+\emph{First}, we choose $(a_2,b_2)$ so that $f(x_0)=f(x_1)=f(x_2)$.
+
+Consider the differences
+\begin{align}
+   f(x_0) - f(x_t)
+   &= L_{3,2} (r_3(x_0) - r_3(x_t)) + R_{3,2} (\ell_3(x_0) - \ell_3(x_t))
+ \\&=
+   2 L_{3,2} R_{3,2} (u_2(x_0) - u_2(x_t))
+ \\&\quad
+   + (L_{3,2} R_{3,1} + R_{3,2} L_{3,1}) (u_1(x_0) - u_1(x_t))
+ \\&\quad
+   + (L_{3,2} R_{3,0} + R_{3,2} L_{3,0}) (x_0 - x_t)
+   .
+% \\&=
+%    2 L_{3,2} R_{3,2} (u_2(x_0) - u_2(x_t))
+%    + 2(L_{3,2} R_{3,1}) (u_1(x_0) - u_1(x_t))
+%    + (L_{3,2} R_{3,0} + R_{3,2} L_{3,0}) (x_0 - x_t)
+\end{align}
+In particular, the constant term $L_{3,2}b_3+R_{3,2}a_3$ cancels in $f(x_0)-f(x_t)$, so the constraints $f(x_0)=f(x_t)$ do not depend on $(a_3,b_3)$.
+Since neither the $u_1(x_t)$ differences nor the $x_t$ differences depend on $(a_2,b_2)$, we focus on the $u_2(x_t)$ differences.
+Let $A_k = R_{2,1} u_1(x_k) + R_{2,0} x_k$ and
+$B_k = L_{2,1} u_1(x_k) + L_{2,0} x_k$ such that $u_2(x_k) = (B_k + a_2)(A_k + b_2)$.
+Then
+\[
+   u_2(x_0) - u_2(x_t)
+   = (B_0 A_0 - B_t A_t) + a_2 (A_0 - A_t) + b_2 (B_0 - B_t)
+   .
+\]
+To fix $f(x_0) = f(x_t)$ for $t=1,2$, we need to solve the linear system with determinant
+\[
+   \left|
+   \begin{matrix}
+      A_0 - A_1 & B_0 - B_1 \\
+      A_0 - A_2 & B_0 - B_2 \\
+   \end{matrix}
+   \right|
+   = R_{1,0}
+   \left|
+   \begin{matrix}
+      L_{2,0} & L_{2,1} \\
+      R_{2,0} & R_{2,1} \\
+   \end{matrix}
+   \right|
+   (x_0 - x_1)(x_0 - x_2)(x_1 - x_2)
+   .
+\]
+If $R_{1,0}=0$ then $u_1$ is affine in $x$, and one checks that each of the six sensitivity polynomials has degree at most $4$ in $x$; evaluated at any six distinct points, the corresponding $6\times 6$ Jacobian has rank at most $5$ and hence is singular.
+So assume $R_{1,0}\neq 0$; then the displayed determinant is nonzero, and we can solve for $(a_2,b_2)$.
+Thus $f$ is constant on $\{x_0,x_1,x_2\}$.
+
+\emph{Second}, having fixed $(a_2,b_2)$, we choose $(a_3,b_3)$ to set $\bar u_2(x_0)=0$.
+At the fixed point $x_0$ we have
+\[
+   \bar u_2(x_0) = s_2 + s_3\bigl(C(x_0) + L_{3,2} b_3 + R_{3,2} a_3\bigr),
+\]
+where $C(x_0)$ does not depend on $(a_3,b_3)$.
+Since $L_{3,2}R_{3,2}\neq 0$ we can choose $(a_3,b_3)$ to set $\bar u_2(x_0)=0$.
+This choice shifts $f$ by the same constant at all three points, so it preserves $f(x_0)=f(x_1)=f(x_2)$.
+Therefore $\bar u_2(x_0)=0$ implies $\bar u_2(x_k)=0$ for all $k\in\{0,1,2\}$.
+
+Finally, we need to make $\bar u_1$ constant.
+With $\bar u_2(x_k)=0$ for all $k$, and $D=0$ we can write $(L_{3,1},R_{3,1})=\beta(L_{3,2},R_{3,2})$ for some $\beta\in\mathbb{F}$, and so
+\begin{align}
+   \bar u_1(x_k)
+   &= s_1 + s_3 (L_{3,1} r_3(x_k) + R_{3,1} \ell_3(x_k))
+ \\&= s_1 + s_3 \beta (L_{3,2} r_3(x_k) + R_{3,2} \ell_3(x_k))
+ \\&= s_1 + s_3 \beta f(x_k)
+   ,
+\end{align}
+but since $f(x_k)$ is constant, so is $\bar u_1(x_k)$.
+
+This means we have
+\(
+   \langle \frac{\partial P}{\partial a_1} \rangle
+   = \langle \bar u_1 x \rangle
+   = \bar u_1 \langle x \rangle
+   = 0,
+\)
+which is what we wanted to show.
+
+\smallskip
+\noindent\textbf{Conclusion.}
+With these choices we have
+\[
+   \Big\langle \frac{\partial P}{\partial b_1}\Big\rangle=0,\quad
+   \Big\langle \frac{\partial P}{\partial a_1}\Big\rangle=0,\quad
+   \Big\langle \frac{\partial P}{\partial a_2}\Big\rangle=0,\quad
+   \Big\langle \frac{\partial P}{\partial b_2}\Big\rangle=0,\quad
+   \Big\langle \frac{\partial P}{\partial a_3}\Big\rangle=0,\quad
+   \Big\langle \frac{\partial P}{\partial b_3}\Big\rangle=0,
+\]
+so the three Jacobian rows at $x_0,x_1,x_2$ are linearly dependent. Hence the Jacobian is singular.
+\end{proof}
+
+\paragraph{Formalization.}
+The lemma above is machine-checked in Lean~4 (\texttt{FastPoly/\allowbreak LowerBound/}): the
+program semantics, the six sensitivity polynomials, the chain rule for the
+$\bar u_i$, both cases of the case split, and the passage from a vanishing
+Jacobian determinant to the absence of an everywhere-defined rational left
+inverse are all proved, with the reduction to the displayed normal form encoded
+as the definition of the circuit rather than derived from a datatype of
+straight-line programs.  The final statement
+\texttt{no\_rationalInverse\_affine} is proved for an arbitrary affine
+reparameterization of the six slots, with no invertibility assumed, and depends
+only on Lean's standard axioms.
+

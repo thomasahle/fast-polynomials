@@ -1,0 +1,50 @@
+% Shell decomposition of the three finite splittable constructions.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \draw[fp decode] (0,6.25) -- node[fp label, above] {descending coefficient degree}
+    (13.55,6.25);
+  \node[fp label, anchor=east] at (0,6.25) {high};
+  \node[fp label, anchor=west] at (13.55,6.25) {low};
+
+  \node[fp panel title] at (0,5.72) {$n=15$};
+  \node[fp active, minimum width=38mm, anchor=west] (a15) at (0,5.02)
+    {recover $A=Q_7$\\from $(x+1)A^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (3.8,5.02) {$+1$};
+  \node[fp second, minimum width=39mm, anchor=west] (h15) at (4.6,5.02)
+    {recover $H_4$, then $H_2$\\from four rows};
+  \node[fp recursive, minimum width=36mm, anchor=west] (l15) at (8.5,5.02)
+    {solve $U,V,\alpha_1,\alpha_0$\\from the bottom rows};
+  \node[fp label, anchor=west] at (0.35,4.4)
+    {decode the parameters inside $A$ only after $H_2,H_4$ are known};
+
+  \node[fp panel title] at (0,3.87) {$n=27$};
+  \node[fp active, minimum width=31mm, anchor=west] (a27) at (0,3.17)
+    {$A=Q_{13}$\\$(x+1)A^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (3.1,3.17) {$+1$};
+  \node[fp second, minimum width=25mm, anchor=west] (c27) at (3.9,3.17)
+    {$C=Q_7$\\$C^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (6.4,3.17) {$-1$};
+  \node[fp pivot, minimum width=25mm, anchor=west] (b27) at (7.2,3.17)
+    {$B=Q_3$\\$(x+1)B^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (9.7,3.17) {$+1$};
+  \node[fp recursive, minimum width=30mm, anchor=west] (h27) at (10.5,3.17)
+    {recover $H_2,s,r$\\then decode $A,C,B$};
+  \draw[fp dependence] (h27.south) to[bend left=16]
+    node[fp label, below] {$A$ supplies $H_4$ for $C$} (c27.south);
+
+  \node[fp panel title] at (0,2.02) {$n=31$};
+  \node[fp active, minimum width=35mm, anchor=west] (a31) at (0,1.32)
+    {$A=\bar Q_{15}$ and shift $s$\\outer square gadget};
+  \node[fp seam, minimum width=8mm, anchor=west] at (3.5,1.32) {$-1$};
+  \node[fp second, minimum width=27mm, anchor=west] (b31) at (4.3,1.32)
+    {$B=Q_7$\\$xB^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (7.0,1.32) {$+1$};
+  \node[fp pivot, minimum width=22mm, anchor=west] (h31) at (7.8,1.32)
+    {$H_4$\\$H_4^2$};
+  \node[fp seam, minimum width=8mm, anchor=west] at (10.0,1.32) {$-1$};
+  \node[fp recursive, minimum width=28mm, anchor=west] (c31) at (10.8,1.32)
+    {$C=Q_3$, then $r$\\low residual};
+  \node[fp label, anchor=west] at (4.0,0.56)
+    {reconstruct $H_2$ from $H_4$, then discharge all conditional decoders};
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (0,-0.03)
+    {At every red seam, subtract the displayed fixed leading coefficient before taking the next monic root.};
+\end{tikzpicture}

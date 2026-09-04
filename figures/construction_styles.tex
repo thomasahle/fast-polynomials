@@ -1,0 +1,31 @@
+% Shared visual language for the construction and decoder figures.
+% Every style is prefixed by `fp' to avoid affecting unrelated TikZ figures.
+\definecolor{fpBlue}{RGB}{53,105,171}
+\definecolor{fpOrange}{RGB}{222,132,48}
+\definecolor{fpGreen}{RGB}{70,139,96}
+\definecolor{fpRed}{RGB}{186,62,55}
+\definecolor{fpPurple}{RGB}{119,91,160}
+\definecolor{fpGray}{RGB}{108,112,118}
+
+\tikzset{
+  fp strip/.style={draw=black!65, line width=.45pt, minimum height=5.5mm,
+    inner sep=1.4pt, font=\scriptsize, align=center},
+  fp active/.style={fp strip, fill=fpBlue!15, draw=fpBlue!85!black},
+  fp second/.style={fp strip, fill=fpOrange!18, draw=fpOrange!85!black},
+  fp recursive/.style={fp strip, fill=fpGreen!15, draw=fpGreen!80!black},
+  fp known/.style={fp strip, fill=black!7, draw=fpGray, dashed},
+  fp unread/.style={fp strip, fill=white, draw=black!45, densely dotted},
+  fp seam/.style={fp strip, fill=fpRed!18, draw=fpRed!90!black,
+    line width=.7pt},
+  fp pivot/.style={fp strip, fill=fpPurple!17, draw=fpPurple!90!black,
+    line width=.7pt},
+  fp gate/.style={circle, draw=black!70, fill=white, minimum size=6mm,
+    inner sep=0pt, font=\small},
+  fp flow/.style={-{Latex[length=2.2mm]}, line width=.65pt, draw=black!75},
+  fp decode/.style={-{Latex[length=2.4mm]}, line width=1pt, draw=fpBlue!85!black},
+  fp dependence/.style={-{Latex[length=1.8mm]}, densely dashed,
+    line width=.5pt, draw=fpGray},
+  fp label/.style={font=\scriptsize, align=center, inner sep=1pt},
+  fp panel title/.style={font=\small\bfseries, anchor=west},
+  fp brace label/.style={font=\scriptsize, align=center, text=black!75}
+}

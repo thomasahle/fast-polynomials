@@ -1,0 +1,51 @@
+\begin{table}[htbp]
+\centering\footnotesize
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+regime & scheme & $n$ & $\rho$ & $A$ med. & $A$ max & err.\ med. & err.\ max \\
+\midrule
+prescribed coefficients & Horner & 7 & 13 & $1$ & $1$ & $0$ & $0$ \\
+ & Estrin & 7 & 9 & $1$ & $1$ & $0$ & $0$ \\
+ & Rabin--Winograd & 7 & 12 & $6.4$ & $184$ & $0$ & $0$ \\
+ & Motzkin--Eve & 7 & 27 & $37$ & $10^{4}$ & $2.3\times10^{3}$ & $2.0\times10^{6}$ \\
+ & \textbf{this paper} & 7 & 25 & $10^{12}$ & $10^{27}$ & $0$ & $3.6\times10^{14}$ \\
+\addlinespace[2pt]
+ & Horner & 15 & 29 & $1$ & $1$ & $0$ & $1.16$ \\
+ & Estrin & 15 & 18 & $1$ & $1$ & $0$ & $0.786$ \\
+ & Rabin--Winograd & 15 & 22 & $14$ & $10^{3}$ & $0$ & $1.07$ \\
+ & Motzkin--Eve & 15 & 59 & $10^{6}$ & $10^{7}$ & $4.6\times10^{6}$ & $8.6\times10^{8}$ \\
+ & \textbf{this paper} & 15 & 54 & $10^{43}$ & $10^{71}$ & $2.6\times10^{29}$ & $2.0\times10^{52}$ \\
+\addlinespace[2pt]
+ & Horner & 31 & 61 & $1$ & $1$ & $0.125$ & $1.37$ \\
+ & Estrin & 31 & 35 & $1$ & $1$ & $0$ & $1.13$ \\
+ & Rabin--Winograd & 31 & 40 & $10^{4}$ & $10^{8}$ & $0.377$ & $1.1\times10^{3}$ \\
+ & \textbf{this paper} & 31 & 118 & $10^{4849}$ & $10^{5756}$ & overflow & overflow \\
+\addlinespace[2pt]
+\midrule
+prescribed keys & Horner & 7 & 13 & $1$ & $1$ & $0$ & $0$ \\
+ & Estrin & 7 & 9 & $1$ & $1$ & $0$ & $0$ \\
+ & Rabin--Winograd & 7 & 12 & $5.7$ & $10^{5}$ & $0$ & $0$ \\
+ & Motzkin--Eve & 7 & 27 & $35$ & $10^{4}$ & $1.5\times10^{3}$ & $1.8\times10^{5}$ \\
+ & \textbf{this paper} & 7 & 25 & $2.3$ & $8.4$ & $0$ & $0$ \\
+\addlinespace[2pt]
+ & Horner & 15 & 29 & $1$ & $1$ & $0.0236$ & $1.09$ \\
+ & Estrin & 15 & 18 & $1$ & $1$ & $0$ & $0.557$ \\
+ & Rabin--Winograd & 15 & 22 & $10^{4}$ & $10^{8}$ & $738$ & $3.0\times10^{7}$ \\
+ & Motzkin--Eve & 15 & 59 & $10^{6}$ & $10^{8}$ & $4.5\times10^{6}$ & $1.8\times10^{9}$ \\
+ & \textbf{this paper} & 15 & 54 & $28$ & $292$ & $0$ & $1.4$ \\
+\addlinespace[2pt]
+ & Horner & 31 & 61 & $1$ & $1$ & $0.083$ & $2.23$ \\
+ & Estrin & 31 & 35 & $1$ & $1$ & $0.188$ & $2.05$ \\
+ & Rabin--Winograd & 31 & 40 & $10^{27}$ & $10^{47}$ & $6.4\times10^{25}$ & $1.1\times10^{37}$ \\
+ & \textbf{this paper} & 31 & 118 & $10^{3}$ & $10^{4}$ & $2.9\times10^{-3}$ & $3.07$ \\
+\addlinespace[2pt]
+ & Horner & 63 & 125 & $1$ & $1$ & $0.137$ & $4.63$ \\
+ & Estrin & 63 & 68 & $1$ & $1$ & $0.121$ & $4.63$ \\
+ & Rabin--Winograd & 63 & 74 & $10^{183}$ & $10^{297}$ & $2.2\times10^{115}$ & $5.4\times10^{205}$ \\
+ & \textbf{this paper} & 63 & 266 & $10^{7}$ & $10^{10}$ & $9.3\times10^{-5}$ & $3.47$ \\
+\addlinespace[2pt]
+\bottomrule
+\end{tabular}
+\caption{Rounding depth $\rho$, schedule amplification $A$, and observed double-precision forward error of the evaluation schemes on random monic polynomials, in two regimes. Errors (err.) are the observed double-precision forward error in units of $u\sum_i|a_i||x|^i$; a coefficientwise backward-stable scheme reports at most about $\rho$. Medians and maxima over 12 polynomials and 3 points each; Motzkin--Eve rows are omitted where its numeric preprocessing failed verification.}
+\label{tab:numstab}
+\end{table}

@@ -1,5 +1,8 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1.3in]{geometry}
+% Third-pass stretch for paragraphs whose only break points sit inside long \texttt paths.
+\setlength{\emergencystretch}{3em}
+\usepackage{booktabs}
 \usepackage[utf8]{inputenc}
 \usepackage[UKenglish]{babel}
 
@@ -10,12 +13,15 @@
 %\usepackage{nath}
 
 \newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{lemma}{Lemma}
 \newtheorem{corollary}{Corollary}
+\newtheorem{fact}{Fact}
+\theoremstyle{definition}
 \newtheorem{definition}{Definition}
 \newtheorem{example}{Example}
+\theoremstyle{remark}
 \newtheorem{remark}{Remark}
-\newtheorem{fact}{Fact}
 
 
 \usepackage{algorithm}
@@ -26,23 +32,23 @@
 % Thomas packages
 
 
-\usepackage{todonotes}
-\presetkeys{todonotes}{inline}{}
-
 \usepackage{enumitem}
 \usepackage{multicol}
 \usepackage[hypertexnames=false]{hyperref}
+\hypersetup{pdftitle={Fast Evaluation of Polynomials with Rational Preprocessing},pdfauthor={Thomas D. Ahle and Jakob B. T. Knudsen}}
+% Public location of the code, benchmarks and Lean formalization referred to in the text.
+\newcommand{\coderepo}{\url{https://github.com/thomasahle/fast-polynomials}}
 \makeatletter
 % Avoid duplicate hyperlink destinations when counters reset (e.g. algorithmic line numbers).
 \providecommand*{\theHALG@line}{\arabic{algorithm}.\arabic{ALG@line}}
 \makeatother
 \usepackage{cleveref}
 \usepackage{autonum}
-\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}
 % Figures
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc}
+\input{figures/construction_styles}
 
 \DeclareMathOperator{\poly}{poly}
 \DeclareMathOperator{\sign}{sign}
@@ -97,5 +103,7 @@
 
 % Better math spacing in coefficient extractor
 \newcommand{\coeff}[2]{[x^{#2}]\,#1}
+% Reader-facing notation for exact polynomial dependence/recovery.
+\newcommand{\polyfrom}{\mathrel{\xleftarrow{\mathrm{poly}}}}
 % Clarify [n] notation inline where needed
 % \newcommand{\range}[1]{\{0,\ldots,#1\}}

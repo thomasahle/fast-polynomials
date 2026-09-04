@@ -1,0 +1,65 @@
+% The visual grammar used throughout the construction appendix.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  % Panel (a): one causal pivot.
+  \node[fp panel title] at (0,4.05) {(a) One causal pivot};
+  \draw[fp flow] (0,3.62) -- (6.25,3.62);
+  \node[fp label, anchor=east] at (0,3.62) {high degree};
+  \node[fp label, anchor=west] at (6.25,3.62) {low degree};
+
+  \node[fp known, minimum width=28mm] (seen) at (1.4,2.95)
+    {higher observed rows};
+  \node[fp active, minimum width=14mm, right=0pt of seen] (row)
+    {$[x^j]\Phi$};
+  \node[fp unread, minimum width=22mm, right=0pt of row] (unread)
+    {rows $<j$};
+
+  \node[fp known, minimum width=28mm] (highpar) at (1.4,1.82)
+    {$\alpha_{>j}$ already decoded};
+  \node[fp pivot, minimum width=14mm, right=0pt of highpar] (par)
+    {$\alpha_j$};
+  \node[fp unread, minimum width=22mm, right=0pt of par]
+    {$\alpha_{<j}$};
+  \draw[fp decode] (row.south) -- node[fp label, right, text=fpBlue!80!black]
+    {subtract $F_j$; divide by $\lambda_j$} (par.north);
+  \node[fp label, anchor=west] at (0,0.92)
+    {$[x^j]\Phi=\lambda_j\alpha_j+F_j(\alpha_{>j})$,
+     \quad$\lambda_j\ne0$};
+
+  % Panel (b): nested shells.
+  \node[fp panel title] at (7.45,4.05) {(b) A top-down construction};
+  \draw[fp decode] (7.45,3.62) -- node[fp label, above]
+    {peel, subtract, expose} (13.45,3.62);
+
+  \node[fp active, minimum width=31mm, anchor=west] (outer) at (7.45,2.95)
+    {outer monic shell};
+  \node[fp seam, minimum width=7mm, anchor=west] at (10.55,2.95)
+    {$\pm1$};
+  \node[fp unread, minimum width=21mm, anchor=west] at (11.25,2.95)
+    {hidden tail};
+
+  \node[fp second, minimum width=27mm, anchor=west] (inner) at (9.35,1.82)
+    {next shell};
+  \node[fp seam, minimum width=7mm, anchor=west] at (12.05,1.82)
+    {seam};
+
+  \node[fp recursive, minimum width=25mm, anchor=west] (rec) at (11.05,0.92)
+    {smaller instance};
+  \draw[fp dependence] (outer.south east) to[bend left=15] (inner.north west);
+  \draw[fp dependence] (inner.south east) to[bend left=15] (rec.north west);
+
+  % Complete key.  Labels make the figure readable without colour.
+  \node[fp active, minimum width=8mm, minimum height=4mm] at (0.4,0.2) {};
+  \node[fp label, anchor=west] at (0.9,0.2) {being recovered};
+  \node[fp second, minimum width=8mm, minimum height=4mm] at (3.35,0.2) {};
+  \node[fp label, anchor=west] at (3.85,0.2) {next block};
+  \node[fp recursive, minimum width=8mm, minimum height=4mm] at (5.85,0.2) {};
+  \node[fp label, anchor=west] at (6.35,0.2) {smaller instance};
+  \node[fp pivot, minimum width=8mm, minimum height=4mm] at (9.1,0.2) {};
+  \node[fp label, anchor=west] at (9.6,0.2) {constant-slope pivot};
+  \node[fp known, minimum width=8mm, minimum height=4mm] at (0.4,-0.45) {};
+  \node[fp label, anchor=west] at (0.9,-0.45) {known};
+  \node[fp unread, minimum width=8mm, minimum height=4mm] at (3.35,-0.45) {};
+  \node[fp label, anchor=west] at (3.85,-0.45) {not yet read};
+  \node[fp seam, minimum width=8mm, minimum height=4mm] at (5.85,-0.45) {};
+  \node[fp label, anchor=west] at (6.35,-0.45) {boundary seam};
+\end{tikzpicture}

@@ -1,74 +1,139 @@
 
+
 \section{Injective Polynomial Hashing with Fewer Multiplications}
 \label{sec:injective}
 
-
-
-We would like to speed up Horner's rule by using roughly half the multiplications.
-The following recurrence computes a degree-$(2i+1)$ polynomial using one multiplication per step:
-\begin{definition}[Naive one-multiplication recurrence]\label{def:injective:naive}
-   Let $P_0=0$ and for $i\ge 1$ define
-   \begin{align}
-      P_{i} &= a_{i} + (b_{i}+x^2)(P_{i-1}+x)
-          \\&= a_{i} + b_{i}x + P_{i-1}x^2 + x^3 + b_{i} P_{i-1}.
-   \end{align}
-\end{definition}
-The first three terms are the ones we would want from a ``packed'' Horner scheme, and the $x^3$ term does not carry data.
-The issue is the extra product term $b_{i} P_{i-1}$: we cannot simply compute and subtract it without returning to two multiplications per step.
-
-\begin{lemma}\label{lem:injective:naive-not-injective}
-   The mapping induced by \cref{def:injective:naive} is not injective for $i\ge 2$.
-\end{lemma}
-\begin{proof}
-   For $i=2$ we have
-   \[
-      P_2
-      = a_2 + b_2a_1 + (b_2b_1+b_2)x + a_1x^2 + (b_2+b_1+1)x^3 + x^5.
-   \]
-   Setting $a_1=a_2=0$, we get
-   \[
-      P_2 = b_2(b_1+1)x + (b_2+b_1+1)x^3 + x^5.
-   \]
-   This takes the same value for $(b_1,b_2)=(0,0)$ and $(b_1,b_2)=(-1,1)$, namely $P_2=x^3+x^5$.
-\end{proof}
-
-Instead we will use a few more variables, such that
-\begin{definition}[Injective recurrence]\label{def:injective:main}
+In this section we use the following recursive family.
+\begin{definition}[Injective recurrence]\label{def:injective:recurrence}
+Let $u,y,z$ be algebraically independent variables and define
 \begin{align}
-   P_0 &= z \\
-   P_{i} &= a_{i} + (b_{i}+y)(P_{i-1}+x).
-   \label{eq:P-def}
+   P_0 &= z, \\
+   P_i &= a_i+(b_i+y)(P_{i-1}+u),
+   \qquad i\ge1. \label{eq:injective-recurrence}
 \end{align}
 \end{definition}
+For hashing we use the recurrence with $(u,y,z)$ drawn as three independent
+uniformly random field elements, the \emph{three-key family}, or the
+\emph{single-key} specialization
+\begin{equation}\label{eq:injective-single-key}
+   y=x^3,\qquad z=x,\qquad u=x^2,
+\end{equation}
+that is $P_0=x$ and $P_i=a_i+(b_i+x^3)(P_{i-1}+x^2)$, which keeps a single
+resident key word at the price of a weaker bound.
+We prove below that distinct parameter vectors
+$(a_1,b_1,\dots,a_n,b_n)$ induce distinct polynomials, both before and after
+this specialization.  Neither family is bijective onto all monic
+polynomials: in the single-key form $P_n$ has degree $3n+2$ but only $2n$
+parameters.
 
-\begin{lemma}\label{lem:injective:coeffmap}
-   Let $P_i$ be as defined in~\cref{eq:P-def}, and let $c_0, \dots, c_{3n-1}$ be the coefficients of the monomials $y^k$, $zy^k$, and $xy^k$ for $0\le k<n$ in $P_n$.
-   Then the mapping $(a_1, \dots, a_n, b_1, \dots, b_n) \mapsto (c_0, \dots, c_{3n-1})$ is injective.
+
+\vspace{.5em}
+
+Before proving injectivity, we note the main application: the recurrence gives an almost-universal hash family with half the multiplications of Horner's method.
+We use the following standard quantitative definition.
+\begin{definition}[Almost-universal hash family]\label{def:injective:universal}
+   A family of hash functions $\mathcal H$ is \emph{$\varepsilon$-almost universal} if for any two distinct messages $m\ne m'$ we have
+   \[
+      \Pr_{h\sim\mathcal H}\!\left[h(m)=h(m')\right] \le \varepsilon.
+   \]
+\end{definition}
+
+If two distinct messages induce distinct key polynomials whose \emph{difference} has total degree at most $d$, the Schwartz--Zippel lemma gives collision probability at most $d/|\F|$ over uniformly random keys.
+In the three-key family $P_n$ is monic of degree $n$ in $y$ with the message-independent top part $(z+u)y^n$ (see the end of the proof of \Cref{lem:injective:coeffmap}), so the difference of two such polynomials has total degree at most $n$, and the family is $n/|\F|$-almost universal on messages of $2n$ field elements: half of Horner's bound at half of Horner's multiplications, with three resident key words.
+In the single-key specialization $P_n$ has degree $3n+2$ and its three leading coefficients are again the same for every message, so the difference has degree at most $3n-1$ and the family is $(3n-1)/|\F|$-almost universal with one key word.
+
+Notice a key difference between the bijective polynomials for $k$-wise independent hashing in the previous section, and the injective polynomials here.
+In the bijective setting, the polynomial coefficients are the (random) \emph{key} and the input $x$ is the \emph{data} being hashed.
+In the injective setting the roles are reversed: the stream $(a_i,b_i)$ is the \emph{data}, while the evaluation point, $x$ is the (random) \emph{key}.
+
+\vspace{.5em}
+
+Before proving the injectivity of our construction, we note the following construction
+suggested by Daniel J. Bernstein~\cite{Bernstein:2011:RW}: a simplified version of the
+Rabin--Winograd bijective polynomial hashing scheme, which he observed gives an ``authenticator''
+\[
+   P() = 1, \quad
+   P(a_1, \ldots, a_m) = P(a_1, \ldots, a_{k-1})(x^k + a_k) + P(a_{k+1}, \ldots, a_m)
+\]
+where $k \le m$ is the largest power of $2$ at most $m$.
+For example:
+$P(a_1)=(x+a_1)+1$,
+$P(a_1,a_2) = (x+a_1+1)(x^2+a_2)+1$
+and $P(a_1,a_2,a_3) = (x+a_1+1)(x^2+a_2)+x+a_3+1$
+and so on.
+
+To see this gives an injective family, first note
+that each polynomial (let's write $P_m = P(a_1,\dots,a_m)$ for simplicity)
+is monic, since $1$ is monic and product and sums of monic polynomials are monic.
+%
+Next note that $\deg(P_0)=0$ and $\deg(P_m) = 2k-1$, where $k=k(m)$ is the largest power of 2 less than or equal to $m$ as above.
+From the construction, and the fact $m-k<k$, we have:
+\[
+   \deg(P_m) = \deg(P_{k-1}) + k.
+\]
+Since $k = 2^j$, we have $k - 1 = 2^j - 1$, so the largest power of 2 $\le k-1$ is $k' = 2^{j-1} = k/2$.
+Therefore $\deg(P_{k-1}) = 2(k/2) - 1 = k - 1$,
+and $\deg(P_m) = 2k-1$.
+%
+Finally, the same degree separation gives a decoder.  From the coefficients of
+$P_m$ in degrees $k,\ldots,2k-1$ we recover $P(a_1,\ldots,a_{k-1})$, because
+only its product with $x^k$ reaches those degrees.  We recursively decode
+$a_1,\ldots,a_{k-1}$.  After subtracting the $x^k$ product, the coefficient of
+$x^{k-1}$ is $a_k$ plus the known leading coefficient of
+$P(a_{k+1},\ldots,a_m)$ when that polynomial has degree $k-1$ (and just
+$a_k$ otherwise).  Thus we recover $a_k$, subtract its product with the known
+left polynomial, and recursively decode the right polynomial.  This proves
+injectivity.
+
+The ``Bernstein Rabin--Winograd'' scheme is simple to describe and prove, but
+the recursive nature is a bit inconvenient for fast hashing.
+Some authors~\cite{chakrabortyefficient} have proposed non-recursive variants that are more efficient to compute, but they still need to precompute $x^k$ for all powers of 2 up to $n$, which is extra accounting that our method does not require.
+
+\vspace{.5em}
+
+
+
+We now prove the injectivity property used by both the one-key and two-key
+specializations.
+
+% \begin{lemma}\label{lem:injective:coeffmap}
+%    Let $P_i$ be as defined in~\cref{eq:P-def}, and let $c_0, \dots, c_{3n-1}$ denote the coefficients of the monomials $y^k$, $zy^k$, $xy^k$ for $0\le k<n$ in $P_n$.
+%    Then the mapping $(a_1, \dots, a_n, b_1, \dots, b_n) \mapsto (c_0, \dots, c_{3n-1})$ is injective.
+% \end{lemma}
+\begin{lemma}[Injectivity of the recurrence]\label{lem:injective:coeffmap}
+The parameter-to-polynomial map in \Cref{def:injective:recurrence} is
+injective.  Consequently, the single-variable specialization
+\eqref{eq:injective-single-key} is injective as a polynomial in $x$.
 \end{lemma}
 \begin{proof}
-   We note the following facts about \cref{eq:P-def}:
+   We first note the following facts about \eqref{eq:injective-recurrence}:
    \begin{enumerate}
-      \item $P_n$ is on the form $f_1(y) + z f_2(y) + x f_3(y)$,
+      \item $P_n$ has the form $f_1(y) + z f_2(y) + u f_3(y)$,
          where $f_1$ has degree at most $n-1$ and $f_2$ and $f_3$ are degree $n$ polynomials in $y$.
       \item $f_1(y) = \sum_{i=1}^n a_i \prod_{j>i}(y+b_j)$.
       \item $f_2(y) = \prod_{j=1}^n (b_j + y)$,
       \item $f_3(y) = \sum_{i=1}^n \prod_{j\ge i} (b_j+y)$.
    \end{enumerate}
-   Here 2. follows if we let $x=z=0$ and expand
+   Here 2. follows if we let $u=z=0$ and expand
    \[P_n=a_n+(b_n+y)P_{n-1}=a_n+(b_n+y)(a_{n-1}+(b_{n-1}+y)P_{n-2}),\]
    etc.
    The other facts follow similarly.
 
-   To show that the mapping to coefficients is injective, we will show that given the coefficients of $P_n$, we can reconstruct the $a$s and $b$s.
+   To show injectivity, we reconstruct the $a$s and $b$s from the coefficients
+   of $P_n$.
    It is convenient to start by extracting the $b$s.
+   If $n=1$, then $f_2(y)=y+b_1$, so its constant coefficient gives $b_1$
+   immediately.  Suppose henceforth that $n\ge2$.
    For this, note that
    \begin{align}
       f_2(y) &= y^n + (\sum_{i=1}^n b_i) y^{n-1} + (\sum_{i<j} b_i b_j) y^{n-2} + O(y^{n-3})
       \quad\text{and}\\
-      f_3(y) &= y^{n} + (1+\sum_{i=1}^n b_i) y^{n-1} + (1 + \sum_{i=2}^n b_i + \sum_{i<j} b_i b_j) y^{n-2} + O(y^{n-3}),
+      f_3(y) &= y^{n} + (1+\sum_{i=1}^n b_i) y^{n-1} \\
+             &\quad + (1 + \sum_{i=2}^n b_i + \sum_{i<j} b_i b_j) y^{n-2} + O(y^{n-3}),
       \quad\text{so}\\
       f_3(y)-f_2(y) &= y^{n-1} + (1 + \sum_{i=2}^n b_i) y^{n-2} + O(y^{n-3}).
    \end{align}
+   (For $n=2$ the constant $1$ in the $y^{n-2}$ coefficient of $f_3$, and hence of $f_3-f_2$, is absent, since it comes from the $i=3$ term of $f_3$; the extraction below is unaffected.)
    We can thus extract $\sum_{i=1}^n b_i$ and $\sum_{i=2}^n b_i$, and from the difference we get $b_1$.
    Using polynomial synthetic division, we may then divide $f_2(y)$ by $(b_1+y)$ to obtain $f_2^{(2)}(y) := \prod_{j=2}^n (b_j + y)$.
    Similarly define $f_3^{(2)}(y) := f_3(y)-f_2(y)=\sum_{i=2}^n \prod_{j\ge i} (b_j+y)$.
@@ -76,47 +141,269 @@ Instead we will use a few more variables, such that
 
    To extract the $a$s it suffices to notice that $f_1(y) = a_1 y^{n-1} + O(y^{n-2})$ so we may read $a_1$ off the leading coefficient.
    In the process of extracting the $b$s we constructed for each $i$ the polynomial $\prod_{j>i}(y+b_j)$, so we can subtract $a_1\prod_{j>1}(y+b_j)$ and proceed by induction.
-\end{proof}
 
-\begin{corollary}[Universality via Schwartz--Zippel]\label{cor:injective:sz}
-   Assume $\F$ is finite.
-   Define the keyed hash family $h_{x,y,z}$ by $h_{x,y,z}(a,b)\coloneqq P_n(x,y,z)$ where $P_n$ is computed from \cref{eq:P-def}.
-   Then for any two distinct streams $(a,b)\ne(a',b')$ we have
-   \[
-      \Pr_{(x,y,z)\gets \F^3}\!\left[h_{x,y,z}(a,b)=h_{x,y,z}(a',b')\right] \le \frac{n+1}{|\F|}.
-   \]
-\end{corollary}
-\begin{proof}
-   By \cref{lem:injective:coeffmap}, distinct streams induce distinct polynomials, so $Q\coloneqq P_n-P'_n$ is a nonzero polynomial.
-   Each recurrence step increases total degree by at most $1$, so $\deg(Q)\le n+1$.
-   Applying the Schwartz--Zippel lemma to $Q$ over $\F^3$ gives the stated bound.
-\end{proof}
+   \vspace{.5em}
 
-\begin{remark}[Injective vs.\ $k$-wise viewpoint]\label{rem:injective:vskwise}
-   In the $k$-wise independent hashing setting, the polynomial coefficients are the (random) \emph{key} and the input $x$ is the \emph{data} being hashed.
-   In the injective setting the roles are reversed: the stream $(a_i,b_i)$ is the \emph{data}, while the evaluation point (here a random choice of $(x,y,z)\in\F^3$) is the \emph{key}.
-\end{remark}
+   The three-variable construction reduces to a \emph{single random key} $x$
+   by the specialization \eqref{eq:injective-single-key}.
+   The three summands $f_1(x^3)$, $x f_2(x^3)$, and $x^2 f_3(x^3)$ occupy
+   distinct exponent classes modulo~$3$, so the specialization preserves injectivity.
+   Its degree is $3n+2$.  The coefficients of $x^{3n+2}$, $x^{3n+1}$ and $x^{3n}$ are $1$, $1$ and $0$ for every message: the first two are the leading coefficients of $f_3$ and $f_2$, and no term of exponent $3n$ can arise, since $f_1(x^3)$ has degree at most $3n-3$ while the other two summands only produce exponents $\equiv1,2\pmod 3$.
+   Hence two distinct messages give polynomials whose difference has degree at most $3n-1$, and the collision probability is at most $(3n-1)/|\F|$.
 
-\begin{remark}[Single-key variant]\label{rem:injective:onekey}
-   The three-variable construction can be reduced to a \emph{single random key} $x$ by setting $y = x^2$ and $z = x$:
-   \begin{align}
-      P_0 &= x, \\
-      P_{i} &= a_{i} + (b_{i}+x^2)(P_{i-1}+x^2).
-   \end{align}
-   This gives a polynomial in the single variable $x$ of total degree $2n+1$.
-   By Schwartz--Zippel, the collision probability becomes $(2n+1)/|\F|$ instead of $(n+1)/|\F|$,
-   a factor-of-two increase that is acceptable in most applications.
-
-   Alternatively, using $y$ as an independent key while setting $z = x$ gives
+   Alternatively, retain $y$ as an independent key and set $z=x$ and $u=x^2$:
    \begin{align}
       P_0 &= x, \\
       P_{i} &= a_{i} + (b_{i}+y)(P_{i-1}+x^2),
    \end{align}
-   which has total degree $n+2$ in $(x,y)$ and collision probability $(n+2)/|\F|$---comparable
+   which has total degree $n+2$ in $(x,y)$; its terms $x^2y^n$ and $xy^n$ have coefficient $1$ for every message, so differences have total degree at most $n+1$ and the collision probability is at most $(n+1)/|\F|$, comparable
    to standard Horner evaluation.
-\end{remark}
+   With all three of $u$, $y$, $z$ drawn as independent uniform keys the bound
+   improves further: $f_2$ and $f_3$ are monic of degree $n$, so the
+   degree-$(n+1)$ part $zy^n+uy^n$ of $P_n$ is the same for every message, the
+   difference of two distinct messages has total degree at most $n$, and the
+   collision probability is at most $n/|\F|$ for messages of $n$ pairs, half of
+   Horner's $(2n-1)/|\F|$ on the same $2n$ words, with the same three resident
+   key words as the single-key form (which keeps $x$, $x^2$ and $x^3$).
+\end{proof}
 
-\begin{remark}[Odd-length streams]\label{rem:injective:odd}
-   For streams of odd length $2n+1$, we can handle the extra element $a'$ by initializing
-   $P_0 = a' + x$ instead of $P_0 = x$.
-\end{remark}
+\subsection{Experiments}
+\label{sec:injective:experiments}
+
+The recurrence is benchmarked against Horner's rule in
+\Cref{sec:experiments:injective}: with the same field arithmetic
+($\mathbb F_{2^{64}}$, carryless multiplication) and the same message lengths,
+hashing $2N$ words costs $N$ multiplications instead of $2N-1$, and the measured
+speedup grows from $1.4\times$ at $2N=8$ to $1.8$--$2.1\times$ at $2N\ge16$ on ARM,
+and from $1.1\times$ to $1.9$--$2.3\times$ on x86 (\Cref{tab:injective}).
+\Cref{sec:experiments:universal} compares it further with the parallel and
+tree-structured universal hashes (Horner-unrolled, BRW, CLNH).
+
+As an implementation data point we also ported the recurrence to
+SMHasher3~\cite{smhasher3}, a hash-testing framework, on an Apple M2 Pro
+(ARM64), with $L=9$ independent lanes each consuming 16 bytes per step, a
+ternary-tree reduction of the lane states and a finalizer that mixes in the
+message length.  Over the Mersenne prime field $p=2^{61}-1$ (128-bit product
+and two rounds of shift-and-add reduction) it reaches $1.59$~bytes/cycle of
+bulk throughput on a 256\,KiB message and $133$~cycles per hash on short
+(1--31 byte) keys.  Replacing the field multiplication by the ``MUM'' fold
+$\mathrm{lo}_{64}(ab)\oplus\mathrm{hi}_{64}(ab)$ of the $128$-bit product makes
+the bulk throughput $9\times$ higher ($14.4$~bytes/cycle), but that variant is
+not a field operation: the fold is many-to-one, so the injectivity argument of
+this section and the Schwartz--Zippel collision bound do not apply to it, and
+message sets with elevated collision rates exist.  We report the number only to
+locate the cost of exact field arithmetic; the guarantees of this section are
+for the field version.
+
+\paragraph{Polynomial-level comparison.}
+\Cref{tab:injective:universal} times the recurrence against the other
+$O(1)$-key polynomial methods, and against CLNH as the throughput ceiling of
+an $O(N)$-key inner product, on messages of $2N$ words over $\F_{2^{64}}$ with
+carryless multiplication, on an Apple M2 Pro and an Intel Xeon Platinum 8375C.
+All methods share the same field arithmetic and the same benchmark harness
+(\texttt{tools/bench/carryless\_arm.cpp}, \texttt{tools/bench/carryless.cpp}).
+Sequentially, the recurrence halves the running time of Horner's rule on both
+machines once $2N\ge16$, as its multiplication count predicts.  Fanning out
+matters more than the count: the prefix-scan parallelization spends $3N$
+multiplications and loses to the tree form of Horner on the Xeon, whereas
+dealing the pairs to $L=8$ interleaved lanes keeps the count at $N+L$
+(\Cref{sec:experiments:universal}).  With lanes the recurrence is the fastest
+$O(1)$-key method on the M2 Pro from $2N=32$ on, by $1.2$--$1.5\times$ over the
+next best and within $2\times$ of the $O(N)$-key CLNH ($1.6\times$ at $2N=256$), and on the Xeon from
+$2N=128$ on, by $1.2\times$ at $2N=256$; at $32$--$64$ words on the Xeon the
+tree form of Horner is $5$--$9\%$ faster, the count advantage being absorbed by
+the per-multiplication cost of moving operands between integer and vector
+registers in this implementation style (a vector-resident implementation of
+the lanes reaches $23.8$\,GB/s on the M2 Pro, \Cref{tab:injective:adversarial}).
+BRW is slower than the unrolled, scanned and laned forms on either machine; it
+beats only sequential Horner from $2N=32$, the sequential recurrence from
+$2N=64$, and, on the M2 Pro, the tree form of Horner up to $2N=128$.
+
+\begin{table}[!htbp]
+\centering
+\caption{Universal hashing of $2N$ words over $\F_{2^{64}}$, in \textmu s per
+$10^5$ hashes (mean over the fastest 100 of 200 repetitions; standard deviations
+are below $5\%$ except where marked~$^{\dagger}$).  Horner: sequential, unrolled
+over interleaved chains, and the tree evaluation with cached powers
+(``parallel'' in \Cref{sec:experiments:universal}).  This paper: the
+sequential recurrence ($N$ multiplications), the prefix-scan parallelization
+($3N$), and $L=\min(N,8)$ lanes ($N+L$).  CLNH uses $O(N)$ key words; all other
+methods use $O(1)$.  Best $O(1)$-key method per row in bold.}
+\label{tab:injective:universal}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{c|rrr|rrr|r|r}
+ & \multicolumn{3}{c|}{Horner} & \multicolumn{3}{c|}{This paper} & BRW & CLNH \\
+ $2N$ & Seq & Unrolled & Tree & Seq & Scan & Lanes & & \\
+\hline
+\multicolumn{9}{l}{\emph{Apple M2 Pro (ARM, PMULL)}} \\
+  8 & 552 & 464 & 2481 & \textbf{393} & 828 & 604 & 1237 & 184 \\
+ 16 & 2109 & 1045 & 3463 & \textbf{991} & 1544 & 1400 & 2332 & 346 \\
+ 32 & 7646 & 2727 & 6607 & 4099 & 2735 & \textbf{2107} & 4481 & 1066 \\
+ 64 & 22976 & 6684 & 12818 & 11672 & 5162 & \textbf{4153} & 8833 & 2115 \\
+128 & 64638 & 13710 & 22976 & 27706 & 10288 & \textbf{7850} & 17548 & 4657 \\
+256 & 146944 & 34503 & 21157 & 71018 & 22144 & \textbf{14336} & 34879 & 8863 \\
+\hline
+\multicolumn{9}{l}{\emph{Intel Xeon Platinum 8375C (x86, PCLMULQDQ)}} \\
+  8 & 1338 & 1134 & \textbf{1107} & 1192 & 1878 & 1836 & 4302 & 573 \\
+ 16 & 4560 & \textbf{1999} & 2053 & 2445 & 3168 & 3020 & 6131 & 1153 \\
+ 32 & 14065 & 7246 & \textbf{4067} & 6002 & 5796 & 4266 & 10350 & 2307 \\
+ 64 & 36279 & 9140 & \textbf{7443} & 17588 & 10835 & 8135 & 15877 & 4619 \\
+128 & 80611 & 20546 & 13725 & 40697 & 20081 & \textbf{13325} & 27669 & 9244 \\
+256 & 169985 & 43804 & 26990 & 86905 & 38612 & \textbf{23163} & 47747 & 18492 \\
+\end{tabular}
+}
+\end{table}
+
+\paragraph{Comparison with general-purpose hashes.}
+We adopt the standard model for keyed hashing: the secret key material is drawn
+uniformly at random and hidden from the attacker, who chooses the input
+messages.  The quantity of interest is the worst case, over attacker-chosen
+inputs, of the collision probability taken over the random secret.  A universal
+hash bounds this by a small $\varepsilon$ for \emph{every} input pair; a
+heuristic hash need not.  To compare hashes across message lengths we report
+\[
+   \mathrm{bits} \;=\; \min_{L}\;\log_2\frac{L}{\varepsilon(L)},
+\]
+where $L$ is the message length in $64$-bit words and $\varepsilon(L)$ is the
+collision probability at that length, floored at $2^{-w}$ for a $w$-bit output.
+Dividing by $L$ cancels the Schwartz--Zippel factor, so a degree-$L$ polynomial
+hash over a field of size $q$ scores $\log_2 q$ regardless of length, and
+taking the minimum keeps the score of a hash with a length-independent flaw
+honest.  For the proven hashes $\varepsilon$ is the published bound; for the
+heuristic hashes it is the largest collision rate we could \emph{find} by
+differential search, measured over $2^{31}$ or more random secrets, so those
+entries (marked~$^*$) are upper bounds on the true score: worse inputs may
+exist.  We further restrict the main comparison to hashes whose per-key state
+is at most eight $64$-bit words, one cache line, following Bernstein's
+observation that a server handling thousands of keys cannot keep large per-key
+tables hot~\cite{Bernstein:2011:RW}; the budget also makes the throughput
+comparison fair, since key size is otherwise a free parameter whose limit is a
+key as long as the message.  Shared public constants and per-call derivations
+do not count.  Hashes with larger keys are listed below the line.
+
+\Cref{tab:injective:adversarial} gives the result.  Within the budget, the
+proven methods score $57$--$64$ bits and the heuristic methods far less:
+\texttt{wyhash}, \texttt{rapidhash} and \texttt{XXH3} lose to the all-ones
+difference on the two words feeding their first multiply-fold, which collides
+with probability about $2^{-27}$ under a random secret, some $2^{37}$ times the
+ideal; the $128$-bit \texttt{XXH3-128} fares no better, because one of its
+two accumulators sees only a raw word sum that the attacker can hold fixed; \texttt{MUM} has \emph{key-free} collisions, a fixed pair of $8$-byte
+messages that collides for every seed; \texttt{komihash} resisted every
+differential we tried at $2^{32}$ seeds per surface, which bounds its score
+below only by our search effort.  The attacks and their measurements are in
+\Cref{app:adversarial}, which also records that the low $64$ bits of an $89$-bit
+Mersenne residue are \emph{not} a safe output: a pair differing by $2^{64}-1$
+in the last word collides with probability $2^{-25}$, so the Mersenne rows
+output the full residue.
+
+\begin{table}[!htbp]
+\centering
+\caption{Provable security versus throughput on an Apple M2 Pro.
+\emph{Key} is the resident per-key state in $64$-bit words.  \emph{Bits} is
+$\min_L\log_2(L/\varepsilon(L))$ as defined in the text; entries marked $^*$
+are measured on the worst inputs we found and may be lower.  Throughput is
+single-threaded, for $16$\,KB and $512$-byte messages.  Rows above the line
+keep at most eight words of key.  The two ``this paper'' rows over
+$\F_{2^{64}}$ are the three-key recurrence with its state kept in vector
+registers (\texttt{tools/bench/adversarial/}); the framework implementation of
+\Cref{tab:injective:universal}, which moves the state through general
+registers, runs the same one-chain recurrence at $2.2$\,GB/s.  The other
+polynomial rows use the framework implementations.}
+\label{tab:injective:adversarial}
+\begin{tabular}{lrrrr}
+\hline
+hash & key & bits & GB/s (16\,KB) & GB/s (512\,B) \\
+\hline
+\multicolumn{5}{l}{\emph{proven, key $\le 8$ words}} \\
+This paper, one chain, $\F_{2^{64}}$        & 3 & 64 &  4.1 & 10.1 \\
+This paper, 8 lanes, $\F_{2^{64}}$          & 4 & 61 & 23.8 & 17.9 \\
+This paper, $\F_{2^{89}-1}$ (89-bit output) & 5 & 88 &  4.4 &  3.9 \\
+Horner, $\F_{2^{64}}$                       & 1 & 64 &  1.3 &  2.3 \\
+Horner, unrolled                            & 1 & 64 &  5.1 &  7.4 \\
+BRW~\cite{Bernstein:2011:RW}                & 1 & 63 &  6.0 &  5.3 \\
+Polymur~\cite{polymur}                      & 4 & 57 & 19.7 & 16.2 \\
+\multicolumn{5}{l}{\emph{heuristic, key $\le 8$ words}} \\
+\texttt{wyhash} v4.3                        & 5 & 28.6$^*$ & 26.5 & 34.8 \\
+\texttt{rapidhash} v1                       & 4 & 28.4$^*$ & 27.1 & 32.1 \\
+\texttt{XXH3}                               & 1 & 27.3$^*$ & 38.2 & 27.2 \\
+\texttt{XXH3-128} (128-bit output)          & 1 & 28.5$^*$ & 33.8 & 24.0 \\
+\texttt{MUM} v3                             & 1 &  0$^*$   & 33.0 & 26.8 \\
+\texttt{komihash} v5.34                     & 1 & $\ge32^*$ & 24.8 & 24.3 \\
+\hline
+\multicolumn{5}{l}{\emph{proven, key $> 8$ words}} \\
+ChainHash, 1\,KB blocks                     & 138 & 62 & 55.2 & 25.2 \\
+ChainHash, 256\,B blocks                    &  42 & 62 & 51.2 & 27.0 \\
+ChainHash, 64\,B blocks                     &  18 & 62 & 14.5 & 19.4 \\
+UMASH-64~\cite{umash}                       &  38 & 55 & 40.7 & 32.9 \\
+UMASH-128 (128-bit output)                  &  38 & 83 & 23.9 & 19.7 \\
+CLNH (fixed length)~\cite{lemire2015clhash} & $L$ & 64 & 27.3 & 26.3 \\
+Multiply-shift (fixed length)               & $L{+}1$ & 64 & --- & 16.5 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{A large-key hash built from the recurrence.}
+The rows labelled ChainHash compose the recurrence with the reduction-free
+inner level of the NH-based hybrids, in the same way that UMAC, VMAC and CLHASH
+compose a polynomial with NH~\cite{black1999umac,lemire2015clhash}.  The name
+reflects the structure: each step of the recurrence is an NH-style product into
+which the running value is mixed, and that mixing is what lets one key be reused
+across the whole message instead of one key word per message word.  The message
+is split into blocks of $B$ bytes and each block into $S$ sub-blocks ($S=1$ for
+$B\le256$, $S=2$ for $1$\,KB blocks); each sub-block is hashed by carryless NH
+(one \texttt{PMULL} per $16$ bytes into four $128$-bit accumulators) and its
+unreduced sum is consumed as one pair $(a_i,b_i)$ of the three-key recurrence
+$P_0=z$, $P_i=a_i+(b_i+y)(P_{i-1}+u)$, one field multiplication per
+sub-block; the byte length is XORed into the last $a_i$; and the result is
+passed through a random monic polynomial of degree~$7$ evaluated with four
+multiplications, $\lfloor7/2\rfloor+1$ as in \Cref{thm:main}, by a
+characteristic-$2$ circuit whose coefficient map is a bijection of $\F^7$
+(\Cref{sec:ph} gives the explicit decoder), so its seven parameters are drawn
+uniformly at random and the output is $7$-wise independent.  Degree $7$ is the
+least that suffices: over $\F_{2^{64}}$ the $\F_2$-degree of $v\mapsto v^e$ is
+the number of ones in the binary expansion of $e$, so degree-$3$ and
+degree-$5$ finalizers are quadratic over $\F_2$ and fail $23$ and $21$ of
+the $188$ standard SMHasher3 tests~\cite{smhasher3} (Zeroes, Sparse,
+Permutation, TwoBytes, Bitflip, SeedZeroes), whereas degree $7$ is the first
+cubic option and passes; $S=2$
+gives a one-block message a second message-dependent multiplication for the
+same reason.  The collision probability is at most $(p+2)/2^{64}$ for two
+messages of at most $n$ blocks, $p=Sn$ sub-blocks: $2^{-64}$ for the block
+level (the full-width XOR-universality of carryless NH, extended to last
+blocks of different pair counts by the length term), $p/2^{64}$ for the
+recurrence (the three-key bound above, with $p$ counting sub-blocks rather
+than word pairs) and $2^{-64}$ for the finalizer (\Cref{sec:ph}).  No
+heuristic mixing step is used anywhere, and both variants pass all $200$
+tests of the full SMHasher3 suite, including a new seeded-differential test
+(full-output collisions of structured pairs, complemented leading or adjacent
+interior words, over $2^{24}$ random seeds, $2^{30}$ in an extended tier) that
+\texttt{MUM} fails outright and \texttt{wyhash}, \texttt{rapidhash},
+\texttt{XXH3} and \texttt{XXH3-128} fail in the extended tier, while \texttt{komihash},
+Polymur, SipHash and the polynomial hashes pass (\Cref{app:adversarial}).
+With $1$\,KB blocks and a $138$-word key it runs at $55$\,GB/s on the M2 Pro,
+above every heuristic hash in the table and above UMASH, with a proof, and the
+rate is flat up to $64$\,MB messages; the block size is exactly the key-budget
+knob, and at $64$-byte blocks, close to the one-cache-line budget, the hybrid
+is slower than the fanned-out recurrence alone on long messages ($14.5$
+against $23.8$\,GB/s at $16$\,KB).  The implementation and a
+bit-serial reference are in \texttt{tools/bench/chainhash/} of the repository.
+
+\paragraph{Key expansion.}
+One may ask whether the $O(B)$ key of the block level can be derived from a few
+seed words, say by a $k$-wise independent polynomial.  The collision condition
+of NH is affine in the key words, because the products of two key words cancel
+in the difference of two block sums, so with polynomially expanded keys it is a
+linear map from the seed words to the difference.  For a \emph{reduced} NH,
+whose block sums are taken in $\F_{2^{64}}$, this is fatal: a difference
+supported on $k+1$ positions chosen in the kernel of the $k\times(k+1)$
+Vandermonde system is independent of the key, and for $k=6$ we verified that
+such a pair of $38$-word blocks has the same difference under $200$ random
+seeds, a key-free collision.  For the \emph{unreduced} carryless NH used here
+the products are taken in $\F_2[X]$ while the expansion lives in
+$\F_{2^{64}}$, and the same crafted difference only lowers the $\F_2$-rank of
+the seed-to-difference map from $127$ to $63$, leaving a collision probability
+of about $2^{-63}$.  We found no better attack, but also no proof; the
+security of unreduced NH under $k$-wise independent keys is an open problem
+(\Cref{sec:open-problems}).  UMAC's answer is to expand the key with AES,
+trading the information-theoretic bound for a computational one.
+

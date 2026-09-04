@@ -1,0 +1,433 @@
+\subsection{Finite bases and cost repairs}
+\label{sec:special-cases}
+
+These are not extra algebraic existence bases.  Degree~$15$ is the optimized,
+fused $k=1$ endpoint of the $8k+7$ branch: it creates the quartic missing
+from the one-product degree-$3$ pair without exceeding seven products.
+Degrees~$27$ and~$31$ are the two bridges around the unavailable
+three-product degree-$7$ joint realization.  Their common top-down decoder is
+displayed after the circuits.
+
+\subsubsection{Degree $3$}
+\begin{lemma}[A one-product compatible realization for $3$]
+    \label{lem:base-three-compatible}
+    There exists a splittable pair for $3$ that is compatible on $\rng 3$,
+    has a one-realization, and records its monic quadratic $H_2$.
+\end{lemma}
+\begin{proof}
+    Define $H_2[\alpha_1,\alpha_2](x)=(x+\alpha_2)x+\alpha_1$ and set
+    \[
+      T^{(1)}_3[\alpha_0,\alpha_1,\alpha_2](x)\coloneqq H_2,\qquad
+      T^{(2)}_3[\alpha_0,\alpha_1,\alpha_2](x)\coloneqq H_2+\alpha_0.
+    \]
+    Then $T^{(1)}_3$ and $T^{(2)}_3$ are monic of degree $2$ and
+    \[
+      P_3=xT^{(1)}_3+T^{(2)}_3
+        =x^3+(\alpha_2+1)x^2+(\alpha_1+\alpha_2)x+(\alpha_0+\alpha_1).
+    \]
+    Hence $\alpha_2=[x^2]P_3-1$, $\alpha_1=[x^1]P_3-\alpha_2$, and
+    $\alpha_0=[x^0]P_3-\alpha_1$, so $P_3$ is decodable.  We also verify
+    the causal window needed by the induction.  For
+    $\Phi_3=xT^{(1)}_3+T^{(2)}_3=P_3$, the relevant coefficients are
+
+    \[
+      \begin{array}{lll}
+        [x^2]T^{(1)}_3=[x^2]T^{(2)}_3=1,&
+        [x^1]T^{(1)}_3=[x^1]T^{(2)}_3=\Phi_{3,2}-1,\\[2pt]
+        [x^0]T^{(1)}_3=\Phi_{3,1}-\Phi_{3,2}+1,&
+        [x^0]T^{(2)}_3=\Phi_{3,0},
+      \end{array}
+    \]
+    where $\Phi_{3,j}=[x^j]\Phi_3$.  The first-component formulas use
+    only rows $\ge j+1$, and the second-component formulas only rows
+    $\ge j$, exactly as required in \Cref{def:compatible-pair}.  Thus
+    $(T^{(1)}_3,T^{(2)}_3)$ is compatible on $\rng 3$, and in particular it
+    is splittable.  The single displayed product computes $H_2$; both
+    components are then obtained by additions, so this is a one-realization
+    and $H_2$ is a recorded byproduct.
+\end{proof}
+
+\subsubsection{Degree $7$: direct septic base}
+The canonical construction in \Cref{rem:canonical-split} makes the septic
+algebraically splittable.  What the optimal recursion would need, but we do
+not have, is a compatible joint realization of its two components using
+three multiplications and recording the required power byproducts.  A direct
+four-multiplication evaluation scheme is enough for the final polynomial,
+and the recursion below is arranged never to call degree~$7$.
+
+\begin{lemma}[A decodable septic in characteristic different from $2$]
+\label{lem:septic-base}
+Assume $\operatorname{char}(\mathbb F)\ne2$.  Define
+\begin{align}
+  y&=x(x+\alpha_6),\\
+  z&=(\alpha_5+x+y)(\alpha_4+x),\\
+  w&=(\alpha_3+z)x,\\
+  v&=(\alpha_2+x+z)(\alpha_1+w),\\
+  P_7&=\alpha_0+y+w+v.
+\end{align}
+Then $P_7$ is monic of degree~$7$, uses four multiplications, and is
+decodable.
+\end{lemma}
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.95\textwidth}{!}{\input{figures/fig_septic_circuit}}
+  \caption{The four-multiplication circuit for the septic base $P_7$ of \Cref{lem:septic-base}.
+  Every multiplication gate takes two affine combinations of $x$ and previously computed values; the seven parameters $\alpha_0,\ldots,\alpha_6$ enter only as constant terms of these affine forms.}
+  \label{fig:septic-circuit}
+\end{figure}
+
+\begin{proof}
+\Cref{fig:septic-circuit} draws the circuit.
+Write
+\[
+  P_7=x^7+c_6x^6+c_5x^5+c_4x^4+c_3x^3+c_2x^2+c_1x+c_0
+\]
+and write $z=x^3+z_2x^2+z_1x+z_0$.  The following triangular procedure
+recovers the parameters from $(c_0,\ldots,c_6)$:
+\begin{align}
+ z_2&=c_6/2,\\
+ z_1&=(c_5-z_2^2-1)/2,\\
+ R&=c_4-1-2z_2z_1-z_2,\\
+ \alpha_1&=c_3-z_2-z_2R-z_1^2-z_1,\\
+ W&=c_2-z_1-1-z_2\alpha_1-z_1R,\\
+ \alpha_6&=c_1-(z_1+1)\alpha_1-W(R+1-W),\\
+ \alpha_4&=z_2-1-\alpha_6,\\
+ \alpha_5&=z_1-\alpha_4(1+\alpha_6),\\
+ z_0&=\alpha_4\alpha_5,\\
+ \alpha_3&=W-z_0,\\
+ \alpha_2&=R-2z_0-\alpha_3,\\
+ \alpha_0&=c_0-(z_0+\alpha_2)\alpha_1.
+\end{align}
+Indeed, direct expansion gives
+\[
+ z_2=\alpha_4+1+\alpha_6,\qquad
+ z_1=\alpha_4(1+\alpha_6)+\alpha_5,\qquad
+ z_0=\alpha_4\alpha_5,
+\]
+while the coefficient equations for $P_7$ give, successively,
+$R=2z_0+\alpha_2+\alpha_3$ and $W=z_0+\alpha_3$ and then the displayed
+formulas for $\alpha_1$ and $\alpha_6$.
+Substitution recovers every parameter.  The only division is by~$2$, which
+is valid under the characteristic assumption.
+\end{proof}
+
+
+\subsubsection{Degree $15$}
+\begin{algorithm}[H]
+    \caption{
+        Seven-product compatible joint realization in degree $15$.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_6, \alpha_7](x) = (x + \alpha_7)x + \alpha_6$
+        \State $H_4[\alpha_4, \alpha_5, \alpha_6, \alpha_7](x) = (H_2 + (x + \alpha_5))(H_2 - (x + \alpha_5)) + \alpha_4$
+        \\
+        \State $S^{(1)}_1 = Q_7[\alpha_8, \ldots, \alpha_{14}](x, H_2, H_4)$
+        \State $S^{(1)}_2 = H_2 + \alpha_{3}$
+        \State $S^{(1)}_3 = \alpha_1$
+        \State $T^{(1)}_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = H_4$
+        \State $S^{(2)}_2 = H_2 + \alpha_2$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3 + T^{(1)}_{15}
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3 + T^{(1)}_{15}$
+
+        \State \begin{align}
+            P_{15}[\alpha_0, \ldots, \alpha_{14}](x)
+            &= x T^{(1)}_{15} + T^{(2)}_{15}
+            \\&= (x+1)T^{(1)}_{15} + H_4^2 - (H_2 + \alpha_2)^2 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Degree $27$}
+\begin{algorithm}[H]
+    \caption{
+        Thirteen-product compatible joint realization in degree $27$.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_2, \alpha_3](x) = (x + \alpha_3)x + \alpha_2$
+        \\
+        \State $S^{(1)}_1 = Q_{13}[\alpha_{14}, \ldots, \alpha_{26}](x, H_2)$ \Comment{This call records the quartic $H_4$.}
+        \State $S^{(1)}_2 = Q_3[\alpha_4, \ldots, \alpha_6](x, H_2)$
+        \State $S^{(1)}_3 = \alpha_1$
+        \State $T^{(1)}_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = Q_7[\alpha_7, \ldots, \alpha_{13}](x, H_2, H_4)$
+        \State $S^{(2)}_2 = H_2$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3 + T^{(1)}_{27}
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3 + T^{(1)}_{27}$
+
+        \State \begin{align}
+            P_{27}[\alpha_0, \ldots, \alpha_{26}](x)
+            &= x T^{(1)}_{27} + T^{(2)}_{27}
+            \\&= (x+1)T^{(1)}_{27} + (S^{(2)}_1)^2 - H_2^2 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Degree $31$}
+\begin{algorithm}[H]
+    \caption{
+        Fifteen-product compatible joint realization in degree $31$.
+    }
+
+    \begin{algorithmic}
+        \State $H_2[\alpha_6, \alpha_7](x) = (x + \alpha_7)x + \alpha_6$
+        \State $H_4[\alpha_4, \alpha_5, \alpha_6, \alpha_7](x) = (H_2 + (x + \alpha_5))(H_2 - (x + \alpha_5)) + \alpha_4$
+        \\
+        \State $S^{(1)}_1 = \bar Q_{15}[\alpha_{16}, \ldots, \alpha_{30}](x, H_2, H_4)$
+        \State $S^{(1)}_2 = Q_7[\alpha_8, \ldots, \alpha_{14}](x, H_2, H_4)$
+        \State $S^{(1)}_3 = Q_3[\alpha_1, \alpha_2, \alpha_3](x, H_2)$
+        \State $T^{(1)}_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            = (S^{(1)}_1 + S^{(1)}_2)(S^{(1)}_1 - S^{(1)}_2) + S^{(1)}_3
+            = (S^{(1)}_1)^2 - (S^{(1)}_2)^2 + S^{(1)}_3$
+        \\
+        \State $S^{(2)}_1 = S^{(1)}_1 + \alpha_{15}$
+        \State $S^{(2)}_2 = H_4$
+        \State $S^{(2)}_3 = \alpha_0$
+        \State $T^{(2)}_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            = (S^{(2)}_1 + S^{(2)}_2)(S^{(2)}_1 - S^{(2)}_2) + S^{(2)}_3
+            = (S^{(2)}_1)^2 - (S^{(2)}_2)^2 + S^{(2)}_3$
+
+        \State \begin{align}
+            P_{31}[\alpha_0, \ldots, \alpha_{30}](x)
+            &= x T^{(1)}_{31} + T^{(2)}_{31}
+            \\&= x(S^{(1)}_1)^2 + (S^{(1)}_1 + \alpha_{15})^2 - x(S^{(1)}_2)^2 - H_4^2 + x S^{(1)}_3 + \alpha_0
+        \end{align}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_special_case_decoders}}
+  \caption{The three finite decoders in one visual template.  A coloured
+  block denotes a monic polynomial recovered from the indicated square
+  window; each red seam is a fixed boundary coefficient contributed by the
+  next block.  Recovering a polynomial and decoding its internal parameters
+  are deliberately separated: the lower annotations show when the required
+  powers have finally become available and the corresponding conditional
+  decoder may be discharged.}
+  \label{fig:special-case-decoders}
+\end{figure}
+
+\begin{lemma}[Finite cost bases]\label{lem:special-cases-splittable}
+    For each $n\in\{15,27,31\}$, over an $n$-admissible field the
+    special-case construction for $n$ produces a splittable pair.
+    Moreover, the direct descending decoders below give the required
+    compatibility windows for these three finite constructions; no general
+    composition result is needed.  The two components have a joint
+    $(n-1)/2$-realization that records their monic quadratic and quartic
+    byproducts.
+    In particular, $P_{15}$, $P_{27}$, and $P_{31}$ are decodable.
+\end{lemma}
+\begin{proof}
+    We give the finite decoders explicitly.  Write
+    $\Phi_n=xT^{(1)}_n+T^{(2)}_n=P_n$ and $G_n=\rng n$.
+    For any polynomial $W$ write $W_j=\coeff{W}{j}$, so
+    $p_j=\coeff{\Phi_n}{j}$.  Every square root below is the descending
+    monic-square recursion (so it uses only divisions by $2$), and all
+    quantities described as \text{known} are coefficients of the displayed
+    auxiliary powers or quantities recovered in an earlier row block.
+    To make explicit why only the top half of a square is needed, if
+    $W=x^e+\sum_{r<e}w_rx^r$, then
+    \[
+      \coeff{W^2}{2e-s}
+        =2w_{e-s}+\sum_{r=1}^{s-1}w_{e-r}w_{e-(s-r)}
+        \qquad(1\le s\le e).
+    \]
+    Thus the coefficients in degrees $2e,\ldots,e$ recover the monic
+    polynomial $W$ successively.
+
+    \paragraph{The degree-$15$ construction.}
+    Put
+    \[
+      A=S^{(1)}_1,\quad H_2=x^2+bx+c,\quad
+      U=H_2+\alpha _3=x^2+bx+d_3,\quad
+      V=H_2+\alpha _2=x^2+bx+d_2,
+    \]
+    and write $H_4=x^4+h_3x^3+h_2x^2+h_1x+h_0$.  The identity
+    \[
+      P_{15}=(x+1)A^2+H_4^2-(x+1)U^2-V^2+(x+1)\alpha _1+\alpha _0
+    \]
+    is a relative square shell with $M=x+1$, $\deg A=7$, and error
+    \[
+      E_A=H_4^2-(x+1)U^2-V^2+(x+1)\alpha_1+\alpha_0.
+    \]
+    Here $\deg E_A\le8$ and $[x^8]E_A=1$.  Hence
+    \Cref{lem:relative-square-shell} recovers $A$ from the top block, with
+    the displayed $+1$ seam correction.  Set
+    $R=\Phi_{15}-(x+1)A^2$.  Its next four
+    coefficients give
+    \[
+      h_3=R_7/2,\qquad b=h_3/2,\qquad
+      h_2=(R_6-h_3^2)/2,
+    \]
+    \[
+      h_1=(R_5+1-2h_3h_2)/2,\qquad
+      h_0=(R_4+2b+2-h_2^2-2h_3h_1)/2.
+    \]
+    The defining relation $H_4=H_2^2-(x+\alpha _5)^2+\alpha _4$
+    then yields
+    \[
+      c=(h_2-b^2+1)/2,\quad
+      \alpha _5=bc-h_1/2,\quad \alpha _4=h_0-c^2+\alpha _5^2.
+    \]
+    Finally put $R'=R-H_4^2$.  The four bottom equations are
+    \[
+      \begin{aligned}
+      d_3&=-(R'_3+b^2+4b)/2,\\
+      d_2&=-(R'_2+2b^2+2d_3+2bd_3)/2,\\
+      \alpha _1&=R'_1+2bd_3+d_3^2+2bd_2,\\
+      \alpha _0&=R'_0+d_3^2+d_2^2-\alpha _1.
+      \end{aligned}
+    \]
+    Hence $\alpha _3=d_3-c$ and $\alpha _2=d_2-c$.  Once $H_2,H_4$
+    are known, the unitriangular decoder for $Q_7$ (\Cref{lem:Q-unitriangular})
+    recovers the parameters inside $A$; the side information is discharged
+    by \Cref{lem:discharge-side-information} because $A,H_2,H_4$ have all
+    been recovered from $P_{15}$.
+
+    \paragraph{The degree-$27$ construction.}
+    Write
+    \[
+      A=S^{(1)}_1,\quad C=S^{(2)}_1,\quad B=S^{(1)}_2,
+      \quad H_2=x^2+ux+v,
+    \]
+    where $\deg A=13$, $\deg C=7$, and $\deg B=3$, and put
+    $s=\alpha _1$ and $r=\alpha _0$.  The identity
+    \[
+      P_{27}=(x+1)A^2-(x+1)B^2+(x+1)s+C^2-H_2^2+r
+    \]
+    gives three consecutive relative square shells.  First set
+    \[
+      E_A=-(x+1)B^2+(x+1)s+C^2-H_2^2+r.
+    \]
+    Since $\deg E_A\le14$ and $[x^{14}]E_A=1$,
+    \Cref{lem:relative-square-shell} with $M=x+1$ recovers $A$.  Set
+    $R=\Phi_{27}-(x+1)A^2$.  Then
+    \[
+      R=C^2+E_C,\qquad
+      E_C=-(x+1)B^2+(x+1)s-H_2^2+r,
+    \]
+    where $\deg E_C\le7$ and $[x^7]E_C=-1$.  The same lemma, now with
+    $M=1$, recovers $C$.  Set $R'=R-C^2=E_C$.  After changing sign,
+    \[
+      -R'=(x+1)B^2+E_B,\qquad
+      E_B=-(x+1)s+H_2^2-r,
+    \]
+    with $\deg E_B\le4$ and $[x^4]E_B=1$.  A third application with
+    $M=x+1$ recovers $B$.  These are exactly the seams $+1,-1,+1$ in
+    \Cref{fig:special-case-decoders}.  Finally, with
+    $L=R'+(x+1)B^2=(x+1)s-H_2^2+r$, we have
+    \[
+      u=-L_3/2,\qquad v=-(L_2+u^2)/2,\qquad
+      s=L_1+2uv,\qquad r=L_0+v^2-s.
+    \]
+    Decode $A=Q_{13}$ first using the recovered $H_2$; by
+    \Cref{lem:Q4k+1-from-H2} this also reconstructs the quartic $H_4$ used
+    by $C$.  Then decode $C=Q_7$ from $(H_2,H_4)$ and $B=Q_3$ from $H_2$.
+    These three decoders recover their respective parameter blocks without
+    assuming an internal power before it has been reconstructed; this is
+    exactly the substitution in \Cref{lem:discharge-side-information}.
+
+    \paragraph{The degree-$31$ construction.}
+    Put
+    \[
+      A=S^{(1)}_1,\quad B=S^{(1)}_2,\quad C=S^{(1)}_3,
+      \quad H=H_4,
+    \]
+    with degrees $15,7,3,4$, respectively, and set
+    $s=\alpha _{15}$ and $r=\alpha _0$.  Since
+    \[
+      P_{31}=xA^2+(A+s)^2+E,
+      \qquad E=-xB^2-H^2+xC+r,
+    \]
+    we have $\deg E\le15=\deg A$ and $[x^{15}]E=-1$.  Therefore
+    \Cref{lem:square-gadget-boundary} recovers $A$ and $s$ directly, with
+    the displayed fixed boundary correction.  Set
+    \[
+      R'=\Phi_{31}-xA^2-(A+s)^2.
+    \]
+    The remaining two monic blocks are again relative square shells:
+    \[
+      -R'=xB^2+E_B,\qquad E_B=H^2-xC-r.
+    \]
+    Here $\deg E_B\le8$ and $[x^8]E_B=1$, so
+    \Cref{lem:relative-square-shell} with $M=x$ recovers $B$.  Put
+    $R''=R'+xB^2$.  Then
+    \[
+      -R''=H^2+E_H,\qquad E_H=-xC-r,
+    \]
+    with $\deg E_H\le4$ and $[x^4]E_H=-1$.  The same lemma with $M=1$
+    recovers $H$.  The remaining polynomial
+    $R'''=R''+H^2=xC+r$ gives
+    $r=R'''_0$ and $C=(R'''-r)/x$.  If
+    $H=x^4+h_3x^3+h_2x^2+h_1x+h_0$, its parameter block is
+    \[
+      \alpha _7=h_3/2,\quad
+      \alpha _6=(h_2-\alpha _7^2+1)/2,\quad
+      \alpha _5=\alpha _7\alpha _6-h_1/2,\quad
+      \alpha _4=h_0-\alpha _6^2+\alpha _5^2.
+    \]
+    The previously proved decoders for $Q_3,Q_7,\bar Q_{15}$ (the latter
+    given $(H_2,H_4)$) recover all remaining parameters.  Formally,
+    \Cref{lem:discharge-side-information} substitutes the recovered
+    $H_2,H_4$ into these conditional decoders.
+
+    It remains to record causality.  The preceding formulas have the following
+    row shifts; $t$ denotes a coefficient degree inside the recovered
+    polynomial.
+    \[
+    \begin{array}{c|c|c}
+      n&\text{recovered quantity}&\text{row where its coefficient is read}\\ \hline
+      15&[x^t]A,\ [x^t]H_4,\
+          (\alpha_3,\alpha_2,\alpha_1,\alpha_0)
+        &p_{t+8},\ p_{t+4},\ (p_3,p_2,p_1,p_0)\\
+      27&[x^t]A,\ [x^t]C,\ [x^t]B,\ (H_2,s,r)
+        &p_{t+14},\ p_{t+7},\ p_{t+4},\ (p_3,\ldots,p_0)\\
+      31&[x^t]A,\ s,\ [x^t]B,\ [x^t]H_4,\ [x^t]C,\ r
+        &p_{t+16},\ p_{15},\ p_{t+8},\ p_{t+4},\ p_{t+1},\ p_0
+    \end{array}
+    \]
+    At a shared boundary the only contribution from the next block is the
+    displayed monic coefficient $1$ or $-1$, which is subtracted before that
+    block is entered (in the $31$ case this includes the row-$4$ correction
+    for $xC$).
+
+    Maintain the descending invariant that a quantity first solved in row
+    $r$ is a polynomial in the observed rows $p_s$ with $s\ge r$ and in
+    quantities solved above it.  Every displayed square or Cauchy recurrence
+    has this form, so the invariant holds across all boundary rows.  The row
+    shifts in the table then show that $[x^j]T^{(1)}$ uses only $p_i$ with
+    $i\ge j+1$, whereas $[x^j]T^{(2)}$ uses only $p_i$ with $i\ge j$.
+    These are exactly the cutoffs in \Cref{def:compatible-pair}.  Since the
+    leading coefficient $p_n=1$ is fixed, all three pairs are compatible on
+    $\rng n$, hence splittable, and their combined polynomials are decodable.
+
+    Finally, the displayed algorithms are joint circuits for the two
+    components.  Charging each shared intermediate only once gives
+    \[
+    \begin{array}{c|c|c}
+      n&\text{products in the joint realization}&\text{total}\\ \hline
+      15&H_2:1,\ H_4:1,\ Q_7:3,\ \text{two outer products}:2&7\\
+      27&H_2:1,\ Q_{13}:6,\ Q_3:1,\ Q_7:3,\ \text{two outer products}:2&13\\
+      31&H_2,H_4:2,\ \bar Q_{15}:7,\ Q_7:3,\ Q_3:1,\
+          \text{two outer products}:2&15.
+    \end{array}
+    \]
+    The $Q_{13}$ call in degree~$27$ records the required $H_4$; in the
+    other two cases $H_2,H_4$ are displayed intermediates.  Hence all three
+    realizations record both byproducts and have exactly $(n-1)/2$ products.
+\end{proof}
+

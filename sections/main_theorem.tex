@@ -1,9 +1,12 @@
-\section{Polynomial Evaluation with $\lfloor n/2\rfloor+1$ Multiplications and Rational Preprocessing}
+\section{Polynomial Evaluation with \texorpdfstring{$\lfloor n/2\rfloor+1$}{floor(n/2)+1} Multiplications and Rational Preprocessing}
 \label{sec:model}
 
 We work over a field $\F$.
 An \emph{arithmetic circuit} (or straight-line program) takes inputs $(x,\theta)\in\F\times\F^d$ and outputs a value in $\F$ using additions, subtractions, and multiplications.
-We measure the cost of a circuit by the number of multiplications.
+We measure the primary cost of a circuit by the number of multiplications.
+For the supplementary addition count, additions and subtractions are charged
+separately while copying, negation, and multiplication by fixed field
+constants remain free.
 
 Fix $n\ge 1$.
 An \emph{evaluation scheme} of (target) degree $n$ is a circuit $E(x;\theta)$ such that for every $\theta\in\F^d$, the function $x\mapsto E(x;\theta)$ is a polynomial of degree at most $n$.
@@ -23,11 +26,28 @@ such that for every coefficient vector $c$ in the domain of $\mathsf{pre}$ we ha
 E(x;\mathsf{pre}(c)) \equiv c_0 + c_1 x + \dots + c_{n-1}x^{n-1} + x^n
 \]
 as polynomials in $x$.
-Equivalently, $\mathsf{pre}$ is a rational right-inverse of $\mathsf{coeff}$ on a Zariski-open set, so $\mathsf{coeff}$ is generically injective (birational onto its image).
+Thus $\mathsf{pre}$ is a rational right-inverse, or rational section, of
+$\mathsf{coeff}$ on a Zariski-open set.
+We say the preprocessing is \emph{everywhere defined}, or has \emph{no exceptional
+inputs}, if the domain of $\mathsf{pre}$ is all of $\F^n$.
+The distinction matters: Pan's sextic scheme (\Cref{sec:lower}) has rational
+preprocessing with three multiplications, but it is undefined on a hypersurface
+of coefficient vectors, whereas the schemes of this paper are everywhere defined,
+and the lower bound of \Cref{sec:lower} is about everywhere-defined preprocessing.
+A right-inverse alone does not imply
+injectivity.  Our constructions prove more: their explicit decoder is a
+polynomial left-inverse of $\mathsf{coeff}$.  Since the parameter and
+coefficient spaces both have dimension $n$, the algebraic argument in
+\Cref{lem:polynomial-left-inverse-automorphism} makes the two inverses agree;
+the coefficient map is in fact a polynomial automorphism.
 
 \paragraph{Hashing viewpoint.}
 If we sample $\theta$ at random and evaluate $E(x;\theta)$ at an input $x$, we obtain a polynomial-hash family.
-When $\mathsf{coeff}$ is (generically) injective, distinct parameters induce distinct polynomials, which is exactly what is needed to interpret preprocessing as selecting a random polynomial from a well-defined family.
+For the coefficient maps constructed here, distinct parameters induce
+distinct polynomials and every monic coefficient vector occurs.  This
+two-sided property---which is stronger than merely having a rational
+section---is what lets preprocessing be interpreted as selecting a polynomial
+from a well-defined family.
 
 \subsection{Main Result}
 \label{sec:main-theorem}
@@ -36,27 +56,42 @@ Our main contribution is an evaluation scheme with essentially the minimum possi
 
 \begin{theorem}
 \label{thm:main}
-For every $n\ge 1$ and every field $\F$ of characteristic $\neq 2$, there is an evaluation scheme for monic degree-$n$ polynomials over $\F$ that uses $\lfloor n/2\rfloor+1$ multiplications and admits rational preprocessing.
+For every $n\ge 1$ and every field $\F$ of characteristic zero, or of characteristic $p>n$, there is an evaluation scheme for monic degree-$n$ polynomials over $\F$ that uses $\lfloor n/2\rfloor+1$ multiplications, admits rational preprocessing, and uses at most
+\[
+  \min\left\{2n,\ \frac54n+6\lceil\log_2n\rceil^2+1\right\}
+\]
+additions or subtractions, and can be arranged with multiplicative
+height at most $2\lceil\log_2 n\rceil+4$ for odd $n$ and
+$2\lceil\log_2 n\rceil+5$ for even $n$
+(\Cref{thm:construction-height-peeled}).
 \end{theorem}
 
-\begin{remark}[Characteristic 2]
+\begin{remark}[Positive characteristic]
 \label{rem:char2}
-In characteristic~2, some of the decoding steps in our characteristic $\neq 2$ construction rely on dividing by even integers (e.g.\ $2$), which is undefined.
-Over perfect fields of characteristic~2 (in particular finite fields $\F_{2^w}$), there is an alternative decoding strategy that replaces those divisions by (i) Lucas’ theorem for binomial coefficients modulo~$2$ and (ii) Frobenius inverses (unique $2^t$-th roots).
-This makes the affected decoding steps well-defined in characteristic~$2$ (with preprocessing allowed to use Frobenius roots).
-A complete, unified characteristic~$2$ construction matching \cref{thm:main} remains open.
+The condition $p>n$ is a convenient sufficient condition, not a sharp one.
+The decoder divides only by explicitly displayed integer pivots, and every
+prime divisor of those pivots is at most~$n$.  Thus the same construction works in any
+characteristic in which the pivots occurring in the degree-$n$ recursion are
+nonzero; $p>n$ guarantees this uniformly.  In small positive characteristic
+some pivots may vanish.  A complete \emph{single-circuit} construction with
+rational preprocessing covering all such cases, including characteristic~2,
+remains open.
 \end{remark}
 
 \subsection{Intuition and Construction Outline}
 \label{sec:main-theorem:outline}
 
-This section gives the high-level intuition behind the construction; the full details appear in \cref{appendix:constructions}.
+This section gives the high-level intuition behind the construction.
 The proof consists of making the invariants below precise and checking that every step preserves rational decoding.
 
 \paragraph{From rational preprocessing to decoding coefficients.}
-Fix a circuit family $E(x;\theta)$ and write $c=\mathsf{coeff}(\theta)\in\F^n$ for the output coefficient vector as in \cref{sec:model}.
-Rational preprocessing asks for a rational right-inverse $\mathsf{pre}$ of $\mathsf{coeff}$ on a dense set, i.e.\ that we can (generically) recover the parameters $\theta$ from the coefficients of the resulting polynomial.
-Thus, in the construction we repeatedly build polynomial families whose parameters can be \emph{decoded} from their coefficients by simple triangular relationships.
+Fix a circuit family $E(x;\theta)$ and write $c=\mathsf{coeff}(\theta)\in\F^n$ for the output coefficient vector as in \Cref{sec:model}.
+Rational preprocessing asks us to choose parameters for a desired coefficient
+vector, that is, to construct a rational right-inverse of $\mathsf{coeff}$ on
+a dense set.  We establish this through the stronger, easier-to-compose
+invariant that the parameters can be \emph{decoded} polynomially from the
+coefficients by explicit triangular relationships.  The two-sided lemma cited
+above then turns that decoder into the required preprocessing map.
 
 \paragraph{A warm-up: degree $3$ with two multiplications.}
 Let $n=3$.
@@ -80,15 +115,20 @@ For larger degrees, it is convenient to construct the output polynomial as
 \]
 where $T^{(1)}$ and $T^{(2)}$ are degree-$(n-1)$ polynomials computed with shared intermediate values.
 The final multiplication by $x$ contributes the ``$+1$'' in the multiplication count.
-We call $(T^{(1)},T^{(2)})$ a \emph{splittable pair} (for degree $n$) if the coefficients of $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ generically determine all underlying parameters (equivalently: the induced coefficient map is birational onto its image).
-The core of the construction is to build splittable pairs for all target degrees while paying only about one multiplication per two coefficients.
+We call $(T^{(1)},T^{(2)})$ a \emph{splittable pair} (for degree $n$) if the coefficients of $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ admit an explicit polynomial decoder for all underlying parameters.
+Splittability by itself says nothing about the cost of producing the two
+components: every decodable monic polynomial has a canonical compatible
+split.  The stronger invariant used below is therefore a splittable pair
+together with one shared circuit that jointly computes both components at
+the stated cost and records the quadratic and quartic intermediates needed
+by the recursion.
 
 \paragraph{Keeping decoding stable: coefficient windows and ``compatible pairs''.}
 The main technical problem is that multiplication mixes coefficients.
 To control this, we maintain an invariant of the following form.
 We consider a pair $(P^{(1)},P^{(2)})$ and its combination $\Phi(x)\coloneqq xP^{(1)}(x)+P^{(2)}(x)$.
 We ensure that there is a \emph{window} of coefficient positions (typically a top-degree range) from which one can recover the parameters introduced so far and also recover the pair $(P^{(1)},P^{(2)})$ itself.
-Pairs with this property are called \emph{compatible pairs} in the long version.
+Pairs with this property are called \emph{compatible pairs}; the formal definition is \Cref{def:compatible-pair} in \Cref{appendix:decoder-calculus}.
 
 Crucially, the basic operations used in the straight-line program preserve compatibility:
 \begin{itemize}
@@ -105,16 +145,21 @@ we keep a ladder of known-power gadgets $H_2,H_4,\dots,H_{2^{k-1}}$ (computed on
 and we recursively ``fill'' disjoint coefficient windows by multiplying previously constructed pieces by the appropriate $H_{2^i}$ and adding a fresh low-degree correction.
 The compatibility invariant guarantees that each recursive layer introduces new parameters that remain decodable from the top coefficients, despite coefficient mixing in intermediate multiplications.
 The resulting circuits use $\Theta(2^{k-1})$ multiplications for degree $\Theta(2^k)$, i.e.\ about half the multiplications of Horner.
+For the height claim of \Cref{thm:main}, the known-powers gadgets are instead scheduled as a balanced two-child recursion with a keyed glue factor (the peeled gadget of \Cref{sec:peeled-Q}), at the identical gate ledger; the sequential fill remains the baseline used for the addition accounting.
 
-\paragraph{From the recursion to \cref{thm:main}.}
-The recursion above yields splittable pairs for essentially all odd degrees (with a small number of explicit base cases).
-Given a splittable pair $(T^{(1)},T^{(2)})$ for degree $n$, the circuit for $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ uses one more multiplication than the shared computation of $T^{(1)}$ and $T^{(2)}$.
+\paragraph{From the recursion to \Cref{thm:main}.}
+The recursion above yields compatible splittable pairs together with one
+costed circuit that jointly computes their two components (with a small
+number of explicit cost bases).
+Given such a joint realization of $(T^{(1)},T^{(2)})$ for degree $n$, the
+circuit for $P(x)=xT^{(1)}(x)+T^{(2)}(x)$ uses one more multiplication than
+the shared computation of $T^{(1)}$ and $T^{(2)}$.
 For even degrees, we reduce to the odd case by writing
 \(
    P(x)=c_0 + x\cdot Q(x)
 \)
 where $Q$ is a monic degree-$(n-1)$ polynomial with coefficients $(c_1,\dots,c_{n-1})$; this costs one extra multiplication by $x$.
-In all cases we obtain $\lfloor n/2\rfloor+1$ multiplications overall, and the decoding invariants ensure that the induced coefficient map is generically invertible by rational functions, i.e.\ admits rational preprocessing in the sense of \cref{sec:model}.
+In all cases we obtain $\lfloor n/2\rfloor+1$ multiplications overall, and the decoding invariants ensure that the induced coefficient map is generically invertible by rational functions, i.e.\ admits rational preprocessing in the sense of \Cref{sec:model}.
 
 \subsection{\texorpdfstring{$k$}{k}-wise independent hashing and why bijectivity matters}
 \label{sec:main-theorem:kwise}
@@ -149,7 +194,7 @@ Thus the main performance objective is often to reduce the number of field multi
 especially on the \emph{critical path} (dependent multiplications).
 
 \paragraph{Classical evaluation baselines.}
-The standard baseline is Horner’s rule, which evaluates \eqref{eq:kwise:monic-poly} using $k-1$
+The standard baseline is Horner's rule, which evaluates \eqref{eq:kwise:monic-poly} using $k-1$
 multiplications and $k$ additions:
 \[
   \bigl(\cdots((x+c_{k-1})x + c_{k-2})x + \cdots \bigr)x + c_0.
@@ -160,6 +205,9 @@ There are two widely used alternatives:
   These reorganize evaluation to expose instruction-level parallelism by grouping terms,
   reducing depth to $O(\log k)$ at the cost of extra multiplications (to form powers like $x^2,x^4,\dots$).
   This can help on wide machines when throughput matters more than total work~\cite{estrin1960organization,paterson1973evaluation}.
+  (The schedules of \Cref{thm:main} achieve the same logarithmic depth ---
+  height at most $2\lceil\log_2k\rceil+5$, \Cref{thm:construction-height-peeled}
+  --- without the extra multiplications.)
   \item \textbf{Rabin--Winograd preprocessing.}
   Rabin and Winograd~\cite{rabin1972number} showed that, with preprocessing of the coefficient
   vector $c$ using only rational operations, one can evaluate a degree-$k$ polynomial with
@@ -172,7 +220,7 @@ There are two widely used alternatives:
 In this paper, we consider an evaluation circuit $E(x;\theta)$ whose \emph{runtime key} is a
 parameter vector $\theta\in\F^d$.
 For each $\theta$, the function $x\mapsto E(x;\theta)$ is a monic degree-$k$ polynomial, with
-coefficient vector $\mathsf{coeff}(\theta)\in\F^k$ as in \cref{sec:model}.
+coefficient vector $\mathsf{coeff}(\theta)\in\F^k$ as in \Cref{sec:model}.
 There are then two natural ways to generate a $k$-wise hash function:
 \begin{enumerate}
   \item sample coefficients $c\gets\F^k$ and preprocess them into parameters
@@ -182,14 +230,14 @@ There are then two natural ways to generate a $k$-wise hash function:
 \end{enumerate}
 
 \paragraph{Why bijectivity/birationality is important for hashing.}
-The distinction above is exactly where the “bijective/injective” viewpoint matters.
+The distinction above is exactly where the ``bijective/injective'' viewpoint matters.
 If $\mathsf{coeff}$ is not injective, then distinct parameters can represent the same polynomial.
 This is not merely an aesthetic issue: sampling $\theta$ induces a potentially \emph{biased}
 distribution on polynomials (some polynomials may have many preimages, others none),
-which can break clean statements like “the hash is $k$-wise independent” if the key-generation
-procedure is “pick a random $\theta$”.
+which can break clean statements like ``the hash is $k$-wise independent'' if the key-generation
+procedure is ``pick a random $\theta$''.
 
-Rational preprocessing, as defined in \cref{sec:model}, is a formal way to rule out this bias:
+Rational preprocessing, as defined in \Cref{sec:model}, is a formal way to rule out this bias:
 it requires a rational right-inverse $\mathsf{pre}$ of $\mathsf{coeff}$ on a dense set, i.e.\ that
 $\mathsf{coeff}$ is generically one-to-one (birational onto its image).
 Operationally this gives two benefits:
@@ -204,14 +252,14 @@ Operationally this gives two benefits:
   polynomial (up to a lower-dimensional exceptional set), so treating $\theta$ itself as the key
   corresponds to selecting a polynomial from a well-defined family without duplicates.
 \end{itemize}
-This is the sense in which “fast evaluation with rational preprocessing” becomes a
+This is the sense in which ``fast evaluation with rational preprocessing'' becomes a
 bijective/injective parameterization problem.
 
-\paragraph{Implication of \cref{thm:main} for $k$-wise hashing.}
-Applying \cref{thm:main} with $n=k$, we obtain an evaluation scheme for \eqref{eq:kwise:monic-poly}
+\paragraph{Implication of \Cref{thm:main} for $k$-wise hashing.}
+Applying \Cref{thm:main} with $n=k$, we obtain an evaluation scheme for \eqref{eq:kwise:monic-poly}
 that uses only $\lfloor k/2\rfloor+1$ multiplications after preprocessing the coefficients into
 runtime parameters.
-This improves over Horner’s $k-1$ multiplications and removes the $O(\log k)$ overhead in
+This improves over Horner's $k-1$ multiplications and removes the $O(\log k)$ overhead in
 Rabin--Winograd while staying within the rational preprocessing model.
 We evaluate practical performance trade-offs against Horner, Estrin-style evaluation, and
-Rabin--Winograd in \cref{sec:experiments:kwise}.
+Rabin--Winograd in \Cref{sec:experiments:kwise}.

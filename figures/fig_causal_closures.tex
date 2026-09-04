@@ -1,0 +1,30 @@
+% Window geometry for the three closure operations on compatible pairs.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,3.2) {(a) Sum};
+  \node[fp active, minimum width=15mm, anchor=west] at (0,2.43) {$G_1$};
+  \node[fp unread, minimum width=8mm, anchor=west] at (1.5,2.43) {};
+  \node[fp active, minimum width=10mm, anchor=west] at (2.3,2.43) {$G_1$};
+  \node[fp second, minimum width=8mm, anchor=west] at (1.5,1.73) {$G_2$};
+  \node[fp second, minimum width=13mm, anchor=west] at (3.3,1.73) {$G_2$};
+  \node[fp label, anchor=west] at (0,1.05) {$G_1\cap G_2=\varnothing$};
+  \draw[fp decode] (0,0.64) -- (4.45,0.64);
+  \node[fp label, anchor=west] at (0,0.2) {one unresolved input per row};
+
+  \node[fp panel title] at (4.85,3.2) {(b) Product};
+  \node[fp active, minimum width=19mm, anchor=west] (g1) at (4.85,2.43) {$G_1$};
+  \node[fp second, minimum width=19mm, anchor=west] (g2) at (4.85,1.58) {$G_2$};
+  \node[fp active, minimum width=19mm, anchor=west] (sg1) at (7.35,2.43) {$n_2+G_1$};
+  \node[fp second, minimum width=19mm, anchor=west] (sg2) at (7.35,1.58) {$n_1+G_2$};
+  \draw[fp flow] (g1.east) -- node[fp label, above] {$+n_2$} (sg1.west);
+  \draw[fp flow] (g2.east) -- node[fp label, below] {$+n_1$} (sg2.west);
+  \node[fp label, anchor=west] at (4.85,0.72) {shifted windows disjoint};
+  \node[fp label, anchor=west] at (4.85,0.2) {peel the monic Cauchy boundary};
+
+  \node[fp panel title] at (9.9,3.2) {(c) Square};
+  \node[fp active, minimum width=20mm, anchor=west] (gin) at (9.9,2.43) {input $G$};
+  \node[fp active, minimum width=25mm, anchor=west] (gout) at (11.25,1.45) {output $n+G$};
+  \draw[fp decode] (gin.south east) -- node[fp label, above, sloped]
+    {shift by $n$} (gout.north west);
+  \node[fp label, anchor=west] at (9.9,0.72) {$\Psi_{n+i}=2\Phi_i+$ higher rows};
+  \node[fp label, anchor=west] at (9.9,0.2) {constant pivot $2$};
+\end{tikzpicture}

@@ -1,0 +1,495 @@
+\section{Formalization Map}
+\label{appendix:formalization-map}
+
+This appendix records which statements of the paper are machine-checked in
+the Lean~4 development \texttt{FastPoly/\allowbreak } distributed with the source, under
+which hypotheses, and where the formalization stops short of the paper.  The
+Lean statements are made over an abstract commutative ring $R$ and a
+commutative $R$-algebra $A$ (Lean: \texttt{[CommRing R] [CommRing A]
+[Algebra R A]}); the only characteristic-type assumptions are explicit
+\texttt{IsUnit} hypotheses on integers, discussed in
+\Cref{sec:formalization-map:units}.  Decoding is expressed as membership in
+a generated subalgebra: ``$\theta$ is recovered from $P$'' is
+$\theta\in K\sqcup\operatorname{adjoin}_R\{[x^i]P\}$ for the ambient known
+algebra $K$, and every recovery proof exhibits the pivot, peel, division, or
+block inverse it uses (the repository forbids search and decision
+procedures on nontrivial goals).  In the tables, \emph{full} means the
+displayed paper statement is proved as stated (up to the deviations noted in
+the hypotheses column), \emph{partial} means a strictly weaker or
+differently packaged statement is proved, and \emph{not formalized} means
+no Lean counterpart exists.  File names are relative to \texttt{FastPoly/\allowbreak }.
+
+\subsection{Main results}
+\label{sec:formalization-map:main}
+
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\par\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\toprule
+Paper & Lean (file) & Hypotheses in Lean & Status\\
+\midrule
+\end{tabular}\par\nopagebreak
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:main} &\raggedright
+\texttt{MainArrangementsChecked.of\_\allowbreak charZero},
+\texttt{MainArrangementsChecked.of\_\allowbreak charP}
+(\texttt{PaperMain.lean});
+\texttt{decodedAdditionPolynomial\_\allowbreak exists}
+(\texttt{Cost/\allowbreak Additions/\allowbreak DecodedPolynomial.lean});
+\texttt{monic\_\allowbreak coefficient\_\allowbreak map\_\allowbreak bijective}
+(\texttt{Main.lean});
+\texttt{polynomial\_\allowbreak height} (\texttt{HeightFinal.lean});
+\texttt{MvPolynomial.algEquivOfDecodable} (\texttt{Automorphism.lean}) &
+\raggedright Characteristic zero or $p>n$.  The paper-level capstone constructs
+both advertised arrangements at once on one common monic degree-$n$ polynomial:
+a fixed program carrying the decoder, multiplication count, and logarithmic height;
+and a fixed addition-optimized program carrying its semantics, multiplication bound,
+exact literal addition count, and both addition inequalities.  The two scheduling
+objectives may use separate fixed syntax trees, but both are proved to compute the
+same polynomial;
+the coefficient preprocessing map is the polynomial automorphism of
+\Cref{lem:polynomial-left-inverse-automorphism}. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:odd-realizable-pairs} &\raggedright \texttt{odd\_\allowbreak realizable\_\allowbreak pairs}, \texttt{odd\_\allowbreak realizable\_\allowbreak pairs'}
+(\texttt{Main.lean}) &
+\raggedright \texttt{[Nontrivial A]}; $n$ odd, $3\le n$, $n\ne7$;
+\texttt{$\forall$ i, 1 $\le$ i $\to$ i $\le$ n $\to$ IsUnit ((i : $\mathbb Z$) : R)}; any parameter block
+\texttt{$\theta$ : $\mathbb N$ $\to$ A}.  Conclusion: \texttt{CompatiblePair $\bot$ T$_1$ T$_2$ (n-1) G};
+$H_2$ (and $H_4$ when $n\ge5$) monic of degree $2$ ($4$); every subalgebra
+containing the coefficients of $x T_1+T_2$ contains $\theta_0,\dots,\theta_{n-1}$
+and the coefficients of $H_2,H_4$; and a program
+\texttt{prog : Cost.\allowbreak JointPairProgram R ((n-1)/\allowbreak 2)} with
+\texttt{prog.\allowbreak RealizesAt $\theta$ T$_1$ T$_2$ H$_2$ H$_4$} and
+\texttt{prog.\allowbreak HeightBounded (2 * Nat.clog 2 n + 3)}. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:odd-realizable-pairs}, fixed program before keys &\raggedright \texttt{odd\_\allowbreak realizable\_\allowbreak pairs\_\allowbreak free},
+\texttt{odd\_\allowbreak realizable\_\allowbreak pairs\_\allowbreak uniform\_\allowbreak family} (\texttt{Main.lean}) &
+\raggedright Instantiation at $A=R'[\alpha_0,\dots,\alpha_{n-1}]$
+(\texttt{MvPolynomial (Fin n) R'}); the same program syntax realizes the
+specialized pair and powers for every key vector over every $R'$-algebra
+(\texttt{RealizesFiniteFamily}). &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:construction-count}, count clause &\raggedright \texttt{Cost.pair\_\allowbreak construction\_\allowbreak count},
+\texttt{Cost.construction\_\allowbreak count} (\texttt{Cost/\allowbreak Final.lean});
+\texttt{Cost.\allowbreak SepticProgram.program} (\texttt{Cost/\allowbreak SepticProgram.lean});
+\texttt{Cost.\allowbreak PolynomialProgram.evenLift},
+\texttt{evenLift\_\allowbreak realizesAt} (\texttt{Cost/\allowbreak PolynomialProgram.lean}) &
+\raggedright Recurrences \texttt{PairCost}/\texttt{PolynomialCost} over $\mathbb N$ (no ring):
+$\exists c$, \texttt{PolynomialCost n c} with $c=\lfloor n/2\rfloor+1$ for
+$n\ge3$, $c=0,1$ for $n=1,2$.  The literal program with $(n-1)/2$ products is
+the \texttt{JointPairProgram} conjunct of the master; the septic program has
+four products; the even lift adds one product and one addition. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:construction-count}, coverage clause;
+\Cref{cor:all-odd-decodable} &\raggedright \texttt{monic\_\allowbreak coefficient\_\allowbreak map\_\allowbreak bijective},
+\texttt{even\_\allowbreak lift\_\allowbreak bijective},
+\texttt{odd\_\allowbreak coefficient\_\allowbreak map\_\allowbreak bijective} (\texttt{Main.lean}) &
+\raggedright \texttt{[IsNoetherianRing R'] [Nontrivial R']}; $1,\dots,n$ units; every
+$n\ge1$ (affine, quadratic, septic, odd master, even lift).  Conclusion: a
+monic degree-$n$ $P$ over the free coordinate algebra whose coefficient
+substitution \texttt{MvPolynomial.aeval (fun i => P.coeff i)} is bijective. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:construction-height-peeled} &\raggedright
+\texttt{polynomial\_\allowbreak height},
+\texttt{odd\_\allowbreak polynomial\_\allowbreak height},
+\texttt{septic\_\allowbreak polynomial\_\allowbreak height},
+\texttt{RealizedPolynomial.\allowbreak evenLift},
+\texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charZero},
+\texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charP}
+(\texttt{HeightFinal.lean}); height conjunct \texttt{HeightBounded} of
+\texttt{odd\_\allowbreak realizable\_\allowbreak pairs} (\texttt{Main.lean});
+\texttt{Circuit.multDepth} (\texttt{Height/\allowbreak Depth.lean}); component
+ledgers in \texttt{Height/\allowbreak PeeledCircuit.lean} and
+\texttt{Height/\allowbreak TCircuitDepth.lean} &
+\raggedright \texttt{[Nontrivial A]}; $3\le n$; $1,\dots,n$ units of $R$ (for the
+\texttt{\_of\_charZero}/\texttt{\_of\_charP} forms: a field of characteristic
+zero, resp.\ $p>n$).  Conclusion
+\texttt{RealizedPolynomial R $\theta$ n (n/2+1) (2 * Nat.clog 2 n + 4 + (n+1) \% 2)}:
+one fixed complete-polynomial program is monic of degree $n$, decodes all $n$
+parameters, uses exactly $\lfloor n/2\rfloor+1$ products, and has output
+\texttt{multDepth} (inputs at depth $0$) at most $2\lceil\log_2 n\rceil+4$ for
+odd $n$ and $2\lceil\log_2 n\rceil+5$ for even $n$.  Assembled from the
+master's pair conjunct ($T_1,T_2$ at depth $\le2\lceil\log_2 n\rceil+3$, $H_2$
+at $\le1$, $H_4$ at $\le2$) by the final product $xT_1+T_2$, the direct septic
+($n=7$, lifted for $n=8$), and the even lift $xQ+c_0$.  The stronger
+\texttt{DecodedAdditionPolynomial} capstone pairs this height witness with the
+addition-certified arrangement on the same semantic polynomial. &
+full (count, decoder, height)\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:construction-height} (sequential baseline) &\raggedright only the depth measure \texttt{Circuit.multDepth},
+\texttt{MultiplicationProgram.height} (\texttt{Height/\allowbreak Depth.lean}) &
+\raggedright The $\tfrac14L^2+L+2$ ledger for the sequential-fill schedules has no Lean
+statement; the checked height is the peeled bound above. &
+not formalized\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:construction-addition-count},
+\Cref{thm:construction-addition-asymptotic} &\raggedright \texttt{Cost.construction\_\allowbreak additions\_\allowbreak checked}
+(\texttt{Cost/\allowbreak Additions/\allowbreak Realization.lean}); ledger
+\texttt{Cost.construction\_\allowbreak addition\_\allowbreak count}
+(\texttt{Cost/\allowbreak Additions/\allowbreak Final.lean}) &
+\raggedright For every $n\ge1$ over an $n$-admissible ring and every parameter
+environment: one fixed program \texttt{program : PolynomialProgram R mult}
+with \texttt{mult}\,$\le\lfloor n/2\rfloor+1$, \texttt{program.RealizesAt}
+its degree-$n$ polynomial, and its literal gate count
+\texttt{program.additions} satisfying both $\le2n$ and
+$4\cdot{}\le5n+24\lceil\log_2n\rceil^2+4$.  Assembled from the
+addition-certified base pairs, the recursive $8k+3$/$8k+7$ pair steps, the
+certified odd-gadget dispatch, and the odd/even combinators; the program is
+the optimized schedule of \Cref{sec:addition-count}, not the master's. &
+full\\
+\bottomrule
+\end{tabular}\par
+\endgroup
+
+\subsection{Decoder calculus\texorpdfstring{ (\Cref{appendix:decoder-calculus})}{}}
+\label{sec:formalization-map:calculus}
+
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\par\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\toprule
+Paper & Lean (file) & Hypotheses in Lean & Status\\
+\midrule
+\end{tabular}\par\nopagebreak
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{def:compatible-pair}; visible algebra &\raggedright \texttt{CompatiblePair}, \texttt{Vis}, \texttt{CausalPair}
+(\texttt{Recover/\allowbreak Context.lean}) &
+\raggedright \texttt{[CommRing R] [CommRing A] [Algebra R A]}; relative to a known
+subalgebra $K$ and a window $G$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright scalar pivots \eqref{eq:filtered-pivot} &\raggedright \texttt{mem\_\allowbreak obsAlg\_\allowbreak of\_\allowbreak scalarCert} (\texttt{Recover/\allowbreak Filtered.lean}) &
+\raggedright Each pivot slope \texttt{lam j : R} is a unit; well-founded index order. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright block pivots with explicit inverse &\raggedright \texttt{mem\_\allowbreak of\_\allowbreak blockCert} (\texttt{Recover/\allowbreak Filtered.lean});
+\texttt{mem\_\allowbreak of\_\allowbreak known\_\allowbreak blockCert\_\allowbreak of\_\allowbreak det} (\texttt{Recover/\allowbreak KnownBlock.lean}) &
+\raggedright Constant matrix $M$ over $R$ with a supplied $N$, $NM=1$; or entries in the
+known algebra with $\det M$ a unit of $R$ (adjugate inverse). &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{def:coefficient-triangular}, \Cref{lem:triangular-shift},
+\Cref{lem:triangular-implies-compatible} &\raggedright \texttt{CoeffTriangular}, \texttt{CoeffTriangular.shift\_\allowbreak pivot},
+\texttt{CoeffTriangular.toCompatiblePair} (\texttt{Recover/\allowbreak Triangular.lean}) &
+\raggedright Unit pivots \texttt{lam j} for $j<d$; the compatibility half is proved. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:triangular-block-concatenation} &\raggedright \texttt{adjoin\_\allowbreak Ico\_\allowbreak glue}, \texttt{side\_\allowbreak data\_\allowbreak absorb}
+(\texttt{Recover/\allowbreak Triangular.lean}) &
+\raggedright Proved as the two glue lemmas used at every concatenation site. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:monic-cauchy-transport} &\raggedright \texttt{coeff\_\allowbreak mul\_\allowbreak monic} (\texttt{Polynomial/\allowbreak TopWindow.lean}) &
+\raggedright \texttt{[CommRing A]}; $q$ monic.  No unit hypothesis. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:peel-monic-factor} &\raggedright \texttt{coeff\_\allowbreak mem\_\allowbreak of\_\allowbreak mul\_\allowbreak monic\_\allowbreak add} (\texttt{Polynomial/\allowbreak PeelMonic.lean}) &
+\raggedright $M$ monic with coefficients in $K$.  No unit hypothesis. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:monic-from-power} &\raggedright \texttt{coeff\_\allowbreak mem\_\allowbreak of\_\allowbreak pow\_\allowbreak add} (\texttt{Polynomial/\allowbreak MonicFromPower.lean}) &
+\raggedright \texttt{IsUnit (m : R)} for the root index $m$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:monic-division} &\raggedright \texttt{coeff\_\allowbreak quot\_\allowbreak mem}, \texttt{coeff\_\allowbreak rem\_\allowbreak mem}
+(\texttt{Polynomial/\allowbreak MonicDivision.lean}) &
+\raggedright Divisor monic with coefficients in $K$.  No unit hypothesis. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:square-gadget}, \Cref{lem:square-gadget-boundary} &\raggedright \texttt{square\_\allowbreak gadget\_\allowbreak mem} (\texttt{Polynomial/\allowbreak SquareGadget.lean});
+\texttt{coeff\_\allowbreak mem\_\allowbreak of\_\allowbreak square\_\allowbreak gadget\_\allowbreak relative}
+(\texttt{Polynomial/\allowbreak CausalShell.lean}) &
+\raggedright \texttt{IsUnit (2 : R)}. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:scalar-shift-square} &\raggedright \texttt{scalar\_\allowbreak shift\_\allowbreak mem} (\texttt{Polynomial/\allowbreak ScalarShift.lean}) &
+\raggedright \texttt{IsUnit lam} and \texttt{IsUnit (2 : R)}. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:x-alpha-extraction} &\raggedright \texttt{x\_\allowbreak alpha\_\allowbreak mem} (\texttt{Recover/\allowbreak XAlpha.lean}) &
+\raggedright A compatible pair with window $G\subseteq[0,n)$.  No unit hypothesis. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:discharge-side-information},
+\Cref{lem:extractable-via-derivable} &\raggedright \texttt{discharge\_\allowbreak side\_\allowbreak information},
+\texttt{extractable\_\allowbreak via\_\allowbreak derivable} (\texttt{Recover/\allowbreak Context.lean}) &
+\raggedright As stated. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:polynomial-left-inverse-automorphism} &\raggedright \texttt{MvPolynomial.algEquivOfDecodable} (\texttt{Automorphism.lean});
+\texttt{coefficientAlgEquiv\allowbreak OfMonicDecodable} (\texttt{Instantiation.lean}) &
+\raggedright \texttt{[IsNoetherianRing R] [Finite $\sigma$]}; decodability of the variables from
+the coefficient family gives a two-sided $R$-algebra automorphism. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{def:joint-realization} &\raggedright \texttt{Cost.\allowbreak JointPairProgram}, \texttt{JointPairProgram.\allowbreak RealizesAt}
+(\texttt{Cost/\allowbreak PolynomialCircuit.lean});
+\texttt{Cost.\allowbreak MultiplicationProgram} (\texttt{Cost/\allowbreak MultiplicationProgram.lean}) &
+\raggedright A straight-line program over $R$ with a stored multiplication count; four
+outputs $(T_1,T_2,H_2,H_4)$. &
+full\\
+\bottomrule
+\end{tabular}\par
+\endgroup
+
+\subsection{Construction layers\texorpdfstring{ (\Cref{appendix:constructions})}{}}
+\label{sec:formalization-map:construction}
+
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\par\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\toprule
+Paper & Lean (file) & Hypotheses in Lean & Status\\
+\midrule
+\end{tabular}\par\nopagebreak
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{alg:constr-fill}, \Cref{lem:fill-correctness} &\raggedright \texttt{fill\_\allowbreak correct} (\texttt{Section4/\allowbreak FillRec.lean}) &
+\raggedright \texttt{[Nontrivial A]}; per-level certificates \texttt{GoodLevel}; known
+monic quadratic $H_1$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{alg:constr-known-2n-1}, \Cref{lem:Q-unitriangular} &\raggedright \texttt{mers}, \texttt{mers\_\allowbreak correct} (\texttt{Section4/\allowbreak KnownPowers.lean});
+\texttt{mers\_\allowbreak unitriangular} (\texttt{Section4/\allowbreak MersCert.lean}) &
+\raggedright \texttt{[Nontrivial A]}; a tower of known monic powers of degrees $2^i$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:peeled-Q-decodable}, \Cref{lem:peeled-Q-count} &\raggedright \texttt{peel}, \texttt{peel\_\allowbreak correct} (\texttt{Section4/\allowbreak Peeled.lean});
+\texttt{peelC\_\allowbreak multiplications}, \texttt{peelC\_\allowbreak additions},
+\texttt{peelC\_\allowbreak multDepth} (\texttt{Height/\allowbreak PeeledCircuit.lean}) &
+\raggedright Same interface as \texttt{mers\_\allowbreak correct}; exact counts
+$2^{k-1}-1$ products, $5\cdot2^{k-2}-2$ additions, depth $k$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{alg:constr-Tk2l} (structural layer) &\raggedright \texttt{Tpair}, \texttt{TF\_\allowbreak good}, \texttt{Tpair\_\allowbreak good}
+(\texttt{Section5/\allowbreak T.lean}) &
+\raggedright Monic/degree $k2^l$ for all four branches; no unit hypothesis. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:Rk2l}, \Cref{lem:Rk2l-leading-coeff},
+\Cref{lem:Rk2l-top-boundary} &\raggedright \texttt{Rk2l\_\allowbreak triangular}, \texttt{Rk2l\_\allowbreak top\_\allowbreak two}
+(\texttt{Section5/\allowbreak Rk2lTriMaster.lean}); \texttt{Rk2l\_\allowbreak deg},
+\texttt{Rk2l\_\allowbreak lead} (\texttt{Section5/\allowbreak Rk2l.lean}) &
+\raggedright \texttt{[Nontrivial A]}; $1,\dots,k$ units of $R$; $l\ge2$; tower of known
+monic powers; the scalar-difference clause at $l=2$ for odd $k\ge3$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:causal-perturbed-T} &\raggedright \texttt{causal\_\allowbreak perturbed\_\allowbreak T}, \texttt{Tpair\_\allowbreak compatiblePair}
+(\texttt{Section5/\allowbreak PerturbedT.lean}) &
+\raggedright $1,\dots,M$ units of $R$ ($M$ even); $l\ge2$. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:4k+1-splittable}, \Cref{lem:Q4k+1-from-H2} &\raggedright \texttt{fourk\_\allowbreak decodable}, \texttt{q4k1\_\allowbreak decodable}
+(\texttt{Section6/\allowbreak GadgetDecoders.lean}); crown in
+\texttt{Section5/\allowbreak FourKPlusOne.lean} &
+\raggedright $1,\dots,2k$ units of $R$ and \texttt{IsUnit (2 : R)}; five explicit
+$V$-relative pivots. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:Q-odd-degree-with-powers} &\raggedright \texttt{q\_\allowbreak odd\_\allowbreak degree\_\allowbreak decodable} (\texttt{Section6/\allowbreak QOddDegree.lean}) &
+\raggedright $1,\dots,2k$ units of $R$; $l\ge2$; composes \texttt{fill\_\allowbreak correct},
+\texttt{causal\_\allowbreak perturbed\_\allowbreak T}, \texttt{peel\_\allowbreak correct}. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:barQ15}, \Cref{lem:barQ8k+7} &\raggedright \texttt{barredGadgets\_\allowbreak of\_\allowbreak admissible} (\texttt{Examples/\allowbreak BarredGadgets.lean};
+\texttt{BarQ15.lean}, \texttt{BarQGeneral.lean}) &
+\raggedright \texttt{[Nontrivial A]}; $1,\dots,\mathrm{cap}$ units of $R$; the
+$4\times4$ block with determinant $-k^2$ is inverted by adjugate. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:odd-gadgets-H2H4} &\raggedright \texttt{odd\_\allowbreak gadget\_\allowbreak dispatch} (\texttt{Section6/\allowbreak Dispatch.lean}) &
+\raggedright $1,\dots,d$ units of $R$; hypothesis \texttt{BarredGadgets d}, discharged
+by the previous row. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:8k+3-splittable}, \Cref{lem:8k+7-splittable} &\raggedright \texttt{eightk3\_\allowbreak compatible}, \texttt{eightk3\_\allowbreak decodable},
+\texttt{eightk7\_\allowbreak compatible}, \texttt{eightk7\_\allowbreak decodable}
+(\texttt{Section6/\allowbreak Induction.lean}) &
+\raggedright \texttt{IsUnit (2 : R)} plus the smaller pair's compatibility and decoder
+and the two gadget decoders as hypotheses. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:base-three-compatible} &\raggedright \texttt{base\_\allowbreak three\_\allowbreak compatible} (\texttt{Section6/\allowbreak SpecialCases.lean}) &
+\raggedright None. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:septic-base} &\raggedright \texttt{septic\_\allowbreak good}, \texttt{septic\_\allowbreak decodable}
+(\texttt{Examples/\allowbreak Septic.lean}); \texttt{Cost.\allowbreak SepticProgram.program}
+(four products, ten additions) &
+\raggedright \texttt{IsUnit (2 : R)}.  The unpublished impossibility of a three-product
+joint septic realization (the reason $n=7$ is exceptional) has no Lean
+counterpart. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:special-cases-splittable} ($15,27,31$) &\raggedright \texttt{decodable} in \texttt{Examples/\allowbreak P15.lean},
+\texttt{Examples/\allowbreak P27Full.lean}, \texttt{Examples/\allowbreak P31Full.lean}
+(namespaces \texttt{P15}, \texttt{P27Full}, \texttt{P31Full}) &
+\raggedright \texttt{[Nontrivial A]}; unit hypotheses as consumed by the inner
+\texttt{barQ15}, $Q_7$, $Q_3$ discharges. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:fill-Q-count}, \Cref{lem:T-multiplication-count},
+\Cref{lem:odd-gadgets-count} &\raggedright \texttt{fill\_\allowbreak count}, \texttt{mers\_\allowbreak multiplication\_\allowbreak count},
+\texttt{t\_\allowbreak multiplication\_\allowbreak count} (\texttt{Cost/\allowbreak Counts.lean});
+\texttt{fourKPlusOne\_\allowbreak multiplication\_\allowbreak count},
+\texttt{knownPowersOdd\_\allowbreak multiplication\_\allowbreak count},
+\texttt{barredEightKPlusSeven\_\allowbreak multiplication\_\allowbreak count}
+(\texttt{Cost/\allowbreak Gadgets.lean}) &
+\raggedright Over $\mathbb N$ (schedule recurrences); the realized branch circuits
+carry the same counts by construction. &
+full\\
+\bottomrule
+\end{tabular}\par
+\endgroup
+
+\subsection{Lower bounds}
+\label{sec:formalization-map:lower}
+
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\par\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\toprule
+Paper & Lean (file) & Hypotheses in Lean & Status\\
+\midrule
+\end{tabular}\par\nopagebreak
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright Lemma ($6$ parameters), \Cref{sec:lower} &\raggedright \texttt{no\_\allowbreak rationalInverse\_\allowbreak affine},
+\texttt{no\_\allowbreak rationalInverse\_\allowbreak affine\_\allowbreak of\_\allowbreak ringChar\_\allowbreak ne\_\allowbreak two}
+(\texttt{LowerBound/\allowbreak Main.lean}) &
+\raggedright \texttt{[Field F] [Infinite F]}; \texttt{(2 : F) $\ne$ 0} (resp.\
+\texttt{ringChar F $\ne$ 2}); six distinct points; a circuit in the displayed
+normal form (\texttt{Circuit F}); any affine slot map $Mp+m_0$, no
+invertibility of $M$.  Field hypotheses and conclusion match \Cref{lem:six-params}
+and its proof in \Cref{appendix:lower}: an infinite field with $2\ne0$, and only a
+left inverse is excluded.
+The reduction of an arbitrary three-multiplication program to the normal
+form is modelling (the definition of \texttt{Circuit}), not a theorem. &
+full (normal form)\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{thm:char2-lower} &\raggedright \texttt{no\_\allowbreak surjective\_\allowbreak eval}, \texttt{no\_\allowbreak construction\_\allowbreak general}
+(\texttt{LowerBoundChar2/\allowbreak General.lean}); affine case
+\texttt{no\_\allowbreak construction} (\texttt{LowerBoundChar2/\allowbreak Main.lean}); sharpness
+\texttt{oneGate\_\allowbreak isConstruction} (\texttt{LowerBoundChar2/\allowbreak Sharpness.lean}) &
+\raggedright \texttt{[Field F] [Fintype F] [CharP F 2]}; $1<n$; $2n\le|F|$; an $n$-gate
+chain \texttt{Circuit F n}; an arbitrary preprocessing map
+\texttt{pre : $\Lambda$ $\to$ Slots F n}.  The fibre-counting proof of
+\Cref{sec:lower-char2} is formalized as stated; the affine case is a
+separate, earlier development. &
+full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:first-char2-circuit-inverse} &\raggedright \texttt{circuit\_\allowbreak eval\_\allowbreak bijective} (\texttt{Examples/\allowbreak Char2Inverse.lean}) &
+\raggedright \texttt{[Field F] [CharP F 2] [PerfectRing F 2]}; seven distinct points. &
+full\\
+\bottomrule
+\end{tabular}\par
+\endgroup
+
+\subsection{Unit hypotheses versus \texorpdfstring{$n$}{n}-admissibility}
+\label{sec:formalization-map:units}
+
+The paper's standing hypothesis is that $\F$ is $n$-admissible
+(\Cref{appendix:constructions}: characteristic zero or characteristic
+$p>n$), which \Cref{rem:char2} describes as sufficient rather than sharp.
+The Lean master theorem \texttt{odd\_\allowbreak realizable\_\allowbreak pairs} assumes instead,
+over an arbitrary commutative ring $R$ (no field, no characteristic),
+\begin{center}
+  \texttt{$\forall$ i : $\mathbb N$, 1 $\le$ i $\to$ i $\le$ n $\to$ IsUnit (((i : $\mathbb N$) : $\mathbb Z$) : R)},
+\end{center}
+that is, exactly the integers $1,2,\dots,n$ are units of $R$; this is the
+predicate \texttt{Admissible R n} of \texttt{Admissible.lean} up to the
+integer cast (\texttt{Int.cast\_\allowbreak natCast}).  Every composite pivot of the
+construction, namely the scalar slopes dividing $2k(k-1)$, the block
+determinant $-k^2$ of \Cref{lem:barQ8k+7}, and the factor $2$ of every
+square gadget, is inverted in Lean as a product of unit factors that are
+each at most $n$ (\texttt{Admissible.isUnit\_\allowbreak mul\_\allowbreak cast}); no hypothesis on
+an integer larger than $n$ is ever used.  The sub-lemmas consume the same
+predicate restricted to their own degree (for instance $1,\dots,k$ in
+\texttt{Rk2l\_\allowbreak triangular}, $1,\dots,2k$ in \texttt{fourk\_\allowbreak decodable},
+$1,\dots,d$ in \texttt{odd\_\allowbreak gadget\_\allowbreak dispatch}), and several need only
+\texttt{IsUnit (2 : R)} or a single root index, as the tables record.  For a
+field $\F$ the Lean hypothesis is equivalent to $n$-admissibility: it holds
+in characteristic zero and in characteristic $p>n$
+(\texttt{admissible\_\allowbreak of\_\allowbreak charZero}, \texttt{admissible\_\allowbreak of\_\allowbreak charP}), and it
+fails in characteristic $p\le n$ because $p$ itself is then not a unit.
+Thus the Lean statements do not certify the finer claim of \Cref{rem:char2}
+that only the pivots actually displayed need be nonzero; they certify the
+uniform sufficient condition.  The coverage endpoints
+(\texttt{monic\_\allowbreak coefficient\_\allowbreak map\_\allowbreak bijective} and the automorphism of
+\Cref{lem:polynomial-left-inverse-automorphism}) additionally assume the
+base ring is Noetherian and nontrivial, which every field satisfies.  The
+lower bounds use the field-level hypotheses shown in their table: an
+infinite field with $2\ne0$ for degree six, and a finite field of
+characteristic two for \Cref{thm:char2-lower}.
+
+\paragraph{Build and axioms.}
+\begin{sloppypar}
+The construction, cost, height, example, and characteristic-two lower-bound
+files (including \texttt{HeightFinal.lean} and
+\texttt{LowerBoundChar2/\allowbreak General.lean}) are imported by the umbrella
+module \texttt{FastPoly.lean}, the default target; \texttt{lake build FastPoly}
+completes it (2006 jobs) with no errors.  The degree-$6$ lower bound
+\texttt{LowerBound/\allowbreak } is a separate module tree built as an explicit
+target.  No file under \texttt{FastPoly/\allowbreak } declares an \texttt{axiom} or
+contains a \texttt{sorry}.  \texttt{\#print axioms} on
+\texttt{polynomial\_\allowbreak height}, \texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charZero},
+\texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charP} (\texttt{HeightFinal.lean}),
+\texttt{decodedAdditionPolynomial\_\allowbreak exists}
+(\texttt{Cost/\allowbreak Additions/\allowbreak DecodedPolynomial.lean}), and
+\texttt{MainArrangementsChecked.of\_\allowbreak charZero},
+\texttt{MainArrangementsChecked.of\_\allowbreak charP} (\texttt{PaperMain.lean}), as well as on
+\texttt{no\_\allowbreak surjective\_\allowbreak eval}, \texttt{no\_\allowbreak construction\_\allowbreak general},
+\texttt{no\_\allowbreak construction'} (\texttt{LowerBoundChar2/\allowbreak General.lean})
+reports only \texttt{propext}, \texttt{Classical.choice}, and
+\texttt{Quot.sound}; the same is recorded for
+\texttt{construction\_\allowbreak additions\_\allowbreak checked}
+(\texttt{Cost/\allowbreak Additions/\allowbreak Realization.lean};
+\texttt{FastPoly/\allowbreak ROADMAP.md}) and for the affine characteristic-two
+development (module docstring of \texttt{LowerBoundChar2/\allowbreak Main.lean}).
+No separate \texttt{\#print axioms} transcript is recorded for the remaining
+theorems.
+\end{sloppypar}

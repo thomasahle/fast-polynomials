@@ -1,0 +1,241 @@
+\subsection{Final construction and decoder}
+\label{sec:final}
+
+All ingredients are now in place.  The final recursion uses the known-powers
+gadgets $Q_{2^t-1}$, the fill gadget $A_{2^l}$, the $T_{k,2^l}$ remainder
+recursion, and the three causal closure operations.  Each recursive branch
+comes with its own cutoff-respecting decoder: the closure lemmas handle local
+combinations, and the stage tables handle $T$.  The decoder summaries used
+below are
+\Cref{alg:decode-Q-2kminus1} for $Q_{2^t-1}$,
+\Cref{alg:decode-fill} for $A_{2^l}$,
+and \Cref{alg:decode-Rk2l} for the combined remainder polynomial used in the $T_{k,2^l}$ recursion;
+they assemble into \Cref{alg:final-decoder}.  The schedules certified in
+Lean substitute the peeled gadget $Q^{\mathrm{peel}}$ (\Cref{sec:peeled-Q})
+for every known-powers instance; \Cref{thm:construction-height-peeled}
+records the resulting $O(\log n)$ height at the identical gate ledger.
+\Cref{fig:final-recursion} charts the routing of the strong induction.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_final_recursion}}
+  \caption{Routing of the final strong induction.  The $4k+1$ branch closes
+  directly through the $T$ recursion.  The other two congruence classes wrap
+  a strictly smaller compatible pair in one or two square shells.  The
+  exceptional list removes exactly the cost-optimal recursive calls that
+  would otherwise land at the missing three-product degree-$7$ realization
+  (and the degree-$15$ byproduct mismatch).
+  The bottom row separates the cost of constructing the shared pair from the
+  final multiplication by~$x$.  All known-powers instances inside these
+  branches are scheduled as the peeled $Q^{\mathrm{peel}}$
+  (\Cref{thm:construction-height-peeled}), giving height
+  $2\lceil\log_2 n\rceil+4$ for the odd degrees charted here (the even
+  lift of \Cref{thm:construction-count} adds one).}
+  \label{fig:final-recursion}
+\end{figure}
+
+\begin{algorithm}[H]
+  \caption{Final odd-degree construction}\label{alg:final-construction}
+  \begin{algorithmic}
+    \Require odd integer $n\ge 3$
+    \Ensure a decodable monic polynomial $P_n$; if $n\ne7$, also a
+    jointly $(n-1)/2$-realized splittable pair
+    $(T^{(1)}_n,T^{(2)}_n)$ that is compatible with no auxiliary data and
+    records the required power byproducts
+
+    \If{$n=7$}
+      \State Use the direct septic construction in \Cref{lem:septic-base}.
+    \ElsIf{$n\in\{3,15,27,31\}$}
+      \State Use the explicit special-case constructions in \Cref{sec:special-cases}.
+    \ElsIf{$n\equiv 1\pmod 4$}
+      \State Write $n=4k+1$ and construct $(T^{(1)}_{4k+1},T^{(2)}_{4k+1})$ via the $T_{2k,2}$ call; see \Cref{lem:4k+1-splittable}.
+    \ElsIf{$n\equiv 3\pmod 8$}
+      \State Write $n=8k+3$ and extend the smaller compatible joint realization for $2k+1$ by \Cref{alg:constr-8k+3}.
+    \Else
+      \State Write $n=8k+7$ with $k\ge 2$ and extend the smaller compatible joint realization for $2k+1$ by \Cref{alg:constr-8k+7} (using $\bar Q_{15}$ or $\bar Q_{8k+7}$ as needed).
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Final decoder for $P_n$ (structural recursion)}\label{alg:final-decoder}
+  \begin{algorithmic}
+    \Require odd $n\ge 3$ and $P_n$ produced by \Cref{alg:final-construction}.
+      For the peeled schedules of \Cref{thm:construction-height-peeled}, every
+      invocation of \Cref{alg:decode-Q-2kminus1} below is replaced by the
+      decoder of \Cref{lem:peeled-Q-decodable}, which has the identical
+      interface.
+    \Ensure the full parameter list $(\alpha_0,\ldots,\alpha_{n-1})$
+
+    \If{$n=7$}
+      \State Apply the triangular decoder in \Cref{lem:septic-base}.
+    \ElsIf{$n\in\{3,15,27,31\}$}
+      \State Decode by the explicit special-case proofs in \Cref{sec:special-cases}.
+    \ElsIf{$n\equiv 1\pmod 4$}
+      \State Write $n=4k+1$.
+      \State Use the five top-coefficient pivots in \Cref{lem:4k+1-splittable} to derive $H_2,H_4,\tilde H_4=H_4+\rho$ and the five outer parameters.
+      \State Derive the pair $(U,V)=T_{k,4}(x,H_2,H_4,\tilde H_4)$ from $P_{4k+1}=xU+V$ using the cutoff decoder in \Cref{lem:4k+1-splittable}.
+      \State Form $x(U-H_4^k)+(V-\tilde H_4^k)$ and apply \Cref{alg:decode-Rk2l} at $(k,l)=(k,2)$ to extract $\alpha_0,\ldots,\alpha_{4k-5}$.
+    \ElsIf{$n\equiv 3\pmod 8$}
+      \State Write $n=8k+3$ and apply the square-gadget extraction in \Cref{lem:8k+3-splittable} to recover the auxiliary polynomials and the squared smaller pair.
+      \State Recover $P_{2k+1}$ by monic square roots and recurse on it; this reconstructs $H_2$.
+      \State Decode $S^{(1)}_2=Q_{4k+1}$ first via \Cref{lem:Q4k+1-from-H2}, which reconstructs $H_4$; only then decode $S^{(1)}_3=\mathcal Q_{2k-1}$ by the dispatch of \Cref{lem:odd-gadgets-H2H4}, with \Cref{alg:decode-Q-2kminus1} for nested Mersenne blocks.
+    \Else
+      \State Write $n=8k+7$ with $k\ge 2$ and apply the two square-gadget extractions in \Cref{lem:8k+7-splittable}; this recovers both auxiliary polynomials and isolates $P_{2k+1}$.
+      \State Recurse on $P_{2k+1}$, thereby reconstructing the internal powers $H_2,H_4$.
+      \State Only now decode the recovered auxiliary gadgets by the $\mathcal Q_d$ dispatch of \Cref{lem:odd-gadgets-H2H4} (i.e.\ \Cref{lem:Q4k+1-from-H2}, \Cref{lem:Q-odd-degree-with-powers}, or \Cref{lem:barQ15,lem:barQ8k+7}), with \Cref{alg:decode-Q-2kminus1} for nested Mersenne blocks.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Cost-optimal compatible pairs in odd degree]
+\label{thm:odd-realizable-pairs}
+    Let $n\ge3$ be odd with $n\ne7$, and assume that $\mathbb F$ is
+    $n$-admissible.  Then there exists a splittable pair
+    $(T^{(1)}_n,T^{(2)}_n)$ that is compatible on an explicit window with no
+    auxiliary data and has a joint $(n-1)/2$-realization
+    (\Cref{def:joint-realization}) of multiplicative height at most
+    $2\lceil\log_2n\rceil+3$.  The realization
+    records a monic quadratic $H_2$ and, when $n\ge5$, a monic quartic $H_4$.
+    In particular, $P_n=xT^{(1)}_n+T^{(2)}_n$ is decodable.
+\end{theorem}
+\begin{proof}
+    We argue by strong induction on odd $n$, proving simultaneously the
+    asserted compatible-pair conclusion, the exact joint multiplication
+    count, and the byproduct statement.  For the height conjunct, the ledger
+    of \Cref{thm:construction-height-peeled} threaded through the same
+    induction gives $2\lceil\log_2n\rceil+3$ along the pair branches (the
+    bound $B(L)=2L+3$ there); the same constant is the height conjunct of
+    the machine-checked Lean statement (\texttt{odd\_realizable\_pairs}) for
+    the very circuit exhibited here (see the closing remark of
+    \Cref{sec:peeled-Q}).
+    Since $n$-admissibility implies $m$-admissibility for every $m<n$, all
+    recursive pairs and auxiliary gadgets below satisfy their stated
+    characteristic hypotheses over the same field.
+    The strengthened induction invariant is that every constructed pair records
+    its monic quadratic $H_2$ as a polynomial byproduct, and every constructed
+    pair of degree at least five also records a monic quartic $H_4$.  These
+    polynomials use no extra gates: they are intermediate values already
+    displayed in the construction.  The degree-$3$ base records its $H_2$;
+    the $4k+1$ and special constructions display both powers; the $8k+3$ step
+    inherits $H_2$ and obtains $H_4$ as the byproduct of its
+    $Q_{4k+1}(x,H_2)$ call; and the $8k+7$ step inherits both powers from its
+    smaller pair.  Thus the byproduct invariant is preserved by every branch.
+
+    Unconditional compatibility is stronger than decodability and is precisely what permits a
+    smaller pair to be used before any powers internal to its construction have
+    been reconstructed.  The direct proofs in
+    \Cref{lem:4k+1-splittable,lem:8k+3-splittable,lem:8k+7-splittable}
+    verify the cutoff formulas for each of the three recursive branches; no
+    general composition assertion is used.
+
+    The realizability assertion is carried by those same branches, not by a
+    separate numerical recurrence.  In either odd induction step, execute the
+    smaller joint circuit once, reuse its recorded $H_2,H_4$ wires as inputs
+    to the auxiliary gadgets, and then form the two displayed
+    difference-of-squares outputs.  Each difference of squares uses the one
+    product $(S_3+S_2)(S_3-S_2)$ already shown in the construction algorithm.
+    Thus the two output components share the smaller circuit and the power
+    byproducts literally; the sums below count the gates of this one joint
+    circuit.  The $4k+1$ and finite branches are already displayed as joint
+    circuits in the same way.
+
+    The finite cost bases have two distinct causes.  For $n=27$ and
+    $n=31$, the relevant recursion would call degree~$7$.  Although the
+    septic is algebraically splittable by \Cref{rem:canonical-split}, we do
+    not have the three-product compatible joint realization, with recorded
+    powers, required by either cost-optimal induction step.  For $n=15$, the smaller degree-$3$
+    pair is compatible, but records only $H_2$, whereas the degree-$7$
+    auxiliary gadget in the generic $8k+7$ step also requires $H_4$.
+    Constructing that quartic separately would exceed the target count; the
+    special degree-$15$ circuit instead replaces the generic $Q_3$ block by a
+    scalar shift of $H_2$ and spends the saved product on $H_4$.  Thus these
+    cases are not artifacts of the decoder proof.
+
+    For $n\equiv 1\pmod 4$ and $n\ge 5$, write $n=4k+1$ and use
+    \Cref{lem:4k+1-splittable}.  Its joint-realization clause gives exactly
+    $2k=(n-1)/2$ products and records both powers.
+
+    For $n\equiv 3\pmod 8$ we can write $n=8k+3$ with $k\ge 0$.
+    If $k=0$ then $n=3$ is supplied by the compatible base
+    \Cref{lem:base-three-compatible}.  Hence assume $k\ge1$.
+    If $k=3$ then $n=27$ is covered, with its exact cost and recorded powers,
+    by \Cref{lem:special-cases-splittable}.
+    Otherwise $k\ne 3$, so $2k+1<n$ is odd and $2k+1\ne 7$; by the induction
+    hypothesis we have a compatible joint realization for $2k+1$ costing
+    $k$ products.  The full conclusion of \Cref{lem:8k+3-splittable} gives
+    the required decoder, compatibility, recorded powers, and joint cost
+    \[
+       k+3k+1=4k+1=\frac{(8k+3)-1}{2}.
+    \]
+
+    For $n\equiv 7\pmod 8$ we can write $n=8k+7$ with $k\ge 0$.
+    The case $k=0$ is exactly $n=7$ and is excluded.
+    If $k=1$ then $n=15$, and if $k=3$ then $n=31$; both are covered, with
+    their exact costs and recorded powers, by
+    \Cref{lem:special-cases-splittable}.  Otherwise $k\ne1,3$, so $k\ge2$
+    and $2k+1<n$ is odd with $2k+1\ne7$.  The induction hypothesis gives a
+    compatible joint realization for $2k+1$ costing $k$ products, and
+    the full conclusion of \Cref{lem:8k+7-splittable} gives the required
+    decoder, compatibility, recorded powers, and joint cost
+    \[
+       k+3k+3=4k+3=\frac{(8k+7)-1}{2}.
+    \]
+    The byproduct discussion above verifies in each branch that these are
+    realizations of the full strengthened invariant, completing the induction.
+\end{proof}
+
+\begin{theorem}[Exact multiplication count]\label{thm:construction-count}
+    For every odd $n\ge3$ with $n\ne7$, the construction computes the
+    splittable pair $(T^{(1)}_n,T^{(2)}_n)$ using exactly $(n-1)/2$
+    multiplications, and therefore computes
+    $P_n=xT^{(1)}_n+T^{(2)}_n$ using $(n+1)/2$ multiplications.  The direct
+    septic construction uses four multiplications as well.  Consequently, over
+    every $n$-admissible field, each monic degree-$n$ polynomial with $n\ge3$
+    is covered by a decodable circuit using
+    $\lfloor n/2\rfloor+1$ multiplications.
+\end{theorem}
+\begin{proof}
+    For odd $n\ne7$, \Cref{thm:odd-realizable-pairs} supplies the joint
+    $(n-1)/2$-realization and its decoder.  Multiplying $T^{(1)}_n$ by $x$
+    once gives $P_n$ and raises the cost to $(n+1)/2$.  For $n=7$ the direct
+    circuit in \Cref{lem:septic-base} already has the same cost, namely four.
+
+    Finally, if $n\ge4$ is even, first use the odd construction for a monic
+    degree-$(n-1)$ polynomial $Q$, at cost $n/2$, and output
+    $c_0+xQ$, using one additional product.  This gives $n/2+1$ products.
+    Its decoder first reads $c_0$ from the constant coefficient and then
+    shifts the remaining coefficients down by one before invoking the decoder
+    for $Q$, so this even lift is decodable.  Degrees $1$ and $2$ use
+    $x+\alpha_0$ and $(x+\alpha_1)x+\alpha_0$, respectively, and are
+    decodable with zero and one product.  Finally,
+    \Cref{lem:polynomial-left-inverse-automorphism} turns each of these
+    polynomial decoders into a two-sided polynomial preprocessing map.
+    Hence the families cover every monic coefficient vector, as asserted.
+\end{proof}
+
+\begin{remark}[Exact characteristic restriction]
+\label{rem:bad-primes}
+    The hypothesis of $n$-admissibility in
+    \Cref{thm:odd-realizable-pairs,thm:construction-count} is used only to
+    invert the integers listed in \eqref{eq:bad-primes} along the routing
+    of \Cref{alg:final-construction}.  Consequently both theorems hold
+    verbatim, with the same circuits, the same decoder
+    \Cref{alg:final-decoder}, the same multiplication count
+    $\lfloor n/2\rfloor+1$ and the same height, over every field whose
+    characteristic is not in $\mathrm{Bad}(n)$; equivalently, over every
+    field in which each element of $\mathrm{Bad}(n)$ is a unit.  The set
+    $\mathrm{Bad}(n)$ is computed by \texttt{tools/bad\_primes.py}, always
+    contains~$2$ for $n\ge5$, and its odd elements are at most $(n-1)/4$,
+    so characteristic zero or $p>n$ remains a uniform sufficient condition.
+    For example $\mathrm{Bad}(n)=\{2\}$ for $5\le n\le12$ and for
+    $n=15,17,19,23,31,33,35,39,47$, while $\mathrm{Bad}(13)=\{2,3\}$,
+    $\mathrm{Bad}(21)=\{2,5\}$ and $\mathrm{Bad}(29)=\{2,3,7\}$: the
+    degree-$47$ circuit is decodable over $\mathrm{GF}(3)$, whereas the
+    degree-$13$ crown divides by $2k=6$.  The Lean statement
+    \texttt{odd\_realizable\_pairs} certifies the uniform hypothesis that
+    $1,\dots,n$ are units (\Cref{sec:formalization-map:units}); the sharper
+    set $\mathrm{Bad}(n)$ is read off the displayed pivots and is not
+    machine-checked.
+\end{remark}
+

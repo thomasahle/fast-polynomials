@@ -1,40 +1,84 @@
 \section{Introduction}
-In many applications it becomes necessary to evaluate
+
+Polynomial evaluation sits at the bottom of a surprising number of algorithms:
+interpolation and approximation,
+root-finding and optimization,
+coding theory \& cryptography,
+simulation, and data analysis.
+We therefore revisit the classic task of evaluating
 \[
    P = a_0 + a_1 x + a_2 x^2 + \dots + a_{n-1} x^{n-1} + x^{n},
 \]
-where the coefficients $a_i$ are known to the programmer~\cite{knuth1962evaluation}.
-Horner's method evaluates $P$ using just $n$ multiplications:
+where the coefficients $a_i$ are known to the programmer.
+Following Motzkin and the classical literature we take $P$ to be \emph{monic}: a
+leading coefficient costs exactly one extra multiplication in every scheme
+discussed here, so all counts in this paper are for monic polynomials and
+increase by one for general ones.
+Horner's method evaluates $P$ using just $n-1$ multiplications:
 $P = a_0 + x(a_1 + x(a_2 + \dots + x(a_{n-1} + x)\dots))$ and has been known for centuries.\footnote{Although named after William George Horner, this method is much older, as it has been attributed to Joseph-Louis Lagrange by Horner himself, and can be traced back many hundreds of years to Chinese and Persian mathematicians; see, e.g., Knuth~\cite{knuth1962evaluation}.}
-Perhaps surprisingly, this is not optimal.
+Thus it is surprising to many that this is not optimal.
 
-The trick is to allow some preprocessing of the coefficients $a_0, \dots, a_n$.
-For example, the polynomial $9 + 7 x + 5 x^2 + 3 x^3 + x^4$ can be evaluated as
-$y = x (x + 1)$, $P = (x + y - 1)(y + 4) + 13$ using just two multiplications rather than four.
-In the 50s Motzkin gave an algorithm to evaluate any monic polynomial (i.e. leading coefficient 1) of degree $n$ using just $n/2$ multiplications.
-%Later Kedlaya and Umanski~\cite{kedlaya2011fast} reduced this to just $(\log n)^{O(1)}$ time, using table lookups and advanced algebra.
+The trick is to allow some preprocessing of the coefficients $a_0, \dots, a_{n-1}$.
+For example, the polynomial
+\[
+P = 9 + 7 x + 5 x^2 + 3 x^3 + x^4
+\] can be evaluated by first computing
+$y = x (x + 1)$ and then $P = (x + y - 1)(y + 4) + 13$ using just two multiplications rather than three with Horner.
+
+In the 50s Motzkin~\cite{motzkin1955evaluation} showed that, after preprocessing the coefficients, any monic polynomial of degree $n$ can be evaluated using just $\lceil n/2\rceil$ multiplications (Belaga~\cite{belaga1958some}, see scheme~(0.5) in Pan's survey~\cite{pan1966methods}; Knuth's formulation of the method~\cite{knuth1997seminumerical} uses $\lfloor n/2\rfloor+2$ multiplications for a general polynomial).
 The downside is that the method requires solving a polynomial system of equations over the complex numbers, which reduces precision and breaks over finite fields.
-%Kedlaya and Umanski's method has a hidden factor of $\log_2 q$, where $q$ is the field size, making it impractical for low degree polynomials over large fields.
-We will discuss the large body of related work by Paterson and Stockmeyer~\cite{paterson1973evaluation}, Kedlaya and Umanski~\cite{kedlaya2011fast}, and others in \cref{sec:related}.
-Arguably, the most practical method is due to Rabin and Winograd~\cite{rabin1972number}, who gave a way to preprocess the coefficients using only rational operations, at the cost of $n/2 + 2\lceil\log n\rceil$ multiplications.
-They conjectured this was optimal up to the constant 2.
+Many other methods have been proposed, but only Rabin and Winograd~\cite{rabin1972number} gave a way to preprocess the coefficients using \emph{rational operations}.
+Unfortunately, their method requires $n/2 + 2\lceil\log n\rceil$ multiplications, and they suspected that this logarithmic overhead might be necessary.
 
-In this paper we answer Rabin and Winograd's conjecture in the negative by showing how to evaluate any monic polynomial of degree $n$ using just $n/2+1$ multiplications with \emph{rational preprocessing}, and we show this is optimal.
-At a high level, rational preprocessing is exactly what turns ``fast evaluation'' into a \emph{bijective/injective} parameterization: our evaluation circuit is parameterized by some $\theta$, and it induces a map from parameters $\theta$ to the coefficient vector $(a_0,\dots,a_{n-1})$ of the resulting polynomial.
-Admitting a rational preprocessing/decoding map means that this parameter-to-coefficient map has a rational inverse on a dense set, i.e.\ it is generically one-to-one (birational onto its image).
+\begin{quote}
+   We feel that [the Theorems] may be, in a certain sense, the best results possible for rational preconditioning.
+   %In Theorem 1, we come within $O(\sqrt n)$ of the absolute lower bound (&M, nA) for additions and multiplications, thus making
+   %the total excess over 3n/2 to be O(&). Can this be improved with rational
+   % preconditioning?
+   In Theorem 15, we are within $O(\log n)$ of the in bound $n/2$ multiplications, using $n + o(n)$ additions.
+   Can this be improved by either reducing the $O(\log n)$ excess multiplications or, keeping this, reducing the $(n + o(n))A$ [additions] part?
+   We have some heuristic arguments to support a suspicion that the above results may be optimal in terms of order of magnitude, but this seems to be a hard problem.
+\end{quote}
 
-Fast evaluation of small low-degree polynomials is important in many applications, such as cryptography~\cite{DBLP:conf/fse/CarletGPQR12} and $k$-wise independent hashing~\cite{wegman1981new, patracscu2012power}.
-We show that our method can be used to speed up both of these applications substantially.
-In Section~\ref{sec:experiments}, we demonstrate speedups of $1.3\times$ to $1.9\times$ over standard Horner evaluation for $k$-wise independent hashing with $k \in \{5, \ldots, 9\}$ on modern ARM processors.
+In this paper we answer Rabin and Winograd's conjecture in the negative by showing how to evaluate any monic polynomial of degree $n$ using just $\lfloor n/2\rfloor+1$ multiplications with \emph{rational preprocessing}.  At odd degrees this count is optimal under any preprocessing whatsoever, by Motzkin's bound; at even degrees it is one more than the algebraic optimum, and we prove at degree~$6$ that the extra multiplication is necessary once the preprocessing must have no exceptional inputs, conjecturing the same at every even degree at least~$6$.  With fixed scalar multiplications free, the same schedules use at most $2n$ additions or subtractions uniformly and at most $\frac54n+O((\log n)^2)$ asymptotically.  The leading constant is therefore within $25\%$ of the classical $n$-addition lower bound~\cite{belaga1958some,belaga1961evaluation}.
 
 \paragraph{Main Results.}
 Section~\ref{sec:model} formalizes our model (arithmetic circuits / straight-line programs) and the notion of rational preprocessing/decoding.
 Our main results are:
 \begin{itemize}
-   \item \textbf{Upper bound.} For every $n\ge 1$ and every field of characteristic $\neq 2$, there is an evaluation scheme for monic degree-$n$ polynomials that uses $\lfloor n/2\rfloor+1$ multiplications and admits rational preprocessing (Theorem~\ref{thm:main}).
-   For characteristic~2, we have explicit constructions up to degree~15 and conjecture the bound holds in general.
-   \item \textbf{Lower bound.} We prove that degree-$6$ evaluation with rational decoding requires at least $4$ multiplications (Section~\ref{sec:lower}), and conjecture that degree-$2n$ requires at least $n+1$ multiplications in general.
+   \item \textbf{Upper bound.} For every $n\ge 1$ and every field of characteristic zero, or of characteristic $p>n$, there is an evaluation scheme for monic degree-$n$ polynomials that uses $\lfloor n/2\rfloor+1$ multiplications and admits rational preprocessing.  Its addition count is at most
+   $\min\{2n,\frac54n+6\lceil\log_2n\rceil^2+1\}$
+   (Theorem~\ref{thm:main}).  The schedules can be arranged with
+   multiplicative height at most $2\lceil\log_2n\rceil+4$ (odd $n$; $+5$
+   for even $n$) at the same gate
+   counts (\Cref{thm:construction-height-peeled}), and the complete
+   statement for every $n\ge3$---multiplication count, decoder, and
+   height---is formalized in Lean (\Cref{appendix:formalization-map}).  The
+   schemes are exact, and that is where they belong: in
+   floating-point arithmetic the rational keys of an arbitrary prescribed
+   polynomial are large and cancel, so the schedules are numerically unstable
+   there (\Cref{sec:numerical-stability} quantifies this and compares with
+   Horner, Estrin, Rabin--Winograd, and Motzkin--Eve); the intended use is
+   modular or exact arithmetic, as in the hashing applications below, where
+   the keys are the data and the question does not arise.
+   For characteristic~2, we have explicit single-circuit constructions up to
+   degree~21 and conjecture the fixed-circuit bound holds in general.
+   \item \textbf{Lower bound.} Motzkin's bound shows that monic polynomials of degree $n$ need $\lceil n/2\rceil$ multiplications under any preprocessing, so our odd-degree schemes are optimal.  For even degrees we prove that degree-$6$ evaluation with everywhere-defined rational decoding requires at least $4$ multiplications (Section~\ref{sec:lower})---one more than Pan's rational sextic scheme, which is undefined on a hypersurface---and conjecture that degree $2n$ requires $n+1$ for every $n\ge3$ (at $n=2$ two multiplications suffice, by Motzkin's quartic).
+      The key insight is that a polynomial automorphism of $\mathbb{C}^n$ can't have a zero Jacobian determinant, and we show any evaluation scheme with rational decoding would induce such a map if it used too few multiplications.
    \item \textbf{Injective Polynomials}. We give an ``injective'' polynomial hashing construction requiring only a single random key (Section~\ref{sec:injective}) and application-level benchmarks for hashing, data structures, and prime-field workloads (Section~\ref{sec:experiments}).
+   \item \textbf{Constructions over $GF(2^n)$.}
+      Our rational decoder applies in characteristic $p>n$, but it does not necessarily work in small characteristic, in particular characteristic~2, which is important in computing.
+      We give fixed evaluation schemes for fields of size $2^n$ up to degree
+      21, and we conjecture that such fixed schemes exist for all $n$ and all
+      finite fields.
+      A key insight is that we can use the bijectivity of the Frobenius map $x \mapsto x^2$.
+      In the opposite direction we prove a matching lower bound in characteristic~2
+      (\Cref{thm:char2-lower}): over a finite field of characteristic~2 with at least
+      $2n$ elements, no chain with $n$ multiplications evaluates bijectively onto
+      $\F^{2n}$ at $2n$ points, for any $n>1$ and whatever preprocessing of the
+      parameters is allowed---affine, rational, or arbitrary.  Unlike \Cref{sec:lower}
+      this covers every $n$, and assumes nothing about the degree.
+   \item \textbf{Experiments.}
+      Fast evaluation of small low-degree polynomials is important in many applications, such as cryptography~\cite{DBLP:conf/fse/CarletGPQR12} and $k$-wise independent hashing~\cite{wegman1981new, patracscu2012power}.
+      We give an implementation of our method for $k$-wise independent hashing and show speedups of up to $1.8\times$ (ARM) and $2\times$ (x86) over standard Horner evaluation for $k \in \{5, \ldots, 9\}$ on modern ARM and x86 processors (Section~\ref{sec:experiments}).
 \end{itemize}
-We also explore concrete constructions in characteristic~2 (currently up to degree~15) in the accompanying code.
-These are of special interest since they can be used in cryptographic applications such as block ciphers and pseudorandom generators.

@@ -1,0 +1,71 @@
+% Decoder-stage map for the three branches of lem:Rk2l.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \draw[fp decode] (0,6.15) -- node[fp label, above] {descending coefficient degree}
+    (13.65,6.15);
+  \node[fp label, anchor=east] at (0,6.15) {high};
+  \node[fp label, anchor=west] at (13.65,6.15) {low};
+
+  % Even branch.
+  \node[fp panel title] at (0,5.65) {even $k=2m$};
+  \node[fp active, minimum width=21mm, anchor=west] (ep) at (0,5.02)
+    {$Q_+$\\$\lambda=-k$};
+  \node[fp pivot, minimum width=9mm, anchor=west] (ed) at (2.1,5.02)
+    {$\delta$\\$-k$};
+  \node[fp second, minimum width=20mm, anchor=west] (em) at (3.0,5.02)
+    {$Q_-$\\$m$};
+  \node[fp pivot, minimum width=9mm, anchor=west] (es) at (5.0,5.02)
+    {$\sigma$\\$m$};
+  \node[fp recursive, minimum width=48mm, anchor=west] (er) at (5.9,5.02)
+    {recursive block $R'_{m,2D}$\\(no degree shift)};
+  \draw[fp dependence] (es.south east) to[bend right=12]
+    node[fp label, below] {tail known} (er.south west);
+
+  % Shared odd base.
+  \node[fp panel title] at (0,3.87) {odd $k$, shared base $D=4$};
+  \node[fp active, minimum width=13mm, anchor=west] (ou) at (0,3.22)
+    {$u$\\$-k(k-1)$};
+  \node[fp second, minimum width=12mm, anchor=west] (ov) at (1.3,3.22)
+    {$v$\\$-(k-1)$};
+  \node[fp pivot, minimum width=10mm, anchor=west] (ow) at (2.5,3.22)
+    {$w$\\$m$};
+  \node[fp pivot, minimum width=10mm, anchor=west] (oz) at (3.5,3.22)
+    {$z$\\$m$};
+  \node[fp recursive, minimum width=39mm, anchor=west] (orr) at (4.5,3.22)
+    {inner pivots shifted by $4$\\through $L_1,L_2$};
+  \node[fp second, minimum width=22mm, anchor=west] (oq) at (8.4,3.22)
+    {low $Q_3$\\unit pivots};
+  \node[fp pivot, minimum width=8mm, anchor=west] at (10.6,3.22)
+    {$\alpha_0$\\$1$};
+  \draw[fp dependence] (oz.south east) to[bend right=12]
+    node[fp label, below] {form shared powers} (orr.south west);
+  \node[fp label, anchor=west, text=fpGray] at (11.65,3.22)
+    {$u,v,w,z$ share\\the outer product};
+
+  % Ordinary odd branch.
+  \node[fp panel title] at (0,2.05) {odd $k$, ordinary branch $D\ge8$};
+  \node[fp active, minimum width=16mm, anchor=west] (qp) at (0,1.38)
+    {$Q_+$\\$-k(k-1)$};
+  \node[fp pivot, minimum width=15mm, anchor=west] (delta) at (1.6,1.38)
+    {$\delta$\\$-k(k-1)$};
+  \node[fp second, minimum width=14mm, anchor=west] (qz) at (3.1,1.38)
+    {$Q_0$\\$-(k-1)$};
+  \node[fp pivot, minimum width=13mm, anchor=west] (eps) at (4.5,1.38)
+    {$\varepsilon$\\$-(k-1)$};
+  \node[fp second, minimum width=12mm, anchor=west] (qm) at (5.8,1.38)
+    {$Q_-$\\$m$};
+  \node[fp pivot, minimum width=8mm, anchor=west] (zeta) at (7.0,1.38)
+    {$\zeta$};
+  \node[fp recursive, minimum width=28mm, anchor=west] (rr) at (7.8,1.38)
+    {inner recursion\\shifted by $D$};
+  \node[fp second, minimum width=18mm, anchor=west] (lq) at (10.6,1.38)
+    {low $Q_{D-1}$\\unit pivots};
+  \node[fp pivot, minimum width=8mm, anchor=west] at (12.4,1.38)
+    {$\alpha_0$\\$1$};
+  \node[fp seam, minimum width=7mm, minimum height=3mm] at (2.4,0.62) {};
+  \node[fp label, anchor=west] at (2.82,0.62)
+    {named boundary corrections, subtracted at the junctions
+     tail$\to$recursion and recursion$\to$low block};
+  \draw[fp dependence] (zeta.south east) to[bend right=10] (rr.south west);
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (0,0.12)
+    {tail pivots $\longrightarrow$ shifted recursive pivots $\longrightarrow$ low unitriangular pivots};
+\end{tikzpicture}

@@ -1,3 +1,4 @@
+\pdfoutput=1
 \input{header}
 
 
@@ -15,19 +16,28 @@
 \maketitle
 
 \begin{abstract}
-   Horner's rule evaluates a monic degree-$n$ polynomial using $n-1$ multiplications~\cite{knuth1962evaluation}.
+   Horner's rule~\cite{knuth1962evaluation} evaluates a monic degree-$n$ polynomial using $n-1$ multiplications.
    We show that with rational preprocessing of the coefficients, any such polynomial
-   can be evaluated using only $\lfloor n/2 \rfloor + 1$ multiplications (over fields
-   of characteristic $\neq 2$).
-   This resolves a conjecture of Rabin and Winograd (1972)~\cite{rabin1972number}, who achieved
-   $n/2 + O(\log n)$ multiplications and conjectured this overhead was necessary.
-   We prove a matching lower bound for degree~6 and conjecture it holds in general.
+   can be evaluated using only $\lfloor n/2 \rfloor + 1$ multiplications over
+   fields of characteristic zero or of characteristic $p>n$; our
+   schedules use at most $\frac54n+O((\log n)^2)$ additions or subtractions and have multiplicative depth $2\lceil\log_2 n\rceil+O(1)$.
+   Everything is checked in Lean.
+   This resolves a conjecture of Rabin and Winograd~\cite{rabin1972number}, who achieved
+   $n/2 + 2\lceil\log_2 n\rceil$ multiplications and conjectured this overhead was necessary.
+   For degree~$6$ over the rationals, we prove that three multiplications do
+   not suffice when preprocessing is everywhere defined.  In characteristic~2,
+   for every $n>1$ and every finite field of size at least $2n$, we prove that
+   an $n$-multiplication chain cannot parametrise all value vectors at $2n$
+   distinct evaluation points, even with arbitrary preprocessing.
+   We give $\lfloor n/2 \rfloor + 1$ multiplication schedules over
+   characteristic~2 for every degree $n\le 21$ and conjecture that this is
+   possible for all $n$.
 
    We also give an injective polynomial construction for universal hashing that uses
    $N$ multiplications to hash $2N$ values with a single random key---half the
    multiplications of standard Horner evaluation.
-   Experiments on ARM processors show $1.3\times$--$1.9\times$ speedups for
-   $k$-wise independent hashing and $2\times$--$2.5\times$ speedups for
+   Experiments on ARM and x86 processors show up to $2\times$ speedups for
+   $k$-wise independent hashing and up to $4.6\times$ speedups for
    cryptographic workloads such as Shamir secret sharing~\cite{shamir1979share}.
 \end{abstract}
 
@@ -36,16 +46,31 @@
 \input{sections/main_theorem}
 \input{sections/related}
 \input{sections/injective}
+
 \input{sections/lower}
-% \input{sections/conclusion}
-% \input{sections/kwise}
+
 \input{sections/experiments}
 \input{sections/open_problems}
+
+\paragraph{Code and formalization.}
+The benchmark code, the chain compilers, the characteristic-two certificates and
+the Lean development referred to throughout (the directories \texttt{tools/\allowbreak bench/},
+\texttt{tools/}, \texttt{char2/} and \texttt{FastPoly/}) are available at\par\noindent\coderepo.
+
 \bibliographystyle{alpha}
 \bibliography{references}  % references.bib
 \appendix
+
 \input{sections/appendix_polynomials}
+\input{sections/decoder_calculus}
 \input{sections/constructions}
+\input{sections/addition_accounting}
+\input{sections/formalization_map}
+\input{sections/appendix_lower}
+\input{sections/lower_char2}
+\input{sections/numerical_stability}
+\input{sections/appendix_adversarial}
+\input{sections/appendix_chainhash}
 
 
 

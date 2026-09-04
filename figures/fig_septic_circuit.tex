@@ -1,0 +1,34 @@
+% Circuit for the degree-7 base construction (lem:septic-base): four multiplications.
+%   y = x(x+a6),  z = (a5+x+y)(a4+x),  w = (a3+z)x,  v = (a2+x+z)(a1+w),  P7 = a0+y+w+v
+\begin{tikzpicture}[
+    >=Latex, thick,
+    mul/.style={circle, draw, inner sep=1.5pt, minimum size=6.5mm, font=\large, fill=white},
+    inp/.style={font=\small},
+    lbl/.style={font=\footnotesize, inner sep=1pt, fill=white, fill opacity=0.85, text opacity=1}
+  ]
+  \node[inp] (x) at (0,0) {$x$};
+  \node[mul] (my) at (2.2,0) {$\times$};
+  \node[mul] (mz) at (4.9,0) {$\times$};
+  \node[mul] (mw) at (7.6,0) {$\times$};
+  \node[mul] (mv) at (10.3,0) {$\times$};
+  \node[inp] (out) at (12.9,0) {$P_7$};
+  \node[font=\footnotesize] at (2.2,0.55) {$y$};
+  \node[font=\footnotesize] at (4.9,0.55) {$z$};
+  \node[font=\footnotesize] at (7.6,0.55) {$w$};
+  \node[font=\footnotesize] at (10.3,0.55) {$v$};
+
+  % y = x (x + a6)
+  \draw[->] (x) to[bend left=30] node[lbl, above] {$x$} (my);
+  \draw[->] (x) to[bend right=30] node[lbl, below] {$x+\alpha_6$} (my);
+  % z = (a5 + x + y)(a4 + x)
+  \draw[->] (my) to[bend left=30] node[lbl, above] {$\alpha_5+x+y$} (mz);
+  \draw[->] (x) to[out=-60, in=-115, looseness=1.0] node[lbl, pos=0.78, below] {$\alpha_4+x$} (mz);
+  % w = (a3 + z) x
+  \draw[->] (mz) to[bend left=30] node[lbl, above] {$\alpha_3+z$} (mw);
+  \draw[->] (x) to[out=-80, in=-105, looseness=1.05] node[lbl, pos=0.5, below] {$x$} (mw);
+  % v = (a2 + x + z)(a1 + w)
+  \draw[->] (mw) to[bend left=30] node[lbl, above] {$\alpha_1+w$} (mv);
+  \draw[->] (mz) to[out=-45, in=-135, looseness=1.0] node[lbl, pos=0.55, below] {$\alpha_2+x+z$} (mv);
+  % output: a0 + y + w + v
+  \draw[->] (mv) -- node[lbl, above] {$\alpha_0+y+w+v$} (out);
+\end{tikzpicture}

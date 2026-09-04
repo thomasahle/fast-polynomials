@@ -3,8 +3,74 @@
 
 \paragraph{Constructions for characteristic 2.}
 Our main construction relies on the identity $(a+b)^2 = a^2 + 2ab + b^2$, which fails in characteristic 2 since $2ab = 0$.
-While we provide some characteristic-2 constructions in the appendix, a general construction achieving $\lfloor n/2 \rfloor + O(1)$ multiplications for all degrees remains open.
+Does one fixed circuit topology with rational preprocessing achieve
+$\lfloor n/2\rfloor+1$ multiplications in characteristic~2?  We currently give
+such fixed constructions only in the small degrees recorded in
+\Cref{appendix:polynomials}.
+
+\paragraph{Exceptional inputs at even degree.}
+Pan's sextic scheme (\Cref{sec:lower}) reaches Motzkin's bound of $n/2$
+multiplications at $n=6$ with rational preprocessing that is undefined on a
+hypersurface, and \Cref{sec:lower} shows that this hypersurface cannot be removed.
+Does a generically rational scheme with $n/2$ multiplications exist for every even
+$n\ge8$?  And is its exceptional set always unavoidable, as we conjecture?
 
 \paragraph{Lower bounds for characteristic 2.}
-Our lower bound proof uses properties specific to fields of characteristic $\neq 2$.
-Does the same $\lfloor n/2 \rfloor + 1$ lower bound hold in characteristic 2, or can one do better?
+The proof in \Cref{sec:lower} uses properties specific to fields of characteristic
+$\neq 2$, but a different argument applies there: over a finite field of characteristic~$2$
+with at least $2n$ elements, \Cref{thm:char2-lower} rules out $n$ multiplications for
+bijective evaluation at $2n$ points at every $n>1$, for every preprocessing map.  Two
+questions remain.  Does the analogous bound hold for an odd number of points, that is,
+for monic polynomials of odd degree?  And does it hold over small fields, where the
+hypothesis $\abs{\F}\ge 2n$ fails?
+
+\paragraph{Key expansion for carryless NH.}
+The block level of ChainHash, like every NH-style hash, uses one random key
+word per message word of a block.  Deriving those words from a few seed words
+by a $k$-wise independent polynomial is unsafe for a reduced NH, whose block
+sums are taken in $\F_{2^{64}}$: the collision condition is affine in the key
+words, hence linear in the seed words, and a difference on $k+1$ positions in
+the kernel of the Vandermonde system is key-independent
+(\Cref{sec:injective:experiments}).  For the unreduced carryless NH the
+products live in $\F_2[X]$ while the expansion lives in $\F_{2^{64}}$, and the
+same construction only halves the $\F_2$-rank of the seed-to-difference map,
+from $127$ to $63$.  Is unreduced carryless NH with $k$-wise independent keys
+almost-XOR-universal with $\varepsilon$ close to $2^{-64}$, or is there an
+attack?  A positive answer would shrink the key of ChainHash and the other NH-based hybrids to a few
+words without a pseudorandom function.
+
+\paragraph{Reduction-free universal hashing with a short key.}
+The fastest proven hashes, NH and its carryless variant, owe their speed to
+the absence of modular reductions: products are accumulated in $\mathbb
+Z/2^{128}$ or $\F_2[X]$ and reduced once at the end, but they need one key
+word per message word.  Polynomial hashes need only $O(1)$ key words but pay
+a reduction per multiplication, and the fastest heuristic hashes
+(\texttt{wyhash}, \texttt{MUM}, \texttt{XXH3}) try to have both at once by
+folding the two halves of each $128$-bit product into one word; the fold is
+not injective, and \Cref{app:adversarial} shows what that costs.  Is there an
+$\varepsilon$-almost-universal family with $\varepsilon$ close to $2^{-64}$,
+a key of $O(1)$ words independent of the message length, and an evaluation
+that uses one $64\times64$-bit multiplication per $16$ bytes and no reduction
+modulo a prime or an irreducible polynomial?  Multiplication in $\mathbb
+Z/2^{w}$ has zero divisors, so the Schwartz--Zippel argument does not apply
+to it directly; Dietzfelbinger's multiply-shift shows that the high bits of
+products can be universal, but again with one key word per message word.
+
+\paragraph{Unit-coefficient chains.}
+The odd steps of the $T$ recursion multiply a block by the integer $k-1$:
+with $H_{2D}=H^2+\Sigma H+G$ the step must use $H-\tfrac{k-1}{2}\Sigma$, and
+the symmetric difference-of-squares core has $\Sigma=2U_1$.  These multiples
+are free in our cost model and cost about $4\%$ extra additions if
+synthesised by doubling (and nothing in characteristic~$2$), but they are
+the only wire coefficients other than $\pm1$ in our chains, whereas the
+classical schemes of Motzkin, Knuth--Eve, Belaga and Rabin--Winograd have
+none.  An asymmetric core $H_{2D}=(H+A_1)(H+A_2)+W$ removes them for $k=3$
+and halves them to $(k-1)/2$ otherwise at the same multiplication and
+addition counts; we verified this by exact decoding for $n\le45$ in the
+$4k+1$ family, where it changes the boundary constants of \Cref{lem:Rk2l}
+and adds the prime $3$ to the exceptional set at some steps, but have not
+carried it through the $8k+3$ and $8k+7$ families.  An exhaustive search at
+$n\le7$ also finds unit-coefficient chains with fewer additions than ours
+($3,4,6,9$ for $n=3,4,5,7$ against $4,5,6,11$).  Is there a uniform
+construction with $\lfloor n/2\rfloor+1$ multiplications, everywhere-defined
+rational preprocessing, and all wire coefficients in $\{0,\pm1\}$?

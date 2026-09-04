@@ -1,0 +1,51 @@
+% Ordinary and barred odd-degree gadgets, with the barred decoder blocks.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  \node[fp panel title] at (0,5.05) {(a) Two ways to obtain an odd auxiliary gadget};
+  \node[fp known, minimum width=28mm] (powers) at (1.45,4.18)
+    {given powers\\$H_2,\ldots,H_D$};
+  \node[fp active, minimum width=32mm] (perturb) at (4.55,4.18)
+    {perturb $H_D$ by\\a smaller $Q$-gadget};
+  \node[fp recursive, minimum width=25mm] (teven) at (7.65,4.18)
+    {even call\\$T_{2k,D}$};
+  \node[fp second, minimum width=24mm] (fill) at (10.35,4.18)
+    {outer fill\\$A_{D/2}$};
+  \node[fp active, minimum width=16mm] (qout) at (12.65,4.18)
+    {$Q_d$};
+  \draw[fp flow] (powers) -- (perturb);
+  \draw[fp flow] (perturb) -- (teven);
+  \draw[fp flow] (teven) -- (fill);
+  \draw[fp flow] (fill) -- (qout);
+
+  \node[fp known, minimum width=25mm] (h24) at (1.45,3.05)
+    {only $H_2,H_4$\\are given};
+  \node[fp active, minimum width=30mm] (h8) at (4.55,3.05)
+    {construct $H_8$\\with one product};
+  \node[fp recursive, minimum width=25mm] (t8) at (7.65,3.05)
+    {$T_{k,8}$\\($k=1$ is direct)};
+  \node[fp second, minimum width=24mm] (a4) at (10.35,3.05)
+    {fixed outer\\fill $A_4$};
+  \node[fp active, minimum width=16mm] (barq) at (12.65,3.05)
+    {$\bar Q$};
+  \draw[fp flow] (h24) -- (h8);
+  \draw[fp flow] (h8) -- (t8);
+  \draw[fp flow] (t8) -- (a4);
+  \draw[fp flow] (a4) -- (barq);
+
+  \node[fp panel title] at (0,2.4) {(b) Top-down decoder of the barred gadget};
+  \draw[fp decode] (0,1.75) -- node[fp label, above] {descending coefficient degree}
+    (13.55,1.75);
+  \node[fp active, minimum width=24mm, anchor=west] at (0,1.08)
+    {$b_0,b_1,b_2$\\three unit pivots};
+  \node[fp pivot, minimum width=34mm, anchor=west] at (2.4,1.08)
+    {$(b_3,b_4,u,v)$\\explicit $4\times4$ block};
+  \node[fp pivot, minimum width=19mm, anchor=west] at (5.8,1.08)
+    {$w,\rho$\\slopes $k$};
+  \node[fp recursive, minimum width=27mm, anchor=west] at (7.7,1.08)
+    {internal $R_{k,8}$\\shifted pivots};
+  \node[fp second, minimum width=31mm, anchor=west] at (10.4,1.08)
+    {remaining $A_4$ slots\\unit pivots};
+  \node[fp label, anchor=west] at (2.45,0.42)
+    {$\det M=-k^2$ (so $-1$ for $\bar Q_{15}$, the case $k=1$)};
+  \node[fp label, anchor=west, text=fpBlue!80!black] at (0,0.02)
+    {The matrix inverse is displayed explicitly; no data-dependent division or Jacobian argument is used.};
+\end{tikzpicture}

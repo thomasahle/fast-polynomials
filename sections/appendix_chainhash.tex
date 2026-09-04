@@ -1,0 +1,752 @@
+% ---------------------------------------------------------------------------
+% Collision-probability proof for ChainHash (tools/bench/chainhash/chainhash.h).
+% Written to be \input under the paper's header.tex (uses \F, \Cref, the
+% amsthm environments theorem/lemma/definition/remark/corollary).  Labels are
+% prefixed "ph:"; sec:ph is referenced from sections/injective.tex.  Paper
+% labels referenced (all in sections/):
+%   def:injective:recurrence, eq:injective-recurrence, eq:injective-single-key,
+%   lem:injective:coeffmap, def:injective:universal, sec:injective,
+%   tab:injective:adversarial                                        (injective.tex)
+%   thm:main, rem:char2, sec:main-theorem, sec:main-theorem:kwise,
+%   eq:kwise:monic-poly                                              (main_theorem.tex)
+% 2026-09-03: final design.  Three independent recurrence keys u, y, z (the
+%   three-variable form of def:injective:recurrence, no specialisation), S
+%   sub-block pairs per block (S = 2 for the 1 KB variant), degree-7 finalizer
+%   evaluated by the four-multiplication characteristic-2 circuit, with an
+%   explicit unitriangular decoder for its coefficient map (lem:ph:chain).
+%   Bound (Sn+2)/2^64 for messages of at most n blocks.
+% ---------------------------------------------------------------------------
+\providecommand{\F}{\mathbb{F}}
+\providecommand{\clnh}{\mathrm{CLNH}}
+\providecommand{\lo}{\mathrm{lo}}
+\providecommand{\hi}{\mathrm{hi}}
+\providecommand{\iver}[1]{[\![#1]\!]}
+\providecommand{\cf}[2]{[#1]\,#2}   % coefficient extractor: \cf{y^{k}}{Q} = coefficient of y^k in Q
+
+\section{Collision probability of \textsc{ChainHash}}
+\label{sec:ph}
+
+This section defines the hash family \textsc{ChainHash} implemented in
+\texttt{tools/bench/\allowbreak chainhash/\allowbreak chainhash.h} (fast, NEON \texttt{PMULL}) and
+\texttt{tools/bench/\allowbreak chainhash/\allowbreak chainhash\_ref.h} (bit-serial reference) and proves
+its collision bound.  The family is a three-level composition: a carry-less
+NH (CLNH) block hash \cite{lemire2015clhash} applied to sub-blocks of $B/S$
+bytes, the last block being processed at $16$-byte pair granularity; the
+injective recurrence of \Cref{sec:injective} in its three-variable form, with
+$u,y,z$ three independent uniform keys; and a monic degree-$7$ finalizer
+evaluated by a four-multiplication circuit whose coefficient map is a
+bijection in characteristic~$2$ (\Cref{lem:ph:chain}).  Every random key
+element is drawn uniformly from the field and used directly; there is no
+preprocessing step and no heuristic mixing step.
+
+\subsection{Field, notation, and the hash family}
+\label{sec:ph:def}
+
+\paragraph{Field.}
+Let $\mathcal R=\F_2[X]$ and, for $d\ge1$, let $\mathcal R_{<d}$ denote the
+polynomials of degree $<d$, identified with $d$-bit strings (bit $i$ is the
+coefficient of $X^i$).  Addition in $\mathcal R$ is bitwise XOR.  The
+\emph{carry-less product} of $a,b\in\mathcal R_{<64}$ is their product
+$ab\in\mathcal R_{<127}\subseteq\mathcal R_{<128}$ (the \texttt{PMULL}/\texttt{pclmulqdq}
+instruction).  Let
+\[
+  \Pi(X)=X^{64}+X^4+X^3+X+1 ,
+\]
+which is irreducible over $\F_2$ \cite[\S4.3]{lemire2015clhash}%
+\footnote{Re-verified with Rabin's irreducibility test
+(\texttt{tools/bench/chainhash/sanity.py}).  The reduction constant $27=0b11011$ in the
+code is $\Pi-X^{64}$.}, and let $\F=\F_2[X]/(\Pi)\cong\mathrm{GF}(2^{64})$,
+$q=|\F|=2^{64}$.  Every class in $\F$ has a unique representative in
+$\mathcal R_{<64}$, so $64$-bit words denote both elements of $\mathcal R_{<64}$
+and elements of $\F$; addition is XOR in both readings.  Multiplication in
+$\F$ is $a\cdot b=(ab)\bmod\Pi$, which is what \texttt{gfmul} computes
+(\texttt{gf64\_mult} in \texttt{tools/bench/\allowbreak framework/\allowbreak multiplication\_arm.h}:
+$ab \equiv ab_{\lo} + r\,ab_{\hi}$ and $r\,ab_{\hi}\equiv (r\,ab_{\hi})_{\lo} + r\,(r\,ab_{\hi})_{\hi}$
+with $r=\Pi-X^{64}$, three carry-less products, fully reduced).
+A $128$-bit word $w\in\mathcal R_{<128}$ is split as $w=\lo(w)+X^{64}\hi(w)$
+with $\lo(w),\hi(w)\in\mathcal R_{<64}$.
+
+\paragraph{Parameters.}
+$W$ words per block (\texttt{BLOCK\_WORDS}), $B=8W$ bytes per block, and a
+sub-block split $S\in\{1,2\}$ with $8S\mid W$: each block consists of $S$
+sub-blocks of $W_s=W/S$ words ($B_s=B/S$ bytes, $W_s/2$ pairs).  The shipped
+configurations are $(W,S)=(32,1)$ ($256$-byte blocks, one pair per block) and
+$(W,S)=(128,2)$ ($1$\,KB blocks, two $512$-byte sub-blocks); the $64$-byte row
+of \Cref{tab:injective:adversarial} is $(W,S)=(8,1)$.  The finalizer degree is
+$7$ throughout.
+
+\paragraph{Key.}
+$\kappa=(k_0,\dots,k_{W-1})\in\F^{W}$, $\theta=(u,y,z)\in\F^3$, and
+$c=(c_0,\dots,c_6)\in\F^7$, all $W+10$ elements independent and uniform on
+$\F$ ($42$, $138$ and $18$ words for the three configurations above).  Sub-block
+position $i\in\{0,\dots,S-1\}$ within a block uses the key segment
+$\kappa^{(i)}=(k_{iW_s},\dots,k_{(i+1)W_s-1})$.
+
+\paragraph{Sub-blocks.}
+A message $m$ is a byte string of length $\ell=\ell(m)\ge0$.  Its block count
+and sub-block count are
+\[
+  n(m)=\max\{1,\lceil \ell/B\rceil\},\qquad p(m)=S\,n(m).
+\]
+A \emph{sub-block} is a tuple $g=(g_0,\dots,g_{2w-1})\in(\mathcal R_{<64})^{2w}$
+of $64$-bit words for some $0\le w\le W_s/2$; we call $w=w(g)$ its \emph{pair
+count} and $(g_{2s},g_{2s+1})$, $0\le s<w$, its \emph{pairs} ($16$ bytes each).
+Sub-block $t$ of $m$, $1\le t\le p(m)$, covers the bytes $[(t-1)B_s,\,tB_s)$
+of $m$, of which
+\[
+  r_t=\min\bigl\{B_s,\ \max\{0,\ \ell-(t-1)B_s\}\bigr\}\in[0,B_s]
+\]
+exist; it is the tuple $m_t\in(\mathcal R_{<64})^{2w_t}$ of the little-endian
+$64$-bit words of those $r_t$ bytes followed by $16w_t-r_t\in[0,16)$ zero
+bytes, where
+\[
+  w_t=\lceil r_t/16\rceil\in\{0,1,\dots,W_s/2\}
+\]
+is its pair count: only the final, partial pair is padded, and only when
+$16\nmid r_t$.  Sub-blocks with $tB_s\le\ell$ are \emph{full} ($w_t=W_s/2$);
+sub-blocks beyond the data are \emph{empty} ($w_t=0$, $m_t=()$), which happens
+for the empty message and, when $S=2$, for the second half of a last block
+that ends in its first half.  No byte beyond position $\ell$ is ever read.
+Since $\ell$ determines $n(m)$, $p(m)$ and every $r_t$ and $w_t$, and the
+bytes of $m_1,\dots,m_{p(m)}$ concatenated begin with $m$, the tuple
+$(m_1,\dots,m_{p(m)},\ell)$ determines $m$; in particular two messages of the
+same length have sub-blocks of the same pair counts.  Sub-block $t$ sits at
+position $i(t)=(t-1)\bmod S$ of its block and is keyed by $\kappa^{(i(t))}$.
+
+\paragraph{Level 1: CLNH.}
+For a key segment $\kappa'=(k'_0,\dots,k'_{W_s-1})\in(\mathcal R_{<64})^{W_s}$ and
+a sub-block $g=(g_0,\dots,g_{2w-1})$ with pair count $w\le W_s/2$,
+\begin{equation}\label{eq:ph:clnh}
+  \clnh_{\kappa'}(g)\;=\;\sum_{s=0}^{w-1}(g_{2s}+k'_{2s})\,(g_{2s+1}+k'_{2s+1})\;\in\mathcal R_{<128},
+\end{equation}
+the sum being XOR of the $128$-bit carry-less products.  It involves only
+the first $2w$ key words $k'_0,\dots,k'_{2w-1}$ and is the empty sum $0$ when
+$w=0$.  For a full sub-block ($w=W_s/2$) this is \cite[eq.~(7)]{lemire2015clhash},
+computed by the four-accumulator loop \texttt{ph\_block}.  For a partial
+sub-block, \texttt{ph\_tail} computes exactly the $w$ products of
+\eqref{eq:ph:clnh}: full $64$-byte groups and then whole $16$-byte pairs are
+loaded in place, and the partial pair (present iff $16\nmid r_t$) is loaded
+through a zero-filled $16$-byte stack copy of its $r_t-16(w-1)$ bytes, so the
+input is never read past byte $\ell$; the reference \texttt{chainhash\_ref.h}
+assembles the same zero-padded words byte by byte (\texttt{word\_at}).  XOR
+being associative and commutative, all of these compute \eqref{eq:ph:clnh}
+(test T1 of \texttt{test\_chainhash.cpp} compares the two on every
+partial-pair/whole-pair/$64$-byte-group combination of the last block and,
+for $S=2$, byte by byte across the sub-block boundary).
+
+\paragraph{Level 1$'$: the stream.}
+For $m$ with $p=p(m)$ and sub-blocks $m_1,\dots,m_p$ define the
+\emph{stream} $\sigma_\kappa(m)=((a_1,b_1),\dots,(a_p,b_p))\in(\F^2)^p$ by
+\begin{equation}\label{eq:ph:stream}
+  a_t=\lo\bigl(\clnh_{\kappa^{(i(t))}}(m_t)\bigr)+\iver{t=p}\cdot\ell,\qquad
+  b_t=\hi\bigl(\clnh_{\kappa^{(i(t))}}(m_t)\bigr),
+\end{equation}
+where $\ell$ is read as the $64$-bit word (field element) encoding the byte
+length.  So the byte length is XORed into the $a$-component of the last pair
+only, and every sub-block, empty or not, contributes one pair.
+
+\paragraph{Level 2: the three-key recurrence.}
+With $P_0=z$ and, for $t\ge1$,
+\begin{equation}\label{eq:ph:rec}
+  P_t=a_t+(b_t+y)(P_{t-1}+u)\qquad\text{in }\F ,
+\end{equation}
+which is \eqref{eq:injective-recurrence} with the three variables $u,y,z$ of
+\Cref{def:injective:recurrence} instantiated by the three key elements
+(no specialisation), set $V_\kappa(m)=P_{p(m)}$ (the dependence on $\theta$
+is suppressed).  We write $P^{(m)}\in\F[U,Y,Z]$ for the formal polynomial
+obtained by running \eqref{eq:ph:rec} with indeterminates $U,Y,Z$ in place of
+$u,y,z$; then $V_\kappa(m)=P^{(m)}(u,y,z)$, and the coefficients of $P^{(m)}$
+depend on $\kappa$ and $m$ only.
+
+\paragraph{Level 3: finalizer.}
+For $c\in\F^7$ let $f_c\in\F[X]$ be the polynomial computed by the circuit
+\begin{equation}\label{eq:ph:chain7}
+  g_1=X(X+c_0),\quad
+  g_2=(X+c_1)(g_1+c_2),\quad
+  g_3=g_2(g_2+c_3),\quad
+  f_c=(X+c_4)(g_1+g_3+c_5)+c_6 ,
+\end{equation}
+evaluated exactly as written at $X=v$: four multiplications,
+$\lfloor7/2\rfloor+1$ as in \Cref{thm:main} (\texttt{chain<7>} in
+\texttt{chainhash.h}, where the intermediates are called \texttt{y},
+\texttt{z}, \texttt{t}, \texttt{u}).  It is monic of degree $7$
+(\Cref{lem:ph:chain}).
+
+\begin{definition}[\textsc{ChainHash}]\label{def:ph:hash}
+$H_{\kappa,\theta,c}(m)=f_c\bigl(V_\kappa(m)\bigr)\in\F$.
+\end{definition}
+
+\subsection{Statement}
+
+\begin{theorem}[Collision bound]\label{thm:ph:collision}
+Fix $W$, $S$ and $n\ge1$, and put $p=Sn$.  For every two distinct messages
+$m\ne m'$ with $n(m),n(m')\le n$ (equivalently: of at most $nB$ bytes each),
+\[
+  \Pr_{\kappa,\theta,c}\bigl[H_{\kappa,\theta,c}(m)=H_{\kappa,\theta,c}(m')\bigr]\;\le\;\frac{p+2}{2^{64}}=\frac{Sn+2}{2^{64}} .
+\]
+\end{theorem}
+
+For the $256$-byte configuration this reads $(\lceil\ell/256\rceil+2)/2^{64}$
+for messages of at most $\ell$ bytes, and for the $1$\,KB configuration
+$(2\lceil\ell/1024\rceil+2)/2^{64}$: $3/2^{64}$ and $4/2^{64}$ for messages of
+up to $256$ bytes, $4098/2^{64}\approx2^{-52}$ and $2050/2^{64}\approx2^{-53}$
+for messages of up to $1$\,MB.  The proof separates the three levels:
+\Cref{lem:ph:stream} (level 1), \Cref{lem:ph:level2} (level 2) and
+\Cref{lem:ph:finalizer} (level 3).
+
+\subsection{Level 1: full-width XOR-universality of CLNH}
+
+Lemire and Kaser prove that the \emph{reduced} family $g\mapsto\clnh_{\kappa'}(g)\bmod\Pi$
+is XOR-universal and state that the unreduced $128$-bit family is
+$2^{-64}$-almost universal \cite[\S5 and Lemma~5]{lemire2015clhash}.  Since
+the stream \eqref{eq:ph:stream} keeps \emph{both} halves of the $128$-bit
+value and XORs a constant into one of them, we need the unreduced family to
+be XOR-universal on its full width, for every $128$-bit constant.  The proof
+is their integral-domain argument carried out in $\mathcal R$ instead of a field.
+Because the last block is processed at pair granularity, two last sub-blocks can
+have \emph{different} pair counts; part (ii) below covers that case.  There
+the key products of the extra pairs do not cancel, and a nonzero constant
+$C$ is essential (supplied, in \Cref{lem:ph:stream}, by the length XOR).
+
+\begin{lemma}[CLNH is $2^{-64}$-XOR-universal on $128$ bits]\label{lem:ph:clnh}
+Let $\kappa'$ be uniform on $(\mathcal R_{<64})^{W_s}$, let $g\in(\mathcal R_{<64})^{2w}$
+and $g'\in(\mathcal R_{<64})^{2w'}$ be sub-blocks with pair counts $0\le w\le w'\le W_s/2$,
+and let $C\in\mathcal R_{<128}$.
+\begin{enumerate}[label=(\roman*)]
+\item If $w=w'$ and $g\ne g'$, then
+      $\Pr_{\kappa'}\bigl[\clnh_{\kappa'}(g)+\clnh_{\kappa'}(g')=C\bigr]\le 2^{-64}$.
+\item If $w<w'$ and $C\ne0$, then
+      $\Pr_{\kappa'}\bigl[\clnh_{\kappa'}(g)+\clnh_{\kappa'}(g')=C\bigr]\le 2^{-64}$.
+\end{enumerate}
+The hypothesis $C\ne0$ in (ii) cannot be dropped: for $w=0$, $w'=1$ and $C=0$
+the event is $\{k'_0=g'_0\}\cup\{k'_1=g'_1\}$, of probability $2^{-63}-2^{-128}$.
+\end{lemma}
+\begin{proof}
+(i) Pick $s<w$ with $(g_{2s},g_{2s+1})\ne(g'_{2s},g'_{2s+1})$.  Expanding
+\eqref{eq:ph:clnh} in $\mathcal R$ (both sums contain the same $w$ products
+and the characteristic is $2$, so the $k'_{2s'}k'_{2s'+1}$ terms cancel for
+every $s'$),
+\[
+  \clnh_{\kappa'}(g)+\clnh_{\kappa'}(g')
+  =(g_{2s}+g'_{2s})\,k'_{2s+1}+(g_{2s+1}+g'_{2s+1})\,k'_{2s}
+   +\bigl(g_{2s}g_{2s+1}+g'_{2s}g'_{2s+1}\bigr)+T,
+\]
+where $T$ collects the summands with index $s'\ne s$ and does not involve
+$k'_{2s},k'_{2s+1}$.  Suppose $\delta:=g_{2s}+g'_{2s}\ne0$ (otherwise
+$g_{2s+1}+g'_{2s+1}\ne0$ and the same argument applies with the roles of
+$k'_{2s}$ and $k'_{2s+1}$ exchanged).  Condition on all key words other than
+$k'_{2s+1}$.  The event becomes $\delta\,k'_{2s+1}=C'$ for a $C'\in\mathcal R$
+that does not depend on $k'_{2s+1}$.  Since $\mathcal R$ is an integral domain
+and $\delta\ne0$, the map $k\mapsto\delta k$ is injective, so at most one of
+the $2^{64}$ values of $k'_{2s+1}$ satisfies the equation.  The conditional
+probability is at most $2^{-64}$; average over the conditioning.
+
+(ii) For $w\le t\le w'$ let $g'^{(t)}:=(g'_0,\dots,g'_{2t-1})$ be the sub-block
+formed by the first $t$ pairs of $g'$ (so $g'^{(w')}=g'$, and $g'^{(w)}$ has the
+pair count of $g$), and put
+$\Delta_t:=\clnh_{\kappa'}(g)+\clnh_{\kappa'}(g'^{(t)})$ and $p_t:=\Pr_{\kappa'}[\Delta_t=C]$;
+by \eqref{eq:ph:clnh}, $\Delta_t$ involves only $k'_0,\dots,k'_{2t-1}$.  We show
+$p_t\le2^{-64}$ by induction on $t$; the claim is $p_{w'}\le2^{-64}$.
+\emph{Base $t=w$.}  If $g\ne g'^{(w)}$ then $p_w\le2^{-64}$ by (i); if
+$g=g'^{(w)}$ (in particular whenever $w=0$) then $\Delta_w=0\ne C$ and $p_w=0$.
+\emph{Step $t-1\to t$} ($w<t\le w'$).  By \eqref{eq:ph:clnh},
+\[
+  \Delta_t=\Delta_{t-1}+(g'_{2t-2}+k'_{2t-2})\,(g'_{2t-1}+k'_{2t-1}),
+\]
+and $\Delta_{t-1}$ does not involve $k'_{2t-2},k'_{2t-1}$.  Split the event
+$\{\Delta_t=C\}$ according to whether $k'_{2t-2}=g'_{2t-2}$.
+On $\{k'_{2t-2}\ne g'_{2t-2}\}$ condition on all key words other than $k'_{2t-1}$:
+the event reads $\delta\,k'_{2t-1}=C'$ with $\delta=g'_{2t-2}+k'_{2t-2}\ne0$ and
+$C'$ not depending on $k'_{2t-1}$, which at most one value of $k'_{2t-1}$
+satisfies ($\mathcal R$ is an integral domain); hence
+$\Pr[\Delta_t=C\wedge k'_{2t-2}\ne g'_{2t-2}]\le(1-2^{-64})\,2^{-64}$.
+On $\{k'_{2t-2}=g'_{2t-2}\}$ the last product vanishes and
+$\{\Delta_t=C\}=\{\Delta_{t-1}=C\}$, an event independent of
+$\{k'_{2t-2}=g'_{2t-2}\}$ (disjoint key words); hence
+$\Pr[\Delta_t=C\wedge k'_{2t-2}=g'_{2t-2}]=2^{-64}\,p_{t-1}\le2^{-128}$.
+Adding, $p_t\le2^{-64}-2^{-128}+2^{-128}=2^{-64}$.
+\end{proof}
+
+\begin{lemma}[Distinct messages give distinct streams w.h.p.]\label{lem:ph:stream}
+For all $m\ne m'$,
+$\Pr_\kappa[\sigma_\kappa(m)=\sigma_\kappa(m')]\le2^{-64}$.
+Moreover $\sigma_\kappa(m)\ne\sigma_\kappa(m')$ holds for \emph{every}
+$\kappa$ when $n(m)\ne n(m')$, and also when $\ell(m)\ne\ell(m')$ but the two
+padded last sub-blocks coincide (same pair count and the same words;
+e.g.\ $m'=m\,\|\,\texttt{0x00}$ with $16\nmid\ell(m)$, and in particular
+whenever all padded sub-blocks of $m$ and $m'$ coincide).
+\end{lemma}
+\begin{proof}
+If $n(m)\ne n(m')$ the streams have different lengths $p(m)\ne p(m')$ and
+cannot be equal.  Let $n(m)=n(m')$, so $p(m)=p(m')=:p$, with sub-blocks
+$m_1,\dots,m_p$ and $m'_1,\dots,m'_p$, lengths $\ell,\ell'$, and last
+sub-block pair counts $w_p=w(m_p)$ and $w'_p=w(m'_p)$; sub-block $t$ of both
+messages is keyed by the same segment $\kappa^{(i(t))}$.  By
+\eqref{eq:ph:stream}, $\sigma_\kappa(m)=\sigma_\kappa(m')$ iff
+\begin{equation}\label{eq:ph:stream-eq}
+\begin{aligned}
+  &\clnh_{\kappa^{(i(t))}}(m_t)=\clnh_{\kappa^{(i(t))}}(m'_t)\qquad(1\le t<p),\quad\text{and}\\
+  &\clnh_{\kappa^{(i(p))}}(m_p)+\clnh_{\kappa^{(i(p))}}(m'_p)=C,\qquad\text{where } C:=(\ell+\ell')+X^{64}\cdot0 ,
+\end{aligned}
+\end{equation}
+i.e.\ $C\in\mathcal R_{<128}$ has low word $\ell+\ell'$ (the XOR of the two
+$64$-bit length words) and high word $0$.
+
+\emph{Equal lengths, $\ell=\ell'$.}  Then $C=0$, and $m_t$ and $m'_t$ have
+the same pair count for every $t$.  Since $(m_1,\dots,m_p,\ell)$ determines
+$m$ and $m\ne m'$, there is a $t$ with $m_t\ne m'_t$; its pair count is at
+least $1$, because two sub-blocks of pair count $0$ are both the empty tuple
+and could not differ.  Hence
+$\{\sigma_\kappa(m)=\sigma_\kappa(m')\}\subseteq\{\clnh_{\kappa^{(i(t))}}(m_t)+\clnh_{\kappa^{(i(t))}}(m'_t)=0\}$,
+of probability $\le2^{-64}$ by \Cref{lem:ph:clnh}(i) applied to the uniform
+segment $\kappa^{(i(t))}$, i.e.\ by the XOR-universality of CLNH over the
+common number of pairs.
+
+\emph{Different lengths, $\ell\ne\ell'$.}  Now $\lo(C)=\ell+\ell'\ne0$, so
+$C\ne0$; only the last condition of \eqref{eq:ph:stream-eq} is used.
+\begin{enumerate}[label=(\alph*)]
+\item $w_p=w'_p$ and $m_p=m'_p$: the padded last sub-blocks coincide (this
+      includes the situation where all padded sub-blocks of $m$ and $m'$
+      coincide, and the case where both last sub-blocks are empty).  The
+      last condition reads $0=C\ne0$, so the streams differ for \emph{every}
+      $\kappa$, whatever the earlier sub-blocks are: the length XOR separates
+      them deterministically.
+\item $w_p=w'_p$ and $m_p\ne m'_p$ (so $w_p\ge1$).  Then
+      $\{\sigma_\kappa(m)=\sigma_\kappa(m')\}\subseteq\{\clnh_{\kappa^{(i(p))}}(m_p)+\clnh_{\kappa^{(i(p))}}(m'_p)=C\}$,
+      of probability $\le2^{-64}$ by \Cref{lem:ph:clnh}(i).
+\item $w_p\ne w'_p$ (possible only for different lengths; one of the two
+      counts may be $0$).  Then
+      $\{\sigma_\kappa(m)=\sigma_\kappa(m')\}\subseteq\{\clnh_{\kappa^{(i(p))}}(m_p)+\clnh_{\kappa^{(i(p))}}(m'_p)=C\}$,
+      of probability $\le2^{-64}$ by \Cref{lem:ph:clnh}(ii), which applies
+      because $C\ne0$.
+\end{enumerate}
+In every case $\Pr_\kappa[\sigma_\kappa(m)=\sigma_\kappa(m')]\le2^{-64}$; the
+deterministic claims are the case $n(m)\ne n(m')$ and case (a).
+\end{proof}
+
+\subsection{Level 2: injectivity and Schwartz--Zippel}
+
+We use \Cref{lem:injective:coeffmap} in its three-variable form, together with
+the total-degree bound recorded at the end of its proof.  We restate both
+with an explicit decoder, over an arbitrary field (no assumption on the
+characteristic; the decoder divides only by monic linear polynomials), and
+add the statement for streams of different lengths.
+
+\begin{lemma}[Injectivity and degree of the recurrence; \Cref{lem:injective:coeffmap}]\label{lem:ph:injective}
+Let $\F$ be any field and $n\ge1$.  For $(a_1,b_1,\dots,a_n,b_n)\in\F^{2n}$ let
+$P_n\in\F[U,Y,Z]$ be given by \Cref{def:injective:recurrence}
+($P_0=Z$, $P_i=a_i+(b_i+Y)(P_{i-1}+U)$).
+\begin{enumerate}[label=(\roman*)]
+\item $P_n=f_1(Y)+Z\,f_2(Y)+U\,f_3(Y)$ with $f_2,f_3$ monic of degree $n$ and
+      $\deg f_1\le n-1$.  Hence $P_n$ has total degree $n+1$, and its
+      homogeneous part of degree $n+1$ is $(Z+U)Y^n$, the same for every
+      parameter vector.
+\item The map $(a_1,b_1,\dots,a_n,b_n)\mapsto P_n$ is injective.
+\item If $(a_1,b_1,\dots,a_n,b_n)\ne(a'_1,b'_1,\dots,a'_{n'},b'_{n'})$ as
+      finite sequences ($n,n'\ge1$), then $P_n-P'_{n'}$ is a nonzero
+      polynomial, of total degree at most $n$ when $n=n'$ and exactly
+      $\max(n,n')+1$ when $n\ne n'$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+\emph{Structure.}  Put $g_i:=\prod_{j=i}^{n}(Y+b_j)$ for $1\le i\le n+1$
+(so $g_{n+1}=1$, $g_i$ is monic of degree $n-i+1$).  We claim
+\begin{equation}\label{eq:ph:structure}
+  P_n=f_1(Y)+Z\,f_2(Y)+U\,f_3(Y),\qquad
+  f_1=\sum_{i=1}^{n}a_i\,g_{i+1},\quad f_2=g_1,\quad f_3=\sum_{i=1}^{n}g_i .
+\end{equation}
+Indeed, if $P_{i-1}=f_1^{(i-1)}+Zf_2^{(i-1)}+Uf_3^{(i-1)}$ then
+$P_i=a_i+(Y+b_i)\bigl(f_1^{(i-1)}+Zf_2^{(i-1)}+U(f_3^{(i-1)}+1)\bigr)$, i.e.
+\[
+  f_1^{(i)}=a_i+(Y+b_i)f_1^{(i-1)},\qquad
+  f_2^{(i)}=(Y+b_i)f_2^{(i-1)},\qquad
+  f_3^{(i)}=(Y+b_i)\bigl(f_3^{(i-1)}+1\bigr),
+\]
+with $(f_1^{(0)},f_2^{(0)},f_3^{(0)})=(0,1,0)$; unrolling gives
+\eqref{eq:ph:structure}.  Since $P_n$ has degree $\le1$ in each of $Z,U$
+and no $ZU$ term, $f_1,f_2,f_3$ are determined by $P_n$.
+Here $f_2$ is monic of degree $n$, $f_3$ is monic of degree $n$
+(its summand $g_1$ dominates), and $\deg f_1\le n-1$; so the monomials of
+total degree $n+1$ in $P_n$ are exactly $ZY^n$ and $UY^n$, each with
+coefficient $1$.  This proves (i).
+
+\emph{Decoder for the $b$'s.}  We show how to recover $\beta_1$ from a pair
+$(G,S)$ of the shape $G=\prod_{j=1}^{m}(Y+\beta_j)$, $S=\sum_{i=1}^{m}\prod_{j=i}^{m}(Y+\beta_j)$,
+$m\ge1$; the pair $(f_2,f_3)$ has this shape with $m=n$ and $\beta_j=b_j$.
+Write $h_i=\prod_{j=i}^{m}(Y+\beta_j)$, so $G=h_1$, $S-G=\sum_{i=2}^{m}h_i$,
+$\deg h_i=m-i+1$ and every $h_i$ is monic.  Then
+\begin{equation}\label{eq:ph:pivot}
+  \cf{Y^{m-1}}{G}=\sum_{j=1}^{m}\beta_j,\qquad
+  \cf{Y^{m-2}}{(S-G)}=\iver{m\ge2}\sum_{j=2}^{m}\beta_j+\iver{m\ge3},
+\end{equation}
+because $h_2$ (present iff $m\ge2$) contributes its $Y^{m-2}$ coefficient
+$\sum_{j\ge2}\beta_j$, $h_3$ (present iff $m\ge3$) contributes its leading
+coefficient $1$, and $h_i$ with $i\ge4$ has degree $<m-2$
+(for $m=1$ read $\cf{Y^{-1}}{\cdot}=0$).  Hence the explicit pivot
+\begin{equation}\label{eq:ph:beta1}
+  \beta_1=\cf{Y^{m-1}}{G}-\cf{Y^{m-2}}{(S-G)}+\iver{m\ge3}.
+\end{equation}
+Knowing $\beta_1$, synthetic division of $G$ by the monic factor $(Y+\beta_1)$
+gives $h_2=G/(Y+\beta_1)$ exactly, and $S':=S-G=\sum_{i=2}^{m}h_i$; the pair
+$(h_2,S')$ has the same shape with $m-1$ and $(\beta_2,\dots,\beta_m)$.
+Iterating recovers $b_1,\dots,b_n$ and, along the way, all $g_i$.
+(For $m\ge3$ the two coefficients in \eqref{eq:ph:pivot} are the ones displayed
+in the proof of \Cref{lem:injective:coeffmap}; the indicator $\iver{m\ge3}$
+is the parenthetical remark there that the constant $1$ in the $Y^{m-2}$
+coefficient is absent when $m=2$.)
+
+\emph{Decoder for the $a$'s.}  In $f_1=\sum_{i=1}^{n}a_ig_{i+1}$ the summand
+$a_ig_{i+1}$ has degree $n-i$ with leading coefficient $a_i$, so
+$a_1=\cf{Y^{n-1}}{f_1}$; subtract $a_1g_2$ and read $a_2=\cf{Y^{n-2}}{(f_1-a_1g_2)}$,
+and so on.  This proves (ii).
+
+(iii) If $n=n'$ the two polynomials are distinct by (ii), and by (i) their
+homogeneous parts of degree $n+1$ coincide, so
+$P_n-P'_n=(f_1-f'_1)+Z(f_2-f'_2)+U(f_3-f'_3)$ with
+$\deg(f_2-f'_2),\deg(f_3-f'_3)\le n-1$ (both monic of degree $n$) and
+$\deg(f_1-f'_1)\le n-1$: nonzero of total degree at most $n$.  If $n<n'$,
+$P_n$ has total degree $n+1<n'+1$ while the degree-$(n'+1)$ part of $P'_{n'}$
+is $(Z+U)Y^{n'}\ne0$, so $P_n-P'_{n'}$ is nonzero of total degree exactly
+$n'+1$.
+\end{proof}
+
+\begin{lemma}[Schwartz--Zippel in three variables]\label{lem:ph:sz}
+Let $D\in\F[U,Y,Z]$ be nonzero of total degree $d$ over a finite field $\F$,
+and let $u,y,z$ be independent and uniform on $\F$.  Then
+$\Pr[D(u,y,z)=0]\le d/|\F|$.
+\end{lemma}
+\begin{proof}
+By induction on the number of variables; for one variable a nonzero
+polynomial of degree $d$ has at most $d$ roots.  Write
+$D=\sum_{j}D_j(Y,Z)\,U^j$ and let $j_0$ be the largest $j$ with $D_{j_0}\ne0$,
+so $\deg D_{j_0}\le d-j_0$.  By induction $\Pr[D_{j_0}(y,z)=0]\le(d-j_0)/|\F|$;
+conditioned on any $(y,z)$ with $D_{j_0}(y,z)\ne0$, $D(U,y,z)$ is a nonzero
+univariate polynomial of degree $j_0$, which the independent uniform $u$
+hits with probability at most $j_0/|\F|$.  Adding the two bounds gives
+$d/|\F|$.
+\end{proof}
+
+\begin{lemma}[Level-2 collision]\label{lem:ph:level2}
+Let $m\ne m'$ with $n(m),n(m')\le n$, and $p=Sn$.  Then
+\[
+  \Pr_{\kappa,\theta}\bigl[\sigma_\kappa(m)\ne\sigma_\kappa(m')\ \wedge\ V_\kappa(m)=V_\kappa(m')\bigr]
+  \;\le\;\begin{cases}
+     p/2^{64} & \text{if } n(m)=n(m'),\\
+     (p+1)/2^{64} & \text{if } n(m)\ne n(m').
+  \end{cases}
+\]
+\end{lemma}
+\begin{proof}
+Condition on any $\kappa$ with $\sigma_\kappa(m)\ne\sigma_\kappa(m')$.  The
+streams are the parameter sequences of the formal polynomials $P^{(m)}$ and
+$P^{(m')}$, of lengths $p(m)$ and $p(m')$, so by \Cref{lem:ph:injective}(iii)
+$D:=P^{(m)}-P^{(m')}$ is a nonzero polynomial of total degree $d\le p(m)\le p$
+if $p(m)=p(m')$, i.e.\ $n(m)=n(m')$, and $d=\max(p(m),p(m'))+1\le p+1$
+otherwise.  Now $V_\kappa(m)=V_\kappa(m')$ iff $D(u,y,z)=0$, and
+$\theta=(u,y,z)$ is uniform on $\F^3$ and independent of $\kappa$, so
+\Cref{lem:ph:sz} gives $\Pr_\theta[D(u,y,z)=0\mid\kappa]\le d/2^{64}$.
+Average over $\kappa$.
+\end{proof}
+
+\subsection{Level 3: the finalizer is a uniformly random monic polynomial}
+
+\Cref{thm:main} does not cover characteristic $2$ (\Cref{rem:char2}), so the
+bijectivity of the circuit \eqref{eq:ph:chain7} is proved directly, by an
+explicit decoder.  Throughout, $\F$ is a field of characteristic $2$;
+squaring $r\mapsto r^2$ is then additive (the Frobenius endomorphism) and
+injective, and on a finite field $\mathrm{GF}(2^k)$ it is a bijection with
+inverse $r\mapsto r^{2^{k-1}}$, which we call the \emph{Frobenius root} and
+write $\sqrt{r}$.
+
+\begin{lemma}[The degree-$7$ circuit is a bijective parametrisation]\label{lem:ph:chain}
+Let $\F$ have characteristic $2$ and write $f_c(X)=\sum_{i\le7}e_iX^i$ for the
+polynomial \eqref{eq:ph:chain7}.  Put
+\[
+  b=c_0+c_1,\qquad e=c_2+c_0c_1,\qquad d=c_1c_2 .
+\]
+Then $e_7=1$ and
+\begin{equation}\label{eq:ph:chain7-coeffs}
+\begin{aligned}
+  e_6&=c_4, & e_2&=c_3e+c_0+c_4\,(e^2+c_3b+1),\\
+  e_5&=b^2, & e_1&=d^2+c_3d+c_5+c_4\,(c_3e+c_0),\\
+  e_4&=c_3+c_4b^2, & e_0&=c_6+c_4\,(d^2+c_3d+c_5),\\
+  e_3&=e^2+c_3b+1+c_3c_4 .
+\end{aligned}
+\end{equation}
+The coefficient map $\varphi_7:\F^7\to\F^7$, $c\mapsto(e_0,\dots,e_6)$, is
+injective, and bijective when $\F$ is perfect, in particular for every finite
+field $\mathrm{GF}(2^k)$.  Consequently, if $c$ is uniform on
+$\mathrm{GF}(2^k)^7$ then $f_c$ is a uniformly random monic polynomial of
+degree $7$.
+\end{lemma}
+\begin{proof}
+\emph{Expansion.}  In characteristic $2$, $g_1=X^2+c_0X$ and
+$g_2=(X+c_1)(X^2+c_0X+c_2)=X^3+bX^2+eX+d$.  Squaring is additive, so
+$g_2^2=X^6+b^2X^4+e^2X^2+d^2$ and
+\[
+  g_3=g_2^2+c_3g_2=X^6+b^2X^4+c_3X^3+(e^2+c_3b)X^2+c_3eX+(d^2+c_3d),
+\]
+whence
+$g_1+g_3+c_5=X^6+b^2X^4+c_3X^3+(e^2+c_3b+1)X^2+(c_3e+c_0)X+(d^2+c_3d+c_5)$.
+Multiplying by $X+c_4$ and adding $c_6$ gives $e_7=1$ and
+\eqref{eq:ph:chain7-coeffs}: each $e_i$ for $i\le6$ is the coefficient of
+$X^{i-1}$ of that sextic plus $c_4$ times its coefficient of $X^i$.
+
+\emph{Pivot coordinates.}  The change of parameters
+\begin{equation}\label{eq:ph:chain7-q}
+  q=(q_0,\dots,q_6):=(c_4,\ b,\ c_3,\ e,\ c_1,\ c_5,\ c_6)
+  =(c_4,\ c_0+c_1,\ c_3,\ c_2+c_0c_1,\ c_1,\ c_5,\ c_6)
+\end{equation}
+is a bijection of $\F^7$, with inverse
+\begin{equation}\label{eq:ph:chain7-cq}
+  c=(q_1+q_4,\ q_4,\ q_3+q_1q_4+q_4^2,\ q_2,\ q_0,\ q_5,\ q_6):
+\end{equation}
+indeed $c_1=q_4$, then $c_0=b+c_1=q_1+q_4$ and $c_2=e+c_0c_1=q_3+(q_1+q_4)q_4$,
+and the remaining entries are copied.  Substituting \eqref{eq:ph:chain7-cq}
+into \eqref{eq:ph:chain7-coeffs}, with
+$d=c_1c_2=q_4\,(q_3+q_1q_4+q_4^2)=:\delta$ (a polynomial in $q_1,q_3,q_4$),
+the rows read, from $X^6$ down to $X^0$,
+\begin{equation}\label{eq:ph:chain7-rows}
+\begin{aligned}
+  e_6&=q_0,\\
+  e_5&=q_1^2,\\
+  e_4&=q_2+q_0q_1^2,\\
+  e_3&=q_3^2+q_2q_1+q_2q_0+1,\\
+  e_2&=q_4+q_2q_3+q_1+q_0\,(q_3^2+q_2q_1+1),\\
+  e_1&=q_5+\delta^2+q_2\delta+q_0\,(q_2q_3+q_1+q_4),\\
+  e_0&=q_6+q_0\,(\delta^2+q_2\delta+q_5).
+\end{aligned}
+\end{equation}
+Row $i$ (the coefficient $e_{6-i}$) has the form $\pi_i(q_i)+K_i(q_0,\dots,q_{i-1})$,
+where the pivot $\pi_i$ is the identity for $i\in\{0,2,4,5,6\}$ and the square
+$q_i\mapsto q_i^2$ for $i\in\{1,3\}$, and $K_i$ is a polynomial in the earlier
+coordinates only: the system is unitriangular with pivots that are
+bijections of a perfect field.
+
+\emph{Decoder.}  Given $(e_0,\dots,e_6)$, recover $q$ top-down, each line
+using only $e$ and the coordinates already recovered:
+\begin{equation}\label{eq:ph:chain7-decoder}
+\begin{aligned}
+  q_0&=e_6,\qquad q_1=\sqrt{e_5},\qquad q_2=e_4+q_0q_1^2,\qquad
+  q_3=\sqrt{e_3+q_2q_1+q_2q_0+1},\\
+  q_4&=e_2+q_2q_3+q_1+q_0\,(q_3^2+q_2q_1+1),\\
+  q_5&=e_1+\delta^2+q_2\delta+q_0\,(q_2q_3+q_1+q_4)\qquad\text{with }\delta=q_4\,(q_3+q_1q_4+q_4^2),\\
+  q_6&=e_0+q_0\,(\delta^2+q_2\delta+q_5),
+\end{aligned}
+\end{equation}
+then $c$ from \eqref{eq:ph:chain7-cq}.  Over a perfect field the Frobenius
+root is defined everywhere and inverts squaring, so
+\eqref{eq:ph:chain7-decoder} composed with \eqref{eq:ph:chain7-rows} is the
+identity in both directions and $\varphi_7$ is a bijection.  Over an
+arbitrary field of characteristic $2$ squaring is still injective, so two
+parameter vectors with the same coefficients agree row by row in
+\eqref{eq:ph:chain7-rows}, and $\varphi_7$ is injective.  A bijection of
+$\F^7$ maps the uniform distribution to itself.
+\end{proof}
+
+\begin{remark}[Sanity checks, and the relation to \Cref{thm:main}]\label{rem:ph:thm-main}
+The decoder \eqref{eq:ph:chain7-decoder} \emph{is} the proof; the following
+checks only guard against transcription errors.  The expansion
+\eqref{eq:ph:chain7-coeffs}, the coordinate change
+\eqref{eq:ph:chain7-q}--\eqref{eq:ph:chain7-cq} and the row structure
+\eqref{eq:ph:chain7-rows} were verified symbolically over
+$\F_2[c_0,\dots,c_6][X]$ (\texttt{tools/bench/chainhash/verify7.py}); test T5 of
+\texttt{test\_chainhash.cpp} expands the
+transcribed circuit over $\mathrm{GF}(2^{64})[X]$, checks that it is monic of
+degree $7$, and checks decode$\circ$encode and encode$\circ$decode on random
+parameter vectors and random monic polynomials, with
+$\sqrt{r}=r^{2^{63}}$; and an exhaustive run of the same decoder
+(\texttt{tools/\allowbreak bench/\allowbreak chainhash/\allowbreak exh7.c}) over $\mathrm{GF}(2)$,
+$\mathrm{GF}(4)$, $\mathrm{GF}(8)$ and $\mathrm{GF}(16)$, i.e.\ over all
+$2^{7k}$ parameter vectors for $k\le4$ ($16^7$ for $k=4$), found no decoding
+failure and no two parameter vectors with the same coefficient vector.  \Cref{thm:main} asserts bijective coefficient maps for
+characteristic $0$ or $p>n$, which does \emph{not} cover
+$\F=\mathrm{GF}(2^{64})$ (\Cref{rem:char2}); the circuit \eqref{eq:ph:chain7}
+reaches the same count $\lfloor7/2\rfloor+1=4$ with a decoder whose only
+non-unit pivots are Frobenius squares, which is exactly what characteristic
+$2$ makes invertible.  The point of \Cref{sec:main-theorem:kwise} is that
+sampling the circuit parameters $c$ uniformly is then equivalent to sampling
+the standard Wegman--Carter key \eqref{eq:kwise:monic-poly}.
+\end{remark}
+
+\begin{lemma}[Finalizer]\label{lem:ph:finalizer}
+Let $c$ be uniform on $\F^7$, $\F=\mathrm{GF}(2^{64})$.
+\begin{enumerate}[label=(\roman*)]
+\item For fixed $v\ne v'\in\F$: $\Pr_c[f_c(v)=f_c(v')]=2^{-64}$ exactly.
+\item For fixed pairwise distinct $v_1,\dots,v_t\in\F$ with $t\le7$, the vector
+      $(f_c(v_1),\dots,f_c(v_t))$ is uniform on $\F^t$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+By \Cref{lem:ph:chain}, $e=\varphi_7(c)$ is uniform on $\F^7$ and
+$f_c(X)=X^7+\sum_{i<7}e_iX^i$.
+(i) $f_c(v)-f_c(v')=(v-v')\,e_1+\bigl[(v^7-v'^7)+\sum_{i\ne1}e_i(v^i-v'^i)\bigr]$.
+Conditioned on $(e_i)_{i\ne1}$ the bracket is a constant and $e_1\mapsto(v-v')e_1+\text{const}$
+is a bijection of $\F$ ($v-v'\ne0$), so exactly one value of the uniform $e_1$
+gives $0$: conditional probability $2^{-64}$, hence unconditional $2^{-64}$.
+(ii) $(f_c(v_j))_{j\le t}=(v_j^7)_j+Ve$ where $V=(v_j^i)_{j\le t,\,i<7}\in\F^{t\times7}$.
+The $t\times t$ minor with columns $i=0,\dots,t-1$ is a Vandermonde matrix in
+distinct points, hence invertible, so $V$ has rank $t$ and $e\mapsto Ve$ is
+surjective with all fibres of equal size $|\F|^{7-t}$; the image of the uniform
+$e$ is uniform on $\F^t$, and adding the constant vector preserves uniformity.
+\end{proof}
+
+\subsection{Proof of \texorpdfstring{\Cref{thm:ph:collision}}{the collision bound}}
+
+Let $m\ne m'$ with $n(m),n(m')\le n$, $p=Sn$, and abbreviate
+$\sigma=\sigma_\kappa(m)$, $\sigma'=\sigma_\kappa(m')$, $V=V_\kappa(m)$, $V'=V_\kappa(m')$.
+Define the events
+\[
+  E_1=\{\sigma=\sigma'\},\qquad
+  E_2=\{\sigma\ne\sigma'\ \wedge\ V=V'\},\qquad
+  E_3=\{V\ne V'\ \wedge\ f_c(V)=f_c(V')\}.
+\]
+If $H(m)=H(m')$ then either the streams coincide ($E_1$), or they differ but
+the level-2 values coincide ($E_2$), or the level-2 values differ and the
+finalizer collides ($E_3$); so $\{H(m)=H(m')\}\subseteq E_1\cup E_2\cup E_3$ and
+\[
+  \Pr[H(m)=H(m')]\le\Pr[E_1]+\Pr[E_2]+\Pr[E_3].
+\]
+$E_1$ depends on $\kappa$ only; $E_2$ depends on $(\kappa,\theta)$; for $E_3$,
+condition on any $(\kappa,\theta)$ with $V\ne V'$: $c$ is independent of
+$(\kappa,\theta)$, so \Cref{lem:ph:finalizer}(i) gives conditional probability
+exactly $2^{-64}$, whence $\Pr[E_3]\le2^{-64}$.
+If $n(m)=n(m')$, then $\Pr[E_1]\le2^{-64}$ by \Cref{lem:ph:stream} and
+$\Pr[E_2]\le p/2^{64}$ by \Cref{lem:ph:level2}, for a total of
+$(1+p+1)/2^{64}$.  If $n(m)\ne n(m')$, then $E_1$ is impossible
+(\Cref{lem:ph:stream}) and $\Pr[E_2]\le(p+1)/2^{64}$ (\Cref{lem:ph:level2}),
+for a total of $(0+(p+1)+1)/2^{64}$.  In both cases
+$\Pr[H(m)=H(m')]\le(p+2)/2^{64}$.  In the terminology of
+\Cref{def:injective:universal}, \textsc{ChainHash} is
+$\frac{Sn+2}{2^{64}}$-almost universal on messages of at most $nB$ bytes. \qed
+
+\subsection{\texorpdfstring{$7$}{7}-wise independence}
+
+\begin{theorem}[$7$-wise independence up to level-1/2 collisions]\label{thm:ph:kwise}
+Fix $W$, $S$, $n\ge1$, $p=Sn$, and $t\le7$ pairwise distinct messages
+$m_1,\dots,m_t$ with $n(m_i)\le n$.  Let $\mathcal D$ be the event
+(determined by $(\kappa,\theta)$) that the level-2 values
+$V_\kappa(m_1),\dots,V_\kappa(m_t)$ are pairwise distinct, i.e.\ that no pair
+suffers an $E_1$ or $E_2$ collision.  Then
+\begin{enumerate}[label=(\roman*)]
+\item $\Pr[\neg\mathcal D]\le\binom t2\,\frac{p+1}{2^{64}}$;
+\item conditioned on any $(\kappa,\theta)\in\mathcal D$, the vector
+      $(H(m_1),\dots,H(m_t))$ is uniform on $\F^t$: the outputs are
+      independent and uniform, in particular $7$-wise independent;
+\item consequently, for every $T\subseteq\F^t$,
+      $\bigl|\Pr[(H(m_1),\dots,H(m_t))\in T]-|T|/2^{64t}\bigr|\le\binom t2\frac{p+1}{2^{64}}$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+(i) For each pair $i<j$, $\{V_\kappa(m_i)=V_\kappa(m_j)\}\subseteq E_1^{ij}\cup E_2^{ij}$
+with the events of the previous proof, of probability at most
+$2^{-64}+p/2^{64}$ or $0+(p+1)/2^{64}$ by \Cref{lem:ph:stream,lem:ph:level2};
+take a union bound over the $\binom t2$ pairs.
+(ii) $H(m_i)=f_c(V_\kappa(m_i))$ and $c$ is independent of $(\kappa,\theta)$; apply
+\Cref{lem:ph:finalizer}(ii) to the distinct points $V_\kappa(m_1),\dots,V_\kappa(m_t)$.
+(iii) $\Pr[\cdot\in T]=\Pr[\mathcal D]\,|T|/2^{64t}+\Pr[\neg\mathcal D\wedge\cdot\in T]$,
+and both $\Pr[\neg\mathcal D]\,|T|/2^{64t}$ and $\Pr[\neg\mathcal D\wedge\cdot\in T]$ lie in $[0,\Pr[\neg\mathcal D]]$.
+\end{proof}
+
+\subsection{Remarks}
+
+\begin{remark}[What each level contributes]
+The bound is $2^{-64}$ (CLNH) $+\ p/2^{64}$ (recurrence) $+\ 2^{-64}$
+(finalizer), with $p=Sn$ the number of recurrence steps, i.e.\ of field
+multiplications between the block level and the finalizer.  The finalizer's
+degree does not enter the collision bound: it buys the $7$-wise guarantee of
+\Cref{thm:ph:kwise} and, over $\F_2$, a cubic rather than quadratic output
+map (\Cref{rem:ph:single-key}), at the price of four multiplications per
+message.  The recurrence term is the $n/|\F|$ of \Cref{sec:injective} with
+$n$ now counting sub-blocks of $B_s$ bytes rather than pairs of words, which
+is why the total is far below the $(\ell/16+O(1))/2^{64}$ one would get from
+the recurrence alone on the raw words.
+\end{remark}
+
+\begin{remark}[The single-key variant]\label{rem:ph:single-key}
+An earlier version of \textsc{ChainHash} used the single-key specialisation
+\eqref{eq:injective-single-key}, $P_0=x$, $P_t=a_t+(b_t+x^3)(P_{t-1}+x^2)$,
+with $S=1$ and a finalizer of degree $3$ or $5$.  Its level-2 term was
+$(3p-1)/2^{64}$ for equal block counts (the three leading coefficients of the
+univariate polynomial are message-independent) and $(3p+2)/2^{64}$ otherwise,
+for totals of $(3p+1)/2^{64}$ and $(3p+3)/2^{64}$.  The three resident key
+words that held $x,x^2,x^3$ now hold $u,y,z$, and the total-degree bound of
+\Cref{lem:ph:injective}(iii) replaces the univariate one, dividing the
+level-2 term by about three.  The low-degree finalizers were dropped for the
+reason given in \Cref{sec:injective}: over $\mathrm{GF}(2^{64})$ the
+$\F_2$-degree of $v\mapsto v^e$ is the number of ones in the binary expansion
+of $e$, so a polynomial of degree $3$ or $5$ is quadratic over $\F_2$ and the
+corresponding hashes fail SMHasher3's distribution tests, while degree $7$ is
+the first odd degree whose leading monomial is cubic.
+\end{remark}
+
+\begin{remark}[The length XOR]
+Unlike CLHASH, which folds the length in with a separate random word
+$k''\star|M|$ \cite[Alg.~4]{lemire2015clhash}, \textsc{ChainHash} XORs the
+raw byte length into $a_p$ without any key.  This is sound because, for
+$\ell\ne\ell'$ and equal block counts (\Cref{lem:ph:stream}):
+(a) when the padded last sub-blocks coincide, the streams differ
+\emph{deterministically} (case~(a)) and the recurrence is injective on streams;
+(b) when they have the same pair count but differ, the relevant event is the
+full-width XOR-universality of \Cref{lem:ph:clnh}(i) with the constant
+$C=(\ell+\ell')+X^{64}\cdot0$ (case~(b)); and
+(c) when they have different pair counts (case~(c)) the key product
+$(g'_{2s}+k'_{2s})(g'_{2s+1}+k'_{2s+1})$ of each extra pair does not cancel and
+vanishes with probability about $2^{-63}$, so the sum is \emph{not}
+$2^{-64}$-XOR-universal against $C=0$; it is exactly the nonzero constant
+$\ell+\ell'$ supplied by the length XOR that makes \Cref{lem:ph:clnh}(ii)
+apply.  Without the length XOR, pair granularity would cost about a factor
+of two in the level-1 term for such pairs, and $m$ and $m\,\|\,\texttt{0x00}$
+(with $16\nmid\ell(m)$) would collide outright.  The XOR must land in a
+component of the stream that is fed to the injective recurrence; it does.
+\end{remark}
+
+\begin{remark}[The keys range over the whole field]
+No lemma needs $u$, $y$ or $z$ to be nonzero; the Schwartz--Zippel count in
+\Cref{lem:ph:sz} is over all of $\F^3$ and includes the degenerate keys
+(e.g.\ $y=0$, where the recurrence becomes $P_t=a_t+b_t(P_{t-1}+u)$) among the
+at most $d\,|\F|^2$ zeros.  Restricting the keys to $\F^\times$ would give the
+slightly worse $d/(2^{64}-1)$.
+\end{remark}
+
+\begin{remark}[Assumptions, and the gap between the theorem and the code]\label{rem:ph:gaps}
+\begin{enumerate}[label=(A\arabic*)]
+\item \emph{Ideal key.}  \Cref{thm:ph:collision,thm:ph:kwise} are about the family
+      indexed by a uniform $(\kappa,\theta,c)\in\F^{W+10}$ ($8(W+10)$ random
+      bytes; $336$, $1{,}104$ and $144$ bytes for $W=32,128,8$).  The
+      implementation derives $(\kappa,\theta,c)$ from a $64$-bit seed with
+      \texttt{splitmix64}; the resulting $2^{64}$-member subfamily is not
+      covered by the theorems (no pseudorandomness assumption is made or
+      needed for the ideal-key statements; cf.\ the counting argument of
+      \cite[\S2.5]{lemire2015clhash}).
+\item \emph{Exact field arithmetic.}  \texttt{gfmul} is assumed to be the field
+      product in $\F_2[X]/(\Pi)$ (irreducibility of $\Pi$: \cite[\S4.3]{lemire2015clhash},
+      re-checked in \texttt{tools/bench/chainhash/sanity.py}); the fast and reference
+      multiplies are compared in test T7, and the fast hash against the
+      bit-serial reference in tests T1/T4 of \texttt{test\_\allowbreak chainhash.cpp}.
+      Equivalence of \texttt{chainhash.h} with \Cref{def:ph:hash} is tested, not proved.
+\item \emph{Level 1 citation.}  \cite{lemire2015clhash} states XOR-universality
+      for the \emph{reduced} $64$-bit CLNH and $2^{-64}$-almost universality for
+      the $128$-bit output; the full-width XOR-universality used here is
+      \Cref{lem:ph:clnh}, proved above (same integral-domain argument as their Lemma~5).
+\item \emph{Level 2 citation.}  \Cref{lem:injective:coeffmap} of \Cref{sec:injective}
+      is used in the restated form \Cref{lem:ph:injective}, whose indicator
+      $\iver{m\ge3}$ in \eqref{eq:ph:pivot}--\eqref{eq:ph:beta1} is the
+      parenthetical remark in that proof that the constant $1$ in the
+      $y^{n-2}$ coefficient of $f_3$ is present only for $n\ge3$.  The
+      total-degree bound $n/|\F|$ stated at the end of that proof is
+      \Cref{lem:ph:injective}(iii) with \Cref{lem:ph:sz}.
+\item \emph{Level 3 citation.}  \Cref{thm:main} does not apply in characteristic $2$;
+      \Cref{lem:ph:chain} proves the needed bijectivity for the degree-$7$
+      circuit directly.  Extending \textsc{ChainHash} to another degree needs
+      a characteristic-$2$ bijective circuit of that degree with its own
+      decoder (\Cref{rem:char2}).
+\item \emph{Message model.}  Messages are byte strings; the length is XORed as
+      a $64$-bit value, so $\ell<2^{64}$.  $n$ counts $B$-byte blocks and
+      $p=Sn$ counts sub-blocks; a message of $\ell$ bytes costs
+      $\lceil\ell/16\rceil$ carry-less products at level 1, $p(m)$ field
+      multiplications at level 2 and $4$ in the finalizer.  The empty message
+      is one block of $S$ empty sub-blocks, each with CLNH sum the empty sum
+      $0$, hashed with $\ell=0$ (so every stream pair is $(0,0)$).
+\end{enumerate}
+\end{remark}

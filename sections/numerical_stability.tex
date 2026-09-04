@@ -1,0 +1,368 @@
+\section{Numerical stability in floating point}
+\label{sec:numerical-stability}
+
+The constructions of this paper are exact: over a finite field, or over $\Q$ in
+exact rational arithmetic, the schedules evaluate $P$ without error.  It is
+nevertheless natural to ask how they behave in floating-point arithmetic,
+where Horner's rule and Estrin's scheme are the standard choices.  We show
+that adapted-constant schedules---ours included---are not coefficientwise
+backward stable: their floating-point error is governed by an amplification
+factor $A$ that we define and measure below, the floating-point counterpart of
+the classical observation that adapted-coefficient methods are prone to lose
+significance~\cite[\S4.6.4]{knuth1997seminumerical}.
+
+\subsection{Model and a majorant bound for straight-line programs}
+
+We use the standard model~\cite[Ch.~2--3]{higham2002accuracy}: every
+floating-point operation satisfies
+$\operatorname{fl}(a\circ b)=(a\circ b)(1+\delta)$ with $\abs{\delta}\le u$,
+where $u$ is the unit roundoff, and there is no overflow or underflow.  Set
+$\gamma_k=ku/(1-ku)$.  The product lemma states that any product of $k$ factors
+$(1+\delta_j)^{\pm1}$ equals $1+\theta_k$ with $\abs{\theta_k}\le\gamma_k$.
+
+\paragraph{What is rounded.}
+Preprocessing is exact: the coefficients of $P$ are mapped to the parameters
+of the schedule in exact rational arithmetic (or in any precision high enough
+to be exact for the purpose).  Evaluation is in floating point: the argument
+$x$ arrives as a floating-point number, each parameter is rounded once to the
+working precision, $\operatorname{fl}(c_j)=c_j(1+\delta_j)$, and every
+arithmetic operation of the schedule rounds, with or without fused
+multiply--add.  Every evaluation scheme in this paper is a
+\emph{straight-line program} $\mathcal C$: a sequence of wires, each either
+the input $x$, a constant $c_j$, or the sum, difference, or product of two
+earlier wires.  Integer multiples $k\cdot w$ of a wire count as one product.
+Constants that are input data (the coefficients $a_i$ in Horner's rule) are
+assumed exactly representable, so that Horner's rule has no preprocessing
+rounding at all; the preprocessed constants of our schedules, of
+Rabin--Winograd, and of Motzkin--Eve carry the one rounding above.
+
+\begin{definition}[Rounding depth and majorant]
+\label{def:rounding-depth}
+The \emph{rounding depth} $\rho(w)$ of a wire is defined recursively by
+$\rho(x)=0$; $\rho(c_j)=0$ if $c_j$ is exact input data and $1$ otherwise;
+$\rho(u\pm v)=\max(\rho(u),\rho(v))+1$; and $\rho(u\cdot v)=\rho(u)+\rho(v)+1$.
+The \emph{majorant} $M_{\mathcal C}$ is the program obtained from $\mathcal C$
+by replacing every constant $c_j$ by $\abs{c_j}$, every integer multiple
+$k\cdot w$ by $\abs{k}\cdot w$, and every subtraction by an addition; it is
+evaluated exactly, at $\abs{x}$.
+\end{definition}
+
+Note that products \emph{add} rounding depths, so that $\rho(v)$ is exactly the
+largest number of rounding factors carried by any tree monomial of $v$; a
+max-rule for products would undercount squarings.
+
+\begin{theorem}[Majorant bound]
+\label{thm:majorant-bound}
+Let $\mathcal C$ compute $P(x)$ exactly in exact arithmetic, with output wire
+$w$ satisfying $\rho(w)u<1$, and let $\widehat P(x)$ be the value computed in
+floating point.  Then
+\[
+  \abs{\widehat P(x)-P(x)}\;\le\;\gamma_{\rho(w)}\,M_{\mathcal C}(\abs{x}).
+\]
+\end{theorem}
+
+\begin{proof}
+Expand every wire $v$ as a sum of \emph{tree monomials}: $v=\sum_\pi t_\pi$,
+where each $t_\pi$ is a product of leaves ($x$'s and constants) along one
+multiplicative path of the expression tree, with the sign carried by the
+subtractions.  We claim that the computed value satisfies
+$\widehat v=\sum_\pi t_\pi\prod_{j\in J_\pi}(1+\delta_j)$ for multisets
+$J_\pi$ of rounding errors with $\abs{J_\pi}\le\rho(v)$ (the same $\delta_j$
+may recur when a wire is reused).  For the leaves this is the assumption on
+the constants.  For $v=u\pm v'$, the computed
+$\widehat v=(\widehat u\pm\widehat v')(1+\delta)$ appends one element to every
+$J_\pi$, so the depth increases by one.  For $v=u\cdot v'$, every tree
+monomial of $v$ is a product $t_\pi s_\sigma$ of one monomial from each
+factor, and $\widehat v=\widehat u\,\widehat v'(1+\delta)$ gives it the
+multiset $J_\pi\cup J_\sigma\cup\{\delta\}$ of size at most
+$\rho(u)+\rho(v')+1$.  By the product lemma each
+$\prod_{j\in J_\pi}(1+\delta_j)=1+\theta_\pi$ with
+$\abs{\theta_\pi}\le\gamma_{\rho(w)}$, so
+$\abs{\widehat P-P}\le\gamma_{\rho(w)}\sum_\pi\abs{t_\pi}$; and
+$\sum_\pi\abs{t_\pi}$ is exactly the value of the majorant program at
+$\abs{x}$, because taking absolute values of all leaves and integer multiples
+and turning all subtractions into additions removes every cancellation between
+tree monomials.  No independence among the $\delta_j$ is used.
+\end{proof}
+
+\paragraph{Horner and Estrin.}
+For Horner's rule the tree monomials are exactly the terms $a_ix^i$, so
+$M(\abs{x})=\sum_i\abs{a_i}\abs{x}^i$ and the bound is the classical
+$\gamma_{2n}\sum_i\abs{a_i}\abs{x}^i$ (one fewer factor when $P$ is monic and
+the leading multiplication is skipped); the same expansion gives the refined
+coefficientwise form $\widehat P=\sum_i a_ix^i(1+\eta_i)$ with
+$\abs{\eta_i}\le\gamma_{2i+1}$, and $\gamma_{2n}$ for
+$i=n$~\cite[\S5.1]{higham2002accuracy}.  Estrin's scheme on a full tree of
+degree $n=2^m-1$ also has $M(\abs{x})=\sum_i\abs{a_i}\abs{x}^i$, and counting
+the roundings on the path of $a_ix^i$---$m$ additions, $s_2(i)$ explicit
+multiplications, and $i-s_2(i)$ factors inherited from the repeated squarings
+$x^2,x^4,\dots$, where $s_2(i)$ is the number of ones in the binary expansion
+of $i$ (here the additive rule for products matters: the computed
+$x^4=x^4(1+\delta_1)^2(1+\delta_2)$ carries three factors)---gives
+$\abs{\eta_i}\le\gamma_{i+m}$, a uniform bound $\gamma_{n+m}$ that is
+\emph{smaller} than Horner's $\gamma_{2n}$ (again one fewer when monic).  With
+a fused multiply--add at every node the product roundings disappear and both
+schemes have the uniform bound $\gamma_n$, Horner retaining slightly sharper
+coefficientwise constants $\gamma_{\min(i+1,n)}$ versus
+$\gamma_{i+m-s_2(i)}$.  Both schemes are therefore \emph{coefficientwise
+backward stable}: the computed value is the exact value of a polynomial with
+relatively perturbed coefficients, and the relative forward error is at most
+$\gamma_\rho\,\kappa(P,x)$ for the condition number
+$\kappa(P,x)=\sum_i\abs{a_i}\abs{x}^i/\abs{P(x)}$.  The comparison is of
+practical interest in production libraries: the discussion accompanying the
+Estrin implementation in Boost.Math~\cite{boostmath932} conjectures bounds of
+this shape, and the display above makes them precise---Estrin's tree does not
+cost accuracy; its uniform constant $\gamma_{n+m}$ is in fact the smaller
+one.
+
+\subsection{Adapted-coefficient schemes and amplification}
+
+For a schedule whose constants are not the coefficients themselves, the tree
+monomials are products of $x$ with preprocessed constants, and they cancel: the
+majorant can be much larger than $\sum_i\abs{a_i}\abs{x}^i$.  Define the
+\emph{schedule amplification}
+\[
+  A_{\mathcal C}(P,x)\;=\;\frac{M_{\mathcal C}(\abs{x})}{\sum_{i}\abs{a_i}\abs{x}^i}.
+\]
+Theorem~\ref{thm:majorant-bound} then gives the relative forward bound
+$\abs{\widehat P-P}/\abs{P}\le\gamma_{\rho}\,A_{\mathcal C}(P,x)\,\kappa(P,x)$,
+and $A_{\mathcal C}$ is precisely the price paid for the multiplications
+saved; for Horner and Estrin $A\equiv1$.  For every adapted scheme it is
+unbounded:
+
+\begin{proposition}[Unit pivots preclude backward stability]
+\label{prop:unit-pivot-unstable}
+Suppose the coefficient map of a schedule has an additive unit-pivot
+parameter: some coefficient satisfies $a_d=\alpha_i+f(\alpha_{\text{rest}})$
+with $f\not\equiv0$, and $\alpha_i$ enters the chain through a wire of
+degree $d$.  Then
+$A_{\mathcal C}(P,x)\ge\abs{\alpha_i}\abs{x}^d/\sum_j\abs{a_j}\abs{x}^j$,
+and $\sup_{P,x}A_{\mathcal C}(P,x)=\infty$.
+\end{proposition}
+
+\begin{proof}
+The tree monomials of degree $d$ that contain $\alpha_i$ sum to
+$\alpha_ix^d$, so the majorant at $\abs{x}$ is at least
+$\abs{\alpha_i}\abs{x}^d$, which gives the bound.  Fix
+$\alpha_{\text{rest}}$ with $f(\alpha_{\text{rest}})\ne0$ and let
+$\alpha_i=-f(\alpha_{\text{rest}})+\varepsilon$: then $a_d=\varepsilon$
+while $\abs{\alpha_i}$ stays bounded away from zero, and the bound tends to
+infinity as $\varepsilon\to0$ (for $d=0$, let also $x\to0$).
+\end{proof}
+
+Every decoder in this paper is a descending sequence of affine unit pivots,
+and so are the absorption steps of Rabin--Winograd and of Motzkin--Eve; hence
+none of them is coefficientwise backward stable, independently of the
+multiplication count.  The proposition is a statement about the supremum
+(polynomials with a vanishing coefficient), not a quantitative bound on a box
+$\abs{a_j}\le1$; the measurements below show how large $A$ is on such boxes.
+The rounding depth, by contrast,
+differs between the schemes only by constant factors: every scheme has
+$\rho\ge n-1$, because the leading tree monomial $x^n$ alone passes through
+$n-1$ rounded products.  Horner attains $2n-1$, Estrin $n+m-1$, and our
+schedules measure $3.6n$--$3.8n$ for $n\le31$
+(Table~\ref{tab:numstab})---roughly twice Horner.  Logarithmic multiplicative
+height shortens the critical path; it does not reduce the number of rounding
+factors.  The decisive quantity is therefore $A$, and it depends on where the
+data enter.
+
+\paragraph{Two regimes.}
+In the \emph{prescribed-keys} regime the schedule's keys---the parameter
+vector $\theta$ of the evaluation circuit $E(x;\theta)$ of
+\Cref{sec:model}, written $\alpha$ in the constructions---are the data, as in
+hashing, where they are random field elements; the polynomial is induced.  The
+constants of the schedule are then the keys themselves or signed sums of a few
+of them, and $A$ stays moderate at the degrees relevant to hashing (medians
+$10^{0.4}$, $10^{1.4}$, $10^{3.4}$, and $10^{6.8}$ at $n=7$, $15$, $31$, and
+$63$ in Table~\ref{tab:numstab}); it grows with $n$ because the induced
+coefficients are polynomials in the keys whose terms cancel while the
+majorant's do not, but the observed double-precision error never exceeds four
+units of $u\sum_i\abs{a_i}\abs{x}^i$ up to $n=63$.  In the
+\emph{prescribed-coefficients} regime an arbitrary polynomial is given and the
+decoder (\Cref{alg:final-decoder}) recovers the keys.  The coefficient map
+$\alpha\mapsto(a_0,\dots,a_{n-1})$ is a polynomial automorphism
+(\Cref{lem:polynomial-left-inverse-automorphism}), so the decoder is itself a
+polynomial map; but it has high degree---as a polynomial in the top
+coefficient, degree $96$, $154$, and $1456$ at $n=15$, $19$, and $23$---and
+rational coefficients whose denominators are products of the integer pivots of
+\Cref{rem:char2} (powers of two at the degrees measured here, $n\le23$, where every internal index is $k=2$).  The degree compounds along three mechanisms of the
+construction: monic square roots of top windows (linear growth), subtraction
+of squares (doubling), and synthetic division by $x+\beta$ inside the
+known-power blocks (geometric in the block length).  For single-digit integer
+input coefficients the keys returned at $n=23$ already have thousands of
+binary digits, and by \Cref{prop:unit-pivot-unstable} the low-row keys are
+exactly the corrections that cancel the chain's own tree monomials: $A$ grows
+explosively---its median already exceeds $10^{43}$ at $n=15$---and
+floating-point evaluation is useless beyond small degrees, even though the
+same schedule evaluates $P$ exactly in rational arithmetic.
+
+\subsection{Measurements}
+
+Table~\ref{tab:numstab} reports, for random monic polynomials of degree
+$n\in\{7,15,31\}$ (prescribed coefficients) and $n\in\{7,15,31,63\}$
+(prescribed keys) and random dyadic points $x\in[-2,2]$, the rounding depth
+$\rho$ of each schedule, the median and maximum of the amplification $A$, and
+the observed double-precision forward error in units of
+$u\sum_i\abs{a_i}\abs{x}^i$.  The reference values are computed in exact
+rational arithmetic.  In the prescribed-coefficients regime the coefficients
+are integers in $[-5,5]$; in the prescribed-keys regime the keys are dyadic
+rationals $k/16$, $\abs{k}\le16$.  The schedules are generated by the
+reference implementation accompanying the paper.  Rabin--Winograd here uses
+balanced splitting with one absorbed coefficient per product; its constants
+are integer polynomial expressions in the coefficients whose size roughly
+doubles with each level of the balanced recursion (for $n=2^m-1$ no division
+occurs at all), so its amplification grows, but far more slowly than the
+decoder's.  Motzkin--Eve (Theorem~E of
+Knuth~\cite[\S4.6.4]{knuth1997seminumerical}) has numerically computed
+constants (double-double root finding, printed to 13--17 digits), so its
+error column also includes preprocessing error, and degrees at which the
+preprocessing failed verification are omitted.  Preprocessed constants are
+converted to double with a single correctly rounded conversion, as in the
+model; evaluating every product-and-add with a fused multiply--add changes no
+entry of the table at the displayed precision, as the majorant analysis
+predicts (it lowers $\rho$ by a constant factor and leaves $A$ unchanged); the one deviation is that in the prescribed-keys regime the induced
+coefficients are themselves rounded before Horner, Estrin, and Rabin--Winograd
+read them, which is negligible at the reported scale.
+
+\input{sections/numstab_table}
+
+Three features stand out.  First, Horner and Estrin behave as the theory
+predicts, with errors of at most a few units.  Second, Rabin--Winograd sits in
+between when the coefficients are prescribed, its moderate amplification
+matching the growth of its integer constants; but those constants are built
+from the coefficients, so in the prescribed-keys regime---where the induced
+coefficients have denominators up to $16^n$---it loses significance at
+$n=31$ and its errors reach $5.4\times10^{205}$ units at $n=63$, while our schedules, whose constants are the
+keys, stay within four units.  Third, in the prescribed-coefficients regime the adapted schemes
+lose all significance at moderate degrees---our decoder's exact rational keys
+are the most extreme case, with every double-precision evaluation overflowing
+by $n=31$---whereas in the prescribed-keys regime the same schedules evaluate
+the induced polynomial to a small multiple of $u\sum_i\abs{a_i}\abs{x}^i$ at
+the degrees shown.  At $n=7$ the keys of most of our sampled prescribed-coefficient
+instances happened to be dyadic rationals of at most 53 bits, so the median
+error is zero despite the large latent amplification; the maximum,
+$3.6\times10^{14}$ units, comes from instances where they were not, and
+exactness is not guaranteed even at that degree.
+
+\subsection{Discussion}
+
+The multiplication count $\floor{n/2}+1$ is achieved by an exact change of
+coordinates on the coefficient space, and floating-point evaluation of
+arbitrary prescribed coefficients is not among its intended uses; there the
+methods of choice remain Horner, Estrin, and their compensated
+variants~\cite{higham2002accuracy,yu2025compensated}.  The same phenomenon,
+to varying degrees, affects the adapted-coefficient schemes since
+Motzkin~\cite{motzkin1955evaluation} and Eve~\cite{eve1964evaluation}, and it
+is why correctly rounded libraries treat the evaluation scheme as part of the
+polynomial generation~\cite{dinechin2007fast,aanjaneya2023fast}.  Conversely,
+whenever the keys are the data, the schedules are accurate in floating point
+at hashing-relevant degrees; over finite fields both hashing routes of
+\Cref{sec:model} are exact, and the floating-point question arises only over
+$\R$, where the natural route is to sample the keys directly.
+
+\paragraph{What helps, and what does not.}
+We measured the natural modifications of the construction.  The amplification
+is carried by the gadget lanes that square: the $n\equiv3\pmod 4$ pairs and
+the $n=15,27,31$ specials, versus the $4k+1$ family
+($\log_{10}A$ medians $85$ and $1201$ at $n=19$ and $23$ against $1.5$, $4$,
+and $14$ at $n=9$, $13$, and $21$).  Routing $n\equiv3\pmod4$ as
+$P=x^2P_{n-2}+a_1x+a_0$ with $P_{n-2}$ in the $4k+1$ family costs one extra
+multiplication ($\floor{n/2}+2$, still $\log_2(n+1)-3$ below Rabin--Winograd)
+and lowers $\log_{10}A$ from $156$ to $28$ at $n=19$ and from $2131$ to $40$
+at $n=23$; double-precision results are then exact at $n=11$ and within
+$\sim10^2$ units at $n=15$, but no variant is usable in double precision much
+beyond $n\approx15$.  A preprocessing-time guard---the majorant evaluated once
+in log scale at the largest $\abs{x}$ of the domain, falling back to Horner
+when $\rho uA$ exceeds the tolerance---costs no runtime multiplication and is
+the practical safeguard.  Rescaling the argument by a power of two is exact (no rounding is
+introduced) and is the most effective single modification, at the cost of two
+multiplications by constants, $x\cdot s^{-1}$ and $s^n\cdot(\cdot)$---one if
+the latter is merged with the leading-coefficient scaling of a non-monic
+input; they cannot be absorbed into the chain, whose wire coefficients must
+stay integers: decoding $Q(y)=s^{-n}P(sy)$ and evaluating $s^nQ(x/s)$ with
+$s=4$ takes the keys at $n=15$ from $10^{44.7}$ to $10^{0.2}$ and $A$ from
+$10^{64.5}$ to $10^{6.5}$.  It cannot be pushed
+further, and the reason is structural: an automorphism is nearly linear near
+its fixed point, and scaling moves every input toward $x^n$, but our chains
+with all keys zero do not compute $x^n$ (the zero-key skeleton of $P_7$ is
+$x^7+2x^6+2x^5+2x^4+x^3+x^2$), so the structural tree monomials of degree $j$
+are amplified by $s^{\,n-j}$ once the keys are small, and $A$ grows again
+like $s^n$.  One might hope to remove the floor by \emph{centering} the
+construction so that its zero-key chain is a pure product tree; the following
+shows this is impossible at any saving over Horner.
+
+\begin{proposition}[Centering costs all the savings]
+\label{prop:centering}
+Let a chain with $M$ multiplications have the property that every wire is a
+monomial in $x$ when all keys are zero.  Then the Jacobian of its coefficient
+map at the zero key has rank at most $M+1$.  In particular a polynomial
+automorphism with this property has $M\ge n-1$.
+\end{proposition}
+
+\begin{proof}
+A key $\alpha$ added to a factor of degree $m$ (all keys zero) contributes to
+first order $\alpha\cdot c\,x^{n-m}$, where $c$ counts the paths from that
+gate to the output, because along every path the remaining factors are
+monomials of total degree $n-m$.  A factor is $x$ or one of the $M-1$
+non-output gates, so at most $M$ distinct degrees occur, plus the output key at
+degree $0$: the linear part spans at most $M+1$ coefficient rows.  An
+automorphism has an invertible Jacobian everywhere, so $n\le M+1$.
+\end{proof}
+
+So below $n-1$ multiplications the reference point $x^n$ is necessarily
+computed with cancellation, the scaling has an optimum ($s\approx4$ at
+$n=15$), and the design quantity that remains is the \emph{degree content} of
+the skeleton's cancellations---the lower the degrees of the structural tree
+monomials, the earlier the $s^{\,n-j}$ growth bites---together with the size
+of the keys of $x^n$ itself (in the $4k+1$ family $x^n$ decodes to keys of size
+$10^{3.4}$ at $n=13$, a pure normalization artifact of the monic $T_2$ that a
+re-normalized gadget would remove).  Dyadic regauging of the wires, by
+contrast, is provably a bit-identical no-op; hybrids that use our gadgets only in
+low-degree blocks of a balanced Rabin--Winograd tree cannot save
+multiplications, because the paper's advantage over Rabin--Winograd is exactly
+the $\log_2(n+1)-2$ shared power-chain products of the global construction;
+and compensated (double-double) evaluation helps only if the keys themselves
+are stored to the higher precision, at $20$--$200\times$ the cost of Horner.
+A random search over $2.6\cdot10^5$ four-multiplication septic circuit
+structures (about $10^4$ of them monic of degree seven with a full-rank
+coefficient map, $37$ decodable by a causal table) separates the two paradigms
+without exception.  Thirty-four of the decodable circuits are polynomial
+automorphisms---constant pivots, as in this paper---and every one of them is
+unstable, the best with median $A=10^{6.6}$ and maximum $10^{17.5}$ on
+coefficients in $[-5,5]$; all $4096$ sign variants of $P_7$ are automorphisms
+with $A\approx10^{11}$.  The three remaining circuits are dominant but not
+surjective (one rational pivot), and they are exactly the stable ones, with
+medians $10^{0.6}$, $10^{1.4}$, and $10^{2.1}$.  The best is
+\begin{align}
+  g_0&=(a_0-x)\,x, & g_1&=(x-g_0+a_1)(x+g_0+a_2),\\
+  g_2&=(g_0+a_3)(x+g_1+a_4), & g_3&=x\,(x+g_0-g_1+g_2+a_5),
+\end{align}
+$P=g_0-g_2+g_3+a_6$: four constant pivots, then a division by a cubic
+$\pi(a_4,a_5,a_6)$ in the top coefficients; polynomials with $\pi=0$ are not
+in its image, and none of the $2.2\cdot10^4$ sign and key-placement variants
+of this topology---all of them equally stable---is an automorphism.  Such a
+scheme evaluates every polynomial only after a shift $x\mapsto x+t$ chosen so
+that $\pi\ne0$, which is precisely the generic preconditioning of Motzkin,
+Eve, and Knuth; it is not an automorphism of the coefficient space, and it is
+the automorphism property that this paper is about.  Within that paradigm the
+evidence is uniform: stability was never observed, and
+\Cref{prop:unit-pivot-unstable} rules out coefficientwise backward stability
+for every triangular decoder.
+
+\paragraph{Open problem.}
+Mesztenyi and Witzgall \cite{mesztenyi1967stable} observed in 1967 that
+schemes with fewer operations lose significance; Rice
+\cite{rice1965conditioning} introduced condition numbers of polynomial forms,
+and Miller \cite{miller1975computational} the programme of deriving
+complexity lower bounds from stability requirements.  We know of no stability lower bound
+for preconditioned polynomial evaluation.  Is there a scheme with
+$(1-\epsilon)n$ multiplications and rational preprocessing whose amplification
+is $n^{O(1)}$ for all real monic $P$ with $\abs{a_i}\le1$ and $\abs{x}\le1$?
+We conjecture not: that $A=n^{O(1)}$ forces $n-O(\log n)$ multiplications,
+and that $\floor{n/2}+O(1)$ multiplications force $A\ge\exp(\Omega(n))$.
+For polynomial automorphisms the question may be more tractable: we conjecture
+that every automorphism with $\floor{n/2}+O(1)$ multiplications has a decoder
+of degree exponential in $n$, and already at $n=7$ we know of no stable one.
+The measured growth of the Rabin--Winograd amplification up to $n=63$ does
+not yet distinguish polynomial from exponential, so even the tradeoff form is
+open.

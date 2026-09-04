@@ -1,0 +1,43 @@
+% The peeled known-powers gadget: schedule comparison and decoder strip.
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+  % Panel (a): sequential chain vs balanced peel.
+  \node[fp panel title] at (0,5.0) {(a) Two schedules, one ledger};
+  \node[fp known, minimum width=15mm] (q3) at (0.9,4.3) {$Q_3$};
+  \node[fp known, minimum width=15mm] (q7) at (2.7,4.3) {$Q_7$};
+  \node[fp known, minimum width=17mm] (q15) at (4.6,4.3) {$Q_{15}$};
+  \node[fp label] (qd) at (6.2,4.3) {$\cdots$};
+  \node[fp known, minimum width=19mm] (qk) at (7.6,4.3) {$Q_{2^k-1}$};
+  \draw[fp flow] (q3) -- (q7);
+  \draw[fp flow] (q7) -- (q15);
+  \draw[fp flow] (q15) -- (qd);
+  \draw[fp flow] (qd) -- (qk);
+  \node[fp label, anchor=west, text=fpGray] at (8.8,4.3)
+    {sequential fill:\\each level waits for the last\\height $\Theta(k^2)$ in the tower};
+  \node[fp active, minimum width=42mm] (root) at (2.6,3.3)
+    {$\bigl(H_{2^{k-1}}+\gamma\bigr)\cdot W+B$};
+  \node[fp recursive, minimum width=26mm] (wch) at (0.9,2.35)
+    {$W=Q^{\mathrm{peel}}_{2^{k-1}-1}[\vec\alpha]$};
+  \node[fp recursive, minimum width=26mm] (bch) at (4.3,2.35)
+    {$B=Q^{\mathrm{peel}}_{2^{k-1}-1}[\vec\beta]$};
+  \draw[fp flow] (wch) -- (root);
+  \draw[fp flow] (bch) -- (root);
+  \node[fp label, anchor=west, text=fpGray] at (6.6,2.8)
+    {peeled \eqref{eq:peeled-Q}: both children in parallel\\
+     under one keyed glue factor;\\
+     height exactly $k$, identical counts};
+  % Panel (b): decoder strip.
+  \node[fp panel title] at (0,1.75) {(b) Decoder of \Cref{lem:peeled-Q-decodable}};
+  \draw[fp decode] (0,1.12) -- node[fp label, above]
+    {descending coefficient degree} (13.4,1.12);
+  \node[fp active, text width=33mm, anchor=west] (topw) at (0,0.45)
+    {top window $=H_{2^{k-1}}\cdot W$;\\divide by the monic $H$};
+  \node[fp pivot, text width=26mm, anchor=west] (grow) at (3.65,0.45)
+    {$[x^{m}]$ residual $=\gamma+1$;\\one unit pivot};
+  \node[fp second, text width=24mm, anchor=west] (brow) at (6.6,0.45)
+    {$B=R-\gamma W$\\by subtraction};
+  \node[fp recursive, text width=32mm, anchor=west] (rec) at (9.35,0.45)
+    {recurse on $W$ and $B$\\(both children monic)};
+  \draw[fp dependence] (topw.south east) to[bend right=10] (grow.south west);
+  \draw[fp dependence] (grow.south east) to[bend right=10] (brow.south west);
+  \draw[fp dependence] (brow.south east) to[bend right=10] (rec.south west);
+\end{tikzpicture}
