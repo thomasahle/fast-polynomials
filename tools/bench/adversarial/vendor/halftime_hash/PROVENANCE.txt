@@ -1,0 +1,82 @@
+HalftimeHash - vendored reference for the adversarial benchmark
+================================================================
+
+SOURCE
+  Upstream : https://github.com/jbapple/HalftimeHash
+  Commit   : caf7924ceab4721f4e0cc33442b185558ba7f1c4  (2022-05-28, branch main)
+  Paper    : "HalftimeHash: Modern Hashing without 64-bit Multipliers or Finite
+             Fields", J. Apple. (halftime-hash.tex in that repo.)
+
+FILES
+  halftime-hash.hpp   VERBATIM upstream header (header-only library).
+                      sha256 7ef5dd48f54537b430f85bc1867b23a93551ab1c56415cfcef362d1651956cc3
+                      Byte-identical to upstream; NOT edited.
+  generated.txt       Upstream's own published test vectors (sha256
+                      48f002e8c15cbe92bcce514b228ee3ab05e17d879a5433e05c0e5a5e49015958),
+                      produced by check-consistency.cpp with a default-seeded
+                      std::mt19937_64 (fixed standard seed 5489).
+  check-consistency.cpp  Upstream test driver (kept for reference).
+  arm_neon_fix.h      The ONLY correction over upstream (see below). Preprocessor
+                      aliases; does not touch the verbatim header.
+  hh_bench.h          One-line include for the harness: arm_neon_fix.h + header.
+  selftest.cpp        Standalone validation (reproduces generated.txt exactly).
+
+THE ONE FIX (AArch64 only)
+  Upstream halftime-hash.hpp does not compile on ARM/NEON: the 128-bit block
+  wrappers are defined with the "Sse2" suffix under
+      #if __SSE2__ || defined(__ARM_NEON)
+  (V2Sse2/V3Sse2/V4Sse2, backed by the NEON BlockWrapper128), but the ARM
+  specialization block calls SPECIALIZE_4(.,Neon), referencing the never-defined
+  V2Neon/V3Neon/V4Neon -> "use of undeclared identifier V4Neon".
+  arm_neon_fix.h adds, guarded by defined(__ARM_NEON):
+      #define V2Neon V2Sse2
+      #define V3Neon V3Sse2
+      #define V4Neon V4Sse2
+  A token produced by the "##" paste operator is rescanned for macro
+  replacement, so these redirect the pasted V?Neon identifiers to the real
+  NEON-backed wrappers WITHOUT editing the header. On x86 those identifiers
+  never appear, so the aliases are inert (the macros are only defined on ARM).
+  Result: genuine NEON SIMD on arm64, verbatim header everywhere.
+
+VALIDATION  (clang++ -O3 -std=c++17 -march=native selftest.cpp -o selftest; ./selftest)
+  Apple clang 17, arm64 (real NEON path): official-vectors (generated.txt,
+  widths 2-5): MATCH  -- byte-for-byte, all 43008 lines, all four output widths.
+  Forced-scalar build (-D via #undef __ARM_NEON) also matches, confirming the
+  values are ISA-independent (V4 == "Style512" computes the same value on every
+  ISA). Style512 folded-64-bit entry additionally smoke-tested for determinism
+  over lengths 0..200000.
+
+HARNESS CALL
+  #include "vendor/halftime_hash/hh_bench.h"
+  struct HalftimeHash {
+    uint64_t entropy[halftime_hash::kEntropyBytesNeeded / sizeof(uint64_t)]; // 8866 words = 70928 B
+    void seed(Rng& r){ for (auto& e : entropy) e = r.next(); }
+    uint64_t operator()(const uint8_t* p, size_t len){
+      return halftime_hash::HalftimeHashStyle512(
+          entropy, reinterpret_cast<const char*>(p), len);
+    }
+  };
+  Notes: entropy needs 8-byte alignment only (uint64_t[] suffices; validated).
+  Struct is ~69 KB; if that is too big to embed by value, hold entropy on the
+  heap. Style512 handles any length including 0. Style256/128/64 also exist
+  (V3/V2/V1<2>), all with the same entropy layout.
+
+PROVEN BOUND  (halftime-hash.tex, commit caf7924)
+  HalftimeHash is epsilon-almost-universal: for x != y of EQUAL length,
+  Pr_s[H(s,x)=H(s,y)] <= epsilon.  (Different lengths: append length -- l.129.)
+  Cumulative Analysis (l.503):  epsilon(n) = 2^{-32k} ( 2^{kp} + h^k + 1 ),
+    k = codomain words (= erasure-code min distance): 2/3/4/5 for 16/24/32/40 B,
+    p = max power of 2 dividing a k x k determinant of the code matrix T,
+    h = floor(log_f floor(n/(b d w)))  = the tree height = Theta(log n),
+    constants b=8, f=8; (d,w)=(6,3) for k=2, (7,3) for k=3.
+  Length dependence is ONLY polylogarithmic (the h^k term).
+  Worked number the authors state (l.504): HalftimeHash24 (k=3, params
+    (b,d,e,f,k,p,w)=(8,7,9,8,3,4,3)):  epsilon < 2^{-83}  for every string
+    shorter than one exabyte  ->  83 bits.
+  Base facts: NH is 2^{-32}-AU (l.187/l.188 A-Delta-U); EHC over the code gives
+    epsilon^k (l.216, l.311); tree hash of height h is h*epsilon-AU (l.468).
+  The benchmark's Style512 is the k=2 (16-byte) core folded to 64 bits by simple
+  tabulation hashing (XOR of per-byte uniform tables), which is 2^{-64}-AU. By
+  the composition lemma (l.400, F o G is (eps_F+eps_G)-AU) the returned uint64 is
+  (epsilon_{k=2}(n) + 2^{-64})-AU = 2^{-64}(2^{2p}+h^2+2) -- i.e. ~2^{-64} up to a
+  polylog(n) factor, necessarily capped near the 64-bit codomain limit.
