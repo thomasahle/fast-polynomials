@@ -189,7 +189,7 @@ struct Key {
     static_assert(S == 1 || S == 2 || S == 4, "sub-block split S must be 1, 2 or 4");
     static_assert(BLOCK_WORDS >= 8 * S && BLOCK_WORDS % (8 * S) == 0,
                   "BLOCK_WORDS must be a positive multiple of 8*S "
-                  "(4 accumulators x 2 words each per inner iteration, per sub-block)");
+                  "(2 accumulators, each fed two products per 64-byte group, per sub-block)");
     static_assert(valid_degree(K), "finalizer degree K must be 5 (the only shipped chain)");
 
     static constexpr int block_words = BLOCK_WORDS;
@@ -251,7 +251,7 @@ struct Key {
 /* ------------------------------------------------------------------ */
 
 /* One 64-byte group (8 words = 4 pairs) at p with keys k[0..8), XORed into
- * four independent 128-bit accumulators.  Byte loads: no alignment
+ * two independent 128-bit accumulators (three-input XORs).  Byte loads: no alignment
  * assumption on p.  Reads exactly 64 bytes. */
 static inline __attribute__((always_inline)) void ph_group(const uint64_t* __restrict k, const uint8_t* __restrict p, uint64x2_t& acc0,
                             uint64x2_t& acc1) {
@@ -428,7 +428,7 @@ static inline __attribute__((always_inline)) uint64x2_t ph_first(const uint64_t*
 /* has GF(2)-degree max(1, i-j0), j0 = t's lowest set bit; the          */
 /* composite has GF(2)-degree 63 for all but 2^-64 of the keys c when   */
 /* t_in is odd (appendix, proposition on the twisted finalizer).        */
-/* Measured (M2 Pro, full SMHasher3): degree 5 + twist 200/200 at 81.8  */
+/* Measured (M2 Pro, full SMHasher3): degree 5 + twist 200/200 at ~82 (~67 after (A7))  */
 /* small-key cycles vs 95.7 for the former degree-7 circuit (4 mults);  */
 /* degree 3 + twist still fails 17 of 200.  The twist is not a mixer:   */
 /* it changes algebraic structure only, and its adequacy for a test     */
