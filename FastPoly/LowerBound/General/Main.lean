@@ -10,10 +10,10 @@ import Mathlib.Algebra.CharP.Basic
 # Degree-six lower bound, general programs
 
 `FastPoly/LowerBound/Main.lean` proves the lower bound for the *normal form* of
-`sections/appendix_lower.tex` (`no_rationalInverse_affine`), and its docstring records
-that the first-gate absorption `(Ax+a)(Bx+b) = A·x(Bx+b) + a(Bx+b)` of the paragraph
-"Reduction to a normal form" is modelling, not a theorem.  That absorption is in fact
-*wrong* as stated: the correction `a(Bx+b)` is not `x`-free, so it changes the
+`sections/appendix_lower.tex` (`no_rationalInverse_affine`); its docstring, like the
+paper's original reduction paragraph, used to record the first-gate absorption
+`(Ax+a)(Bx+b) = A·x(Bx+b) + a(Bx+b)` as modelling, not a theorem.  That absorption is in
+fact *wrong* as stated: the correction `a(Bx+b)` is not `x`-free, so it changes the
 `x`-coefficients of all later uses of `G₁` by amounts depending on the parameter `a`,
 whereas the normal form treats those coefficients as fixed.  The repair
 (`sections/lower_char_p_draft.tex`, `rem:charp-lower-gap`; `notes/lower_char_p.md`,

@@ -8,7 +8,10 @@
  *   "This Paper" k=3 (smartcl_64<3>), the two quartic circuits over GF(2^64)
  *   (quartic2_64: Motzkin, 2 multiplications, 3-wise; quartic3_64: 3
  *   multiplications, 4-wise), Motzkin's quartic over 2^61-1 (motzkin_61, 2
- *   multiplications, 4-wise), k=5 (smartcl_64<5>) and k=7 (smartcl_64<7>).
+ *   multiplications, 4-wise), k=5 (smartcl_64<5>), k=7 as the search circuit
+ *   (smartcl_64<7>, no inverse displayed, "not certified") and k=7 as the
+ *   certified four-multiplication circuit (septic7_64, bijective key map
+ *   with an explicit decoder, 7-wise).
  *   The platform's own smartcl_64<4> is timed too as a cross-check (it is
  *   quartic2_64 on ARM and quartic3_64 on x86).
  *
@@ -19,8 +22,8 @@
  * Compile (ARM): clang++ -O3 -std=c++17 -march=armv8-a+crypto bench_tabrows.cpp -o bench_tabrows
  * Compile (x86): clang++ -O3 -std=c++17 -march=native bench_tabrows.cpp -o bench_tabrows
  * Run:  ./bench_tabrows [nr_trials] [nr_times]     (defaults 1e6 100, as in the paper)
- *       ./bench_tabrows selftest                    (quartic2_64, quartic3_64, motzkin_61
- *                                                    against Horner + decoders)
+ *       ./bench_tabrows selftest                    (quartic2_64, quartic3_64, septic7_64,
+ *                                                    motzkin_61 against Horner + decoders)
  */
 
 #include <cmath>
@@ -305,6 +308,156 @@ static int selftest_gf64() {
     return 0;
 }
 
+/* --- septic7_64 (the certified degree-7 circuit) against Horner in GF(2^64) --- */
+
+// Frobenius square root in GF(2^64): sqrt(a) = a^(2^63) (63 squarings), sqrt(a)^2 = a.
+static uint64_t gf_sqrt_ref(uint64_t a) {
+    for (int i = 0; i < 63; ++i) a = gf_mul_ref(a, a);
+    return a;
+}
+
+// Horner evaluation of the monic septic x^7 + a[6] x^6 + ... + a[1] x + a[0] in GF(2^64)
+static uint64_t horner7_gf64(const uint64_t a[7], uint64_t x) {
+    uint64_t h = 1;
+    for (int i = 6; i >= 0; --i) h = gf_mul_ref(h, x) ^ a[i];
+    return h;
+}
+
+// Expanded coefficients of the certified circuit (septic7_64 in fast_hashing*.h), i.e.
+// the coefficient table of tools/bench/chainhash/verify7.py (verified there symbolically
+// over GF(2)[c0..c6][X] with sympy):
+//   y = x (x + c0), z = (x + c1)(y + c2), t = z (z + c3), u = (x + c4)(y + t + c5), P = u + c6;
+//   with b = c0 + c1, e = c2 + c0 c1, d = c1 c2, s3 = e^2 + c3 b + 1, r2 = c3 e + c0,
+//   r1 = d^2 + c3 d + c5:
+//   a6 = c4, a5 = b^2, a4 = c3 + c4 b^2, a3 = s3 + c3 c4, a2 = r2 + c4 s3,
+//   a1 = r1 + c4 r2, a0 = c6 + c4 r1.
+static void encode_septic7(const uint64_t c[7], uint64_t a[7]) {
+    uint64_t b = c[0] ^ c[1], e = c[2] ^ gf_mul_ref(c[0], c[1]), d = gf_mul_ref(c[1], c[2]);
+    uint64_t b2 = gf_mul_ref(b, b), e2 = gf_mul_ref(e, e), d2 = gf_mul_ref(d, d);
+    uint64_t s3 = e2 ^ gf_mul_ref(c[3], b) ^ 1;
+    uint64_t r2 = gf_mul_ref(c[3], e) ^ c[0];
+    uint64_t r1 = d2 ^ gf_mul_ref(c[3], d) ^ c[5];
+    a[6] = c[4];
+    a[5] = b2;
+    a[4] = c[3] ^ gf_mul_ref(c[4], b2);
+    a[3] = s3 ^ gf_mul_ref(c[3], c[4]);
+    a[2] = r2 ^ gf_mul_ref(c[4], s3);
+    a[1] = r1 ^ gf_mul_ref(c[4], r2);
+    a[0] = c[6] ^ gf_mul_ref(c[4], r1);
+}
+
+// Unit-pivot decoder of verify7.py (`decode`): monic septic a -> keys c, two Frobenius
+// square roots, otherwise field operations only.
+//   q0 = a6, q1 = sqrt(a5), q2 = a4 + q0 q1^2, q3 = sqrt(a3 + q2 q1 + q2 q0 + 1),
+//   q4 = a2 + q2 q3 + q1 + q0 (q3^2 + q2 q1 + 1), delta = q4 (q3 + q1 q4 + q4^2),
+//   q5 = a1 + delta^2 + q2 delta + q0 (q2 q3 + q1 + q4), q6 = a0 + q0 (delta^2 + q2 delta + q5),
+//   (c0..c6) = (q1 + q4, q4, q3 + q1 q4 + q4^2, q2, q0, q5, q6).
+static void decode_septic7(const uint64_t a[7], uint64_t c[7]) {
+    uint64_t q0 = a[6];
+    uint64_t q1 = gf_sqrt_ref(a[5]);
+    uint64_t q2 = a[4] ^ gf_mul_ref(q0, gf_mul_ref(q1, q1));
+    uint64_t q3 = gf_sqrt_ref(a[3] ^ gf_mul_ref(q2, q1) ^ gf_mul_ref(q2, q0) ^ 1);
+    uint64_t q4 = a[2] ^ gf_mul_ref(q2, q3) ^ q1 ^
+                  gf_mul_ref(q0, gf_mul_ref(q3, q3) ^ gf_mul_ref(q2, q1) ^ 1);
+    uint64_t dl = gf_mul_ref(q4, q3 ^ gf_mul_ref(q1, q4) ^ gf_mul_ref(q4, q4));
+    uint64_t q5 = a[1] ^ gf_mul_ref(dl, dl) ^ gf_mul_ref(q2, dl) ^
+                  gf_mul_ref(q0, gf_mul_ref(q2, q3) ^ q1 ^ q4);
+    uint64_t q6 = a[0] ^ gf_mul_ref(q0, gf_mul_ref(dl, dl) ^ gf_mul_ref(q2, dl) ^ q5);
+    c[0] = q1 ^ q4;
+    c[1] = q4;
+    c[2] = q3 ^ gf_mul_ref(q1, q4) ^ gf_mul_ref(q4, q4);
+    c[3] = q2;
+    c[4] = q0;
+    c[5] = q5;
+    c[6] = q6;
+}
+
+static int selftest_septic7() {
+    uint64_t seed = 0x7e57e57e5eedULL, checked = 0;
+    const uint64_t extremes[] = {0, 1, 2, 3, 27, (1ULL << 63), (1ULL << 63) | 27, ~0ULL, ~0ULL - 1,
+                                 0x8000000000000001ULL, 0x5555555555555555ULL, 0xAAAAAAAAAAAAAAAAULL};
+    const int n_ext = sizeof(extremes) / sizeof(extremes[0]);
+    const uint64_t kext[] = {0, 1, 27, ~0ULL, (1ULL << 63), 0x8000000000000001ULL};
+    const int n_kext = sizeof(kext) / sizeof(kext[0]);
+    septic7_64 h;
+
+    // (0) Frobenius square root sanity: sqrt(a)^2 = a.
+    for (int t = 0; t < 1000; ++t) {
+        uint64_t a = splitmix64(seed), s = gf_sqrt_ref(a);
+        if (gf_mul_ref(s, s) != a) { cerr << "gf_sqrt_ref sanity failed" << endl; return 1; }
+    }
+    auto check_keys = [&](const uint64_t c[7], int n_random) -> bool {
+        uint64_t a[7];
+        encode_septic7(c, a);
+        h.set_keys(c);
+        for (int i = 0; i < n_ext + n_random; ++i) {
+            uint64_t x = i < n_ext ? extremes[i] : splitmix64(seed);
+            uint64_t got = (uint64_t)h(x), want = horner7_gf64(a, x);
+            ++checked;
+            if (got != want) {
+                cerr << "septic7_64 MISMATCH keys=(";
+                for (int j = 0; j < 7; ++j) cerr << c[j] << (j < 6 ? "," : ")");
+                cerr << " x=" << x << " got=" << got << " want=" << want << endl;
+                return false;
+            }
+        }
+        return true;
+    };
+    // (1) random keys, extreme + random inputs
+    for (int t = 0; t < 64; ++t) {
+        uint64_t c[7];
+        for (int i = 0; i < 7; ++i) c[i] = splitmix64(seed);
+        if (!check_keys(c, 100000)) return 1;
+    }
+    // (2) all 6^7 combinations of extreme keys, extreme + 4 random inputs each
+    int idx[7] = {0, 0, 0, 0, 0, 0, 0};
+    long n_kcombo = 0;
+    while (true) {
+        uint64_t c[7];
+        for (int i = 0; i < 7; ++i) c[i] = kext[idx[i]];
+        if (!check_keys(c, 4)) return 1;
+        ++n_kcombo;
+        int i = 0;
+        while (i < 7 && ++idx[i] == n_kext) idx[i++] = 0;
+        if (i == 7) break;
+    }
+    // (3) decoder round-trips: 64 random keys c -> decode(encode(c)) == c (injective on them),
+    //     and 64 random monic septics a -> keys c = decode(a) with encode(c) == a and the
+    //     circuit with keys c agreeing with Horner on a (surjective onto them).
+    for (int t = 0; t < 64; ++t) {
+        uint64_t c[7], a[7], c2[7];
+        for (int i = 0; i < 7; ++i) c[i] = splitmix64(seed);
+        encode_septic7(c, a);
+        decode_septic7(a, c2);
+        if (memcmp(c, c2, sizeof(c)) != 0) {
+            cerr << "septic7_64 DECODER ROUNDTRIP (decode(encode(c)) = c) FAILED at trial " << t << endl;
+            return 1;
+        }
+    }
+    for (int t = 0; t < 64; ++t) {
+        uint64_t a[7], c[7], a2[7];
+        for (int i = 0; i < 7; ++i) a[i] = splitmix64(seed);
+        decode_septic7(a, c);
+        encode_septic7(c, a2);
+        if (memcmp(a, a2, sizeof(a)) != 0) {
+            cerr << "septic7_64 DECODER ROUNDTRIP (encode(decode(a)) = a) FAILED at trial " << t << endl;
+            return 1;
+        }
+        h.set_keys(c);
+        for (int i = 0; i < 20000; ++i) {
+            uint64_t x = splitmix64(seed);
+            uint64_t got = (uint64_t)h(x), want = horner7_gf64(a, x);
+            ++checked;
+            if (got != want) { cerr << "septic7_64 DECODER EVAL MISMATCH" << endl; return 1; }
+        }
+    }
+    cout << "septic7_64 selftest: " << checked
+         << " evaluations checked against Horner on the expanded monic septic over GF(2^64), "
+         << "64 random + " << n_kcombo << " extreme key sets, 64 + 64 decoder round-trips "
+         << "(decode(encode(c)) = c, encode(decode(a)) = a, two Frobenius square roots): PASS" << endl;
+    return 0;
+}
+
 /* --- motzkin_61 against Horner in GF(2^61 - 1) --- */
 
 static const uint64_t P61 = ((uint64_t)1 << 61) - 1;
@@ -422,6 +575,7 @@ static int selftest_motzkin61() {
 
 static int selftest() {
     if (selftest_gf64() != 0) return 1;
+    if (selftest_septic7() != 0) return 1;
     if (selftest_motzkin61() != 0) return 1;
     return 0;
 }
@@ -473,8 +627,10 @@ int main(int argc, char* argv[]) {
     test_speed_function64<motzkin_61>(nr_trials, nr_times, numbers);
     cout << "This Paper (k=5) [smartcl_64<5>]: ";
     test_speed_function64<smartcl_64<5>>(nr_trials, nr_times, numbers);
-    cout << "This Paper (k=7) [smartcl_64<7>]: ";
+    cout << "This Paper (k=7, search circuit, not certified) [smartcl_64<7>]: ";
     test_speed_function64<smartcl_64<7>>(nr_trials, nr_times, numbers);
+    cout << "This Paper (k=7, certified, 4 mults, 7-wise) [septic7_64]: ";
+    test_speed_function64<septic7_64>(nr_trials, nr_times, numbers);
 #if defined(__aarch64__)
     cout << "Cross-check: this platform's smartcl_64<4> (= quartic2_64 circuit): ";
 #else

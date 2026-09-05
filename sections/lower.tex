@@ -8,6 +8,27 @@ A (polynomial) straight-line program with input $x$ and parameters $p\in\mathbb{
 Thus multiplications by fixed scalars are free, but multiplications involving $x$ or the parameters are not.
 Consequently each factor of a nonscalar multiplication, and the output, is a fixed linear combination of $x$ and the outputs of the earlier nonscalar multiplications plus an affine function of the parameters (the \emph{constant slot} of that factor); the parameters enter the program only through these constant slots.
 An \emph{everywhere-defined rational left inverse} of a polynomial map $F\colon\mathbb{F}^m\to\mathbb{F}^m$ is a tuple of rational functions $g_i/h_i$ ($1\le i\le m$) such that no $h_i$ has a zero in $\mathbb{F}^m$ and $g_i(F(p))=p_i\,h_i(F(p))$ for every $p\in\mathbb{F}^m$.
+The preprocessing maps of \Cref{sec:model} are right inverses, not left inverses; the following standard fact bridges the two.
+
+\begin{lemma}[everywhere-defined right inverses are left inverses]
+\label{lem:right-left}
+Let $\mathbb{F}$ be infinite, let $F\colon\mathbb{F}^n\to\mathbb{F}^n$ be a polynomial map, and let $R=(g_1/h_1,\dots,g_n/h_n)$ be a tuple of rational functions such that no $h_i$ has a zero in $\mathbb{F}^n$ and $F(R(y))=y$ for every $y\in\mathbb{F}^n$.
+Then $R$ is an everywhere-defined rational left inverse of $F$: $g_i(F(p))=p_i\,h_i(F(p))$ for every $p\in\mathbb{F}^n$.
+\end{lemma}
+
+\begin{proof}
+Let $y=(y_1,\dots,y_n)$ and $p=(p_1,\dots,p_n)$ be indeterminates and $R_i=g_i/h_i\in\mathbb{F}(y)$.
+Clearing denominators in $F_k(R(y))=y_k$ gives an identity of polynomials in $y$, because it holds at every point of $\mathbb{F}^n$ and $\mathbb{F}$ is infinite; so $F_k(R_1,\dots,R_n)=y_k$ in $\mathbb{F}(y)$ for each $k$.
+Hence the subfield $\mathbb{F}(R_1,\dots,R_n)\subseteq\mathbb{F}(y)$ contains $y_1,\dots,y_n$ and equals $\mathbb{F}(y)$, a field of transcendence degree $n$ over $\mathbb{F}$; since every generating set of a field extension contains a transcendence basis, the $n$ generators $R_1,\dots,R_n$ are algebraically independent over $\mathbb{F}$.
+Therefore $p_i\mapsto R_i$ defines an injective $\mathbb{F}$-algebra homomorphism $\phi\colon\mathbb{F}[p]\to\mathbb{F}(y)$, which extends to the fraction field $\mathbb{F}(p)$.
+The polynomial $h_i(F(p))$ is nonzero, because $h_i$ vanishes nowhere, so $R_i(F(p))=g_i(F(p))/h_i(F(p))$ is an element of $\mathbb{F}(p)$, and
+\[
+   \phi\bigl(R_i(F(p))\bigr)
+   =\frac{g_i\bigl(F(R_1,\dots,R_n)\bigr)}{h_i\bigl(F(R_1,\dots,R_n)\bigr)}
+   =\frac{g_i(y)}{h_i(y)}=R_i=\phi(p_i).
+\]
+By injectivity, $R_i(F(p))=p_i$ in $\mathbb{F}(p)$, i.e.\ $g_i(F(p))=p_i\,h_i(F(p))$ in $\mathbb{F}[p]$, hence at every point $p\in\mathbb{F}^n$.
+\end{proof}
 
 
 
@@ -26,19 +47,21 @@ Let
    F:\mathbb{F}^6\to\mathbb{F}^6,\qquad
    F(p) = \bigl(P_p(x_0),\dots,P_p(x_5)\bigr).
 \]
-Then $F$ admits no everywhere-defined rational left inverse, and in particular no everywhere-defined rational inverse (equivalently: rational decoding with no exceptional inputs).
+Then $F$ admits no everywhere-defined rational left inverse; by \Cref{lem:right-left} it then admits no everywhere-defined rational right inverse either.
 \end{lemma}
 
 \paragraph{Connection to degree-$6$ decoding.}
-A monic degree-$6$ polynomial is uniquely determined by its six remaining coefficients
-\(
-(c_5,\dots,c_0)\in\mathbb{F}^6
-\),
-and also by its values at the fixed six distinct points $x_0,\dots,x_5$ (since the corresponding Vandermonde matrix is invertible).
-In the model investigated in this paper, ``rational decodability with no exceptional inputs'' means that the six degrees of freedom of the polynomial can be put in bijection (via everywhere-defined rational maps) with the six program parameters $p$.
-Therefore we may reparameterize and assume $p=(c_5,\dots,c_0)$.
-But then $F(p)$ is just evaluation at $x_0,\dots,x_5$, whose inverse is polynomial interpolation (the inverse Vandermonde transform), hence an everywhere-defined rational inverse.
-The lemma rules this out.
+Let $E(x;\theta)$ be an evaluation scheme for monic sextics in the model of \Cref{sec:model} with three multiplications and six parameters $\theta\in\mathbb{F}^6$, and suppose its preprocessing is rational and everywhere defined: $\mathsf{pre}\colon\mathbb{F}^6\to\mathbb{F}^6$ is a tuple of rational functions with nowhere-vanishing denominators and $\mathsf{coeff}(\mathsf{pre}(c))=c$ for every $c=(c_0,\dots,c_5)\in\mathbb{F}^6$.
+Fix six distinct points $x_0,\dots,x_5$ and let $F(\theta)=(E(x_0;\theta),\dots,E(x_5;\theta))$.
+Since $E(x;\theta)=\sum_{j<6}c_jx^j+x^6$ with $c=\mathsf{coeff}(\theta)$, we have $F=V\,\mathsf{coeff}+v$, where $V=(x_k^j)_{k,j<6}$ is the Vandermonde matrix, invertible because the points are distinct, and $v=(x_k^6)_{k<6}$.
+Hence $R(y)=\mathsf{pre}\bigl(V^{-1}(y-v)\bigr)$ is everywhere defined and rational with $F(R(y))=y$ for every $y$, so by \Cref{lem:right-left} it is an everywhere-defined rational left inverse of $F$.
+The scheme is a straight-line program of the kind in \Cref{lem:six-params} (its seven constant slots are affine in $\theta$), so the lemma says that no such $R$ exists: no three-multiplication scheme for monic sextics with six parameters has everywhere-defined rational preprocessing.
+
+The restriction to six parameters is immaterial.
+With $d<6$ parameters, $\mathsf{coeff}(\mathsf{pre}(c))=c$ holds identically as rational functions of $c$ (clear denominators and use that $\mathbb{F}$ is infinite), and differentiating gives $J_{\mathsf{coeff}}(\mathsf{pre}(c))\,D\mathsf{pre}(c)=I_6$, which is impossible because $J_{\mathsf{coeff}}$ has only $d<6$ columns.
+With $d>6$ parameters, define $R$ as above (now $R\colon\mathbb{F}^6\to\mathbb{F}^d$, still with $F\circ R=\mathrm{id}$).
+The reduction of \Cref{appendix:lower}, whose gauge identity \eqref{eq:lower-gauge} and factorization $F=E'\circ Q$ do not depend on the number of parameters, writes $F=E'\circ Q$ with $Q\colon\mathbb{F}^d\to\mathbb{F}^6$ polynomial and $E'\colon\mathbb{F}^6\to\mathbb{F}^6$ the evaluation map of a normal-form program whose parameters are its six slots (unless the first multiplication is scalar, in which case $F$ factors through $\mathbb{F}^5$ and the rank argument applies again).
+Then $Q\circ R$ is an everywhere-defined rational map with $E'\circ(Q\circ R)=\mathrm{id}$, hence by \Cref{lem:right-left} a left inverse of $E'$; but $E'$ is itself an instance of \Cref{lem:six-params}, with constant slots $(0,a_1,a_2,b_2,a_3,b_3,b_1)$.
 
 \paragraph{Warm-up (Motzkin, degree $4$ with $2$ multiplications).}
 The analogous statement is false for two multiplications.
@@ -134,11 +157,14 @@ If $D\neq0$, the slots can be chosen so that $\ell_3$ and $r_3$ take equal
 values at two evaluation points while $\bar u_1,\bar u_2$ vanish there, so
 two rows of $J$ coincide.  If $D=0$, a second-difference functional over
 three evaluation points that annihilates constants and $x$ annihilates all
-six sensitivities, so three rows of $J$ are dependent.  The normal-form
-statement---both cases of this split, for every circuit in the normal form and
-every affine reparameterization of its six slots---is machine-checked in Lean
-(\texttt{FastPoly/LowerBound/}); the reduction to the normal form is not yet
-formalized (see \Cref{appendix:lower}).
+six sensitivities, so three rows of $J$ are dependent.  Both this case
+split (for every circuit in the normal form and every affine reparameterization of
+its six slots; \texttt{FastPoly/LowerBound/Main.lean}) and the reduction to the
+normal form (\texttt{FastPoly/LowerBound/General/}) are machine-checked in Lean:
+the lemma as stated, for every program of the displayed shape and every affine
+slot map $Mp+h_0$, is \texttt{no\_rationalInverse\_general}.  The end of
+\Cref{appendix:lower} lists the correspondence and the one remaining modelling
+step, the shape of the program display.
 \end{proof}
 \subsection{Beyond degree six}
 

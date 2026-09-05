@@ -397,18 +397,32 @@ Paper & Lean (file) & Hypotheses in Lean & Status\\
 \midrule
 \end{tabular}\par\nopagebreak
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
-\raggedright Lemma ($6$ parameters), \Cref{sec:lower} &\raggedright \texttt{no\_\allowbreak rationalInverse\_\allowbreak affine},
-\texttt{no\_\allowbreak rationalInverse\_\allowbreak affine\_\allowbreak of\_\allowbreak ringChar\_\allowbreak ne\_\allowbreak two}
-(\texttt{LowerBound/\allowbreak Main.lean}) &
+\raggedright Lemma ($6$ parameters), \Cref{sec:lower} &\raggedright \texttt{no\_\allowbreak rationalInverse\_\allowbreak general},
+\texttt{no\_\allowbreak rationalInverse\_\allowbreak general\_\allowbreak of\_\allowbreak ringChar\_\allowbreak ne\_\allowbreak two}
+(\texttt{LowerBound/\allowbreak General/\allowbreak Main.lean}); normal form
+\texttt{exists\_\allowbreak singular\_\allowbreak jacobian},
+\texttt{no\_\allowbreak rationalInverse\_\allowbreak affine}
+(\texttt{LowerBound/\allowbreak Main.lean}); reduction steps
+\texttt{gout\_\allowbreak eq} (\texttt{General/\allowbreak Gauge.lean}),
+\texttt{polyJacobian\_\allowbreak outPolyGeneral} (\texttt{Affine.lean}),
+\texttt{det\_\allowbreak eq\_\allowbreak zero\_\allowbreak of\_\allowbreak mulVec\_\allowbreak eq\_\allowbreak zero} (\texttt{DQ.lean}),
+\texttt{det\_\allowbreak eq\_\allowbreak zero\_\allowbreak along\_\allowbreak orbit} (\texttt{Orbit.lean}),
+\texttt{Qval\_\allowbreak Theta} (\texttt{Transversal.lean}); cross-checks
+\texttt{det\_\allowbreak eq\_\allowbreak zero\_\allowbreak of\_\allowbreak Qval\_\allowbreak eq} (\texttt{Midpoint.lean}),
+\texttt{RationalInverse.\allowbreak transport} (\texttt{Transport.lean}, outside the umbrella) &
 \raggedright \texttt{[Field F] [Infinite F]}; \texttt{(2 : F) $\ne$ 0} (resp.\
-\texttt{ringChar F $\ne$ 2}); six distinct points; a circuit in the displayed
-normal form (\texttt{Circuit F}); any affine slot map $Mp+m_0$, no
-invertibility of $M$.  Field hypotheses and conclusion match \Cref{lem:six-params}
-and its proof in \Cref{appendix:lower}: an infinite field with $2\ne0$, and only a
-left inverse is excluded.
-The reduction of an arbitrary three-multiplication program to the normal
-form is modelling (the definition of \texttt{Circuit}), not a theorem. &
-full (normal form)\\
+\texttt{ringChar F $\ne$ 2}); six distinct points; the general three-gate
+model \texttt{GCircuit F} (sixteen fixed constants, both first-gate constants
+are slots, $A=B=0$ and $A=0\ne B$ allowed) and any affine map $Mp+h_0$ from
+six parameters to seven slots, $M$ a $7\times6$ matrix with no rank condition.
+The gauge identity, the chain rule for the quadratic slot map, cases
+(i)--(iv) of \Cref{appendix:lower} (assembled by the characteristic-free pivot
+route, so that $2\ne0$ enters only through the normal-form theorem) and the
+first-gate degeneracies are proved; only an everywhere-defined rational left
+inverse is excluded.  \texttt{GCircuit} directly encodes the topologically
+ordered gate display of \Cref{appendix:lower}; no translation from an
+arbitrary-program syntax is claimed. &
+full\\
 \end{tabular}\par
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
 \raggedright \Cref{thm:char2-lower} &\raggedright \texttt{no\_\allowbreak surjective\_\allowbreak eval}, \texttt{no\_\allowbreak construction\_\allowbreak general}
@@ -480,13 +494,13 @@ characteristic two for \Cref{thm:char2-lower}.
 
 \paragraph{Build and axioms.}
 \begin{sloppypar}
-The construction, cost, height, example, and characteristic-two lower-bound
-files (including \texttt{HeightFinal.lean} and
-\texttt{LowerBoundChar2/\allowbreak General.lean}) are imported by the umbrella
+The construction, cost, height, example, and both lower-bound
+developments (including \texttt{HeightFinal.lean},
+\texttt{LowerBound/\allowbreak General/\allowbreak Main.lean},
+\texttt{LowerBoundChar2/\allowbreak General.lean}, and
+\texttt{LowerBoundChar2/\allowbreak Sharpness.lean}) are imported by the umbrella
 module \texttt{FastPoly.lean}, the default target; \texttt{lake build FastPoly}
-completes it with no errors.  The degree-$6$ lower bound
-\texttt{LowerBound/\allowbreak } is a separate module tree built as an explicit
-target.  No file under \texttt{FastPoly/\allowbreak } declares an \texttt{axiom} or
+completes it with no errors. No file under \texttt{FastPoly/\allowbreak } declares an \texttt{axiom} or
 contains a \texttt{sorry}.  \texttt{\#print axioms} on
 \texttt{polynomial\_\allowbreak height}, \texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charZero},
 \texttt{polynomial\_\allowbreak height\_\allowbreak of\_\allowbreak charP} (\texttt{HeightFinal.lean}),
@@ -495,7 +509,11 @@ contains a \texttt{sorry}.  \texttt{\#print axioms} on
 \texttt{MainArrangementsChecked.of\_\allowbreak charZero},
 \texttt{MainArrangementsChecked.of\_\allowbreak charP} (\texttt{PaperMain.lean}), as well as on
 \texttt{no\_\allowbreak surjective\_\allowbreak eval}, \texttt{no\_\allowbreak construction\_\allowbreak general},
-\texttt{no\_\allowbreak construction'} (\texttt{LowerBoundChar2/\allowbreak General.lean})
+\texttt{no\_\allowbreak construction'} (\texttt{LowerBoundChar2/\allowbreak General.lean}),
+\texttt{no\_\allowbreak rationalInverse\_\allowbreak general}
+(\texttt{LowerBound/\allowbreak General/\allowbreak Main.lean}), and
+\texttt{oneGate\_\allowbreak isConstruction}
+(\texttt{LowerBoundChar2/\allowbreak Sharpness.lean})
 reports only \texttt{propext}, \texttt{Classical.choice}, and
 \texttt{Quot.sound}; the same is recorded for
 \texttt{construction\_\allowbreak additions\_\allowbreak checked}

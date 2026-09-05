@@ -1164,6 +1164,61 @@ class quartic3_64 {
 
 
 /* ***************************************************
+ * septic7_64 -- the certified degree-7 circuit over GF(2^64), four
+ * multiplications (the characteristic-2 circuit with the unit-pivot decoder
+ * of the paper's appendix; ChainHash's former finalizer, website CIRCUITS[7]):
+ *   y = x (x + c0),  z = (x + c1)(y + c2),  t = z (z + c3),
+ *   u = (x + c4)(y + t + c5),  P = u + c6.
+ * Expanded over GF(2)[c][x] (tools/bench/chainhash/verify7.py; re-checked
+ * numerically by `bench_tabrows selftest`), with b = c0 + c1,
+ * e = c2 + c0 c1, d = c1 c2:
+ *   P = x^7 + c4 x^6 + b^2 x^5 + (c3 + c4 b^2) x^4
+ *       + (e^2 + c3 b + 1 + c3 c4) x^3
+ *       + (c3 e + c0 + c4 (e^2 + c3 b + 1)) x^2
+ *       + (d^2 + c3 d + c5 + c4 (c3 e + c0)) x
+ *       + (c6 + c4 (d^2 + c3 d + c5)).
+ * The key map (c0..c6) -> (a6..a0) is a bijection of GF(2^64)^7 onto the
+ * monic septics, with the explicit decoder (sqrt is the Frobenius inverse,
+ * sqrt(a) = a^(2^63), a bijection of GF(2^64)):
+ *   q0 = a6,  q1 = sqrt(a5),  q2 = a4 + q0 q1^2,
+ *   q3 = sqrt(a3 + q2 q1 + q2 q0 + 1),
+ *   q4 = a2 + q2 q3 + q1 + q0 (q3^2 + q2 q1 + 1),
+ *   delta = q4 (q3 + q1 q4 + q4^2),
+ *   q5 = a1 + delta^2 + q2 delta + q0 (q2 q3 + q1 + q4),
+ *   q6 = a0 + q0 (delta^2 + q2 delta + q5),
+ *   (c0, .., c6) = (q1 + q4, q4, q3 + q1 q4 + q4^2, q2, q0, q5, q6).
+ * Uniform keys therefore give a uniformly random monic septic, so the hash
+ * is exactly 7-wise independent.  (smartcl_64<7>::mult7_alt2 above is the
+ * search circuit, u = (x + y + t + a4)(x + a5), for which no inverse is
+ * displayed.)
+ * ***************************************************/
+
+class septic7_64 {
+  __m128i ms[4];  // ms[0] = (c1 : c0), ms[1] = (c3 : c2), ms[2] = (c5 : c4), ms[3] = (0 : c6)  (high : low)
+
+ public:
+  void init() {
+    for (int i = 0; i < 3; i++)
+      ms[i] = _mm_set_epi64x(getRandomUInt64(), getRandomUInt64());
+    ms[3] = _mm_cvtsi64_si128(getRandomUInt64());
+  }
+  void set_keys(const uint64_t c[7]) {
+    ms[0] = _mm_set_epi64x(c[1], c[0]);
+    ms[1] = _mm_set_epi64x(c[3], c[2]);
+    ms[2] = _mm_set_epi64x(c[5], c[4]);
+    ms[3] = _mm_cvtsi64_si128(c[6]);
+  }
+  uint64_t operator()(uint64_t input) {
+    __m128i x = _mm_cvtsi64_si128(input);
+    __m128i y = lemul(x, x ^ ms[0]);                      // y = x (x + c0)
+    __m128i z = lemul(x ^ upper(ms[0]), y ^ ms[1]);       // z = (x + c1) (y + c2)
+    __m128i t = lemul(z, z ^ upper(ms[1]));               // t = z (z + c3)
+    __m128i u = lemul(x ^ ms[2], y ^ t ^ upper(ms[2]));   // u = (x + c4) (y + t + c5)
+    return _mm_cvtsi128_si64(u ^ ms[3]);                  // P = u + c6
+  }
+};
+
+/* ***************************************************
  * Tabulation
  * ***************************************************/
 

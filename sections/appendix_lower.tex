@@ -22,8 +22,11 @@ on the right carry a factor $J_F(p_0)v=0$, leaving
    0=v_i\,h_i(F(p_0))\qquad(1\le i\le 6).
 \]
 Since $h_i$ vanishes nowhere, $v=0$, a contradiction.  (Note that no
-Nullstellensatz step is needed, so $\mathbb{F}$ need only be infinite; and ruling
-out a left inverse is stronger than ruling out a two-sided one.)
+Nullstellensatz step is needed, so $\mathbb{F}$ need only be infinite; ruling out a
+left inverse is stronger than ruling out a two-sided one, and by
+\Cref{lem:right-left} it also rules out an everywhere-defined rational right
+inverse, which is the form in which preprocessing enters the model of
+\Cref{sec:model}.)
 
 \medskip
 \noindent\textbf{Reduction to a normal form.}
@@ -593,18 +596,65 @@ so the three Jacobian rows at $x_0,x_1,x_2$ are linearly dependent. Hence the Ja
 \end{proof}
 
 \paragraph{Formalization.}
-What is machine-checked in Lean~4 today (\texttt{FastPoly/\allowbreak LowerBound/}) is
-the normal-form statement: for every circuit in the displayed normal form
+The proof of this appendix is machine-checked in Lean~4 in two layers under
+\texttt{FastPoly/\allowbreak LowerBound/}, with no \texttt{sorry}; \texttt{\#print axioms}
+reports only \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound} for
+every theorem named below.  The normal-form half (\texttt{LowerBound/\allowbreak Main.lean})
+is \texttt{exists\_singular\_jacobian}: for every circuit in the displayed normal form
 (\texttt{Circuit}), every field with $2\neq0$ and every six distinct evaluation points,
-the Jacobian $J$ is singular somewhere (\texttt{exists\_singular\_jacobian}: the
-program semantics, the six sensitivity polynomials, the chain rule for the $\bar u_i$
-and both cases of the split on $D$), and, over an infinite field, the evaluation map of
-the normal form has no everywhere-defined rational left inverse
-(\texttt{no\_rationalInverse}), also when its six slots are an arbitrary affine image
-$Mp+m_0$ of the parameter vector, with no invertibility of $M$ assumed
-(\texttt{no\_rationalInverse\_affine}).  These statements depend only on Lean's
-standard axioms.  The reduction of this appendix from an arbitrary
-three-multiplication program to the normal form---the gauge identity
-\eqref{eq:lower-gauge}, the quadratic slot map $Q=\nu\circ H$ and the four cases---is
-not yet formalized: the Lean development takes the normal form as the definition of the
-circuit rather than deriving it from a datatype of straight-line programs.
+$J$ is singular somewhere (the program semantics, the six sensitivity polynomials, the
+chain rule for the $\bar u_i$ and both cases of the split on $D$); hence, over an
+infinite field, the evaluation map of the normal form has no everywhere-defined rational
+left inverse (\texttt{no\_rationalInverse}), also when its six slots are an arbitrary
+affine image $Mp+m_0$ of the parameter vector (\texttt{no\_rationalInverse\_affine}).
+The reduction of this appendix is formalized in
+\texttt{FastPoly/\allowbreak LowerBound/\allowbreak General/}.  Its main theorem
+\texttt{no\_rationalInverse\_general} (\texttt{General/\allowbreak Main.lean}; also
+\texttt{no\_rationalInverse\_general\_of\_ringChar\_ne\_two}) is \Cref{lem:six-params} as
+stated: for every infinite field with $2\neq0$, every six distinct evaluation points, every
+program \texttt{GCircuit F} given by the sixteen fixed constants $A,B,L_{i,j},R_{i,j},s_i$
+of the general display---both constants of the first gate are slots, and $A=B=0$ and
+$A=0\neq B$ are allowed---and every affine map $z=Mp+h_0$ from the six parameters to the
+seven constant slots, with $M$ an arbitrary $7\times6$ matrix (\texttt{outPolyGeneral}),
+the evaluation map has no everywhere-defined rational left inverse.  The correspondence
+with the text is as follows.  The gauge identity \eqref{eq:lower-gauge} and
+$P_p=P'_{\nu(H(p))}$ are \texttt{g1\_eq} and \texttt{gout\_eq} (\texttt{Gauge.lean});
+$F=E'\circ Q$ and the chain rule \eqref{eq:lower-chain} are
+\texttt{outPolyGeneral\_eq\_outPolyOf} and \texttt{polyJacobian\_outPolyGeneral}
+(\texttt{Affine.lean}); the gauge direction $\xi\in\ker D\nu$ and case (i) are
+\texttt{dnu\_xi} and \texttt{det\_eq\_zero\_of\_mulVec\_eq\_zero} (\texttt{DQ.lean}); the
+midpoint identity \eqref{eq:lower-midpoint} for $Q$ and case (ii) are
+\texttt{Qval\_sub\_eq\_mulVec} and \texttt{det\_eq\_zero\_of\_Qval\_eq}
+(\texttt{Midpoint.lean}); the orbit polynomial \eqref{eq:lower-orbitpoly} and case (iii)
+are \texttt{dot\_orbit\_sub} and \texttt{det\_eq\_zero\_along\_orbit}
+(\texttt{Orbit.lean}); the inverse $\Theta$ of case (iv) is \texttt{Theta} with
+\texttt{Qval\_Theta} (\texttt{Transversal.lean}); and the transport of a left inverse
+along the surjective $Q$ is \texttt{RationalInverse.transport} (\texttt{Transport.lean},
+a separate target not imported by \texttt{General/\allowbreak Main.lean}).
+Two details differ from the text.  Instead of the cofactor vector $\omega$ the
+development uses the left-kernel vector normalized at a row $i_0$ with
+$\det M_S\neq0$, $S=\{i\neq i_0\}$, namely $\ell_{i_0}=1$ and $\ell_S=-M_{i_0}M_S^{-1}$
+(\texttt{lker}, \texttt{LinAlg.lean}), of which every left-kernel vector, $\omega$
+included, is a multiple (\texttt{eq\_smul\_lker\_of\_vecMul\_eq\_zero}).  And the
+assembly \texttt{exists\_singular\_of\_gauge} follows the characteristic-free route of
+the parenthetical remark above: for $\kappa\neq0$ one pivot on $\tau$
+(\texttt{exists\_tau\_eq}) makes $\ell\cdot\xi(H(p_0))=0$, so
+$\xi(H(p_0))\in\operatorname{im}M$ and $DQ(p_0)$ is singular
+(\texttt{det\_eq\_zero\_of\_dot\_xi\_eq\_zero}); for $\kappa=0=\omega^\circ$ this holds at
+every $p$; for $\kappa=0\neq\omega^\circ$ the normal-form singular point pulls back
+along $\Theta$.  Thus $2\neq0$ enters the general theorem only through
+\texttt{exists\_singular\_jacobian}, and the infinitude of $\mathbb{F}$ only through the
+Jacobian obstruction (\texttt{RationalInverse.isEmpty\_of\_det\_eq\_zero}); the midpoint
+route of case (ii) and the transport route
+(\texttt{no\_rationalInverse\_general\_of\_transversal}) are proved as cross-checks and
+are not used by \texttt{General/\allowbreak Main.lean}.  The two first-gate degeneracies
+are dispatched in \texttt{exists\_singular\_polyJacobian\_general}: $A=B=0$ is treated
+with the gauge scalar $0$ in place of $B/A$, so that $L'_{i,1}=R'_{i,1}=s'_1=0$ in the
+normal form, rather than by the factorization through $\mathbb{F}^5$; $A=0\neq B$ by
+interchanging the two factors (\texttt{outPolyGeneral\_swap}).  The normal-form statement
+is recovered as the instance \texttt{no\_rationalInverse\_affine\_of\_general}.  What
+remains modelling rather than a theorem is the first paragraph of the reduction: there is
+no Lean datatype of straight-line programs, and the statement that, after topologically
+ordering the three nonscalar multiplications, every multiplicand is a fixed linear
+combination of $x$ and the earlier $u_j$ plus a parameter-affine constant is the
+definition of \texttt{GCircuit} and \texttt{outPolyGeneral}, not a derived fact.
