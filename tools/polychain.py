@@ -29,7 +29,7 @@ exact rationals (`fractions.Fraction`).  Characteristic 2 is not supported
 here (see `poly_schedule`'s char-2 septic base for that special case).
 
 CLI:
-  python3 tools/polychain.py chain 15 [--latex|--json]
+  python3 tools/polychain.py chain 15 [--latex|--json|--dag]
   python3 tools/polychain.py encode 15 --alphas a0,...,a14 [--prime P|--rational]
   python3 tools/polychain.py decode 15 --coeffs c0,...,c14 [--prime P|--rational]
   python3 tools/polychain.py selftest [--max-n 120]
@@ -1006,6 +1006,34 @@ def _wire_name(i: int) -> str:
 
 
 @dataclass
+class AddNode:
+    """One distinct non-free affine value of a chain's addition DAG
+    (:meth:`Program.addition_dag`)."""
+
+    key: object  # (constant, terms) identity of the value
+    form: ps.AffineForm
+    op: str  # "flat" | "add" | "addc" | "neg" | "scale"
+    operands: List[object]  # keys of the non-free operands
+    cost: int  # additions charged to this value
+    uses: int  # distinct parents, plus gate-operand/output occurrences
+    note: str = ""  # "free-valued add": charged conservatively, see addition_dag
+
+
+@dataclass
+class AdditionDag:
+    """Result of :meth:`Program.addition_dag`."""
+
+    nodes: List[AddNode]
+    #: value key -> provenances met later than the charged one
+    ambiguous: Dict[object, List[Tuple[str, Tuple[object, ...]]]]
+
+    @property
+    def count(self) -> int:
+        return sum(nd.cost for nd in self.nodes)
+
+
+
+@dataclass
 class Program:
     """A symbolic polynomial chain for P_n[a_0..a_{n-1}]."""
 
@@ -1030,51 +1058,254 @@ class Program:
             depth[g.out_wire] = d + 1
         return max((depth.get(w, 0) for w in self.chain.output.terms), default=0)
 
-    @property
-    def add_count(self) -> int:
-        """Additions/subtractions in the paper's share-aware ledger
-        convention: a let-bound subexpression used more than once is charged
-        once.  Gadget output values (registered by the builders as
-        ``marked_values``) are materialized once at their own cost; a form
-        that reuses such a value pays a single addition for it (negation is
-        free), plus one per surviving nonzero key constant."""
+    def addition_dag(self) -> "AdditionDag":
+        """The addition DAG of the builder's schedule for this chain.
+
+        One :class:`AddNode` per distinct non-free affine value that the
+        emitted gates (and the output) depend on, following the provenance
+        recorded by ``AffineForm.add/sub/add_const`` and
+        ``_affine_scale_int``.  This is the schedule that ``poly_schedule``
+        actually executed, including let-bound intermediates that never
+        appear verbatim in the printed chain (an ``H_4 = z + e`` that only
+        feeds ``H_4 +- S``, say); ``chain --dag`` lists them.
+
+        Cost model (sections/addition_accounting.tex, "Addition Accounting"):
+        binary ``+``/``-`` of two field values cost one; constants,
+        negation, copies and fixed integer multiples ``k*U`` are free; a
+        data-dependent shift ``U + c`` costs one, and a sum of constants is
+        a single constant, so a shift of a shift whose intermediate has no
+        other use folds into one addition.  Forming a constant from
+        non-constant forms (``(H_2 + rho) - H_2``) is preprocessing and
+        free.  Identical values are identified by their (constant, terms)
+        key and charged once.
+
+        Conventions of this counter (also checked by ``selftest``):
+
+        * *First provenance wins.*  If the schedule reaches one value by two
+          different routes, the route met first in gate order (operands
+          before parents) is charged and the other is recorded in
+          ``ambiguous`` -- never both, and a registered node is never
+          overwritten.  The emitted chains have no such value (asserted by
+          ``selftest``), so for them the count is a function of the chain.
+        * A binary ``+``/``-`` of two non-constant forms whose *value* is a
+          fixed multiple of one wire (``(x + y) + (x - y) = 2x``) is still
+          charged as one addition (conservative; noted ``free-valued add``
+          and asserted absent by ``selftest``).  ``U + c*U`` is a fixed
+          multiple of ``U`` and free.
+        * ``_affine_scale_int(U, 1)`` and ``U + 0`` are aliases of ``U``.
+        """
+
+        field = self.chain.field
 
         def is_zero(c) -> bool:
             if isinstance(c, Sym):
                 return not c.terms
-            return c == 0
+            return field.is_zero(c)
 
-        def neg(c):
-            return c * (-1) if isinstance(c, Sym) else -c
+        def const_key(c):
+            if is_zero(c):
+                return 0
+            if isinstance(c, Sym):
+                return frozenset(c.terms.items())
+            return c
 
-        marked = getattr(self.chain, "marked_values", [])
-        registry: List[Tuple[Dict[int, int], object]] = []
+        def key(a: ps.AffineForm):
+            return (const_key(a.const), frozenset(a.terms.items()))
 
-        def cost(a, reg) -> int:
-            terms = dict(a.terms)
-            const = a.const
-            groups = 0
-            for sig, sc in sorted(reg, key=lambda e: -len(e[0])):
-                if not sig or (len(sig) == 1 and is_zero(sc)):
-                    continue
-                for eps in (1, -1):
-                    if all(terms.get(w) == eps * c0 for w, c0 in sig.items()):
-                        for w in sig:
-                            del terms[w]
-                        if not is_zero(sc):
-                            const = const - sc if eps == 1 else const + sc
-                        groups += 1
-                        break
-            n_ops = len(terms) + groups
-            return max(0, n_ops - 1) + (0 if is_zero(const) else 1)
+        def is_const(a: ps.AffineForm) -> bool:
+            return not a.terms
 
-        total = 0
-        for form in marked:
-            total += cost(form, registry)
-            registry.append((dict(form.terms), form.const))
-        for g in self.chain.gates:
-            total += cost(g.left, registry) + cost(g.right, registry)
-        return total + cost(self.chain.output, registry)
+        def is_free(a: ps.AffineForm) -> bool:
+            # a constant, or a fixed integer multiple of one wire (copies,
+            # negation and fixed multiples are free)
+            return not a.terms or (len(a.terms) == 1 and is_zero(a.const))
+
+        def multiple_of(b: ps.AffineForm, a: ps.AffineForm) -> Optional[int]:
+            """The integer c with b == c*a as affine forms, else None."""
+            if not a.terms or a.terms.keys() != b.terms.keys():
+                return None
+            w0 = next(iter(a.terms))
+            ca, cb = a.terms[w0], b.terms[w0]
+            if cb % ca:
+                return None
+            c = cb // ca
+            if any(b.terms[w] != c * a.terms[w] for w in a.terms):
+                return None
+            if not is_zero(field.sub(b.const, ps._field_mul_int(field, a.const, c))):
+                return None
+            return c
+
+        def negated(a: ps.AffineForm, m: ps.AffineForm) -> Optional[int]:
+            """+1 if a.terms == m.terms, -1 if a.terms == -m.terms, else None."""
+            if a.terms == m.terms:
+                return 1
+            if len(a.terms) == len(m.terms) and all(
+                    a.terms.get(w) == -c for w, c in m.terms.items()):
+                return -1
+            return None
+
+        nodes: Dict[object, Tuple[str, List[object], ps.AffineForm]] = {}
+        order: List[object] = []
+        ambiguous: Dict[object, List[Tuple[str, Tuple[object, ...]]]] = {}
+        notes: Dict[object, str] = {}
+        memo: Dict[int, object] = {}
+        alive: List[ps.AffineForm] = []  # pins ids used as memo keys
+
+        def register(k, op: str, operands: List[object], a: ps.AffineForm):
+            ops = [o for o in operands if o is not None]
+            if k in nodes:
+                # already registered (an earlier sink, or the value's own
+                # operand walk): keep the first provenance, record the other
+                if (nodes[k][0], nodes[k][1]) != (op, ops):
+                    ambiguous.setdefault(k, []).append((op, tuple(ops)))
+                return k
+            nodes[k] = (op, ops, a)
+            order.append(k)
+            return k
+
+        def resolve(a: ps.AffineForm):
+            """Register the DAG below `a`; return its key (None if free)."""
+            i = id(a)
+            if i in memo:
+                return memo[i]
+            alive.append(a)
+            memo[i] = r = _resolve(a)
+            return r
+
+        def _resolve(a: ps.AffineForm):
+            if is_const(a):
+                return None  # preprocessing
+            k = key(a)
+            src = a.src
+            if src is None:
+                # no provenance (a form built directly): a flat sum
+                return None if is_free(a) else register(k, "flat", [], a)
+            op = src[0]
+            if op == "scale":
+                A, c = src[1], src[2]
+                if c == 1:
+                    return resolve(A)  # an alias
+                return None if is_free(a) else register(k, "scale", [resolve(A)], a)
+            if op == "addc":
+                m, eps = src[1], 1
+            else:  # "add" / "sub"
+                A, B = src[1], src[2]
+                if A.terms and B.terms:
+                    # a binary +/- of two non-constant forms
+                    base = A if multiple_of(B, A) is not None else (
+                        B if multiple_of(A, B) is not None else None)
+                    if base is not None:  # A +- c*A: a fixed multiple of A
+                        return None if is_free(a) else register(k, "scale", [resolve(base)], a)
+                    kk = register(k, "add", [resolve(A), resolve(B)], a)
+                    if is_free(a):
+                        notes[k] = "free-valued add"
+                    return kk
+                m = A if A.terms else B  # the other operand is a constant
+                eps = negated(a, m)
+            if is_free(a):
+                return None  # eps*m + delta is a wire multiple
+            if eps == 1 and is_zero(field.sub(a.const, m.const)):
+                return resolve(m)  # same value: an alias
+            if eps == -1 and is_zero(field.add(a.const, m.const)):
+                return register(k, "neg", [resolve(m)], a)
+            return register(k, "addc", [resolve(m)], a)
+
+        sinks = [f for g in self.chain.gates for f in (g.left, g.right)]
+        sinks.append(self.chain.output)
+        sink_keys = [resolve(f) for f in sinks]
+
+        # the nodes the sinks depend on through the charged provenances
+        needed: set = set()
+        stack = [k for k in sink_keys if k is not None]
+        while stack:
+            k = stack.pop()
+            if k in needed:
+                continue
+            needed.add(k)
+            stack.extend(nodes[k][1])
+
+        # use counts (distinct parents, plus sink occurrences) for folding
+        # chains of constant shifts x + a + b into one aggregated constant
+        uses: Dict[object, int] = {k: 0 for k in needed}
+        for k in needed:
+            for o in set(nodes[k][1]):
+                uses[o] += 1
+        for k in sink_keys:
+            if k is not None:
+                uses[k] += 1
+
+        def adds_constant(k) -> bool:
+            op, _operands, a = nodes[k]
+            return op == "addc" or (op == "flat" and not is_zero(a.const))
+
+        out: List[AddNode] = []
+        for k in order:
+            if k not in needed:
+                continue
+            op, operands, a = nodes[k]
+            if op in ("scale", "neg"):
+                cost = 0
+            elif op == "flat":
+                cost = len(a.terms) - 1 + (0 if is_zero(a.const) else 1)
+            elif op == "add":
+                cost = 1
+            else:  # addc: free when it folds into the constant of its only use
+                m = operands[0] if operands else None
+                while m is not None and nodes[m][0] in ("scale", "neg") and uses[m] == 1:
+                    m = nodes[m][1][0] if nodes[m][1] else None
+                cost = 0 if (m is not None and uses[m] == 1 and adds_constant(m)) else 1
+            out.append(AddNode(k, a, op, list(operands), cost, uses[k], notes.get(k, "")))
+        return AdditionDag(
+            nodes=out,
+            ambiguous={k: alts for k, alts in ambiguous.items() if k in needed},
+        )
+
+    def _addition_nodes(self) -> List[Tuple[str, ps.AffineForm, int]]:
+        """``(op, form, cost)`` triples of :meth:`addition_dag` (kept for callers)."""
+
+        return [(nd.op, nd.form, nd.cost) for nd in self.addition_dag().nodes]
+
+    @property
+    def add_count(self) -> int:
+        """Additions/subtractions of the builder's schedule for this chain,
+        in the convention of sections/addition_accounting.tex (see
+        :meth:`addition_dag` for the exact rules).
+
+        This is a DAG count of the schedule ``poly_schedule`` executed, so
+        it is an upper bound on the additions of the printed chain: the
+        printed affine forms could be recombined differently (the schedule's
+        let-bound intermediates need not be the cheapest sharing), and it
+        is reproducible from ``chain n --dag``, which lists every charged
+        value.  It is also not the paper's ledger ``A_n``
+        (\\eqref{eq:full-add-recurrence}) where the emitted chain differs
+        from the paper's costed schedule: ``P_3`` (4 vs 3), the ``P_5``
+        base (6 vs 8), the septic without the affine reparameterization
+        (11 vs 10), and the even lifts of those."""
+
+        return self.addition_dag().count
+
+    def render_dag(self) -> str:
+        """One line per charged/free value of :meth:`addition_dag`."""
+
+        pn = self.param_name
+        var_fmt = lambda i: f"{pn}{i}"  # noqa: E731
+        dag = self.addition_dag()
+        lines = [
+            f"# addition DAG of the builder schedule for P_{self.n}: "
+            f"{dag.count} additions ({len(dag.nodes)} distinct non-free values)",
+            "# cost uses op     value",
+        ]
+        for nd in dag.nodes:
+            note = f"   [{nd.note}]" if nd.note else ""
+            lines.append(
+                f"  {nd.cost}    {nd.uses:<3}  {nd.op:<6} {self._affine_str(nd.form, var_fmt)}{note}"
+            )
+        if dag.ambiguous:
+            lines.append(f"# {len(dag.ambiguous)} value(s) with a second provenance (first one charged):")
+            for k, alts in dag.ambiguous.items():
+                nd = next(nd for nd in dag.nodes if nd.key == k)
+                lines.append(f"#   {self._affine_str(nd.form, var_fmt)}: {len(alts)} alternative(s)")
+        return "\n".join(lines)
 
     # -- rendering helpers ---------------------------------------------------
 
@@ -1145,6 +1376,7 @@ class Program:
                 "terms": {self.chain.wire_names[w]: k for w, k in sorted(a.terms.items())},
             }
 
+        dag = self.addition_dag()
         doc = {
             "n": self.n,
             "multiplications": self.mul_count,
@@ -1160,6 +1392,18 @@ class Program:
                 for g in self.chain.gates
             ],
             "output": aff(self.chain.output),
+            # builder-schedule addition count and its DAG (see add_count)
+            "additions": dag.count,
+            "addition_dag": [
+                {
+                    "value": self._affine_str(nd.form, var_fmt),
+                    "op": nd.op,
+                    "cost": nd.cost,
+                    "uses": nd.uses,
+                    **({"note": nd.note} if nd.note else {}),
+                }
+                for nd in dag.nodes
+            ],
         }
         return json.dumps(doc, indent=2)
 
@@ -1439,6 +1683,18 @@ def _selftest(max_n: int, *, seed: int = 0, verbose: bool = True) -> None:
                     f"selftest FAILED at n={n}: height {prog.height} > bound {hbound}")
         if n >= 3:
             pp = chain(n, peeled=True)
+            for label, pr in (("plain", prog), ("peeled", pp)):
+                # add_count is a function of the chain only when every value
+                # has one provenance and no free value is formed by a +/-
+                dag = pr.addition_dag()
+                if dag.ambiguous:
+                    raise SystemExit(
+                        f"selftest FAILED at n={n} ({label}): {len(dag.ambiguous)} "
+                        "value(s) with two provenances in the addition DAG")
+                bad = [nd for nd in dag.nodes if nd.note]
+                if bad:
+                    raise SystemExit(
+                        f"selftest FAILED at n={n} ({label}): {bad[0].note} in the addition DAG")
             if pp.mul_count != prog.mul_count:
                 raise SystemExit(f"selftest FAILED at n={n}: peeled mults differ")
             if pp.add_count > prog.add_count:
@@ -1505,6 +1761,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     fmt = pc.add_mutually_exclusive_group()
     fmt.add_argument("--latex", action="store_true")
     fmt.add_argument("--json", action="store_true")
+    fmt.add_argument("--dag", action="store_true",
+                     help="list every charged affine value of the builder schedule "
+                          "(the DAG behind add_count)")
 
     pd = sub.add_parser("decode", help="coefficients -> parameters")
     pd.add_argument("n", type=int)
@@ -1543,6 +1802,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             print(prog.render_latex())
         elif args.json:
             print(prog.to_json())
+        elif args.dag:
+            print(prog.render_dag())
         else:
             print(prog.render_text())
         return

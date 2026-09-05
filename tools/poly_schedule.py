@@ -36,6 +36,7 @@ to generate schedules.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import random
 from dataclasses import dataclass
@@ -155,10 +156,18 @@ class AffineForm:
 
     Wire 0 is the constant 1 (implicit via `const`), wire 1 is x, and wires ≥2
     are multiplication outputs.
+
+    `src` records how the form was produced (``("add", A, B)``, ``("sub", A, B)``,
+    ``("addc", A)`` or ``("scale", A, k)``; ``None`` for wires, constants and
+    forms built directly).  It is provenance only: it does not take part in
+    equality, and `Program.add_count` (tools/polychain.py) walks it to count the
+    additions of the builder's schedule as a DAG (including let-bound values
+    that the printed chain does not show; `chain n --dag` lists them).
     """
 
     const: Number
     terms: Dict[int, int]  # wire -> integer coefficient
+    src: Optional[tuple] = dataclasses.field(default=None, compare=False, repr=False)
 
     @staticmethod
     def const_only(c: Number) -> "AffineForm":
@@ -182,7 +191,7 @@ class AffineForm:
         return AffineForm(const, terms)
 
     def add_const(self, c: Number, field: Field) -> "AffineForm":
-        return AffineForm(field.add(self.const, c), dict(self.terms))
+        return AffineForm(field.add(self.const, c), dict(self.terms), ("addc", self))
 
     def add(self, other: "AffineForm", field: Field) -> "AffineForm":
         const = field.add(self.const, other.const)
@@ -191,7 +200,7 @@ class AffineForm:
             terms[w] = terms.get(w, 0) + k
             if terms[w] == 0:
                 del terms[w]
-        return AffineForm(const, terms)
+        return AffineForm(const, terms, ("add", self, other))
 
     def sub(self, other: "AffineForm", field: Field) -> "AffineForm":
         const = field.sub(self.const, other.const)
@@ -200,7 +209,7 @@ class AffineForm:
             terms[w] = terms.get(w, 0) - k
             if terms[w] == 0:
                 del terms[w]
-        return AffineForm(const, terms)
+        return AffineForm(const, terms, ("sub", self, other))
 
     def eval(self, wires: List[Number], field: Field) -> Number:
         acc = field.coerce(self.const)
@@ -574,7 +583,7 @@ def _affine_scale_int(field: Field, lf: AffineForm, k: int) -> AffineForm:
         cc = c * k
         if cc != 0:
             terms[w] = cc
-    return AffineForm(const, terms)
+    return AffineForm(const, terms, ("scale", lf, k))
 
 
 def _paper_T(
@@ -750,7 +759,6 @@ def _paper_T(
         rho = tilde_H_2l.sub(Hs[2], field)
         if rho.terms:
             raise ValueError("The shared odd l=2 base requires tilde_H4-H4 to be scalar")
-        S2_1 = S1_1.sub(rho, field)
         tilde_H8 = H8.add_const(next_shift, field)
 
         T1_rec, T2_rec, Hs_out, tilde_out = _paper_T(builder, m, l + 1, mid, Hs_next, tilde_H8)
@@ -762,8 +770,12 @@ def _paper_T(
         factor1 = Hs[2].sub(_affine_scale_int(field, S1_1, k - 1), field)
         T1 = builder.mul(factor1, T1_rec).add(q3, field)
 
-        # (tilde_H4 - (k-1)S2_1) * T2_rec + α0
-        factor2 = tilde_H_2l.sub(_affine_scale_int(field, S2_1, k - 1), field)
+        # (tilde_H4 - (k-1)S2_1) * T2_rec + α0.  With S2_1 = S1_1 - rho and
+        # tilde_H4 = H4 + rho the second factor is a scalar shift of the
+        # first, tilde_H4 - (k-1)S2_1 = factor1 + k*rho (eq. shared-factor in
+        # sections/addition_accounting.tex), so neither tilde_H4 nor S2_1 is
+        # materialized: one addition instead of three.
+        factor2 = factor1.add_const(_field_mul_int(field, rho.const, k), field)
         T2 = builder.mul(factor2, T2_rec).add_const(head[0], field)
         return T1, T2, Hs_out, tilde_out
 
