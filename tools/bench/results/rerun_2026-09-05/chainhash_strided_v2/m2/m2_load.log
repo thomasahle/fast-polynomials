@@ -1,0 +1,27 @@
+23:47:35 load1=1.83
+23:47:35 harness start load1=1.83 uptime: 23:47  up 3 days, 11:48, 1 user, load averages: 1.83 3.96 5.79
+23:47:50 harness end exit=0 load1=2.27
+23:47:50 load1=2.27
+23:47:50 suite chainhash-256 start load1=2.27 uptime: 23:47  up 3 days, 11:49, 1 user, load averages: 2.27 3.95 5.75
+23:54:03 suite chainhash-256 end exit=0 load1=7.50
+23:54:03 load1=7.50
+23:54:33 load1=5.07
+23:55:03 load1=4.28
+23:55:33 load1=6.64
+23:56:03 load1=6.56
+23:56:33 load1=5.81
+23:57:03 load1=5.62
+23:57:33 load1=5.32
+23:58:03 load1=5.56
+23:58:33 load1=8.54
+23:59:03 load1=6.86
+23:59:33 load1=6.13
+00:00:03 load1=6.27
+00:00:33 load1=6.67
+00:01:03 load1=6.08
+00:01:33 load1=5.29
+00:02:04 load1=4.21
+00:02:34 load1=3.67
+00:03:04 load1=2.90
+00:03:04 suite chainhash-1k start load1=2.90 uptime:  0:03  up 3 days, 12:04, 1 user, load averages: 2.90 5.00 5.60
+00:10:07 suite chainhash-1k end exit=0 load1=6.77

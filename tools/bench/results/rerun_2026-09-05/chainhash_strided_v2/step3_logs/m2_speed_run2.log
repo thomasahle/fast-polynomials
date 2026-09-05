@@ -1,0 +1,18 @@
+load before: { 3.72 7.77 7.61 }
+--- Testing chainhash-256 "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks" [hwpmull]
+Average        -    72.50 cycles/hash
+ rnd-byte keys -    73.44 cycles/hash
+Average       - 22.45 bytes/cycle - 73.18 GiB/sec @ 3.5 ghz
+Alignment rnd - 22.45 bytes/cycle - 73.18 GiB/sec @ 3.5 ghz
+Average       - 21.52 bytes/cycle - 70.14 GiB/sec @ 3.5 ghz
+Alignment rnd - 19.81 bytes/cycle - 64.58 GiB/sec @ 3.5 ghz
+load after chainhash-256: { 3.39 7.30 7.44 }
+--- Testing chainhash-1k "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block" [hwpmull]
+Average        -    71.23 cycles/hash
+ rnd-byte keys -    73.03 cycles/hash
+Average       - 18.57 bytes/cycle - 60.54 GiB/sec @ 3.5 ghz
+Alignment rnd - 18.55 bytes/cycle - 60.45 GiB/sec @ 3.5 ghz
+Average       - 18.32 bytes/cycle - 59.72 GiB/sec @ 3.5 ghz
+Alignment rnd - 17.85 bytes/cycle - 58.18 GiB/sec @ 3.5 ghz
+load after chainhash-1k: { 2.89 6.74 7.23 }
+M2_DONE2

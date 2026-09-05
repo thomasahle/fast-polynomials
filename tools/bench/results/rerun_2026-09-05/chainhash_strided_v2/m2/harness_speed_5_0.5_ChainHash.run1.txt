@@ -1,0 +1,9 @@
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+selftests passed
+{"name":"ChainHash, 64 B blocks, K=5+twist","size_bytes":16384,"gbps":27.8906,"gbps_min":27.6012,"gbps_max":28.0880,"ns_per_call":587.44,"reps":854031,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 256 B blocks, K=5+twist","size_bytes":16384,"gbps":68.7574,"gbps_min":65.6876,"gbps_max":69.6081,"ns_per_call":238.29,"reps":2067301,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 1 KB blocks, K=5+twist, S=2","size_bytes":16384,"gbps":68.7304,"gbps_min":66.8774,"gbps_max":71.3911,"ns_per_call":238.38,"reps":2147466,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 64 B blocks, K=5+twist","size_bytes":512,"gbps":29.5555,"gbps_min":28.6015,"gbps_max":30.2944,"ns_per_call":17.32,"reps":28796320,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 256 B blocks, K=5+twist","size_bytes":512,"gbps":38.0869,"gbps_min":37.6457,"gbps_max":38.5990,"ns_per_call":13.44,"reps":36745940,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 1 KB blocks, K=5+twist, S=2","size_bytes":512,"gbps":39.8749,"gbps_min":39.7730,"gbps_max":40.1363,"ns_per_call":12.84,"reps":36723257,"runs":5,"impl_source":"tools/bench/chainhash/chainhash.h"}

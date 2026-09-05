@@ -1,0 +1,10 @@
+[  0%] Generating Hashrefs.cpp
+fatal: not a git repository (or any of the parent directories): .git
+[  0%] Built target SMHasher3Version
+[ 26%] Built target SMHasher3Tests
+[ 27%] Building CXX object CMakeFiles/SMHasher3Hashlib.dir/Hashrefs.cpp.o
+[ 28%] Building CXX object CMakeFiles/SMHasher3Hashlib.dir/hashes/chainhash_goldi_exp.cpp.o
+[ 30%] Linking CXX static library libSMHasher3Hashlib.a
+[ 98%] Built target SMHasher3Hashlib
+[100%] Linking CXX executable SMHasher3
+[100%] Built target SMHasher3

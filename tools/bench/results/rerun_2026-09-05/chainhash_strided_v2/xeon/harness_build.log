@@ -1,0 +1,10 @@
+cc -O3 -std=c11 -march=native -c vendor/umash/umash_impl.c -o umash_impl.o
+g++ -O3 -std=c++17 -march=native -I. speed.cpp umash_impl.o -o speed
+In file included from speed_hashes.h:22,
+                 from speed.cpp:7:
+../framework/multiplication_arm.h:9:10: fatal error: arm_neon.h: No such file or directory
+    9 | #include <arm_neon.h>
+      |          ^~~~~~~~~~~~
+compilation terminated.
+make: *** [Makefile:44: speed] Error 1
+MAKE_EXIT=2

@@ -1,0 +1,15 @@
+8 bytes  Smh<128, 5, 2, 0>::sp
+8 bytes  Smh<128, 5, 2, 2>::sp
+8 bytes  Smh<32, 5, 1, 0>::sp
+8 bytes  Smh<32, 5, 1, 1>::sp
+8 bytes  Smh<32, 5, 1, 2>::sp
+1211 bytes  Smh<32, 5, 1, 0>::hash(void const*, unsigned long)
+1299 bytes  Smh<32, 5, 1, 1>::hash(void const*, unsigned long)
+1371 bytes  Smh<32, 5, 1, 2>::hash(void const*, unsigned long)
+1638 bytes  Smh<128, 5, 2, 0>::hash(void const*, unsigned long)
+1655 bytes  void chg_multi<32, 5, 1, 0, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)
+1735 bytes  void chg_multi<32, 5, 1, 1, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)
+1793 bytes  Smh<128, 5, 2, 2>::hash(void const*, unsigned long)
+1807 bytes  void chg_multi<32, 5, 1, 2, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)
+2961 bytes  void chg_multi<128, 5, 2, 0, false>(chg_key<128, 5> const*, unsigned char const*, unsigned long, void*)
+3108 bytes  void chg_multi<128, 5, 2, 2, false>(chg_key<128, 5> const*, unsigned char const*, unsigned long, void*)

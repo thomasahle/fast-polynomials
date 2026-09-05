@@ -1,0 +1,11 @@
+fin_latency: backend hwpmull, N 20000000, cycles/ns 3.279
+  CHAR2 (GPR->vec, twist+circuit, ->GPR)      47.03 cycles/eval (min of 7)
+  CHAR2 state in vector reg (no moves)        35.12 cycles/eval (min of 7)
+  G4 (GPR->vec->GPR, fold, quartic)           35.72 cycles/eval (min of 7)
+  G5 (GPR->vec->GPR, fold, quintic)           43.88 cycles/eval (min of 7)
+  G4 scalar only (fold + quartic)             35.71 cycles/eval (min of 7)
+  G5 scalar only (fold + quintic)             43.36 cycles/eval (min of 7)
+  one F_p multiply (lazy)                     10.27 cycles/eval (min of 7)
+  one F_p add (subtraction form)               2.95 cycles/eval (min of 7)
+  one GF(2^64) multiply                       10.85 cycles/eval (min of 7)
+(sink 5c615a3970fca5b)

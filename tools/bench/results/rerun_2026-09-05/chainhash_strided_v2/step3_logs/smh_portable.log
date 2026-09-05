@@ -1,0 +1,94 @@
+CMD=/usr/bin/c++ -DHAVE_THREADS -I/Users/ahle/repos/smhasher3/build-chainhash/include -I/Users/ahle/repos/smhasher3/include/hashlib -I/Users/ahle/repos/smhasher3/include/common -Xclang -target-feature -Xclang +aes -O3 -march=native -g -ggdb3 -Wall -Wextra -Wvla -Wpedantic       -Wno-unused-function -Wno-unknown-pragmas -DNDEBUG -std=c++11 -arch arm64 -MD -MT CMakeFiles/SMHasher3Hashlib.dir/hashes/chainhash.cpp.o -MF CMakeFiles/SMHasher3Hashlib.dir/hashes/chainhash.cpp.o.d -o CMakeFiles/SMHasher3Hashlib.dir/hashes/chainhash.cpp.o -c /Users/ahle/repos/smhasher3/hashes/chainhash.cpp
+In file included from /Users/ahle/repos/smhasher3/hashes/chainhash.cpp:141:
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:44:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   44 |     HashFamilyInfo $(#N);                          \
+      |                    ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:46:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   46 |     return $;                                      \
+      |            ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:54:14: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   54 |     HashInfo $(#N, THIS_HASH_FAMILY.name);       \
+      |              ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:56:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   56 |     register_hash(&$);                           \
+      |                    ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:57:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   57 |     return $;                                    \
+      |            ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1197:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1197 |    $.src_status = HashFamilyInfo::SRC_ACTIVE
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1201:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1201 |    $.desc       = "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks",
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1202:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1202 |    $.impl       = CHAINHASH_IMPL_STR,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1203:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1203 |    $.hash_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1205:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1205 |    $.impl_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1207:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1207 |    $.bits = 64,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1208:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1208 |    $.verification_LE = 0xBFC38A57,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1209:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1209 |    $.verification_BE = 0xC84FA5C3,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1210:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1210 |    $.seedfn          = chainhash_seed_init<32, 5>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1211:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1211 |    $.hashfn_native   = ChainHash<32, 5, 1, false>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1212:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1212 |    $.hashfn_bswap    = ChainHash<32, 5, 1, true>
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1216:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1216 |    $.desc       = "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block",
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1217:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1217 |    $.impl       = CHAINHASH_IMPL_STR,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1218:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1218 |    $.hash_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1220:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1220 |    $.impl_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1222:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1222 |    $.bits = 64,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1223:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1223 |    $.verification_LE = 0x710CF02B,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1224:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1224 |    $.verification_BE = 0x1AB98587,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1225:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1225 |    $.seedfn          = chainhash_seed_init<128, 5>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1226:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1226 |    $.hashfn_native   = ChainHash<128, 5, 2, false>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1227:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1227 |    $.hashfn_bswap    = ChainHash<128, 5, 2, true>
+      |    ^
+26 warnings generated.
+[100%] Linking CXX executable SMHasher3
+[100%] Built target SMHasher3
+chainhash-1k                   64    portable          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block
+chainhash-256                  64    portable          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks
+--- Testing chainhash-256 "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks" [portable]
+Verification value LE 0xAA4E2A3B ...... FAIL! (Expected 0xbfc38a57)
+--- Testing chainhash-1k "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block" [portable]
+Verification value LE 0x7A1ED2E0 ...... FAIL! (Expected 0x710cf02b)
+PORTABLE_DONE
+[100%] Built target SMHasher3
+chainhash-1k                   64     hwpmull          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block
+chainhash-256                  64     hwpmull          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks
+RESTORED

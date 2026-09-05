@@ -1,0 +1,10 @@
+   hwpmull|                 chainhash-1k - Verification value LE 0x7A1ED2E0 ...... PASS
+   hwpmull|                 chainhash-1k - Verification value BE 0x85B2F299 ...... PASS
+   hwpmull|                chainhash-256 - Verification value LE 0xAA4E2A3B ...... PASS
+   hwpmull|                chainhash-256 - Verification value BE 0x11037F6F ...... PASS
+   hwpmull|             chainhash-g4-256 - Verification value LE 0xA3577E75 ...... PASS
+   hwpmull|             chainhash-g4-256 - Verification value BE 0xAE143AED ...... PASS
+   hwpmull|              chainhash-g5-1k - Verification value LE 0xC8B38421 ...... PASS
+   hwpmull|              chainhash-g5-1k - Verification value BE 0x6024310F ...... PASS
+   hwpmull|             chainhash-g5-256 - Verification value LE 0xF89E636F ...... PASS
+   hwpmull|             chainhash-g5-256 - Verification value BE 0x229C22B5 ...... PASS

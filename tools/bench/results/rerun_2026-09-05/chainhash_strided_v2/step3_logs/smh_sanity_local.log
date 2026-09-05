@@ -1,0 +1,24 @@
+[ 98%] Built target SMHasher3Tests
+[100%] Linking CXX executable SMHasher3
+[100%] Built target SMHasher3
+--- Testing chainhash-256 "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks" [hwpmull]
+Verification value LE 0xAA4E2A3B ...... PASS
+Running sanity check 1       .......... PASS
+Running sanity check 2       .......... PASS
+Running append zeroes test   .......... PASS
+Running prepend zeroes test  .......... PASS
+Running thread-safety test 1 .......... PASS
+Running thread-safety test 2 .......... PASS
+Verification value is 0x00000001 - Testing took 0.185946 seconds
+Verification value BE 0x11037F6F ...... PASS
+--- Testing chainhash-1k "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block" [hwpmull]
+Verification value LE 0x7A1ED2E0 ...... PASS
+Running sanity check 1       .......... PASS
+Running sanity check 2       .......... PASS
+Running append zeroes test   .......... PASS
+Running prepend zeroes test  .......... PASS
+Running thread-safety test 1 .......... PASS
+Running thread-safety test 2 .......... PASS
+Verification value is 0x00000001 - Testing took 0.198810 seconds
+Verification value BE 0x85B2F299 ...... PASS
+SANITY_DONE

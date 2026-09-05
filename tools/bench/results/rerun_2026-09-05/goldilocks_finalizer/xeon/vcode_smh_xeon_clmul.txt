@@ -1,0 +1,3 @@
+VCODE chainhash-g4-256 a3577e75
+VCODE chainhash-g5-256 f89e636f
+VCODE chainhash-g5-1k c8b38421

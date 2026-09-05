@@ -1,0 +1,24 @@
+291 <Hdr<128, 5, 2, 0>::hash(void const*, unsigned long)>:
+337 <Hdr<128, 5, 2, 2>::hash(void const*, unsigned long)>:
+223 <Hdr<32, 5, 1, 0>::hash(void const*, unsigned long)>:
+253 <Hdr<32, 5, 1, 1>::hash(void const*, unsigned long)>:
+268 <Hdr<32, 5, 1, 2>::hash(void const*, unsigned long)>:
+291 <Shp<128, 5, 2>::hash(void const*, unsigned long)>:
+223 <Shp<32, 5, 1>::hash(void const*, unsigned long)>:
+304 <Smh<128, 5, 2, 0>::hash(void const*, unsigned long)>:
+350 <Smh<128, 5, 2, 2>::hash(void const*, unsigned long)>:
+236 <Smh<32, 5, 1, 0>::hash(void const*, unsigned long)>:
+266 <Smh<32, 5, 1, 1>::hash(void const*, unsigned long)>:
+281 <Smh<32, 5, 1, 2>::hash(void const*, unsigned long)>:
+441 <unsigned long long chainhash_goldi::hash_multi<128, 5, 2, 0>(chainhash_goldi::Key<128, 5, 2, 0> const&, unsigned char const*, unsigned long)>:
+487 <unsigned long long chainhash_goldi::hash_multi<128, 5, 2, 2>(chainhash_goldi::Key<128, 5, 2, 2> const&, unsigned char const*, unsigned long)>:
+331 <unsigned long long chainhash_goldi::hash_multi<32, 5, 1, 0>(chainhash_goldi::Key<32, 5, 1, 0> const&, unsigned char const*, unsigned long)>:
+363 <unsigned long long chainhash_goldi::hash_multi<32, 5, 1, 1>(chainhash_goldi::Key<32, 5, 1, 1> const&, unsigned char const*, unsigned long)>:
+378 <unsigned long long chainhash_goldi::hash_multi<32, 5, 1, 2>(chainhash_goldi::Key<32, 5, 1, 2> const&, unsigned char const*, unsigned long)>:
+441 <unsigned long long chainhash::hash_multi<128, 5, 2>(chainhash::Key<128, 5, 2> const&, unsigned char const*, unsigned long)>:
+331 <unsigned long long chainhash::hash_multi<32, 5, 1>(chainhash::Key<32, 5, 1> const&, unsigned char const*, unsigned long)>:
+441 <void chg_multi<128, 5, 2, 0, false>(chg_key<128, 5> const*, unsigned char const*, unsigned long, void*)>:
+488 <void chg_multi<128, 5, 2, 2, false>(chg_key<128, 5> const*, unsigned char const*, unsigned long, void*)>:
+334 <void chg_multi<32, 5, 1, 0, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)>:
+367 <void chg_multi<32, 5, 1, 1, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)>:
+382 <void chg_multi<32, 5, 1, 2, false>(chg_key<32, 5> const*, unsigned char const*, unsigned long, void*)>:

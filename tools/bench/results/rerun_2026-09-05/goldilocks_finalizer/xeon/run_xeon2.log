@@ -1,0 +1,16 @@
+build exit 0
+   hwclmul|                 chainhash-1k - Verification value LE 0x32B4EE71 ...... PASS
+   hwclmul|                 chainhash-1k - Verification value BE 0xAE91BF9E ...... PASS
+   hwclmul|                chainhash-256 - Verification value LE 0xDE1AB9F9 ...... PASS
+   hwclmul|                chainhash-256 - Verification value BE 0xCA97ABE0 ...... PASS
+   hwclmul|             chainhash-g4-256 - Verification value LE 0xA3577E75 ...... PASS
+   hwclmul|             chainhash-g4-256 - Verification value BE 0xAE143AED ...... SKIP (unverifiable)
+   hwclmul|              chainhash-g5-1k - Verification value LE 0xC8B38421 ...... PASS
+   hwclmul|              chainhash-g5-1k - Verification value BE 0x6024310F ...... SKIP (unverifiable)
+   hwclmul|             chainhash-g5-256 - Verification value LE 0xF89E636F ...... PASS
+   hwclmul|             chainhash-g5-256 - Verification value BE 0x229C22B5 ...... SKIP (unverifiable)
+load before suites: 15.28 12.44 8.68 9/10755 2404715
+G4_256_DONE 13.23 13.52 10.81 17/10801 2426901
+G5_256_DONE 13.45 13.55 10.85 9/10788 2427354
+G5_1K_DONE 6.86 8.84 9.74 3/10750 2436538
+ALL_SUITES_DONE

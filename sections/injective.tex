@@ -336,9 +336,9 @@ Polymur~\cite{polymur}                      & 4 & 57 & 19.7 & 16.2 \\
 \texttt{komihash} v5.34                     & 1 & $\ge32^*$ & 24.8 & 24.3 \\
 \hline
 \multicolumn{5}{l}{\emph{proven, key $> 8$ words}} \\
-ChainHash, 1\,KB blocks                     & 137 & 62 & 61.7 & 40.5 \\
-ChainHash, 256\,B blocks                    &  41 & 62 & 57.7 & 36.8 \\
-ChainHash, 64\,B blocks                     &  17 & 62 & 26.6 & 27.4 \\
+ChainHash, 1\,KB blocks                     & 137 & 62 & 69.3 & 39.2 \\
+ChainHash, 256\,B blocks                    &  41 & 62 & 67.7 & 37.6 \\
+ChainHash, 64\,B blocks                     &  17 & 62 & 27.5 & 29.4 \\
 UMASH-64~\cite{umash}                       &  38 & 55 & 40.7 & 32.9 \\
 UMASH-128 (128-bit output)                  &  38 & 83 & 23.9 & 19.7 \\
 CLNH (fixed length)~\cite{lemire2015clhash} & $L$ & 64 & 27.3 & 26.3 \\
@@ -356,10 +356,13 @@ which the running value is mixed, and that mixing is what lets one key be reused
 across the whole message instead of one key word per message word.  The message
 is split into blocks of $B$ bytes and each block into $S$ sub-blocks ($S=1$ for
 $B\le256$, $S=2$ for $1$\,KB blocks); each sub-block is hashed by carryless NH
-(one \texttt{PMULL} per $16$ bytes into two $128$-bit accumulators) and its
+(one \texttt{PMULL} per $16$ bytes into two $128$-bit accumulators, the words
+of every $32$-byte group paired as $(w_{4j},w_{4j+2})$ and
+$(w_{4j+1},w_{4j+3})$, which is what two vector loads deliver without a
+shuffle) and its
 unreduced sum is consumed as one pair $(a_i,b_i)$ of the three-key recurrence
 $P_0=z$, $P_i=a_i+(b_i+y)(P_{i-1}+u)$, one field multiplication per
-sub-block; the byte length is XORed into the last $a_i$; one further key
+sub-block; the byte length is XORed into both halves of the last pair; one further key
 word is added to the result modulo $2^{64}$ (the \emph{twist}: an integer
 addition, carries and all); and the sum is passed through a random monic
 polynomial of degree~$5$ evaluated with three multiplications,
@@ -405,13 +408,13 @@ interior words, over $2^{24}$ random seeds, $2^{30}$ in an extended tier) that
 \texttt{MUM} fails outright and \texttt{wyhash}, \texttt{rapidhash},
 \texttt{XXH3} and \texttt{XXH3-128} fail in the extended tier, while \texttt{komihash},
 Polymur, SipHash and the polynomial hashes pass (\Cref{app:adversarial}).
-With $1$\,KB blocks and a $137$-word key it runs at $62$\,GB/s on the M2 Pro,
+With $1$\,KB blocks and a $137$-word key it runs at $69$\,GB/s on the M2 Pro,
 above every heuristic hash in the table and above UMASH, with a proof---for
 the ideal key; the seeded interface that was timed and tested is a subfamily
 outside the theorems (\Cref{rem:ph:gaps}); the
 block size is exactly the key-budget knob, and at $64$-byte blocks, closest to
 the one-cache-line budget ($17$ key words), the hybrid matches or beats the
-eight-lane recurrence on long messages ($26.6$ against $23.8$\,GB/s at
+eight-lane recurrence on long messages ($27.5$ against $23.8$\,GB/s at
 $16$\,KB).  The implementation and a
 bit-serial reference are in \texttt{tools/bench/chainhash/} of the repository.
 

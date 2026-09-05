@@ -1,0 +1,6 @@
+00:10:14 load1=5.89
+00:10:44 load1=4.18
+00:11:14 load1=3.09
+00:11:44 load1=2.80
+00:11:44 harness run2 start load1=2.80 uptime:  0:11  up 3 days, 12:12, 1 user, load averages: 2.80 4.69 5.36
+00:12:00 harness run2 end exit=0 load1=3.49

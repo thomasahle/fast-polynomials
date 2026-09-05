@@ -1,0 +1,75 @@
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- The C compiler identification is Clang 21.1.8
+-- The CXX compiler identification is Clang 21.1.8
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/clang - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/clang++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- CMAKE_SYSTEM_PROCESSOR: x86_64
+-- Probing fixed-width integer variants
+--   signed and unsigned 8,16,32,64-bit integers found
+--   signed and unsigned 128-bit integers found
+--   appropriate type for seed_t found
+-- Setting target as little-endian
+-- Probing compiler builtin function variants
+--   likely() / unlikely() found
+--   expectp() found
+--   unpredictable() found
+--   unreachable() found
+--   assume() found
+--   prefetch() found
+--   forcing function inlining found
+--   preventing function inlining found
+--   C++ restrict keyword replacement found
+--   type aliasing attribute found
+--   32-bit integer rotation not found, using fallback
+--   64-bit integer rotation not found, using fallback
+--   Integer byteswapping found
+--   32-bit integer popcount found
+--   64-bit integer popcount found
+--   32-bit integer count leading zero bits found
+--   64-bit integer count leading zero bits found
+--   Generic vector types found
+--   Integer shuffling not found, using fallback
+-- x86 universal intrinsic header available
+-- Probing instruction-set availability
+--   x86_64 SSE 2 intrinsics available
+--   x86_64 16- and 32-bit loadu intrinsics available
+--   x86_64 64-bit loadu intrinsics available
+--   x86_64 SSSE3 intrinsics available
+--   x86_64 SSE 4.1 intrinsics available
+--   x86_64 CRC-32C intrinsics available
+--   x86_64 CLMUL intrinsics available
+--   x86_64 AES intrinsics available
+--   x86_64 SHA-1 intrinsics available
+--   x86_64 SHA-2 intrinsics available
+--   x86_64 AVX intrinsics available
+--   x86_64 AVX2 intrinsics available
+--   x86_64 AVX512-F intrinsics available
+--   x86_64 AVX512-BW intrinsics available
+--   x86_64 AVX512-VL intrinsics available
+--   x86_64 __asm__() available
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Probing high-resolution timing functions
+--   monotonic clock found
+--   hardware performance counter found
+-- Found Git: /usr/bin/git (found version "2.52.0")
+-- Configuring done (13.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/thomas-ahle/smhasher3-goldi/build-goldi

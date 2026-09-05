@@ -1,5 +1,7 @@
-/* Tests for ChainHash (tools/bench/chainhash/chainhash.h) against the bit-serial
- * reference (chainhash_ref.h).  No benchmarking here.
+/* Tests for ChainHash (tools/bench/chainhash/chainhash.h: PH with the STRIDED
+ * word pairing, the byte length XORed into BOTH halves of the last pair,
+ * three-key recurrence, additive twist, degree-5 finalizer) against the
+ * bit-serial reference (chainhash_ref.h).  No benchmarking here.
  *
  *  Grid (K = 5 is the only shipped finalizer): the shipped configurations
  *  (32,5,1) = chainhash-256 and (128,5,2) = chainhash-1k, the 64-byte-block
@@ -8,8 +10,8 @@
  *  Length set L (394 lengths, built once at startup): all of 0..200,
  *  1000..1100, 2030..2070, 4080..4110, plus 20 seeded-random lengths in
  *  4111..70000.  The fixed ranges hit every length residue mod 16 and mod 64
- *  (every partial-pair / whole-pair / 64-byte-group combination of the last
- *  block, and every last-block size for BLOCK_WORDS = 8) and cross the
+ *  (every partial-group / whole-group / 64-byte-group combination of the
+ *  last block, and every last-block size for BLOCK_WORDS = 8) and cross the
  *  1024/2048/4096-byte boundaries byte by byte.  Last-block sizes 201..231
  *  (BLOCK_WORDS = 32) and 201..999 (BLOCK_WORDS = 128) are reached only by
  *  the random lengths.  For S > 1 the ranges 0..200 (sub-blocks of 64 and
@@ -22,7 +24,10 @@
  *      misalignment 0..15, exact-size heap allocations.
  *  T2  determinism (key derivation and hashing), fast key == reference key
  *      (k[], u, y, z, c[], t_in).
- *  T3  length sensitivity: m, m||0, m||00 pairwise distinct (incl. empty m).
+ *  T3  length sensitivity: m, m||0, m||00 pairwise distinct (incl. empty m);
+ *      with the length in both halves, m and m||0 (16 does not divide |m|)
+ *      have the same padded last pair and differ only by the (len, len)
+ *      XOR, so this is the deterministic case (a) of the stream lemma.
  *  T4  no over-/under-read: (a) whole binary under ASAN when built with it,
  *      (b) mprotect guard page directly AFTER every message in L, and
  *          directly BEFORE it (message at the start of the mapping), for
@@ -44,6 +49,26 @@
  *      collisions; plus 1,000,000 distinct messages (4..64 B), all distinct.
  *      Run at BLOCK_WORDS = 8 (one full 64-byte block or a pure tail) and 128.
  *  T7  gf64 multiply fast vs bit-serial reference (1e5 random + edge cases).
+ *  T8  the pairing identity: for every length that is a multiple of 32 bytes
+ *      (0, 32, ..., 4096, and the lengths of L that are multiples of 32),
+ *      hash(k, m) == adjacent(pi k, pi m), where adjacent is the bit-serial
+ *      evaluation with the ADJACENT pairing (w_{2s}, w_{2s+1}) (the
+ *      pre-strided definition, kept only inside this test) and pi swaps the
+ *      two middle words of every 32-byte group, applied to the key and the
+ *      message alike (same pair count 2 ceil(r/32) = ceil(r/16) there; the
+ *      two definitions differ only by this fixed permutation of the word
+ *      positions).  Grid points (8,5,1), (32,5,1), (32,5,2), (128,5,2), 20
+ *      keys each.
+ *  T9  the last pair receives (len, len) exactly: for EVERY length 0..2100
+ *      (every shipped variant crosses its block and sub-block boundaries
+ *      and every partial-group size, including the 256/512/1024/2048-byte
+ *      messages that fill a (sub-)block exactly) and 4 seeds per grid
+ *      point, fast == reference == the recurrence/twist/chain applied to
+ *      the length-free digest stream (built here from chainhash_ref's PH
+ *      primitives) with (len, len) XORed into its last pair; and (len > 0)
+ *      the fast hash differs from that stream with the length in a alone,
+ *      in b alone, or in the second-to-last pair (distinct streams; a
+ *      false alarm has probability <= (p+2)/2^64 per check).
  */
 
 #include <sys/mman.h>
@@ -486,6 +511,154 @@ static long test_gfmul(long n) {
     return count;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* T8: hash(k, m) == adjacent(pi k, pi m) for 32 | len                 */
+/* ------------------------------------------------------------------ */
+/* Bit-serial evaluation of ChainHash with the ADJACENT word pairing
+ * (w_{2s}, w_{2s+1}) and W' = ceil(r/16) pairs in the last block -- the
+ * pre-strided definition, kept only here.  Everything else (recurrence,
+ * length, twist, chain) is chainhash_ref's.  For 32 | len both definitions
+ * have the same pair count, so the shipped function equals this one under
+ * (k, m) -> (pi k, pi m), pi swapping words 4j+1 and 4j+2 of every group. */
+template <int BW, int K, int S>
+static uint64_t adjacent_pairing_hash(const chainhash_ref::Key<BW, K, S>& key, const uint8_t* m, size_t len) {
+    const size_t BB = (size_t)chainhash_ref::Key<BW, K, S>::block_bytes;
+    const size_t WPS = (size_t)BW / (2 * S);  // pairs per sub-block
+    const size_t n = (len == 0) ? 1 : (len + BB - 1) / BB;
+    uint64_t P = key.z;
+    for (size_t j = 0; j < n; j++) {
+        const size_t r = (j + 1 == n) ? len - j * BB : BB;
+        const size_t W = (r + 15) / 16;   // adjacent pairing: ceil(r/16) pairs
+        for (int i = 0; i < S; i++) {
+            chainhash_ref::u128 acc = 0;
+            for (size_t s = (size_t)i * WPS; s < (size_t)(i + 1) * WPS && s < W; s++) {
+                uint64_t wa = chainhash_ref::word_at(m, len, j * BW + 2 * s) ^ key.k[2 * s];
+                uint64_t wb = chainhash_ref::word_at(m, len, j * BW + 2 * s + 1) ^ key.k[2 * s + 1];
+                acc ^= chainhash_ref::clmul(wa, wb);
+            }
+            uint64_t a = (uint64_t)acc, b = (uint64_t)(acc >> 64);
+            if (j + 1 == n && i + 1 == S) { a ^= (uint64_t)len; b ^= (uint64_t)len; }   // length into both halves
+            P = a ^ chainhash_ref::gfmul(b ^ key.y, P ^ key.u);
+        }
+    }
+    return chainhash_ref::chain<K>(key.c, P + key.t_in);
+}
+static void permute_words32(uint8_t* dst, const uint8_t* src, size_t len) {   // swap words 4j+1 <-> 4j+2 of every group; 32 | len
+    std::memcpy(dst, src, len);
+    for (size_t g = 0; g + 32 <= len; g += 32) {
+        uint8_t tmp[8];
+        std::memcpy(tmp, dst + g + 8, 8);
+        std::memcpy(dst + g + 8, dst + g + 16, 8);
+        std::memcpy(dst + g + 16, tmp, 8);
+    }
+}
+template <int BW, int K, int S>
+static long test_pairing_identity(int n_keys) {
+    using FKey = chainhash::Key<BW, K, S>;
+    using RKey = chainhash_ref::Key<BW, K, S>;
+    std::vector<size_t> lens;
+    for (size_t l = 0; l <= 4096; l += 32) lens.push_back(l);
+    for (size_t l : g_lengths) if (l % 32 == 0 && l > 4096) lens.push_back(l);
+    long count = 0;
+    for (int ki = 0; ki < n_keys; ki++) {
+        uint64_t seed = rng();
+        FKey fk = FKey::from_seed(seed);
+        RKey rk = RKey::from_seed(seed);
+        for (int g = 0; g + 4 <= BW; g += 4) std::swap(rk.k[g + 1], rk.k[g + 2]);   // pi k
+        for (size_t len : lens) {
+            size_t off = rng() % 16;
+            ExactBuf buf(len + off), buf2(len + off);
+            fill_random(buf.base, len + off);
+            permute_words32(buf2.base + off, buf.base + off, len);   // pi m
+            uint64_t hn = chainhash::hash(fk, buf.base + off, len);
+            uint64_t ho = adjacent_pairing_hash(rk, buf2.base + off, len);
+            CHECK(hn == ho, "T8 BW=%d S=%d key %d len %zu: strided %016llx adjacent(pi) %016llx", BW, S, ki, len,
+                  (unsigned long long)hn, (unsigned long long)ho);
+            count++;
+        }
+    }
+    return count;
+}
+
+/* ------------------------------------------------------------------ */
+/* T9: the last pair receives (len, len) exactly                        */
+/* ------------------------------------------------------------------ */
+/* The (sub-)block digest stream of a message WITHOUT the length: the n*S
+ * unreduced 128-bit PH sums (a, b) in recurrence order, built from
+ * chainhash_ref's primitives (word_at, pair_alpha/beta, clmul). */
+template <int BW, int K, int S>
+static std::vector<chainhash_ref::u128> ref_stream(const chainhash_ref::Key<BW, K, S>& key, const uint8_t* m, size_t len) {
+    const size_t BB = (size_t)chainhash_ref::Key<BW, K, S>::block_bytes;
+    const size_t WPS = (size_t)BW / (2 * S);  // pairs per sub-block
+    const size_t n = (len == 0) ? 1 : (len + BB - 1) / BB;
+    std::vector<chainhash_ref::u128> st;
+    for (size_t j = 0; j < n; j++) {
+        const size_t r = (j + 1 == n) ? len - j * BB : BB;
+        const size_t W = 2 * ((r + 31) / 32);
+        for (int i = 0; i < S; i++) {
+            chainhash_ref::u128 acc = 0;
+            for (size_t s = (size_t)i * WPS; s < (size_t)(i + 1) * WPS && s < W; s++) {
+                const size_t wa_i = chainhash_ref::pair_alpha(s), wb_i = chainhash_ref::pair_beta(s);
+                uint64_t wa = chainhash_ref::word_at(m, len, j * BW + wa_i) ^ key.k[wa_i];
+                uint64_t wb = chainhash_ref::word_at(m, len, j * BW + wb_i) ^ key.k[wb_i];
+                acc ^= chainhash_ref::clmul(wa, wb);
+            }
+            st.push_back(acc);
+        }
+    }
+    return st;
+}
+/* Recurrence + twist + chain over a stream whose pair `at` (counted from the
+ * end: 0 = the last pair) is XORed with (da, db).  (len, len) at 0 is the
+ * definition. */
+template <int BW, int K, int S>
+static uint64_t hash_of_stream(const chainhash_ref::Key<BW, K, S>& key, std::vector<chainhash_ref::u128> st, size_t at,
+                               uint64_t da, uint64_t db) {
+    st[st.size() - 1 - at] ^= (chainhash_ref::u128)da | ((chainhash_ref::u128)db << 64);
+    uint64_t P = key.z;
+    for (const chainhash_ref::u128 acc : st) {
+        const uint64_t a = (uint64_t)acc, b = (uint64_t)(acc >> 64);
+        P = a ^ chainhash_ref::gfmul(b ^ key.y, P ^ key.u);
+    }
+    return chainhash_ref::chain<K>(key.c, P + key.t_in);
+}
+template <int BW, int K, int S>
+static long test_length_in_both_halves(int n_keys, size_t max_len) {
+    using FKey = chainhash::Key<BW, K, S>;
+    using RKey = chainhash_ref::Key<BW, K, S>;
+    long count = 0;
+    std::vector<uint8_t> buf(max_len + 16);
+    for (int ki = 0; ki < n_keys; ki++) {
+        uint64_t seed = rng();
+        FKey fk = FKey::from_seed(seed);
+        RKey rk = RKey::from_seed(seed);
+        fill_random(buf.data(), buf.size());
+        for (size_t len = 0; len <= max_len; len++) {
+            const uint8_t* m = buf.data() + (len % 16);   // every misalignment
+            const uint64_t hf = chainhash::hash(fk, m, len);
+            const uint64_t hr = chainhash_ref::hash(rk, m, len);
+            const std::vector<chainhash_ref::u128> st = ref_stream(rk, m, len);
+            const uint64_t h_ll = hash_of_stream(rk, st, 0, (uint64_t)len, (uint64_t)len);
+            CHECK(hf == hr && hf == h_ll, "T9 BW=%d S=%d key %d len %zu: fast %016llx ref %016llx stream+(len,len) %016llx",
+                  BW, S, ki, len, (unsigned long long)hf, (unsigned long long)hr, (unsigned long long)h_ll);
+            if (len > 0) {
+                const uint64_t h_l0 = hash_of_stream(rk, st, 0, (uint64_t)len, 0);   // the pre-fix definition: a only
+                const uint64_t h_0l = hash_of_stream(rk, st, 0, 0, (uint64_t)len);   // b only
+                CHECK(hf != h_l0 && hf != h_0l, "T9 BW=%d S=%d key %d len %zu: equals the stream with the length in one half only",
+                      BW, S, ki, len);
+                if (st.size() >= 2) {
+                    const uint64_t h_prev = hash_of_stream(rk, st, 1, (uint64_t)len, (uint64_t)len);
+                    CHECK(hf != h_prev, "T9 BW=%d S=%d key %d len %zu: equals the stream with (len, len) in the previous pair",
+                          BW, S, ki, len);
+                }
+            }
+            count++;
+        }
+    }
+    return count;
+}
+
 /* ------------------------------------------------------------------ */
 /* Grid drivers: T1-T4 for one (BLOCK_WORDS, K, S)                     */
 /* ------------------------------------------------------------------ */
@@ -511,7 +684,8 @@ int main(int argc, char** argv) {
     if (scale < 1) scale = 1;
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     build_lengths();
-    std::printf("ChainHash tests: K = 5 (char2.js CIRCUITS[5]) behind the additive input twist; grid (8,5,1), "
+    std::printf("ChainHash tests (strided word pairing, length in both halves of the last pair): K = 5 (char2.js CIRCUITS[5]) "
+                "behind the additive input twist; grid (8,5,1), "
                 "(32,5,1), (32,5,2), (32,5,4), (128,5,1), (128,5,2), (128,5,4); ASAN build: %s\n",
                 HAVE_ASAN ? "yes" : "no");
     std::printf("length set: %zu lengths = 0..200, 1000..1100, 2030..2070, 4080..4110, and %d random:",
@@ -546,6 +720,22 @@ int main(int argc, char** argv) {
                     "point also checks finalize == Horner(p, w + t_in)); explicit decoder round trips: %ld rounds "
                     "(x2: random params, random monic target; closed form == char2.js pivot loop)\n",
                     chainhash::chain_mults(5), n5, b5);
+    }
+
+    {
+        long n8 = test_pairing_identity<8, 5, 1>(20) + test_pairing_identity<32, 5, 1>(20) +
+                  test_pairing_identity<32, 5, 2>(20) + test_pairing_identity<128, 5, 2>(20);
+        std::printf("T8 hash(k, m) == adjacent-pairing(pi k, pi m) for 32 | len: %ld messages over (8,5,1), (32,5,1), (32,5,2), (128,5,2)\n", n8);
+    }
+
+    {
+        const int keys9 = (int)std::max(1L, 4 / scale);
+        long n9 = test_length_in_both_halves<8, 5, 1>(keys9, 2100) + test_length_in_both_halves<32, 5, 1>(keys9, 2100) +
+                  test_length_in_both_halves<32, 5, 2>(keys9, 2100) + test_length_in_both_halves<32, 5, 4>(keys9, 2100) +
+                  test_length_in_both_halves<128, 5, 1>(keys9, 2100) + test_length_in_both_halves<128, 5, 2>(keys9, 2100) +
+                  test_length_in_both_halves<128, 5, 4>(keys9, 2100);
+        std::printf("T9 last pair receives (len, len): %ld messages (lengths 0..2100 x %d keys x 7 grid points), fast == ref == "
+                    "stream+(len,len), and != stream with the length in a alone / b alone / the previous pair\n", n9, keys9);
     }
 
     long p8 = test_collisions_pairs<8, 5>(1000000 / scale);

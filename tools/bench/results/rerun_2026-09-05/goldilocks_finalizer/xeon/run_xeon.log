@@ -1,0 +1,25 @@
+load before bench: 8.29 6.96 5.17 6/10778 2390652
+load after bench: 8.46 7.04 5.22 5/10771 2390670
+BENCH_DONE
+build exit 0
+[[[ VerifyAll Tests ]]]
+Self-test FAILED!
+          |                 donothing-32 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |                 donothing-32 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |                 donothing-64 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |                 donothing-64 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |                donothing-128 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |                donothing-128 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |                donothing-256 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |                donothing-256 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |             donothingOAAT-32 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |             donothingOAAT-32 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |             donothingOAAT-64 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |             donothingOAAT-64 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |            donothingOAAT-128 - Verification value LE 0x00000000 ...... INSECURE (should not be 0)
+          |            donothingOAAT-128 - Verification value BE 0x00000000 ...... INSECURE (should not be 0)
+          |                      badhash - Verification value LE 0xAB432E23 ...... PASS
+          |                      badhash - Verification value BE 0x241F49BE ...... PASS
+          |                     sum8hash - Verification value LE 0x0000A9AC ...... PASS
+          |                     sum8hash - Verification value BE 0xACA90000 ...... PASS
+BUILD_DONE

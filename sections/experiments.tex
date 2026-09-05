@@ -468,9 +468,9 @@ Both ChainHash configurations of \Cref{tab:injective:adversarial} ($256$-byte
 and $1$\,KB blocks; \Cref{sec:ph}) pass all $200$ tests of the full
 SMHasher3~\cite{smhasher3} suite on the Apple M2 Pro and on the Intel Xeon
 8375C, with identical verification codes for the PMULL, PCLMULQDQ and portable
-back ends.  In SMHasher3's own bulk benchmark they run at $20.7$ and $17.5$
+back ends.  In SMHasher3's own bulk benchmark they run at $22.2$ and $17.3$
 bytes per cycle on the M2 Pro ($15.4$ and $12.3$ on the Xeon) and hash
-$1$--$31$-byte keys in $66$ and $72$ cycles ($112$ and $111$ on the Xeon).
+$1$--$31$-byte keys in $72$ and $77$ cycles ($108$ and $109$ on the Xeon).
 The suite runs every hash under fixed seeds, so it cannot see the
 input-specific collision rates of \Cref{app:adversarial}, which are
 probabilities over the seed; we contributed a seeded-differential test that

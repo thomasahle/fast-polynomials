@@ -1,9 +1,12 @@
 /* ***********************************************************************
  * ChainHash -- fast arm64 (NEON PMULL) implementation, header-only.
  *
- *   PH (8*BLOCK_WORDS-byte blocks, STRIDED word pairing (below), two
- *       independent PMULL accumulators (EOR3-fed); the last block is
- *       processed at 32-byte-group granularity)
+ * EXPERIMENTAL COPY (goldilocks_finalizer, 2026-09-05): identical to the shipped
+ * tools/bench/chainhash/chainhash.h at HEAD except for the finalizer template
+ * parameter FIN (see enum Fin below) and a self-contained scalar gfmul.
+ *
+ *   PH (8*BLOCK_WORDS-byte blocks, 2 independent PMULL accumulators (EOR3-fed);
+ *       the last block is processed at PAIR granularity, see below)
  *     -> three-key injective GF(2^64) recurrence of sections/injective.tex
  *          P_0 = z,   P_i = a_i + (b_i + y)(P_{i-1} + u)
  *        with u, y, z three independent uniformly random field elements
@@ -18,114 +21,38 @@
  *        unit pivots only, no square roots; see chain_v<5> below,
  *        verify5.py, exh5.c and T5 of test_chainhash.cpp.
  *
- * PH LEVEL -- THE DEFINITION.  The message is read as little-endian 64-bit
- * words w_0, w_1, ... and cut into 32-byte GROUPS of four words.  The
- * words (w_{4g}, w_{4g+1}, w_{4g+2}, w_{4g+3}) of group g form the two
- * pairs (w_{4g}, w_{4g+2}) and (w_{4g+1}, w_{4g+3}) -- the STRIDED
- * pairing -- every word XORed with the key word of its OWN position:
- *   PH = XOR_g [ clmul64(w_{4g}   + k_{4g},   w_{4g+2} + k_{4g+2})
- *              + clmul64(w_{4g+1} + k_{4g+1}, w_{4g+3} + k_{4g+3}) ],
- * (a, b) = (low, high 64 bits) of the 128-bit sum.  Pair s of a block is
- * thus (w_{alpha(s)}, w_{alpha(s)+2}) with alpha(s) = 4 floor(s/2) + (s mod 2).
- *
  * Blocks: n = max(1, ceil(len / (8*BLOCK_WORDS))).  Blocks 1..n-1 are full
- * (BLOCK_WORDS/4 groups = BLOCK_WORDS/2 pairs).  The last block holds
- * r = len - (n-1)*8*BLOCK_WORDS bytes and contributes only G' = ceil(r/32)
- * groups = W' = 2G' pairs (W' = 0 for the empty message), the final
- * partial group zero-padded to 32 bytes; its PH sum runs over exactly
- * those groups, using k[0..4G').  Pair counts are therefore always even:
- * a message of 1..16 bytes has the two pairs (w_0 + k_0)(w_2 + k_2) and
- * (w_1 + k_1)(w_3 + k_3) with w_2 = w_3 = 0, and when it is at most 8 bytes
- * long the second pair (0 + k_1)(0 + k_3) is a constant of the key
- * (precomputed in setup(), see hash_small_v).  The byte length is XORed
- * into BOTH halves of the last digest, a_n ^= len AND b_n ^= len, so the
- * recurrence's last step reads
- *   P_n = (a_n + len) + (b_n + len + y)(P_{n-1} + u);
- * the twist and the finalizer follow.
- *
- * WHY THE LENGTH IN BOTH HALVES.  The PH digest of an all-zero message
- * depends only on its group count, so with the length in a_n alone a zero
- * message has P_n = len + C over every run of 32 consecutive lengths (one
- * group count), C a constant of the key: the finalizer input runs through
- * an XOR-affine set on which the twisted quintic -- quadratic over GF(2)
- * but for the carry chain -- is nearly affine, and SMHasher3's Zeroes
- * keyset (the differential distribution over consecutive lengths) detects
- * it (199/200 with the length in a alone, chainhash-256).  With len in b as
- * well, P_n = len (1 + Q) + C with Q = P_{n-1} + u a uniformly random field
- * element, so consecutive lengths differ by a field multiple of that
- * element; the simulator of results/rerun_2026-09-05/chainhash_strided/
- * zeroes_diagnosis/zeroes5.cpp shows the bias gone on every seed for both
- * shipped variants.  The block loop pays nothing for it (a DUP and an EOR
- * outside the loop, on the peeled last step); the loop-free small-key
- * paths pay one len-times-key product (S = 1) or two (S = 2), issued first
- * and reduced off the chain.
- *
- * WHY THIS PAIRING.  A 16-byte NEON load puts two ADJACENT words into
- * lanes 0 and 1, and PMULL / PMULL2 multiply lane 0 x lane 0 / lane 1 x
- * lane 1 of two registers.  Pairing adjacent words (w_{2s}, w_{2s+1})
- * therefore needs one EXT per two pairs to line the operands up (12 SIMD
- * ops per 64 bytes: 4 EOR, 2 EXT, 4 PMULL, 2 EOR3), whereas the strided
- * pairing takes both PMULL operands straight from the two loads of a
- * group, no shuffle on the data path (10 ops: 4 EOR, 4 PMULL, 2 EOR3).
- * The PH loop is bound by SIMD issue (4/cycle on M2), not by loads or by
- * the recurrence, so this is the whole gain: 56 -> 48 SIMD ops per
- * 256-byte block, +13% bulk throughput measured on M2 Pro.  On x86
- * (PCLMULQDQ's immediate selects either half of either operand) the
- * adjacent pairing needed no shuffle either, so the change is neutral
- * there.  The two pairings are the same function up to a fixed
- * permutation pi of the word positions (swap the two middle words of
- * every 32-byte group), applied to the data and to the key alike: for
- * 32 | len, strided(k, m) = adjacent(pi k, pi m) (T8 of test_chainhash.cpp).
- *
- * PROOF.  The lemma "CLNH is 2^-64-XOR-universal on 128 bits" of the
- * appendix quantifies over uniform key segments and arbitrary word tuples
- * of a given pair count; a fixed permutation of the word positions,
- * applied to data and key alike, changes neither, so it and the stream
- * lemma (equal / different lengths, equal / different pair counts) apply
- * verbatim with the pair count w_t = 2 ceil(r_t / 32) in place of
- * ceil(r_t / 16).  The length in both halves changes one line of the
- * stream lemma: the constant that the two last digests must XOR to is
- * C = (l + l')(1 + X^64) -- low word l + l', high word l + l' -- in place
- * of (l + l') + X^64 * 0; it is still nonzero iff l != l', which is all
- * that the lemma's three cases use.  The recurrence and the finalizer are
- * untouched, so the (p+2)/2^64 collision bound and the 5-wise independence
- * stand as stated.
- *
- * The input is never read outside [m, m + len): whole 64-byte and 32-byte
- * groups are loaded in place (so are the first 16 bytes of a partial
- * group of more than 16 bytes); the last 1..16 bytes of a partial group
- * are read as the 16 bytes ENDING at m + len and realigned by one TBL
- * byte shift (indices >= 16 read as zero = the padding); a message
- * shorter than 16 bytes uses overlapping lane loads + one TBL gather.
- * No memcpy, no stack copy.
+ * (BLOCK_WORDS/2 pairs).  The last block holds r = len - (n-1)*8*BLOCK_WORDS
+ * bytes and contributes only W' = ceil(r/16) pairs (W' = 0 for the empty
+ * message), the final partial pair being zero-padded to 16 bytes; its PH
+ * sum runs over exactly those W' pairs, using k[0..2W').  The recurrence,
+ * a_n ^= len, the twist and the finalizer are unchanged.  The input is
+ * never read outside [m, m + len): full 64-byte groups and whole 16-byte
+ * pairs are loaded in place; the partial pair is loaded in place too --
+ * as the 16 bytes ENDING at m + len realigned by a TBL byte shift when
+ * len >= 16, and with overlapping lane loads + one TBL gather when the
+ * whole message is shorter than 16 bytes (no stack copy, no memcpy).
  *
  * Sub-block split S (template parameter, default 1): every block is cut
  * into S contiguous sub-blocks of BLOCK_WORDS/S words (8*BLOCK_WORDS/S
- * bytes, a whole number of groups), and the PH sum of each sub-block is
- * fed to the recurrence as its own (a, b) pair, in order -- so a block
- * costs S recurrence multiplications and n*S steps are taken in total.
- * Sub-block i of a block uses the keys k[i*BLOCK_WORDS/S ..).  In the last
- * block the groups of data belong to whichever sub-block they fall in
- * (the zero-padded partial group included); sub-blocks beyond the data
- * have an empty PH sum (a, b) = (0, 0) and still take their recurrence
- * step.  The length is XORed into BOTH halves of the LAST pair (sub-block
- * S-1 of block n), which becomes (len, len) when that sub-block holds no
- * data.  S = 1 is exactly the function described above.
+ * bytes), and the PH sum of each sub-block is fed to the recurrence as its
+ * own (a, b) pair, in order -- so a block costs S recurrence multiplications
+ * and n*S steps are taken in total.  Sub-block i of a block uses the keys
+ * k[i*BLOCK_WORDS/S ..).  In the last block the pairs of data belong to
+ * whichever sub-block they fall in (the partial pair included); sub-blocks
+ * beyond the data have an empty PH sum (a, b) = (0, 0) and still take their
+ * recurrence step.  The length is XORed into the a of the LAST pair
+ * (sub-block S-1 of block n).  S = 1 is exactly the function described
+ * above.
  *
  * Shipped configurations:
  *   ChainHash<32, 5, 1>  (the defaults)  chainhash-256: 256-byte blocks,
  *                                        one recurrence step per block;
  *   ChainHash<128, 5, 2>                 chainhash-1k:  1 KB blocks, two
  *                                        sub-blocks (512 B) per block.
- * SMHasher3 verification codes of this definition (hashes/chainhash.cpp of
- * the SMHasher3 fork; identical on its PMULL, PCLMULQDQ and portable
- * backends): chainhash-256 LE 0xAA4E2A3B / BE 0x11037F6F, chainhash-1k
- * LE 0x7A1ED2E0 / BE 0x85B2F299.
  * Key: BLOCK_WORDS + 9 uniformly random 64-bit words (k[0..BLOCK_WORDS),
  * u, y, z, c[0..5), t_in), i.e. 41 / 137 words for chainhash-256 /
- * chainhash-1k (17 for 64-byte blocks); neither the pairing nor the length
- * handling changes the key size or the derivation order (the length's key
- * products use derived constants of setup()).  Beyond the PH layer a hash costs
+ * chainhash-1k (17 for 64-byte blocks).  Beyond the PH layer a hash costs
  * n*S recurrence multiplications plus the 3 of the finalizer.  Guarantees
  * (appendix of the paper): two distinct messages of at most p (sub-)block
  * pairs collide with probability at most (p+2)/2^64, and the outputs are
@@ -139,8 +66,6 @@
  * register: with the plain intrinsics clang emits DUP + PMULL2 per pair
  * product and moves the recurrence state through a general register,
  * which halves the throughput (37.8 -> 51.2 GB/s for 256-byte blocks).
- * This header is self-contained (no framework include: the scalar gfmul
- * used at key setup is the NEON multiply below).
  *
  * Evaluation schedule (the function is the one above; only the order of
  * the field operations is chosen for latency -- see the comments at
@@ -151,48 +76,37 @@
  *   * a message of at most one sub-block (every key <= 256 B / 512 B for the
  *     shipped variants) takes a loop-free path in which the key-only parts
  *     of the recurrence are precomputed constants of the key: for S = 1
- *     P_1 = (a + len + y(z+u) + len(z+u)) + b(z+u), one PMULL2 straight on
- *     the PH accumulator plus the length's product len(z+u), issued first
- *     (it depends on len alone) and reduced off the chain; for S = 2 the
- *     two steps (the second sub-block is empty and takes (len, len)) are
- *     the field identity
- *       P_2 = (len + yu + yy(z+u) + len(u + y(z+u))) + a (len+y) + b (len+y)(z+u),
- *     two independent products of the accumulator with the multiplier
- *     [len + y, (len + y)(z+u)] and one reduction, the multiplier's second
- *     lane and the constant's length product being two more len-times-key
- *     products issued first; a message of at most 8 bytes folds its
- *     key-only second pair into those constants as well (yzu8 / yyzu_yu8
- *     and lane 1 of UYZU), and one of 9..16 bytes folds its two pair
- *     products separately (reduce2_add) so that the step's latency is
- *     that of one pair;
+ *     P_1 = (a + len + y(z+u)) + b(z+u), one PMULL2 straight on the PH
+ *     accumulator; for S = 2 the two steps (the second sub-block is empty)
+ *     are the field identity P_2 = (len + yu + yy(z+u)) + a y + b y(z+u),
+ *     two independent products and one reduction;
  *   * the key holds the vectors these paths need (setup()), so no value
  *     ever moves between general and SIMD registers inside hash();
  *   * the multi-step path (hash_multi_v) is out of line and reached by a
  *     tail call, so hash() is a leaf for every key that fits one sub-block;
  *     blocks 0..n-2 run without length logic on the state Q = P + u, the
- *     last block is peeled, and sub-blocks of <= CHAINHASH_LAZY_WORDS
- *     words (default 16, chain-bound) carry the recurrence state
- *     unreduced (step_lazy, 8-cycle chain).
+ *     last block is peeled, and sub-blocks of <= 16 words (chain-bound)
+ *     carry the recurrence state unreduced (step_lazy, 8-cycle chain).
  *
  * Compile: clang++ -O3 -std=c++17 -march=native+crypto   (Apple clang:
  * plain -march=native does NOT enable the PMULL 'aes' feature).
  *
+ * NOTE: multiplication_arm.h pulls in framework/randomgen.h, which defines
+ * non-inline globals; include this header from a single translation unit.
+ *
  * Reference (bit-serial, no intrinsics): chainhash_ref.h.
  * *********************************************************************** */
 
-#ifndef CHAINHASH_H
-#define CHAINHASH_H
+#ifndef CHAINHASH_GOLDI_H
+#define CHAINHASH_GOLDI_H
 
 #include <arm_neon.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include "goldi_field.h"  // Goldilocks F_p arithmetic and the G4 / G5 finalizers
 
-#ifndef CHAINHASH_LAZY_WORDS
-#define CHAINHASH_LAZY_WORDS 16   // sub-blocks of at most this many words use the unreduced recurrence state
-#endif
-
-namespace chainhash {
+namespace chainhash_goldi {
 
 /* splitmix64: deterministic key derivation from a 64-bit seed. */
 static inline uint64_t splitmix64(uint64_t& state) {
@@ -201,6 +115,9 @@ static inline uint64_t splitmix64(uint64_t& state) {
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
 }
+
+/* GF(2^64) multiply on scalars (key setup only): the NEON gfmul_v below. */
+static inline uint64_t gfmul(uint64_t a, uint64_t b);
 
 /* PMULL on the low halves / PMULL2 on the high halves, as inline asm.  With
  * the intrinsics clang lowers a lane-0 x lane-1 product to DUP + PMULL2 and
@@ -215,6 +132,7 @@ static inline uint64x2_t pmull_lo(uint64x2_t a, uint64x2_t b) {   // no GNU asm 
 static inline uint64x2_t pmull_hi(uint64x2_t a, uint64x2_t b) {
     return vreinterpretq_u64_p128(vmull_high_p64(vreinterpretq_p64_u64(a), vreinterpretq_p64_u64(b)));
 }
+#define CHAINHASH_OPAQUE_PTR(p) ((void)0)
 #else
 static inline uint64x2_t pmull_lo(uint64x2_t a, uint64x2_t b) {   // lane0(a) * lane0(b) -> 128 bits
     uint64x2_t r; __asm__("pmull %0.1q, %1.1d, %2.1d" : "=w"(r) : "w"(a), "w"(b)); return r;
@@ -222,6 +140,8 @@ static inline uint64x2_t pmull_lo(uint64x2_t a, uint64x2_t b) {   // lane0(a) * 
 static inline uint64x2_t pmull_hi(uint64x2_t a, uint64x2_t b) {   // lane1(a) * lane1(b) -> 128 bits
     uint64x2_t r; __asm__("pmull2 %0.1q, %1.2d, %2.2d" : "=w"(r) : "w"(a), "w"(b)); return r;
 }
+/* Hides a pointer's provenance from the optimizer (see ld_word). */
+#define CHAINHASH_OPAQUE_PTR(p) __asm__("" : "+r"(p))
 #endif
 static inline uint64x2_t xor3(uint64x2_t a, uint64x2_t b, uint64x2_t c) {
 #if defined(__ARM_FEATURE_SHA3)
@@ -251,40 +171,46 @@ static inline uint64x2_t reduce_add(uint64x2_t ab, uint64x2_t add, uint64x2_t rr
     uint64x2_t zr = pmull_hi(xr, rr);
     return xor3(veorq_u64(ab, add), xr, zr);
 }
-/* reduce(ab1 + ab2) + add, with the two products folded SEPARATELY so that
- * neither waits for their sum: the loop-free small-key steps use it when a
- * message of 9..16 bytes has two pair products (the EOR that would join them
- * before the folds is off the chain; two extra PMULL2 and one extra EOR3). */
-static inline uint64x2_t reduce2_add(uint64x2_t ab1, uint64x2_t ab2, uint64x2_t add, uint64x2_t rr) {
-    uint64x2_t xr1 = pmull_hi(ab1, rr), xr2 = pmull_hi(ab2, rr);
-    uint64x2_t zr1 = pmull_hi(xr1, rr), zr2 = pmull_hi(xr2, rr);
-    uint64x2_t e = xor3(xor3(ab1, ab2, add), xr1, xr2);
-    return xor3(zr1, zr2, e);
-}
 static inline uint64x2_t gfmul_v(uint64x2_t a, uint64x2_t b, uint64x2_t rr) {  // lane0(a) * lane0(b)
     return gf_reduce(pmull_lo(a, b), rr);
 }
 static inline uint64x2_t v64(uint64_t x) { return vcombine_u64(vcreate_u64(x), vcreate_u64(0)); }
-/* Scalar GF(2^64) multiply (key setup and tests only). */
-static inline uint64_t gfmul(uint64_t a, uint64_t b) {
-    return vgetq_lane_u64(gfmul_v(v64(a), v64(b), gf_rr()), 0);
-}
+static inline uint64_t gfmul(uint64_t a, uint64_t b) { return vgetq_lane_u64(gfmul_v(v64(a), v64(b), gf_rr()), 0); }
 
 /* Only the degree-5 finalizer is shipped. */
 static constexpr bool valid_degree(int K) { return K == 5; }
 /* Number of field multiplications of the degree-K chain. */
 static constexpr int chain_mults(int K) { return K == 5 ? 3 : 0; }
 
+/* EXPERIMENT (goldilocks_finalizer): the finalizer applied to the chain value P_n.
+ *   FIN_CHAR2  the shipped one: additive twist v = P_n + t_in, then the
+ *              characteristic-2 degree-5 circuit chain_v<5> (3 PMULL products);
+ *   FIN_G4     x = fold(P_n) into F_p (p = 2^64 - 2^32 + 1, one conditional
+ *              subtraction), then Motzkin's quartic y = x(x+g0)+g1,
+ *              out = y(y+x+g2)+g3 with g0..g3 uniform in F_p (2 multiplications,
+ *              4-wise independent, output in [0, p));
+ *   FIN_G5     x = fold(P_n), then the paper's degree-5 scheme
+ *              out = (x+g2)((x^2+g4)(x^2+x+g3)+g1)+g0, g0..g4 uniform in F_p
+ *              (3 multiplications, 5-wise independent, output in [0, p)).
+ * No twist for G4 / G5 (a polynomial over F_p is not GF(2)-quadratic).
+ * The key words of G4 / G5 are appended AFTER the shipped words (c[], t_in
+ * stay in the derivation and are unused by them): fin_words(FIN) more words. */
+enum Fin : int { FIN_CHAR2 = 0, FIN_G4 = 1, FIN_G5 = 2 };
+static constexpr bool valid_fin(int FIN) { return FIN == FIN_CHAR2 || FIN == FIN_G4 || FIN == FIN_G5; }
+static constexpr int fin_words(int FIN) { return FIN == FIN_G4 ? 4 : FIN == FIN_G5 ? 5 : 0; }
+static constexpr const char* fin_name(int FIN) { return FIN == FIN_G4 ? "G4" : FIN == FIN_G5 ? "G5" : "CHAR2"; }
+
 /* ------------------------------------------------------------------ */
 /* Key                                                                 */
 /* ------------------------------------------------------------------ */
-template <int BLOCK_WORDS = 32, int K = 5, int S = 1>
+template <int BLOCK_WORDS = 32, int K = 5, int S = 1, int FIN = FIN_CHAR2>
 struct Key {
     static_assert(S == 1 || S == 2 || S == 4, "sub-block split S must be 1, 2 or 4");
     static_assert(BLOCK_WORDS >= 8 * S && BLOCK_WORDS % (8 * S) == 0,
                   "BLOCK_WORDS must be a positive multiple of 8*S "
-                  "(two 32-byte groups = 4 accumulator products per inner iteration, per sub-block)");
+                  "(2 accumulators, each fed two products per 64-byte group, per sub-block)");
     static_assert(valid_degree(K), "finalizer degree K must be 5 (the only shipped chain)");
+    static_assert(valid_fin(FIN), "FIN must be FIN_CHAR2, FIN_G4 or FIN_G5");
 
     static constexpr int block_words = BLOCK_WORDS;
     static constexpr int block_bytes = 8 * BLOCK_WORDS;
@@ -292,14 +218,17 @@ struct Key {
     static constexpr int sub_words = BLOCK_WORDS / S;  // words per sub-block
     static constexpr int sub_bytes = 8 * sub_words;    // bytes per sub-block
     static constexpr int degree = K;
+    static constexpr int fin = FIN;
     /* random key material: k[], u, y, z, c[], t_in  (all uniform, unprocessed); independent of S.
-     * BLOCK_WORDS + 3 + K + 1 = BLOCK_WORDS + 9 words. */
-    static constexpr size_t random_key_bytes = 8 * (size_t)(BLOCK_WORDS + 3 + K + 1);
+     * BLOCK_WORDS + 3 + K + 1 = BLOCK_WORDS + 9 words, plus fin_words(FIN) uniform F_p words for G4 / G5. */
+    static constexpr size_t random_key_bytes = 8 * (size_t)(BLOCK_WORDS + 3 + K + 1 + fin_words(FIN));
 
-    alignas(16) uint64_t k[BLOCK_WORDS];  // PH level: word i of a (sub-)block is XORed with k[i]
+    alignas(16) uint64_t k[BLOCK_WORDS];  // PH level
     uint64_t u, y, z;                     // recurrence keys: P_0 = z, P_i = a_i + (b_i + y)(P_{i-1} + u)
     uint64_t c[K];                        // finalizer parameters
     uint64_t t_in;                        // input twist word: the finalizer is applied to P_n + t_in (integer add)
+    uint64_t g[5];                        // G4 / G5 finalizer parameters, uniform in F_p (fin_words(FIN) of them used)
+    uint64_t ng[5];                       // derived: p - g[i] (operands of the subtraction-form additions)
 
     /* Derived, message-independent values -- NOT key material, functions of
      * the words above (setup() fills them; from_seed calls it; a key filled
@@ -311,19 +240,8 @@ struct Key {
     uint64x2_t ZUZU;  // [z + u, z + u]:   P_0 + u, as lane 0 (state) and as lane 1 (PMULL2 operand)
     uint64x2_t YYZU;  // [y, y(z + u)]:    multipliers of a and b in the fused double step (S = 2)
     uint64x2_t TIN;   // [t_in, 0]:        the twist, added to P_n by vaddq_u64
-    uint64_t yzu;     // y (z + u):        single step   P_1 = (a + len + yzu + len (z + u)) + b (z + u)
-    uint64_t yyzu_yu; // y y (z + u) + y u: fused step   P_2 = (len + yyzu_yu + len (u + yzu)) + a (len + y) + b (len + y)(z + u)
-    /* The same two constants with the key-only second pair (0 + k_1)(0 + k_3)
-     * of a 1..8-byte message folded in ([ac, bc] = clmul64(k_1, k_3)):
-     * a = a' + ac, b = b' + bc where (a', b') is the product of the first pair. */
-    uint64_t yzu8;     // yzu + ac + bc (z + u)
-    uint64_t yyzu_yu8; // yyzu_yu + ac y + bc y (z + u)
-    /* The length's key multiplicands of the fused step (S = 2): the multiplier
-     * lane (len + y)(z + u) = yzu + len (z + u) is formed as reduce_add(len (z+u), YZUY),
-     * and the constant's product is len (u + yzu), with the key-only pair's
-     * share ac + bc (z + u) added for a 1..8-byte message (lane 1). */
-    uint64x2_t YZUY;  // [y (z + u), y]
-    uint64x2_t UYZU;  // [u + y (z + u), u + y (z + u) + ac + bc (z + u)] = [u + yzu, u + yzu8]
+    uint64_t yzu;     // y (z + u):        single step   P_1 = (a + len + yzu) + b (z + u)
+    uint64_t yyzu_yu; // y y (z + u) + y u: fused step   P_2 = (len + yyzu_yu) + a y + b yzu
 
     void setup() {
         const uint64_t zu = z ^ u;
@@ -332,17 +250,13 @@ struct Key {
         ZUZU = vdupq_n_u64(zu);
         yzu = gfmul(y, zu);
         YYZU = vcombine_u64(vcreate_u64(y), vcreate_u64(yzu));
-        YZUY = vcombine_u64(vcreate_u64(yzu), vcreate_u64(y));
         TIN = vcombine_u64(vcreate_u64(t_in), vcreate_u64(0));
         yyzu_yu = gfmul(y, yzu) ^ gfmul(y, u);
-        const uint64x2_t k13 = pmull_lo(v64(k[1]), v64(k[3]));   // (0 + k_1)(0 + k_3), unreduced 128 bits
-        const uint64_t ac = vgetq_lane_u64(k13, 0), bc = vgetq_lane_u64(k13, 1);
-        yzu8 = yzu ^ ac ^ gfmul(bc, zu);
-        yyzu_yu8 = yyzu_yu ^ gfmul(ac, y) ^ gfmul(bc, yzu);
-        UYZU = vcombine_u64(vcreate_u64(u ^ yzu), vcreate_u64(u ^ yzu8));
     }
 
-    /* Derivation order from the seed: k[0..BLOCK_WORDS), u, y, z, c[0..K), t_in. */
+    /* Derivation order from the seed: k[0..BLOCK_WORDS), u, y, z, c[0..K), t_in,
+     * then (G4 / G5 only) g[0..fin_words) as uniform F_p elements by rejection
+     * sampling of further splitmix64 words (gl_uniform). */
     static Key from_seed(uint64_t seed) {
         Key key;
         uint64_t s = seed;
@@ -352,37 +266,36 @@ struct Key {
         key.z = splitmix64(s);
         for (int i = 0; i < K; i++) key.c[i] = splitmix64(s);
         key.t_in = splitmix64(s);
+        for (int i = 0; i < 5; i++) { key.g[i] = 0; key.ng[i] = GL_P; }
+        for (int i = 0; i < fin_words(FIN); i++) { key.g[i] = gl_uniform(&s); key.ng[i] = GL_P - key.g[i]; }
         key.setup();
         return key;
     }
 };
 
 /* ------------------------------------------------------------------ */
-/* PH level primitives (strided pairing)                               */
+/* PH level primitives                                                 */
 /* ------------------------------------------------------------------ */
 
-/* One 32-byte group: r0 = [w0, w1], r1 = [w2, w3] (any source), keys k[0..4):
- *   clmul64(w0 ^ k0, w2 ^ k2) ^ clmul64(w1 ^ k1, w3 ^ k3)
- * = pmull(t0, t1) ^ pmull2(t0, t1) with t0 = r0 ^ [k0, k1], t1 = r1 ^ [k2, k3]:
- * no shuffle on the data path. */
-static inline __attribute__((always_inline)) uint64x2_t ph_group32(const uint64_t* __restrict k, uint64x2_t r0, uint64x2_t r1,
-                                                                   uint64x2_t acc) {
-    uint64x2_t t0 = veorq_u64(r0, vld1q_u64(k + 0));
-    uint64x2_t t1 = veorq_u64(r1, vld1q_u64(k + 2));
-    return xor3(acc, pmull_lo(t0, t1), pmull_hi(t0, t1));
-}
-
-/* Two 32-byte groups (64 bytes = 8 words = 4 pairs) at p with keys k[0..8),
- * into two independent accumulators.  Byte loads, no alignment assumption.
- * Reads exactly 64 bytes.  10 SIMD ops (4 EOR, 4 PMULL, 2 EOR3). */
+/* One 64-byte group (8 words = 4 pairs) at p with keys k[0..8), XORed into
+ * two independent 128-bit accumulators (three-input XORs).  Byte loads: no alignment
+ * assumption on p.  Reads exactly 64 bytes. */
 static inline __attribute__((always_inline)) void ph_group(const uint64_t* __restrict k, const uint8_t* __restrict p, uint64x2_t& acc0,
-                                                           uint64x2_t& acc1) {
-    acc0 = ph_group32(k + 0, vreinterpretq_u64_u8(vld1q_u8(p + 0)),  vreinterpretq_u64_u8(vld1q_u8(p + 16)), acc0);
-    acc1 = ph_group32(k + 4, vreinterpretq_u64_u8(vld1q_u8(p + 32)), vreinterpretq_u64_u8(vld1q_u8(p + 48)), acc1);
+                            uint64x2_t& acc1) {
+    // (w[0]^k[0], w[1]^k[1]), ...
+    uint64x2_t t0 = veorq_u64(vreinterpretq_u64_u8(vld1q_u8(p + 0)),  vld1q_u64(k + 0));
+    uint64x2_t t1 = veorq_u64(vreinterpretq_u64_u8(vld1q_u8(p + 16)), vld1q_u64(k + 2));
+    uint64x2_t t2 = veorq_u64(vreinterpretq_u64_u8(vld1q_u8(p + 32)), vld1q_u64(k + 4));
+    uint64x2_t t3 = veorq_u64(vreinterpretq_u64_u8(vld1q_u8(p + 48)), vld1q_u64(k + 6));
+    // e01 = (t0[1], t1[0]):  pmull(t0, e01) = t0[0] t0[1],  pmull2(e01, t1) = t1[0] t1[1]
+    uint64x2_t e01 = vextq_u64(t0, t1, 1);
+    uint64x2_t e23 = vextq_u64(t2, t3, 1);
+    acc0 = xor3(acc0, pmull_lo(t0, e01), pmull_hi(e01, t1));   // pairs (0,1), (2,3)
+    acc1 = xor3(acc1, pmull_lo(t2, e23), pmull_hi(e23, t3));   // pairs (4,5), (6,7)
 }
 
 /* Full (sub-)block (8*WORDS bytes at blk, WORDS a multiple of 8):
- *   XOR_{g < WORDS/4} [ clmul64(w[4g]^k[4g], w[4g+2]^k[4g+2]) ^ clmul64(w[4g+1]^k[4g+1], w[4g+3]^k[4g+3]) ] */
+ *   XOR_{i < WORDS/2} clmul64(w[2i]^k[2i], w[2i+1]^k[2i+1]) */
 template <int WORDS>
 static inline __attribute__((always_inline)) uint64x2_t ph_block(const uint64_t* __restrict k, const uint8_t* __restrict blk) {
     static_assert(WORDS > 0 && WORDS % 8 == 0, "ph_block: WORDS must be a positive multiple of 8");
@@ -391,10 +304,38 @@ static inline __attribute__((always_inline)) uint64x2_t ph_block(const uint64_t*
     return veorq_u64(acc0, acc1);
 }
 
+/* A single pair (w0, w1) for the pair product: w = [w0, w1] and w1lo = [w1, *]
+ * (the high word already in lane 0, so that clmul64(w0 ^ k0, w1 ^ k1) is
+ * pmull_lo(w ^ k, w1lo ^ [k1, *]) with no EXT on the data path). */
+struct PairW { uint64x2_t w, w1lo; };
+
+/* 8 bytes at p into lane 0 (lane 1 zero), as a genuine second load: the
+ * pointer is made opaque, otherwise clang merges it with an enclosing 16-byte
+ * load and extracts the lane through a general register (~10 cycles). */
+static inline __attribute__((always_inline)) uint64x2_t ld_word(const void* p) {
+    const uint8_t* q = static_cast<const uint8_t*>(p);
+    CHAINHASH_OPAQUE_PTR(q);
+    return vreinterpretq_u64_u8(vcombine_u8(vld1_u8(q), vdup_n_u8(0)));
+}
 static inline __attribute__((always_inline)) uint64x2_t tbl(uint8x16_t v, uint8x16_t idx) {   // TBL: index >= 16 reads as 0
     return vreinterpretq_u64_u8(vqtbl1q_u8(v, idx));
 }
 static constexpr uint8_t kIota[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
+/* The zero-padded partial pair made of the r (1..15) bytes ENDING at `end`,
+ * read as the 16 bytes at end - 16 (which must be readable: the message has
+ * >= 16 bytes ending there) and shifted right by 16 - r bytes with TBL --
+ * indices >= 16 read as zero, which is exactly the padding.  Reads only
+ * [end - 16, end).  The second TBL (shifted index) yields the high word in
+ * lane 0 for the pair product; both TBLs run in parallel. */
+static inline __attribute__((always_inline)) PairW load_partial_end(const uint8_t* end, size_t r) {
+    uint8x16_t v = vld1q_u8(end - 16);
+    uint8x16_t idx = vaddq_u8(vld1q_u8(kIota), vdupq_n_u8((uint8_t)(16 - r)));
+    PairW pw;
+    pw.w = tbl(v, idx);
+    pw.w1lo = tbl(v, vextq_u8(idx, idx, 8));
+    return pw;
+}
 
 /* Byte-gather tables for a message of r < 16 bytes: out[i] = t[r][i]-th byte
  * of the lane-loaded vector below (0xFF -> 0).  Layout of the loaded vector:
@@ -417,10 +358,10 @@ struct GatherTab {
 };
 static constexpr GatherTab kGather{};
 
-/* The whole message: r (1..15) bytes at m, zero-padded, as [w0, w1].  Reads
+/* The whole message: r (1..15) bytes at m, zero-padded to one pair.  Reads
  * only [m, m + r), all loads straight into SIMD lanes (no general register
  * on the data path); the gather index depends on r alone. */
-static inline __attribute__((always_inline)) uint64x2_t load_small(const uint8_t* m, size_t r) {
+static inline __attribute__((always_inline)) PairW load_small(const uint8_t* m, size_t r) {
     uint8x16_t v = vdupq_n_u8(0);
     if (r >= 8) {
         v = vreinterpretq_u8_u64(vld1q_lane_u64(reinterpret_cast<const uint64_t*>(m), vreinterpretq_u64_u8(v), 0));
@@ -433,42 +374,51 @@ static inline __attribute__((always_inline)) uint64x2_t load_small(const uint8_t
         v = vld1q_lane_u8(m + (r >> 1), v, 1);
         v = vld1q_lane_u8(m + r - 1, v, 2);
     }
-    return tbl(v, vld1q_u8(kGather.t[r]));
+    uint8x16_t idx = vld1q_u8(kGather.t[r]);
+    PairW pw;
+    pw.w = tbl(v, idx);
+    pw.w1lo = tbl(v, vextq_u8(idx, idx, 8));
+    return pw;
 }
 
-/* Partial last (sub-)block: rem (1 .. 8*WORDS - 1) bytes at p, G' = ceil(rem/32)
- * groups = 2G' pairs, the final partial group zero-padded to 32 bytes.  Whole
- * 64-byte and 32-byte groups (and the first 16 bytes of a partial group of
- * more than 16 bytes) are loaded in place; the partial group's remaining
- * 1..16 bytes are read as the 16 bytes ENDING at p + rem and shifted right
- * with TBL (indices >= 16 read as zero = the padding).  PRECONDITION: the
- * 16 bytes ending at p + rem are readable, i.e. p + rem is the end of a
- * message of >= 16 bytes; nothing outside [p, p + rem) U [p + rem - 16, p + rem)
- * is read. */
+/* Pair product of a loaded pair with keys k[0..2):  clmul64(w0 ^ k0, w1 ^ k1). */
+static inline __attribute__((always_inline)) uint64x2_t ph_pair_w(const uint64_t* __restrict k, PairW pw) {
+    return pmull_lo(veorq_u64(pw.w, vld1q_u64(k)), veorq_u64(pw.w1lo, ld_word(k + 1)));
+}
+/* One whole pair (16 bytes) at p.  Reads exactly 16 bytes (as 16 + 8). */
+static inline __attribute__((always_inline)) uint64x2_t ph_pair(const uint64_t* __restrict k, const uint8_t* __restrict p) {
+    PairW pw;
+    pw.w = vreinterpretq_u64_u8(vld1q_u8(p));
+    pw.w1lo = ld_word(p + 8);
+    return ph_pair_w(k, pw);
+}
+
+/* Partial last (sub-)block: rem < 8*WORDS bytes at p, W' = ceil(rem/16) pairs:
+ *   XOR_{i < W'} clmul64(w[2i]^k[2i], w[2i+1]^k[2i+1]),
+ * the final partial pair zero-padded to 16 bytes.  PRECONDITION: the 16
+ * bytes ending at p + rem are readable (p + rem is the end of a message of
+ * >= 16 bytes); then nothing outside [p + rem - 16, p + rem) U [p, p + rem)
+ * is read: full 64-byte groups in place, whole 16-byte pairs in place, the
+ * partial pair through load_partial_end. */
 template <int WORDS>
 static inline __attribute__((always_inline)) uint64x2_t ph_tail(const uint64_t* __restrict k, const uint8_t* __restrict p, size_t rem) {
     uint64x2_t acc0 = vdupq_n_u64(0), acc1 = vdupq_n_u64(0);
     size_t pos = 0;  // bytes consumed; word index = pos / 8
     for (; pos + 64 <= rem; pos += 64) ph_group(k + pos / 8, p + pos, acc0, acc1);
     uint64x2_t acc = veorq_u64(acc0, acc1);
-    size_t rest = rem - pos;  // 0..63
-    if (rest > 32) {          // one whole group, then a partial one
-        acc = ph_group32(k + pos / 8, vreinterpretq_u64_u8(vld1q_u8(p + pos)), vreinterpretq_u64_u8(vld1q_u8(p + pos + 16)), acc);
-        pos += 32;
-        rest -= 32;
-    }
-    if (rest > 16) {          // 17..32 bytes: [w0, w1] in place, [w2, w3] = the 16 bytes ending at p + rem, shifted
-        const uint8x16_t b = vld1q_u8(p + rem - 16);
-        const uint64x2_t r1 = tbl(b, vaddq_u8(vld1q_u8(kIota), vdupq_n_u8((uint8_t)(32 - rest))));
-        acc = ph_group32(k + pos / 8, vreinterpretq_u64_u8(vld1q_u8(p + pos)), r1, acc);
-    } else if (rest == 16) {  // exactly [w0, w1], in place; w2 = w3 = 0
-        acc = ph_group32(k + pos / 8, vreinterpretq_u64_u8(vld1q_u8(p + pos)), vdupq_n_u64(0), acc);
-    } else if (rest > 0) {    // 1..15 bytes: [w0, w1] = the 16 bytes ending at p + rem, shifted; w2 = w3 = 0
-        const uint8x16_t a = vld1q_u8(p + rem - 16);
-        const uint64x2_t r0 = tbl(a, vaddq_u8(vld1q_u8(kIota), vdupq_n_u8((uint8_t)(16 - rest))));
-        acc = ph_group32(k + pos / 8, r0, vdupq_n_u64(0), acc);
-    }
+    for (; pos + 16 <= rem; pos += 16) acc = veorq_u64(acc, ph_pair(k + pos / 8, p + pos));
+    if (pos < rem) acc = veorq_u64(acc, ph_pair_w(k + pos / 8, load_partial_end(p + rem, rem - pos)));  // partial pair: 1..15 bytes
     return acc;
+}
+
+/* PH sum of a message of len <= 8*WORDS bytes that is the whole (sub-)block
+ * (the single-(sub-)block path of hash): the block, a tail, one zero-padded
+ * pair, or nothing.  Reads only [m, m + len). */
+template <int WORDS>
+static inline __attribute__((always_inline)) uint64x2_t ph_first(const uint64_t* __restrict k, const uint8_t* __restrict m, size_t len) {
+    if (len >= 16) return len == 8 * (size_t)WORDS ? ph_block<WORDS>(k, m) : ph_tail<WORDS>(k, m, len);
+    if (len > 0) return ph_pair_w(k, load_small(m, len));
+    return vdupq_n_u64(0);
 }
 
 /* ------------------------------------------------------------------ */
@@ -544,9 +494,23 @@ static inline __attribute__((always_inline)) uint64_t chain(const uint64_t* c, u
 }
 
 /* finalize(key, v) = chain_K(c, v + t_in), the twist as an integer add. */
-template <int BLOCK_WORDS, int K, int S>
-static inline __attribute__((always_inline)) uint64_t finalize(const Key<BLOCK_WORDS, K, S>& key, uint64_t v) {
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static inline __attribute__((always_inline)) uint64_t finalize(const Key<BLOCK_WORDS, K, S, FIN>& key, uint64_t v) {
     return vgetq_lane_u64(chain_v<K>(key.c, twist_v(v64(v), key.t_in)), 0);
+}
+
+/* The selected finalizer on the chain value P_n (lane 0 of P): the 64-bit hash.
+ * CHAR2: twist + chain_v<K>, lane 0 extracted at the end (as shipped).
+ * G4 / G5: lane 0 extracted first (one FMOV), folded into F_p, scalar circuit. */
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static inline __attribute__((always_inline)) uint64_t fin_out(const Key<BLOCK_WORDS, K, S, FIN>& key, uint64x2_t P) {
+    if constexpr (FIN == FIN_CHAR2) {
+        return vgetq_lane_u64(chain_v<K>(key.c, vaddq_u64(P, key.TIN)), 0);   // chain_K(c, P_n + t_in)
+    } else if constexpr (FIN == FIN_G4) {
+        return gl_fin_g4(key.g, key.ng, gl_fold(vgetq_lane_u64(P, 0)));
+    } else {
+        return gl_fin_g5(key.g, key.ng, gl_fold(vgetq_lane_u64(P, 0)));
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -554,8 +518,8 @@ static inline __attribute__((always_inline)) uint64_t finalize(const Key<BLOCK_W
 /* ------------------------------------------------------------------ */
 /* On the state Q = P + u:  Q_i = (a_i + u) + (b_i + y) Q_{i-1}, i.e.
  *   step_q(Q, t) = t[0] + t[1] Q   with t = [a + u, b + y] = acc + UY;
- * the very last step takes t = [a + len, b + len + y] (no u) and then yields
- * P_n itself.  The EXT that moves b + y to lane 0 is on the data side, off the
+ * the very last step takes t = [a + len, b + y] (no u) and then yields P_n
+ * itself.  The EXT that moves b + y to lane 0 is on the data side, off the
  * loop-carried chain PMULL 3 + PMULL2 3 + PMULL2 3 + EOR3 2 = 11 cycles. */
 static inline __attribute__((always_inline)) uint64x2_t step_q(uint64x2_t Q, uint64x2_t t, uint64x2_t rr) {
     return reduce_add(pmull_lo(vextq_u64(t, t, 1), Q), t, rr);
@@ -588,107 +552,51 @@ static inline __attribute__((always_inline)) uint64x2_t step_lazy(uint64x2_t V, 
  *                 shipped variants.  All data sits in sub-block 0 of the
  *                 only block; sub-blocks 1..S-1 are empty.  No loop, no
  *                 length bookkeeping: the key-only parts of the S
- *                 recurrence steps are constants of the key (setup()), and
- *                 the length's key products are issued first, off the chain.
- *                 A message of 1..8 bytes has the pairs (w0 + k0)(0 + k2)
- *                 and (0 + k1)(0 + k3); the second is a key constant folded
- *                 into yzu8 / yyzu_yu8, so it costs nothing.  A message of
- *                 9..16 bytes has two pair products; the loop-free step
- *                 folds them separately (reduce2_add) so that its latency
- *                 equals the one-pair case.
+ *                 recurrence steps are constants of the key (setup()).
  *   hash_multi_v  len > sub_bytes.  Blocks 0..n-2 are full and need no
  *                 length logic (state Q = P + u, step_q); the last block is
  *                 peeled and does the sub-block selects once, its final
- *                 step taking [a + len, b + len + y] and yielding P_n
- *                 directly.
+ *                 step taking [a + len, b + y] and yielding P_n directly.
  * hash() below puts the multi-step path out of line and reaches it by a
  * tail call, so that the small-key path it inlines is a leaf: no frame, no
  * callee-saved spills, no stack instruction on any key that fits one
  * sub-block. */
-template <int BLOCK_WORDS, int K, int S>
-static inline __attribute__((always_inline)) uint64x2_t hash_small_v(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
-    using key_t = Key<BLOCK_WORDS, K, S>;
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static inline __attribute__((always_inline)) uint64_t hash_small_v(const Key<BLOCK_WORDS, K, S, FIN>& key, const uint8_t* __restrict p, size_t len) {
+    using key_t = Key<BLOCK_WORDS, K, S, FIN>;
     constexpr int SW = key_t::sub_words;            // words per sub-block
-    constexpr bool FOLD8 = (S == 1 || S == 2);      // the loop-free steps below can absorb the key-only pair
     const uint64x2_t rr = gf_rr();
-    const bool k8 = FOLD8 && len > 0 && len <= 8;   // 1..8 bytes: the key-only second pair (0 + k1)(0 + k3) is folded into the constants
-    const uint64_t cst = k8 ? ((S == 1) ? key.yzu8 : key.yyzu_yu8) : ((S == 1) ? key.yzu : key.yyzu_yu);
-    /* The length enters the last pair as (len, len).  Its key products depend
-     * on len alone, so they are issued first, run under the loads and the PH
-     * products, and are reduced separately (their folds never wait for the
-     * data):  S = 1: len (z+u), added to the constant;  S = 2: len (z+u) for
-     * lane 1 of the multiplier [len + y, (len + y)(z+u)], and len (u + y(z+u))
-     * (below 9 bytes with the key-only pair's share: lane 1 of UYZU) for the
-     * constant.  For S = 4 the last step is a plain step_q on [len, y + len]. */
-    const uint64x2_t LL = vdupq_n_u64((uint64_t)len);                                        // [len, len]
-    uint64x2_t mul = key.ZUZU;   // multiplier of the fused step: S = 1: [*, z + u];  S = 2: [len + y, (len + y)(z + u)]
-    uint64x2_t ladd;             // lane 0: len + cst + (the length's reduced key product), the step's addend
-    if constexpr (S == 1) {
-        ladd = reduce_add(pmull_lo(LL, key.ZUZU), v64((uint64_t)len ^ cst), rr);              // len + cst + len (z + u)
-    } else if constexpr (S == 2) {
-        mul = vzip1q_u64(veorq_u64(LL, key.YYZU), reduce_add(pmull_lo(LL, key.ZUZU), key.YZUY, rr));  // [len + y, yzu + len (z + u)]
-        const uint64x2_t lp = k8 ? pmull_hi(LL, key.UYZU) : pmull_lo(LL, key.UYZU);              // len (u + yzu [+ ac + bc (z + u)])
-        ladd = reduce_add(lp, v64((uint64_t)len ^ cst), rr);                                      // len + cst + that product
-    } else {
-        ladd = vdupq_n_u64(0);   // unused (S = 4 takes the generic steps below)
-    }
-    uint64x2_t acc;   // [a, b]  (for k8: the first pair only)
-    if (len > 16) {
-        acc = (len == 8 * (size_t)SW) ? ph_block<SW>(key.k, p) : ph_tail<SW>(key.k, p, len);
-    } else if (len > 0) {
-        // one zero-padded group: [w0, w1] (in place for 16 bytes, gathered below that), w2 = w3 = 0
-        const uint64x2_t w01 = (len == 16) ? vreinterpretq_u64_u8(vld1q_u8(p)) : load_small(p, len);
-        const uint64x2_t t0 = veorq_u64(w01, vld1q_u64(key.k));                  // [w0 + k0, w1 + k1]
-        const uint64x2_t K23 = vld1q_u64(key.k + 2);                             // [k2, k3]
-        const uint64x2_t pl = pmull_lo(t0, K23);                                 // (w0 + k0) k2
-        if (k8) acc = pl;                                                        // the second pair is in cst
-        else if (FOLD8) {
-            // 9..16 bytes, two pair products pl, ph: fold them separately (reduce2_add), so that the
-            // step's latency is that of one pair
-            const uint64x2_t ph = pmull_hi(t0, K23);                             // (w1 + k1) k3
-            uint64x2_t P;
-            if constexpr (S == 1) {
-                P = reduce2_add(pmull_hi(pl, mul), pmull_hi(ph, mul), xor3(pl, ph, ladd), rr);
-            } else {
-                const uint64x2_t s1 = veorq_u64(pmull_lo(pl, mul), pmull_hi(pl, mul));
-                const uint64x2_t s2 = veorq_u64(pmull_lo(ph, mul), pmull_hi(ph, mul));
-                P = reduce2_add(s1, s2, ladd, rr);
-            }
-            return chain_v<K>(key.c, vaddq_u64(P, key.TIN));
-        } else acc = veorq_u64(pl, pmull_hi(t0, K23));
-    } else {
-        acc = vdupq_n_u64(0);
-    }
+    const uint64x2_t acc = ph_first<SW>(key.k, p, len);   // [a, b]
     uint64x2_t P;  // P_S, lane 0
     if constexpr (S == 1) {
-        // P_1 = (a + len) + (b + len + y)(z + u) = (a + len + y(z+u) + len(z+u)) + b (z+u): one PMULL2 on the accumulator
-        P = reduce_add(pmull_hi(acc, mul), veorq_u64(acc, ladd), rr);
+        // P_1 = a + len + (b + y)(z + u) = (a + len + y(z+u)) + b (z+u): one PMULL2 on the accumulator
+        P = reduce_add(pmull_hi(acc, key.ZUZU), veorq_u64(acc, v64((uint64_t)len ^ key.yzu)), rr);
     } else if constexpr (S == 2) {
-        // P_2 = len + (len + y)(P_1 + u) = (len + yu + yy(z+u) + len(u + y(z+u))) + a (len+y) + b (len+y)(z+u):
-        // two independent products, one reduction
-        P = reduce_add(veorq_u64(pmull_lo(acc, mul), pmull_hi(acc, mul)), ladd, rr);
+        // P_2 = len + y (P_1 + u) = (len + yu + yy(z+u)) + a y + b y(z+u): two independent products, one reduction
+        uint64x2_t pr = veorq_u64(pmull_lo(acc, key.YYZU), pmull_hi(acc, key.YYZU));
+        P = reduce_add(pr, v64((uint64_t)len ^ key.yyzu_yu), rr);
     } else {
         uint64x2_t Q = step_q(key.ZUZU, veorq_u64(acc, key.UY), rr);        // sub-block 0
         for (int i = 1; i + 1 < S; i++) Q = step_q(Q, key.UY, rr);         // empty sub-blocks: (a, b) = (0, 0)
-        P = step_q(Q, veorq_u64(LL, key.Yhi), rr);                          // last, empty: (a, b) = (len, len), t = [len, y + len]
+        P = step_q(Q, vsetq_lane_u64((uint64_t)len, key.Yhi, 0), rr);      // last, empty: a + len = len
     }
-    return chain_v<K>(key.c, vaddq_u64(P, key.TIN));   // chain_K(c, P_S + t_in)
+    return fin_out(key, P);   // the selected finalizer on P_S
 }
 
-template <int BLOCK_WORDS, int K, int S>
-static inline __attribute__((always_inline)) uint64x2_t hash_multi_v(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
-    using key_t = Key<BLOCK_WORDS, K, S>;
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static inline __attribute__((always_inline)) uint64_t hash_multi_v(const Key<BLOCK_WORDS, K, S, FIN>& key, const uint8_t* __restrict p, size_t len) {
+    using key_t = Key<BLOCK_WORDS, K, S, FIN>;
     constexpr size_t BB = (size_t)key_t::block_bytes;
     constexpr size_t SB = (size_t)key_t::sub_bytes;
     constexpr int SW = key_t::sub_words;
-    /* Recurrence state.  A sub-block of SW words costs ~1.25 SW + 7 SIMD ops
+    /* Recurrence state.  A sub-block of SW words costs ~1.5 SW + 7 SIMD ops
      * against a loop-carried chain of 11 cycles (step_q), so for SW <= 16
      * (128-byte sub-blocks) the loop is chain-bound and runs on the unreduced
      * state of step_lazy (8-cycle chain: +36% at 16 KB for 64-byte blocks);
-     * the shipped 256 B / 512 B sub-blocks are bound by SIMD issue (48 ops per
-     * 256 B block) and only pay the lazy form's two extra ops, so they keep
-     * the direct step.  Same function either way. */
-    constexpr bool LAZY = (SW <= CHAINHASH_LAZY_WORDS);
+     * the shipped 256 B / 512 B sub-blocks are bound by SIMD issue (56 ops per
+     * 256 B block) and only pay the lazy form's two extra ops (-2% measured),
+     * so they keep the direct step.  Same function either way. */
+    constexpr bool LAZY = (SW <= 16);
     const uint64x2_t rr = gf_rr(), r2 = gf_r2();
     auto step = [&](uint64x2_t st, uint64x2_t t) {
         if constexpr (LAZY) return step_lazy(st, t, r2);
@@ -709,38 +617,38 @@ static inline __attribute__((always_inline)) uint64x2_t hash_multi_v(const Key<B
         const size_t srem = (rem > soff) ? ((rem - soff < SB) ? rem - soff : SB) : 0;  // bytes of input in this sub-block
         uint64x2_t acc;
         if (srem >= SB)     acc = ph_block<SW>(key.k + i * SW, p + off + soff);         // full sub-block
-        else if (srem > 0)  acc = ph_tail<SW>(key.k + i * SW, p + off + soff, srem);    // ceil(srem/32) groups; ends at p + len, len > SB >= 64
+        else if (srem > 0)  acc = ph_tail<SW>(key.k + i * SW, p + off + soff, srem);    // W' = ceil(srem/16) pairs; len > SB >= 16
         else                acc = vdupq_n_u64(0);                                      // no data: empty PH sum
         if (i + 1 < S) st = step(st, veorq_u64(acc, UY));
-        else st = step(st, veorq_u64(acc, veorq_u64(vdupq_n_u64((uint64_t)len), key.Yhi)));  // [a + len, b + len + y] (no u): st = P_n
+        else st = step(st, veorq_u64(acc, vsetq_lane_u64((uint64_t)len, key.Yhi, 0)));  // [a + len, b + y] (no u): st = P_n
     }
     const uint64x2_t P = LAZY ? gf_reduce(st, rr) : st;   // P_n, lane 0
-    return chain_v<K>(key.c, vaddq_u64(P, key.TIN));       // chain_K(c, P_n + t_in)
+    return fin_out(key, P);                                 // the selected finalizer on P_n
 }
 
 /* The out-of-line multi-step path. */
-template <int BLOCK_WORDS, int K, int S>
-static __attribute__((noinline)) uint64_t hash_multi(const Key<BLOCK_WORDS, K, S>& key, const uint8_t* __restrict p, size_t len) {
-    return vgetq_lane_u64(hash_multi_v(key, p, len), 0);
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static __attribute__((noinline)) uint64_t hash_multi(const Key<BLOCK_WORDS, K, S, FIN>& key, const uint8_t* __restrict p, size_t len) {
+    return hash_multi_v(key, p, len);
 }
 
 /* hash(key, m, len): the 64-bit hash value.  (Storing lane 0 straight from
  * the NEON register instead of returning through a general register was
  * measured neutral on M2 -- 72.3 vs 72.6 cycles in the SMHasher3-style
  * store-and-reload loop -- so there is no separate output-buffer API.) */
-template <int BLOCK_WORDS, int K, int S>
-static inline __attribute__((always_inline)) uint64_t hash(const Key<BLOCK_WORDS, K, S>& key, const void* data, size_t len) {
+template <int BLOCK_WORDS, int K, int S, int FIN>
+static inline __attribute__((always_inline)) uint64_t hash(const Key<BLOCK_WORDS, K, S, FIN>& key, const void* data, size_t len) {
     const uint8_t* p = static_cast<const uint8_t*>(data);
-    if (__builtin_expect(len > (size_t)Key<BLOCK_WORDS, K, S>::sub_bytes, 0)) return hash_multi(key, p, len);   // tail call
-    return vgetq_lane_u64(hash_small_v(key, p, len), 0);
+    if (__builtin_expect(len > (size_t)Key<BLOCK_WORDS, K, S, FIN>::sub_bytes, 0)) return hash_multi(key, p, len);   // tail call
+    return hash_small_v(key, p, len);
 }
 
 /* Convenience functor.  Defaults = chainhash-256 (see the header comment):
  * 256-byte blocks, degree-5 finalizer behind the additive twist, S = 1.
  * ChainHash<128, 5, 2> is the 1 KB configuration (chainhash-1k). */
-template <int BLOCK_WORDS = 32, int K = 5, int S = 1>
+template <int BLOCK_WORDS = 32, int K = 5, int S = 1, int FIN = FIN_CHAR2>
 struct ChainHash {
-    using key_t = Key<BLOCK_WORDS, K, S>;
+    using key_t = Key<BLOCK_WORDS, K, S, FIN>;
     key_t key;
     ChainHash() = default;
     explicit ChainHash(uint64_t seed) : key(key_t::from_seed(seed)) {}
@@ -751,7 +659,11 @@ struct ChainHash {
 /* The SMHasher3 registrations (hashes/chainhash.cpp of the SMHasher3 fork). */
 using ChainHash256 = ChainHash<32, 5, 1>;   // chainhash-256  (the default)
 using ChainHash1k  = ChainHash<128, 5, 2>;  // chainhash-1k
+/* The experimental Goldilocks-finalizer variants (chainhash_goldi_exp.cpp of the SMHasher3 fork). */
+using ChainHashG4_256 = ChainHash<32, 5, 1, FIN_G4>;    // chainhash-g4-256
+using ChainHashG5_256 = ChainHash<32, 5, 1, FIN_G5>;    // chainhash-g5-256
+using ChainHashG5_1k  = ChainHash<128, 5, 2, FIN_G5>;   // chainhash-g5-1k
 
-}  // namespace chainhash
+}  // namespace chainhash_goldi
 
-#endif  // CHAINHASH_H
+#endif  // CHAINHASH_GOLDI_H

@@ -1,0 +1,61 @@
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1218:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1218 |    $.hash_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1220:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1220 |    $.impl_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1222:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1222 |    $.bits = 64,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1223:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1223 |    $.verification_LE = 0x710CF02B,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1224:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1224 |    $.verification_BE = 0x1AB98587,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1225:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1225 |    $.seedfn          = chainhash_seed_init<128, 5>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1226:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1226 |    $.hashfn_native   = ChainHash<128, 5, 2, false>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1227:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1227 |    $.hashfn_bswap    = ChainHash<128, 5, 2, true>
+      |    ^
+26 warnings generated.
+[ 28%] Linking CXX static library libSMHasher3Hashlib.a
+[ 98%] Built target SMHasher3Hashlib
+[100%] Linking CXX executable SMHasher3
+[100%] Built target SMHasher3
+BUILD_EXIT=0
+chainhash-1k                   64     hwpmull          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block
+chainhash-256                  64     hwpmull          ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks
+--- Testing chainhash-256 "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks" [hwpmull]
+
+[[[ Sanity Tests ]]]
+
+Verification value LE 0xAA4E2A3B ...... FAIL! (Expected 0xbfc38a57)
+Running sanity check 1       .......... PASS
+Running sanity check 2       .......... PASS
+Running append zeroes test   .......... PASS
+Running prepend zeroes test  .......... PASS
+Running thread-safety test 1 .......... PASS
+Running thread-safety test 2 .......... PASS
+
+Verification value is 0x00000001 - Testing took 0.307313 seconds
+
+--- Testing chainhash-1k "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block" [hwpmull]
+
+[[[ Sanity Tests ]]]
+
+Verification value LE 0x7A1ED2E0 ...... FAIL! (Expected 0x710cf02b)
+Running sanity check 1       .......... PASS
+Running sanity check 2       .......... PASS
+Running append zeroes test   .......... PASS
+Running prepend zeroes test  .......... PASS
+Running thread-safety test 1 .......... PASS
+Running thread-safety test 2 .......... PASS
+
+Verification value is 0x00000001 - Testing took 0.212735 seconds
+

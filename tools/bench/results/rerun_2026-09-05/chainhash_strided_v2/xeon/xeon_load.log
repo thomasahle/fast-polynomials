@@ -1,0 +1,8 @@
+21:45:43 driver start; uptime:  21:45:43 up 65 days, 15:22,  1 user,  load average: 9.90, 7.45, 5.39
+21:45:43 sanity+speed chainhash-256 start; uptime:  21:45:43 up 65 days, 15:22,  1 user,  load average: 9.90, 7.45, 5.39
+21:46:37 sanity+speed chainhash-256 end exit=0
+21:46:37 sanity+speed chainhash-1k start; uptime:  21:46:37 up 65 days, 15:22,  1 user,  load average: 9.75, 7.83, 5.64
+21:47:41 sanity+speed chainhash-1k end exit=0
+21:47:41 full suites start; uptime:  21:47:41 up 65 days, 15:24,  1 user,  load average: 9.62, 8.16, 5.90
+21:55:45 suite 256 end exit=0; uptime:  21:55:45 up 65 days, 15:32,  1 user,  load average: 18.04, 13.48, 9.29
+21:56:47 suite 1k end exit=0; uptime:  21:56:47 up 65 days, 15:33,  1 user,  load average: 16.54, 13.89, 9.72

@@ -266,8 +266,8 @@ fork's `hashes/chainhash.cpp`, which is not part of this repository):
 * "both variants pass all 200 tests ... on an Apple M2 Pro and on an Intel Xeon 8375C"
   (injective.tex:399-402): `smhasher3_chainhash/final4_degree5_twist_optimised/
   final4_{m2,x86}_{256,1k}.txt`, each `Overall result: pass (200 / 200 passed)`.
-  **Verification codes**: `chainhash-256` LE `0xDE1AB9F9`, `chainhash-1k` LE
-  `0x32B4EE71` (M2 Pro `[hwpmull]`, Xeon `[hwclmul]`).  Runs 2026-09-05 00:29-00:39
+  **Verification codes**: `chainhash-256` LE `0xAA4E2A3B`, `chainhash-1k` LE
+  `0x7A1ED2E0` (M2 Pro `[hwpmull]`, Xeon `[hwclmul]`).  Runs 2026-09-05 00:29-00:39
   (M2), 00:36 (Xeon); the copies carry the handoff timestamp 10:56.
 * `final3_degree5_twist_pre_optimisation/` (2026-09-04 20:46-20:53): the same
   function before the (A7) implementation optimisation, also 200/200 on both machines
@@ -306,7 +306,7 @@ fork's `hashes/chainhash.cpp`, which is not part of this repository):
 |---|---|---|---|---|
 | degree 7, none | 200/200 | `k7.txt` (LE 0xCB0491AF) | 95.7 | `k7_speed.txt` 95.69 |
 | degree 5, none | 178/200 | `k5.txt` (0xA6F72889) | 82.0 | `k5_speed.txt` 81.98 |
-| degree 5, input twist | 200/200 | `k5_tin.txt` (0xDE1AB9F9 = shipped) | 81.8 | `k5_tin_speed.txt` 81.80 |
+| degree 5, input twist | 200/200 | `k5_tin.txt` (0xAA4E2A3B = shipped) | 81.8 | `k5_tin_speed.txt` 81.80 |
 | degree 5, in+out | 200/200 | `k5_tin_tout.txt` (0xB48D2403) | 83.2 | `k5_tin_tout_speed.txt` 83.19 |
 | degree 3, input | 183/200 | `k3_tin.txt` (0x996A2EAD) | 66.5 | `k3_tin_speed.txt` 66.54 |
 | degree 3, in+out | 183/200 | `k3_tin_tout.txt` (0x0A7FFA9A) | 67.4 | `k3_tin_tout_speed.txt` 67.40 |

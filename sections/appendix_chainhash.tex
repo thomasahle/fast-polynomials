@@ -18,6 +18,11 @@
 %   integer-add twist V + tau of the level-2 value (sec:ph:twist; the twist
 %   word is t_in in the code).  Key W+9 words.  Bound (Sn+2)/2^64 for
 %   messages of at most n blocks; 5-wise independence (thm:ph:kwise).
+% 2026-09-06: strided word pairing (the pairs of a 32-byte group are
+%   (w_{4j}, w_{4j+2}) and (w_{4j+1}, w_{4j+3}); pair count 2 ceil(r/32);
+%   the permutation pi below), and the byte length XORed into BOTH halves
+%   of the last pair (stream-lemma constant (l+l')(1+X^64); rem:ph:length
+%   records the SMHasher3 Zeroes failure of the length-in-a-only variant).
 % ---------------------------------------------------------------------------
 \providecommand{\F}{\mathbb{F}}
 \providecommand{\clnh}{\mathrm{CLNH}}
@@ -74,7 +79,11 @@ with $\lo(w),\hi(w)\in\mathcal R_{<64}$.
 \paragraph{Parameters.}
 $W$ words per block (\texttt{BLOCK\_WORDS}), $B=8W$ bytes per block, and a
 sub-block split $S\in\{1,2\}$ with $8S\mid W$: each block consists of $S$
-sub-blocks of $W_s=W/S$ words ($B_s=B/S$ bytes, $W_s/2$ pairs).  The shipped
+sub-blocks of $W_s=W/S$ words ($B_s=B/S$ bytes, $W_s/2$ pairs, $W_s/4$
+groups of $32$ bytes).  Let $\pi$ be the involution of $\{0,\dots,W_s-1\}$
+that swaps $4j+1$ with $4j+2$ for every $j$ (the two middle words of every
+$32$-byte group), and for a tuple $x=(x_0,\dots,x_{4G-1})$ with $G\le W_s/4$
+write $\pi x=(x_{\pi(0)},\dots,x_{\pi(4G-1)})$.  The shipped
 configurations are $(W,S)=(32,1)$ ($256$-byte blocks, one pair per block) and
 $(W,S)=(128,2)$ ($1$\,KB blocks, two $512$-byte sub-blocks); the $64$-byte row
 of \Cref{tab:injective:adversarial} is $(W,S)=(8,1)$.  The finalizer degree is
@@ -85,8 +94,13 @@ $\kappa=(k_0,\dots,k_{W-1})\in\F^{W}$, $\theta=(u,y,z)\in\F^3$,
 $c=(c_0,\dots,c_4)\in\F^5$, and the twist word $\tau\in\F$ (\texttt{t\_in} in
 the code), all $W+9$ elements independent and uniform on $\F$ ($41$, $137$
 and $17$ words for the three configurations above).  Sub-block
-position $i\in\{0,\dots,S-1\}$ within a block uses the key segment
-$\kappa^{(i)}=(k_{iW_s},\dots,k_{(i+1)W_s-1})$.
+position $i\in\{0,\dots,S-1\}$ within a block uses the key words
+$k_{iW_s},\dots,k_{(i+1)W_s-1}$, listed in the order of the pairs
+(\emph{Sub-blocks} below) as the segment
+$\kappa^{(i)}=\pi(k_{iW_s},\dots,k_{(i+1)W_s-1})=(k_{iW_s+\pi(0)},\dots,k_{iW_s+\pi(W_s-1)})$,
+so that every message word is XORed with the key word of its own position;
+$\kappa^{(i)}$ is uniform on $\F^{W_s}$, which is all that the level-1
+lemma uses.
 
 \paragraph{Sub-blocks.}
 A message $m$ is a byte string of length $\ell=\ell(m)\ge0$.  Its block count
@@ -96,28 +110,37 @@ and sub-block count are
 \]
 A \emph{sub-block} is a tuple $g=(g_0,\dots,g_{2w-1})\in(\mathcal R_{<64})^{2w}$
 of $64$-bit words for some $0\le w\le W_s/2$; we call $w=w(g)$ its \emph{pair
-count} and $(g_{2s},g_{2s+1})$, $0\le s<w$, its \emph{pairs} ($16$ bytes each).
+count} and $(g_{2s},g_{2s+1})$, $0\le s<w$, its \emph{pairs}.
 Sub-block $t$ of $m$, $1\le t\le p(m)$, covers the bytes $[(t-1)B_s,\,tB_s)$
 of $m$, of which
 \[
   r_t=\min\bigl\{B_s,\ \max\{0,\ \ell-(t-1)B_s\}\bigr\}\in[0,B_s]
 \]
-exist; it is the tuple $m_t\in(\mathcal R_{<64})^{2w_t}$ of the little-endian
-$64$-bit words of those $r_t$ bytes followed by $16w_t-r_t\in[0,16)$ zero
-bytes, where
+exist.  With $G_t=\lceil r_t/32\rceil$ its \emph{group count}, let
+$\omega_0,\dots,\omega_{4G_t-1}$ be the little-endian $64$-bit words of those
+$r_t$ bytes followed by $32G_t-r_t\in[0,32)$ zero bytes, and set
 \[
-  w_t=\lceil r_t/16\rceil\in\{0,1,\dots,W_s/2\}
+  m_t=\pi(\omega_0,\dots,\omega_{4G_t-1})\in(\mathcal R_{<64})^{2w_t},\qquad
+  w_t=2G_t\in\{0,2,4,\dots,W_s/2\} .
 \]
-is its pair count: only the final, partial pair is padded, and only when
-$16\nmid r_t$.  Sub-blocks with $tB_s\le\ell$ are \emph{full} ($w_t=W_s/2$);
+So the pairs of $m_t$ are $(\omega_{4j},\omega_{4j+2})$ and
+$(\omega_{4j+1},\omega_{4j+3})$, $0\le j<G_t$: the \emph{strided} pairing,
+which two $16$-byte vector loads deliver without a shuffle
+(\Cref{rem:ph:gaps}(A7)).  Only the final, partial group is padded, and only
+when $32\nmid r_t$; a message of $1$--$16$ bytes has $w_1=2$ with
+$\omega_2=\omega_3=0$, and when $\ell\le8$ its second pair is $(0,0)$ and
+contributes a product of two key words only.  Sub-blocks with $tB_s\le\ell$
+are \emph{full} ($w_t=W_s/2$);
 sub-blocks beyond the data are \emph{empty} ($w_t=0$, $m_t=()$), which happens
 for the empty message and, when $S=2$, for the second half of a last block
 that ends in its first half.  No byte beyond position $\ell$ is ever read.
-Since $\ell$ determines $n(m)$, $p(m)$ and every $r_t$ and $w_t$, and the
-bytes of $m_1,\dots,m_{p(m)}$ concatenated begin with $m$, the tuple
+Since $\ell$ determines $n(m)$, $p(m)$ and every $r_t$, $G_t$ and $w_t$, and
+$m$ is the first $\ell$ bytes of the words $\pi m_1,\dots,\pi m_{p(m)}$
+concatenated ($\pi$ is an involution), the tuple
 $(m_1,\dots,m_{p(m)},\ell)$ determines $m$; in particular two messages of the
 same length have sub-blocks of the same pair counts.  Sub-block $t$ sits at
-position $i(t)=(t-1)\bmod S$ of its block and is keyed by $\kappa^{(i(t))}$.
+position $i(t)=(t-1)\bmod S$ of its block and is keyed by $\kappa^{(i(t))}$,
+the key words of its positions in the same order $\pi$.
 
 \paragraph{Level 1: CLNH.}
 For a key segment $\kappa'=(k'_0,\dots,k'_{W_s-1})\in(\mathcal R_{<64})^{W_s}$ and
@@ -127,37 +150,45 @@ a sub-block $g=(g_0,\dots,g_{2w-1})$ with pair count $w\le W_s/2$,
 \end{equation}
 the sum being XOR of the $128$-bit carry-less products.  It involves only
 the first $2w$ key words $k'_0,\dots,k'_{2w-1}$ and is the empty sum $0$ when
-$w=0$.  For a full sub-block ($w=W_s/2$) this is \cite[eq.~(7)]{lemire2015clhash},
-computed by \texttt{ph\_block}, whose loop XORs the four products of each
-$64$-byte group into two independent $128$-bit accumulators (one three-input
-XOR per accumulator and group).  For a partial
-sub-block, \texttt{ph\_tail} computes exactly the $w$ products of
-\eqref{eq:ph:clnh}: full $64$-byte groups and then whole $16$-byte pairs are
-loaded in place, and the partial pair (present iff $16\nmid r_t$, and then
-the last $r_t-16(w-1)$ bytes of the message) is loaded in place as well, as
-the $16$ bytes ending at byte $\ell$ shifted by a \texttt{TBL} byte
-permutation whose out-of-range indices supply the zero padding
-(\texttt{load\_partial\_end}; $\ell\ge16$ whenever \texttt{ph\_tail}
-runs); a message of fewer than $16$ bytes is its own single padded pair,
-assembled from overlapping in-bounds lane loads and one \texttt{TBL} gather
-(\texttt{load\_small}).  There is no stack copy and no \texttt{memcpy},
-and no byte outside $[0,\ell)$ is ever read; the reference \texttt{chainhash\_ref.h}
-assembles the same zero-padded words byte by byte (\texttt{word\_at}).  XOR
-being associative and commutative, all of these compute \eqref{eq:ph:clnh}
-(test T1 of \texttt{test\_chainhash.cpp} compares the two on every
-partial-pair/whole-pair/$64$-byte-group combination of the last block and,
-for $S=2$, byte by byte across the sub-block boundary).
+$w=0$.  For a full sub-block ($w=W_s/2$) this is \cite[eq.~(7)]{lemire2015clhash}
+up to the fixed permutation $\pi$ of the word positions (applied to key and
+data alike, so it changes nothing below), computed by \texttt{ph\_block},
+whose loop XORs the four products of each $64$-byte group into two
+independent $128$-bit accumulators (one three-input XOR per accumulator and
+group), every product taking its two operands straight from the two
+$16$-byte loads of a $32$-byte group.  For a partial sub-block,
+\texttt{ph\_tail} computes exactly the $w=2G$ products of \eqref{eq:ph:clnh}:
+whole $64$-byte and $32$-byte groups are loaded in place, and so are the
+first $16$ bytes of a partial group of more than $16$ bytes; the remaining
+$1$--$16$ bytes of the partial group (present iff $32\nmid r_t$) are loaded
+in place as well, as the $16$ bytes ending at byte $\ell$ shifted by a
+\texttt{TBL} byte permutation whose out-of-range indices supply the zero
+padding ($\ell\ge16$ whenever \texttt{ph\_tail} runs); a message of fewer
+than $16$ bytes is its own single padded group, assembled from overlapping
+in-bounds lane loads and one \texttt{TBL} gather (\texttt{load\_small}).
+There is no stack copy and no \texttt{memcpy}, and no byte outside
+$[0,\ell)$ is ever read; the reference \texttt{chainhash\_ref.h} assembles
+the same zero-padded words byte by byte (\texttt{word\_at}).  XOR being
+associative and commutative, all of these compute \eqref{eq:ph:clnh} (test
+T1 of \texttt{test\_chainhash.cpp} compares the two on every
+partial-group/whole-group/$64$-byte-group combination of the last block and,
+for $S=2$, byte by byte across the sub-block boundary; test T8 checks, for
+the lengths $0,32,\dots,4096$, that the hash equals the adjacent-pair
+evaluation on $\pi\kappa$ and $\pi m$, i.e.\ that the pairing changes the
+function by this fixed permutation of the positions only).
 
 \paragraph{Level 1$'$: the stream.}
 For $m$ with $p=p(m)$ and sub-blocks $m_1,\dots,m_p$ define the
 \emph{stream} $\sigma_\kappa(m)=((a_1,b_1),\dots,(a_p,b_p))\in(\F^2)^p$ by
 \begin{equation}\label{eq:ph:stream}
   a_t=\lo\bigl(\clnh_{\kappa^{(i(t))}}(m_t)\bigr)+\iver{t=p}\cdot\ell,\qquad
-  b_t=\hi\bigl(\clnh_{\kappa^{(i(t))}}(m_t)\bigr),
+  b_t=\hi\bigl(\clnh_{\kappa^{(i(t))}}(m_t)\bigr)+\iver{t=p}\cdot\ell,
 \end{equation}
 where $\ell$ is read as the $64$-bit word (field element) encoding the byte
-length.  So the byte length is XORed into the $a$-component of the last pair
-only, and every sub-block, empty or not, contributes one pair.
+length.  So the byte length is XORed into \emph{both} components of the last
+pair (\Cref{rem:ph:length} says why both), and every sub-block, empty or
+not, contributes one pair; the last pair of the empty message is $(0,0)$,
+that of a message which ends in an empty sub-block is $(\ell,\ell)$.
 
 \paragraph{Level 2: the three-key recurrence.}
 With $P_0=z$ and, for $t\ge1$,
@@ -220,10 +251,11 @@ Lemire and Kaser prove that the \emph{reduced} family $g\mapsto\clnh_{\kappa'}(g
 is XOR-universal and state that the unreduced $128$-bit family is
 $2^{-64}$-almost universal \cite[\S5 and Lemma~5]{lemire2015clhash}.  Since
 the stream \eqref{eq:ph:stream} keeps \emph{both} halves of the $128$-bit
-value and XORs a constant into one of them, we need the unreduced family to
+value and XORs the length into both of them, we need the unreduced family to
 be XOR-universal on its full width, for every $128$-bit constant.  The proof
 is their integral-domain argument carried out in $\mathcal R$ instead of a field.
-Because the last block is processed at pair granularity, two last sub-blocks can
+Because the last block is processed at group granularity (two pairs), two
+last sub-blocks can
 have \emph{different} pair counts; part (ii) below covers that case.  There
 the key products of the extra pairs do not cancel, and a nonzero constant
 $C$ is essential (supplied, in \Cref{lem:ph:stream}, by the length XOR).
@@ -293,7 +325,7 @@ $\Pr_\kappa[\sigma_\kappa(m)=\sigma_\kappa(m')]\le2^{-64}$.
 Moreover $\sigma_\kappa(m)\ne\sigma_\kappa(m')$ holds for \emph{every}
 $\kappa$ when $n(m)\ne n(m')$, and also when $\ell(m)\ne\ell(m')$ but the two
 padded last sub-blocks coincide (same pair count and the same words;
-e.g.\ $m'=m\,\|\,\texttt{0x00}$ with $16\nmid\ell(m)$, and in particular
+e.g.\ $m'=m\,\|\,\texttt{0x00}$ with $32\nmid\ell(m)$, and in particular
 whenever all padded sub-blocks of $m$ and $m'$ coincide).
 \end{lemma}
 \begin{proof}
@@ -306,11 +338,11 @@ messages is keyed by the same segment $\kappa^{(i(t))}$.  By
 \begin{equation}\label{eq:ph:stream-eq}
 \begin{aligned}
   &\clnh_{\kappa^{(i(t))}}(m_t)=\clnh_{\kappa^{(i(t))}}(m'_t)\qquad(1\le t<p),\quad\text{and}\\
-  &\clnh_{\kappa^{(i(p))}}(m_p)+\clnh_{\kappa^{(i(p))}}(m'_p)=C,\qquad\text{where } C:=(\ell+\ell')+X^{64}\cdot0 ,
+  &\clnh_{\kappa^{(i(p))}}(m_p)+\clnh_{\kappa^{(i(p))}}(m'_p)=C,\qquad\text{where } C:=(\ell+\ell')(1+X^{64}) ,
 \end{aligned}
 \end{equation}
-i.e.\ $C\in\mathcal R_{<128}$ has low word $\ell+\ell'$ (the XOR of the two
-$64$-bit length words) and high word $0$.
+i.e.\ $C\in\mathcal R_{<128}$ has low word and high word both equal to
+$\ell+\ell'$ (the XOR of the two $64$-bit length words).
 
 \emph{Equal lengths, $\ell=\ell'$.}  Then $C=0$, and $m_t$ and $m'_t$ have
 the same pair count for every $t$.  Since $(m_1,\dots,m_p,\ell)$ determines
@@ -772,12 +804,12 @@ bytes), Bitflip (a message and its single-bit flips) and SeedZeroes (zero
 messages under seeds with at most two set bits) all consist of messages
 that differ from one another in few bit positions of one block.  For a fixed
 key and a fixed length within one block, $V_\kappa(m)=a_1+(b_1+y)(z+u)$ with
-$(a_1,b_1)$ the halves of $\clnh_{\kappa}(m_1)+\ell$, and each summand
+$(a_1,b_1)$ the halves of $\clnh_{\kappa}(m_1)+\ell(1+X^{64})$, and each summand
 $(g_{2s}+k_{2s})(g_{2s+1}+k_{2s+1})$ of \eqref{eq:ph:clnh} is $\F_2$-biaffine
 in the two message words: $V_\kappa$ is an $\F_2$-quadratic function of the
 message bits, and $\F_2$-affine on any keyset that varies only one word of
 each pair (one or two bytes inside a word; the length word in Zeroes within
-a $16$-byte window of lengths).  Composed with an $\F_2$-quadratic finalizer,
+a $32$-byte window of lengths, one group count).  Composed with an $\F_2$-quadratic finalizer,
 the hash restricted to such a keyset is an $\F_2$-quadratic (in general, a
 degree-$\le4$) function of a handful of Boolean variables---all its second
 derivatives $h(m)+h(m+a)+h(m+b)+h(m+a+b)$ are constant over the keyset---and
@@ -808,10 +840,12 @@ Sparse, Permutation, TwoBytes and Bitflip; the twisted degree-$3$ hash fails
 $17$, in Zeroes, Permutation and SeedZeroes.  An output twist $h\boxplus\tau_{\mathrm{out}}$ adds
 nothing and was dropped.  The twist costs one integer addition, below the
 timing noise.  The cycle counts are those of the block level and tail loader
-of the time of the experiment; the optimised implementation shipped since
-(\Cref{rem:ph:gaps}(A7)) computes the same function bit for bit and measures
-$66$ cycles per small key ($72$ for the $1$\,KB configuration) and $20.7$
-($17.5$) bytes/cycle in bulk in the same benchmark (SMHasher3's own, on $256$\,KB keys; the harness figures of \Cref{tab:injective:adversarial} use $16$\,KB messages and order the two configurations the other way).  Degree $5$ with the
+of the time of the experiment (adjacent word pairs, length in $a_p$ only);
+the implementation shipped since (\Cref{rem:ph:gaps}(A7): strided pairs,
+length in both halves, register-resident block loop) keeps the finalizer and
+the twist, passes the same $200/200$, and measures
+$72$ cycles per small key ($77$ for the $1$\,KB configuration) and $22.2$
+($17.3$) bytes/cycle in bulk in the same benchmark (SMHasher3's own, on $256$\,KB keys; the harness figures of \Cref{tab:injective:adversarial} use $16$\,KB messages and order the two configurations the other way).  Degree $5$ with the
 input twist is therefore $15\%$ faster
 than degree $7$ on short messages with the same test record; the bulk
 throughput on $256$\,KB messages does not depend on the finalizer (the six
@@ -1013,25 +1047,43 @@ Frobenius roots; the present degree-$5$ circuit with the input twist reaches
 the same test record with three multiplications and unit pivots only.
 \end{remark}
 
-\begin{remark}[The length XOR]
+\begin{remark}[The length XOR]\label{rem:ph:length}
 Unlike CLHASH, which folds the length in with a separate random word
 $k''\star|M|$ \cite[Alg.~4]{lemire2015clhash}, \textsc{ChainHash} XORs the
-raw byte length into $a_p$ without any key.  This is sound because, for
+raw byte length into both $a_p$ and $b_p$ without any key.  This is sound because, for
 $\ell\ne\ell'$ and equal block counts (\Cref{lem:ph:stream}):
 (a) when the padded last sub-blocks coincide, the streams differ
 \emph{deterministically} (case~(a)) and the recurrence is injective on streams;
 (b) when they have the same pair count but differ, the relevant event is the
 full-width XOR-universality of \Cref{lem:ph:clnh}(i) with the constant
-$C=(\ell+\ell')+X^{64}\cdot0$ (case~(b)); and
+$C=(\ell+\ell')(1+X^{64})$ (case~(b)); and
 (c) when they have different pair counts (case~(c)) the key product
 $(g'_{2s}+k'_{2s})(g'_{2s+1}+k'_{2s+1})$ of each extra pair does not cancel and
 vanishes with probability about $2^{-63}$, so the sum is \emph{not}
 $2^{-64}$-XOR-universal against $C=0$; it is exactly the nonzero constant
-$\ell+\ell'$ supplied by the length XOR that makes \Cref{lem:ph:clnh}(ii)
-apply.  Without the length XOR, pair granularity would cost about a factor
+$(\ell+\ell')(1+X^{64})$ supplied by the length XOR that makes \Cref{lem:ph:clnh}(ii)
+apply.  Without the length XOR, group granularity would cost about a factor
 of two in the level-1 term for such pairs, and $m$ and $m\,\|\,\texttt{0x00}$
-(with $16\nmid\ell(m)$) would collide outright.  The XOR must land in a
+(with $32\nmid\ell(m)$) would collide outright.  The XOR must land in a
 component of the stream that is fed to the injective recurrence; it does.
+
+The proof would be equally content with the length in $a_p$ alone (the
+constant $(\ell+\ell')+X^{64}\cdot0$ is nonzero as well), and an earlier
+version did just that; the second copy is there for the tests.  The CLNH
+sum of an all-zero message depends only on its pair count, so with the
+length in $a_p$ only, the level-2 value of a zero message is $\ell+C_\kappa$
+over every run of $32$ consecutive lengths (one group count), $C_\kappa$ a
+constant of the key: the finalizer input runs through an $\F_2$-affine set,
+on which the twisted degree-$5$ circuit---quadratic over $\F_2$ but for the
+carry chain, \Cref{sec:ph:twist}---is nearly affine, and SMHasher3's Zeroes
+keyset (the differential distribution over consecutive lengths) detected
+it: $199/200$ for the $256$-byte configuration.  With the length in $b_p$
+as well, $P_p=\ell\,(1+P_{p-1}+u)+C'_\kappa$, so consecutive lengths differ
+by field multiples of the uniformly random element $1+P_{p-1}+u$, and both
+configurations pass $200/200$.  The block loop pays nothing for the second
+copy; the loop-free paths for messages of at most one sub-block pay one
+($S=1$) or two ($S=2$) products of the length with key constants
+(\Cref{rem:ph:gaps}(A7)).
 \end{remark}
 
 \begin{remark}[The keys range over the whole field]
@@ -1077,7 +1129,8 @@ slightly worse $d/(2^{64}-1)$.
 \item \emph{Message model.}  Messages are byte strings; the length is XORed as
       a $64$-bit value, so $\ell<2^{64}$.  $n$ counts $B$-byte blocks and
       $p=Sn$ counts sub-blocks; a message of $\ell$ bytes costs
-      $\lceil\ell/16\rceil$ carry-less products at level 1, $p(m)$ field
+      $2\lceil\ell/32\rceil$ carry-less products at level 1 (the second of
+      them a key-only constant when $\ell\le8$), $p(m)$ field
       multiplications at level 2 and $3$ in the finalizer (plus one integer
       addition for the twist).  The empty message
       is one block of $S$ empty sub-blocks, each with CLNH sum the empty sum
@@ -1091,15 +1144,38 @@ slightly worse $d/(2^{64}-1)$.
       $1,\dots,n-1$ run without length logic on the shifted state
       $Q_t=P_t+u$, i.e.\ $Q_t=(a_t+u)+(b_t+y)Q_{t-1}$, with the \texttt{EXT}
       that positions $b_t+y$ kept off the loop-carried chain; the last block
-      is peeled and its final step takes $(a_p+\ell,\,b_p+y)$, yielding
+      is peeled and its final step takes $(a_p+\ell,\,b_p+\ell+y)$, with
+      $(a_p,b_p)$ here the length-free halves, yielding
       $P_p$ itself.  A message of at most one sub-block ($256$ or $512$
       bytes) takes a loop-free leaf path in which the key-only parts of the
-      $S$ steps are precomputed constants of the key; for $S=2$ the two steps
-      are fused into $P_2=(\ell+yu+y^2(z+u))+ay+by(z+u)$, two independent
-      products and one reduction.  For sub-blocks of at most $16$ words the
+      $S$ steps are precomputed constants of the key: for $S=1$,
+      $P_1=(a+\ell+y(z+u)+\ell(z+u))+b(z+u)$, one product on the CLNH
+      accumulator plus the length product $\ell(z+u)$, issued first and
+      reduced off the critical path; for $S=2$ the two steps (the second
+      sub-block is empty and takes the pair $(\ell,\ell)$) are fused into
+      \[
+        P_2=\bigl(\ell+yu+y^2(z+u)+\ell(u+y(z+u))\bigr)+a(\ell+y)+b(\ell+y)(z+u),
+      \]
+      two independent products of the accumulator with the multiplier
+      $(\ell+y,\,(\ell+y)(z+u))$ and one reduction, the multiplier's second
+      component and the constant's length term being two more
+      length-times-key products issued first.  These length products are the
+      whole cost of the second length copy (the block loop never sees it);
+      the $512$-byte columns of \Cref{tab:injective:adversarial} carry
+      it.  For sub-blocks of at most $16$ words the
       recurrence state is carried unreduced as a $128$-bit polynomial and
       reduced once at the end.  In the $256$-byte configuration the block
-      key is register-resident and a block costs $56$ SIMD instructions and
-      $8$ paired loads.  None of this changes the function.
+      key is register-resident and a block costs $48$ SIMD instructions and
+      $8$ paired loads.  The strided pairing exists for this loop: a
+      $16$-byte NEON load holds two adjacent words, and
+      \texttt{PMULL}/\texttt{PMULL2} multiply lane $0$ by lane $0$ and lane
+      $1$ by lane $1$ of two registers, so adjacent pairs need one
+      \texttt{EXT} per two pairs to line the operands up ($56$ instructions
+      per block), whereas the strided pairs take both operands straight from
+      the two loads of a group; the loop is bound by SIMD issue, and that
+      is the gain in \Cref{tab:injective:adversarial}.  On x86-64, whose
+      \texttt{PCLMULQDQ} immediate selects either half of either operand,
+      the two pairings cost the same.  None of this changes the function of
+      \Cref{def:ph:hash}.
 \end{enumerate}
 \end{remark}

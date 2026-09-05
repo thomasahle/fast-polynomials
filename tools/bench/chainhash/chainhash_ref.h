@@ -8,23 +8,32 @@
  * Must compute exactly the same function as chainhash.h:
  *   n = max(1, ceil(len / (8*BLOCK_WORDS))) blocks.  Blocks 1..n-1 are
  *   full (BLOCK_WORDS/2 pairs).  The last block holds r = len - (n-1)*
- *   8*BLOCK_WORDS bytes and only W' = ceil(r/16) pairs (W' = 0 for the
- *   empty message); its final partial pair is zero-padded to 16 bytes.
+ *   8*BLOCK_WORDS bytes and only G' = ceil(r/32) GROUPS of 32 bytes =
+ *   W' = 2G' pairs (W' = 0 for the empty message); its final partial group
+ *   is zero-padded to 32 bytes.  PAIRING (strided): pair 2g of a block is
+ *   (w_{4g}, w_{4g+2}), pair 2g+1 is (w_{4g+1}, w_{4g+3}) -- the four words
+ *   of every 32-byte group paired at stride 2 -- every word XORed with the
+ *   key word of its own position, i.e. pair s = (w_{alpha(s)}, w_{alpha(s)+2})
+ *   with alpha(s) = 4 floor(s/2) + (s mod 2).
  *   Each block is cut into S sub-blocks of BLOCK_WORDS/(2S) pairs; sub-block
- *   i of block j covers the block's pairs [i*BLOCK_WORDS/(2S), (i+1)*
- *   BLOCK_WORDS/(2S)) and its PH sum runs over those of its pairs that
- *   exist (index < W'), so a sub-block beyond the data has PH sum 0:
+ *   i covers the block's pairs [i*BLOCK_WORDS/(2S), (i+1)*BLOCK_WORDS/(2S))
+ *   and its PH sum runs over those of its pairs that exist (index < W'),
+ *   so a sub-block beyond the data has PH sum 0:
  *     (a_{j,i}, b_{j,i}) = (lo64, hi64) of
- *        XOR_{pairs p of sub-block i, p < W'} clmul64(w[2p]^k[2p], w[2p+1]^k[2p+1]);
+ *        XOR_{pairs s of sub-block i, s < W'} clmul64(w[alpha(s)]^k[alpha(s)], w[beta(s)]^k[beta(s)]),
+ *     beta(s) = alpha(s) + 2  (word indices within the block);
  *   the n*S pairs are fed to the recurrence in order (j, i);
- *   a_{n,S-1} ^= len (byte length, into the LAST pair);
+ *   a_{n,S-1} ^= len  AND  b_{n,S-1} ^= len   (the byte length, XORed into
+ *   BOTH halves of the LAST pair -- so an empty last sub-block contributes
+ *   (len, len); see "WHY THE LENGTH IN BOTH HALVES" in chainhash.h);
  *   P_0 = z,  P_m = a_m + (b_m + y)(P_{m-1} + u)     (three-key recurrence
  *   of injective.tex; u, y, z independent uniform field elements)
  *   v = P_{nS} + t_in   (INTEGER 64-bit addition mod 2^64: the input twist)
  *   out = chain_5(v)    with the degree-5 circuit of chainhash.h
  *   (CIRCUITS[5] of website/js/char2.js, 3 multiplications).
  *   S = 1 (the default) is the original single-pair-per-block function.
- * Key: k[0..BLOCK_WORDS), u, y, z, c[0..5), t_in  (BLOCK_WORDS + 9 words).
+ * Key: k[0..BLOCK_WORDS), u, y, z, c[0..5), t_in  (BLOCK_WORDS + 9 words),
+ * derived from the seed in that order.
  * *********************************************************************** */
 
 #ifndef CHAINHASH_REF_H
@@ -69,7 +78,7 @@ static constexpr bool valid_degree(int K) { return K == 5; }
 template <int BLOCK_WORDS = 32, int K = 5, int S = 1>
 struct Key {
     static_assert(S == 1 || S == 2 || S == 4, "S must be 1, 2 or 4");
-    static_assert(BLOCK_WORDS >= 2 * S && BLOCK_WORDS % (2 * S) == 0, "BLOCK_WORDS must be a multiple of 2*S");
+    static_assert(BLOCK_WORDS >= 4 * S && BLOCK_WORDS % (4 * S) == 0, "BLOCK_WORDS must be a multiple of 4*S (32-byte groups per sub-block)");
     static_assert(valid_degree(K), "K must be 5 (the only shipped chain)");
     static constexpr int block_words = BLOCK_WORDS;
     static constexpr int block_bytes = 8 * BLOCK_WORDS;
@@ -121,6 +130,10 @@ static inline uint64_t word_at(const uint8_t* m, size_t len, size_t idx) {
     return w;
 }
 
+/* Word positions of pair s within a block (strided pairing). */
+static inline size_t pair_alpha(size_t s) { return 4 * (s / 2) + (s % 2); }
+static inline size_t pair_beta(size_t s) { return pair_alpha(s) + 2; }
+
 template <int BLOCK_WORDS, int K, int S>
 static inline uint64_t hash(const Key<BLOCK_WORDS, K, S>& key, const void* data, size_t len) {
     const uint8_t* m = static_cast<const uint8_t*>(data);
@@ -131,19 +144,20 @@ static inline uint64_t hash(const Key<BLOCK_WORDS, K, S>& key, const void* data,
     uint64_t P = key.z;  // P_0 = z
     for (size_t j = 0; j < n; j++) {
         // bytes in this block: BB for blocks 0..n-2, r = len - (n-1)*BB for the last
-        // (r = 0 for the empty message); the block has W' = ceil(r/16) pairs.
+        // (r = 0 for the empty message); the block has G' = ceil(r/32) groups = W' = 2G' pairs.
         const size_t r = (j + 1 == n) ? len - j * BB : BB;
-        const size_t W = (r + 15) / 16;
+        const size_t W = 2 * ((r + 31) / 32);              // pair count: 2 per 32-byte group that intersects the data
         for (int i = 0; i < S; i++) {
             u128 acc = 0;  // single accumulator; sub-block i = pairs [i*WPS, (i+1)*WPS) of the block
-            for (size_t pi = (size_t)i * WPS; pi < (size_t)(i + 1) * WPS && pi < W; pi++) {
-                uint64_t wa = word_at(m, len, j * BLOCK_WORDS + 2 * pi) ^ key.k[2 * pi];
-                uint64_t wb = word_at(m, len, j * BLOCK_WORDS + 2 * pi + 1) ^ key.k[2 * pi + 1];
+            for (size_t s = (size_t)i * WPS; s < (size_t)(i + 1) * WPS && s < W; s++) {
+                const size_t wa_i = pair_alpha(s), wb_i = pair_beta(s);
+                uint64_t wa = word_at(m, len, j * BLOCK_WORDS + wa_i) ^ key.k[wa_i];
+                uint64_t wb = word_at(m, len, j * BLOCK_WORDS + wb_i) ^ key.k[wb_i];
                 acc ^= clmul(wa, wb);
             }
             uint64_t a = (uint64_t)acc;
             uint64_t b = (uint64_t)(acc >> 64);
-            if (j + 1 == n && i + 1 == S) a ^= (uint64_t)len;
+            if (j + 1 == n && i + 1 == S) { a ^= (uint64_t)len; b ^= (uint64_t)len; }  // the length, into both halves of the last pair
             P = a ^ gfmul(b ^ key.y, P ^ key.u);  // P_m = a_m + (b_m + y)(P_{m-1} + u)
         }
     }
