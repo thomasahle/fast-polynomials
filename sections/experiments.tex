@@ -111,7 +111,7 @@ At $k=3$ the monic cubic admits no saving (two multiplications either way), and 
 \end{tabular}
 \end{table}
 For $k = 9$, our method achieves a speedup of $1.84\times$ over Horner on ARM and $2.15\times$ on x86.
-For smaller $k$, we use Motzkin's quartic for $k=4$ (2 multiplications) and the two-multiplication cubic of \Cref{sec:main-theorem:outline} for $k=3$ (the same count as Horner).
+For smaller $k$, we use Motzkin's quartic (2 multiplications), which over $\F_{2^{64}}$ is only $3$-wise independent\footnote{Over $\F_{2^{64}}$ Motzkin's two-multiplication quartic $(y+b)(y+x+c)+d$ with $y=x(x+a)$ has $x^3$-coefficient $2a+1=1$, so its coefficients range only over the monic quartics with $e_3=1$ and the family is exactly $3$-wise independent (the remaining three coefficients are uniform); a $4$-wise quartic needs a third multiplication in characteristic~$2$, the same Frobenius effect as in \Cref{sec:ph:twist}.}, and the two-multiplication cubic of \Cref{sec:main-theorem:outline} for $k=3$ (the same count as Horner).
 The speedup increases with $k$ because our polynomial chains save more multiplications
 at higher degrees: for monic degree $n$, Horner uses $n-1$ multiplications while our
 chains use only $\lfloor n/2\rfloor+1$ multiplications (by \Cref{thm:main}).
@@ -283,7 +283,7 @@ microbenchmark in Table~\ref{tab:kwise_both}.
 Notably, our 3-wise independent hash function runs in 914$\pm$4\,\textmu s on ARM---nearly $2\times$ faster than
 tabulation with the same independence guarantee.
 On x86, our method (2285\,\textmu s) is $3\times$ faster than tabulation.
-Our 4-wise hash (using Motzkin's method) is still faster than 3-wise tabulation on both platforms.
+Our Motzkin-quartic hash ($3$-wise over $\F_{2^{64}}$, see the footnote above) is still faster than 3-wise tabulation on both platforms.
 
 We also compare against Dietzfelbinger's polynomial hashing over integers~\cite{dietzfelbinger1996universal},
 which evaluates $g(x) = \sum_{i=0}^{k-1} a_i x^i \bmod 2^W$ using standard integer arithmetic
@@ -305,7 +305,7 @@ explaining the performance gap.
     Dietzfelbinger ($k=5$) & 3205$\pm$39 & 5-wise & 8219$\pm$4 & 5-wise \\
     Dietzfelbinger ($k=7$) & 4993$\pm$58 & 7-wise & 13633$\pm$9 & 7-wise \\
     This Paper ($k=3$) & 914$\pm$4 & 3-wise & 2285$\pm$3 & 3-wise \\
-    This Paper ($k=4$) & 1036$\pm$13 & 4-wise & 3930$\pm$4 & 4-wise \\
+    This Paper (Motzkin quartic) & 1036$\pm$13 & 3-wise & 3930$\pm$4 & 3-wise \\
     This Paper ($k=5$) & 1521$\pm$8 & 5-wise & 4214$\pm$3 & 5-wise \\
     This Paper ($k=7$) & 2346$\pm$9 & 7-wise & 6074$\pm$4 & 7-wise \\
 \end{tabular}

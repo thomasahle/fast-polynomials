@@ -366,9 +366,9 @@ probing provably needs~\cite{pagh2009linear,patracscu2016kindependence}.
 The twist answers a question that $k$-wise independence never asks: over
 $\F_{2^{64}}$ the $\F_2$-degree of $v\mapsto v^e$ is the number of ones in
 the binary expansion of $e$, so every polynomial of degree at most $6$ is
-quadratic in the bits of its input, with affine discrete derivatives, and the
+at most quadratic in the bits of its input, with affine discrete derivatives, and the
 fixed-seed keysets of SMHasher3~\cite{smhasher3} (Zeroes, Sparse,
-Permutation, TwoBytes, Bitflip, SeedZeroes) detect exactly that: the
+Permutation, TwoBytes, Bitflip) are sensitive to exactly that structure: the
 untwisted degree-$5$ finalizer fails $22$ of the $200$ tests, and an earlier
 version of the hash used degree $7$, the first cubic option, at the price of
 a fourth multiplication.  Any fixed bijection of the finalizer input
