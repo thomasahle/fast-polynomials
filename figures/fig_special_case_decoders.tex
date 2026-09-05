@@ -11,7 +11,9 @@
   \node[fp seam, minimum width=8mm, anchor=west] at (3.8,5.02) {$+1$};
   \node[fp second, minimum width=39mm, anchor=west] (h15) at (4.6,5.02)
     {recover $H_4$, then $H_2$\\from four rows};
-  \node[fp recursive, minimum width=36mm, anchor=west] (l15) at (8.5,5.02)
+  \node[fp seam, minimum width=17mm, anchor=west] at (8.5,5.02)
+    {$-1$\\$-(2b+2)$};
+  \node[fp recursive, minimum width=30mm, anchor=west] (l15) at (10.2,5.02)
     {solve $U,V,\alpha_1,\alpha_0$\\from the bottom rows};
   \node[fp label, anchor=west] at (0.35,4.4)
     {decode the parameters inside $A$ only after $H_2,H_4$ are known};
@@ -46,5 +48,5 @@
   \node[fp label, anchor=west] at (4.0,0.56)
     {reconstruct $H_2$ from $H_4$, then discharge all conditional decoders};
   \node[fp label, anchor=west, text=fpBlue!80!black] at (0,-0.03)
-    {At every red seam, subtract the displayed fixed leading coefficient before taking the next monic root.};
+    {Subtract the red boundary contributions before the corresponding pivot; $b$ is already known at its seam.};
 \end{tikzpicture}

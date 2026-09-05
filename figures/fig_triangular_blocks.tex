@@ -2,13 +2,13 @@
 \begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
   \node[fp panel title] at (0,4.1) {(a) Shift through a monic factor};
   \node[fp active, minimum width=42mm] (old) at (2.15,2.55)
-    {old pivots $\eta_{e-1},\ldots,\eta_0$};
+    {old parameters $\eta_{e-1},\ldots,\eta_0$};
   \node[fp known, minimum width=24mm] (factor) at (2.15,3.42)
     {$L=x^h+\cdots$};
   \node[fp label, right=1mm of factor] {leading coefficient $1$};
   \node[fp active, minimum width=42mm] (shifted) at (1.55,1.05)
-    {same pivots $\alpha_{h+e-1},\ldots,\alpha_h$};
-  \node[fp known, minimum width=16mm, right=0pt of shifted]
+    {reindexed $\alpha_{h+e-1},\ldots,\alpha_h$};
+  \node[fp unread, minimum width=16mm, right=0pt of shifted]
     {rows $<h$};
   \draw[fp decode] (old.south) -- node[fp label, right]
     {$\times L$: shift by $h$} (shifted.north);
@@ -20,9 +20,9 @@
     {decoding order} (13.55,3.42);
   \node[fp active, minimum width=22mm, anchor=west] (tail) at (7.15,2.55)
     {new tail};
-  \node[fp second, minimum width=27mm, anchor=west] (inner) at (9.35,2.55)
+  \node[fp recursive, minimum width=27mm, anchor=west] (inner) at (9.35,2.55)
     {shifted recursion};
-  \node[fp recursive, minimum width=18mm, anchor=west] (low) at (12.05,2.55)
+  \node[fp second, minimum width=18mm, anchor=west] (low) at (12.05,2.55)
     {low block};
   \draw[fp dependence] (tail.south) to[bend right=12]
     node[fp label, below] {decoded side data} (inner.south);

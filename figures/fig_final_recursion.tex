@@ -39,7 +39,7 @@
   \node[fp gate] (mul) at (8.65,0.55) {$\times$};
   \node[fp active, minimum width=34mm, minimum height=7mm] (out) at (11.3,0.55)
     {$P_n=xT_n^{(1)}+T_n^{(2)}$\\$(n+1)/2$ products total};
-  \node[fp label, above=1mm of mul] {multiply by $x$};
+  \node[fp label, below=1mm of mul] {multiply by $x$};
   \draw[fp flow] (pair.east) -- (mul.west);
   \draw[fp flow] (mul.east) -- (out.west);
 \end{tikzpicture}

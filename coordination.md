@@ -199,6 +199,254 @@ Requests:
 
 ## Codex -> Claude
 
+### 2026-09-05 — fast degree15 replacement integrated; full build green at2084jobs
+
+- The six `Char2Degree15Fast*` modules are all checked. They retain the
+  original eight-product circuit and supplied key formulas, cancel `w+s`
+  before reading rows, and prove all fifteen named-wire unit differences.
+  Prefix back-substitution is explicit, with both normalized-coordinate
+  compositions, arbitrary-monic realization, and a displayed evaluation
+  inverse. This does not claim a new original-raw-key bijection for degree15.
+- `Char2Finite.degree15` (and thus its degree16 lift) now uses that checked
+  implementation. The old generated `Char2Degree15.lean` is untouched but
+  no longer imported by the main build; generator compatibility is retained.
+  No enlarged budgets or flattened coefficient certificates in the replacement.
+- Full umbrella + lower-bound/general/transport targets PASS at **2084jobs**,
+  30.14s wall /3.19s user CPU /5.69s system CPU. Twenty additional audited
+  declarations are clean (only standard axioms, no `sorryAx`). Isolated
+  `lake env lean Char2Degree15FastInverse.lean`: 8.30s wall /3.55s user CPU,
+  with prerequisites already compiled, not a clean six-module timing.
+- Checked degree17 product-update/S-R-E coordinate helpers and degree23
+  shared-branch/five-factor identities are also batched into the umbrella.
+  They are still components, not completed17/23 output decoders. Full finite
+  construction coverage stays **5–16 and19–22**. Next coefficient-pivot
+  layers are being checked centrally; no commit/push/pin asserted.
+
+### 2026-09-05 — degree21/22 integrated; umbrella and lower-bound targets green at2075jobs
+
+- `Char2Degree21Inverse` now proves both compositions for the actual output
+  coefficient map on all twenty-one original raw offsets. The inverse is the
+  supplied key-coordinate change, named-prefix back-substitution, and row
+  reversal. Its evaluation equivalent uses the existing explicit Lagrange
+  decoder. No finite-field search, Jacobian criterion, or new circuit is used.
+- `Char2Degree21Realization.decoder_correct/monic_evaluation` connect that
+  inverse to every monic degree21 target and the **literal eleven-product**
+  program. `Char2Finite.degree21/degree22` expose 11/12-product constructions.
+  The program bridge now checks individual gates and named bind tails; a
+  costly whole-expression reduction and an implicit inverse reduction were
+  replaced with small named equations, without raising the20k heartbeat cap.
+- Full check PASS: `nice -n10 lake build FastPoly FastPoly.LowerBound.Main
+  FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport`,
+  **2075jobs**, 104.85s wall /7.12s user CPU /20.77s system CPU on the loaded
+  machine. Working-tree integration only; no new commit pin or push claimed.
+  The degree17 gate hierarchy and both raw/gate-coordinate inverse directions,
+  generalized supplied-pivot back-substitution, and degree23 monicity helpers
+  are also now imported. All nineteen additional audited declarations have
+  only the standard three axioms, with no `sorryAx`.
+- Please use **5–16 and19–22** for completed finite construction coverage in
+  your README/formalization-map lane. Degree17's output coefficient inverse
+  is still pending; its gate-coordinate inverse is not that stronger result.
+  Degree23/25 full decoders and the faster replacement of old degree15 remain
+  in progress. No full5–25 claim yet.
+
+### 2026-09-05 — all-n research: a cancelling terminal-pair family now has explicit collisions
+
+- `notes/lower_cancelling_terminal_pair_swap.md` excludes a uniform
+  terminal-pair architecture after r>=1 products sharing a retained
+  factor E(x)+bi. The prefix term A must have a supplied expression
+  in E of degree at most r+1. For E=x this is the ordinary degree
+  condition deg A<=r+1. The prefix may contain arbitrary nonlinear gates.
+- The five original terminal slots have a displayed polynomial coordinate
+  inverse. Exchanging the last run root with the effective output root
+  leaves their product unchanged. The run's actual first-factor slots,
+  plus two actual terminal coordinates, repair the discrepancy by named
+  unit pivots in powers of E. All fixed skipped wires and permitted
+  earlier output tails remain in the sensitivity recurrence.
+- This supplies a literal collision for the seven-product monicity guard
+  in the preceding cut-degree note: from all slots zero except h=1,
+  use g'=-1,h'=0 and (i',j',k',l',o')=(1,0,1,1,-1). It still shows
+  sharpness for the weaker prefix/frame conditions, but its scalar map
+  is explicitly noninjective. All characteristics are covered.
+- Root audited the algebra and ran the checker: both source inverses,
+  quadratic involution, exact run responses/root swap/unit pivots at
+  r=2,3,4, and the seven-product collision all PASS. The all-r proof is
+  the supplied recurrence; no enumeration or degree26 expansion was used.
+  Index section37 records the scope. The unrestricted all-n theorem is
+  still unproved and active. Notes/tools only; c7/c4 and the separate
+  decoder-port lane remain acknowledged, with no shared-paper or Lean edits.
+
+### 2026-09-05 — named inverse helpers checked; degree21 program bridge split into stages
+
+- Degree17's `Char2UnequalOffsets` and `Char2Degree17QuadraticOffsets` helpers
+  check the actual gate-row maps and both supplied inverse compositions, at
+  the unchanged 20,000-heartbeat cap (about 1.7–1.9s user CPU per check).
+  `Char2PivotUpdates` is also checked: it generalizes the explicit prefix
+  inverse to supplied zero-preserving scalar equivalences, for the existing
+  square/fourth-power pivots. Full degree17 realization is not yet claimed.
+- `Char2Degree23Frame` checks monicity of every named gate and the output;
+  the earlier degree23 key/terminal components remain checked. Replayed
+  `verify_n23_unitriangular_symbolic.py`: PASS in0.13s, exactly its key inverse,
+  18 scalar pivots, four-row block, and constant assertion. No enumeration
+  or new circuit search was run. The other Lean coefficient bridges remain.
+- The first combined check found one degree21 key-update normalization too
+  expensive; it is now a small supplied scalar identity, awaiting recheck.
+  The literal program evaluation also needs staged bind-tail equations:
+  its whole-expression simp proof elaborated but made kernel checking slow,
+  so that run was stopped and the same eleven gates were split into named
+  tails/environments. No increased heartbeat limit or completed21 claim.
+- An old-permissions build prompt in the degree21 worker delayed its handoff;
+  it was aborted without starting a build. Root is checking that lane centrally.
+  Degree15/17 continue using the serialized slot, with checked versus draft
+  status kept separate. No umbrella imports for unchecked modules.
+
+### 2026-09-05 — separate all-n lower-bound research: arbitrary-profile cut bounds
+
+- Acknowledged c7/c4 and the replacement coordination instructions. This
+  lower-bound research stays in `notes/` and exact `tools/` checkers;
+  no manuscript, shared Lean, build, or publication-lane changes are made.
+  The older research handoffs were in `better_bounds/AGENT_COORDINATION.md`;
+  subsequent handoffs for this lane will use this outbox.
+- `notes/lower_antichain_cut_degree.md` proves a uniform raw-wire bound
+  `deg Ui<=2m-2` for normalized monic degree-m candidates, without strict
+  degrees or fixed leading coefficients. Literal cut-slot extraction gives
+  the stronger weighted antichain bound; high wires occur jointly affinely.
+  Its seven-product monicity guard attains raw degree26 at output degree14,
+  with an explicitly decoded prefix and independent terminal frame, but
+  no asserted scalar inverse. The exact local-identity checker passes.
+- `lower_extreme_factor_terminalization.md` strengthens this: any factor
+  of degree `m-1` forces its gate to be already terminal. A scalar cut slope
+  is a unit by injectivity; a latest-fresh-slot argument prohibits a constant
+  slope through a genuine downstream product path. Hence original nonterminal
+  wires have degree at most `2m-4`. All substitutions and collisions are
+  explicit; no solver or Jacobian sufficiency is used.
+- Index sections 33–36 also record the full-inverse affine-fiber frame and
+  residual graph ideal, the codimension-one global-pivot boundary, and a
+  terminal-equality shear certificate using actual prefix products. The frame
+  and shear symbolic checkers passed in root's runs. All-n remains unproved
+  and active; these results are research notes, not new Lean theorem claims.
+
+### 2026-09-05 — resumed checks; degree21 assembly and degree15 performance refactor
+
+- Resumed after the interrupted permission prompt. No pending root build was
+  found; the previous attempted build had not produced its two target oleans.
+  `ExplicitCircuitConstruction` is now checked: it packages the supplied
+  coefficient inverse and literal counted program without choosing parameters
+  from an existential theorem. The degree21 program count checks, while its
+  evaluation bridge is being made more explicit under the unchanged heartbeat cap.
+- Degree21's existing frame and seventeen local pivots were already checked.
+  The remaining four leading pivots and raw-key update bridge are in the
+  serialized build queue, followed by the actual two-sided coefficient inverse.
+  No degree21 completion is claimed until the counted realization is checked.
+- The degree15 replacement keeps the existing eight-product circuit and
+  cancels its shared `w+s` term before reading any coefficients. The old
+  generated certificate remains in place until the staged replacement checks.
+  The degree17 verifier's explicit unequal-degree two-offset inverse is also
+  being ported in a fresh module; that is not yet a whole degree17 decoder.
+
+### 2026-09-05 — degree19 raw-key bijection integrated; final check at2060jobs
+
+- `Char2Degree19Bijection` now closes the stronger claim as well: the supplied
+  decoder recovers each of the original nineteen raw offsets. Both low-coefficient
+  inverse compositions are checked and packaged in `coefficientEquiv`.
+  `evaluationEquiv` supplies the explicit Lagrange-then-circuit inverse at
+  nineteen distinct points, over every characteristic-two field.
+- Final umbrella + old/general lower-bound/transport targets PASS at **2060
+  jobs**. The additional bijection module checked in1.0s with the20,000-heartbeat
+  cap; its inverse/evaluation axiom audits are clean (standard three only).
+  All21newly audited declarations are clean. These changes are integrated in
+  the working tree; no commit hash or push is claimed.
+- The older degree15 performance audit found repeated normalization of
+  individual degree12 branches which cancel in `w+s`. A fresh staged port
+  will preserve the existing circuit, prove that cancellation before reading
+  rows, and use fifteen named finite differences plus explicit back-substitution.
+  The old generated file/generator is not being replaced until its equivalent
+  counted construction is checked. Degree21's existing construction is also
+  proceeding via the already checked degree19 crown identities.
+
+### 2026-09-05 — degree19/20 realization complete; umbrella and lower-bound targets green
+
+- `Char2Degree19Realization.decodePolynomial_correct` now checks the explicit
+  decoder against **every** monic degree-19 target. The stages are the supplied
+  outer cubic inverse/monic division, thirteen checked inner unit pivots, actual
+  prefix back-substitution, and installation of the three final offsets.
+  `Char2Degree19Program` ties that exact output to the literal 10-product syntax.
+  `Char2Finite.degree19/degree20` expose 10/11-product constructions. Degree19
+  needs no perfect-field assumption. No new circuit was searched for.
+- All new degree19 and generic inverse declarations keep the 20,000-heartbeat
+  limit. `ExplicitEvaluationInverse` also exposes the Lagrange inverse and both
+  compositions, and the existing finite-family/septic wrappers now use it.
+  A stronger public raw-key degree19 bijection is being packaged separately;
+  its omission does not qualify the completed arbitrary-target realization.
+- Build PASS: `nice -n 10 lake build FastPoly FastPoly.LowerBound.Main
+  FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport`,
+  **2059 jobs, 141.29s wall**. All sixteen newly audited inverse/equivalence/
+  constructor declarations report only `propext`, `Classical.choice`, and
+  `Quot.sound`; no `sorryAx`. This is a checked working tree, not a commit pin.
+- Please update the README/formalization-map coverage in your lane to **5–16
+  plus 19–20**. The contiguous dispatcher remains capped at16 while17/18 are
+  pending. Full17–25 coverage is still not claimed. Degree23 now has its complete
+  key-coordinate inverse, but its other circuit coefficient pivots remain.
+- A performance audit remains: the older generated degree15 coefficient
+  certificate took123s in the rebuild (degree11/13 took82/87s under parallel
+  load). We are identifying named-wire replacements, not raising their budgets.
+  The next existing high-degree base21 is being ported by reusing the checked
+  degree19 crown/pivot lemmas, with only two additional local cancellations.
+
+### 2026-09-05 — c7 acknowledged; c2 visual sweep complete; explicit inverse progress
+
+- Consumed c7: Claude has front matter, formalization map, benchmarks, stability,
+  and bundle back. Codex will not make further edits outside the construction
+  lane without coordination. The earlier narrow layout fixes are complete.
+- The c2 source sweep and render checks are complete. Final current PDF: 201
+  pages, all 49 fonts embedded, zero TeX errors, undefined references/citations,
+  overfull boxes, oversized floats, bookmark warnings, or font substitutions.
+  The reviewed construction diagrams and the repaired split Table 3 are clean.
+  The septic bounding-box crop was ultimately applied after measuring the
+  rendered ink; unlike the initial speculative crop, it was visually verified.
+  There remain 27 underfull-box diagnostics and some generous figure whitespace.
+- New explicit-inverse infrastructure `Char2UpdateTriangular.lean` checks both
+  compositions of recursive back-substitution from single-coordinate unit-pivot
+  identities. Direct check: 1.66s user CPU; 20,000-heartbeat cap. This avoids
+  expanding the circuit's baseline into its original keys.
+- Degree-23 key coordinates now have a checked two-sided inverse, including the
+  row-eight shear (`Char2Degree23Coordinates/Keys`). Degree-19's actual circuit
+  crown/outer inverse and key-coordinate inverse also check. These are components,
+  not completed high-degree constructions. The inner degree-19 pivots are in
+  progress; full characteristic-two coverage remains 5–16 for now.
+- A new umbrella/LowerBound build and axiom audit will follow integration of the
+  green modules. No new commit pin is claimed yet; please keep the coverage map
+  honest about the incomplete 17–25 coefficient-decoder bridges.
+
+### 2026-09-05 — publication review fixes and visual defects
+
+- Source-review agents addressed c2 items 1–41 in the construction appendix
+  and directly related figures (the speculative septic bounding-box crop was
+  not applied). The barred four-variable solve is now written as explicit
+  back-substitution, with both compositions checked symbolically. A first
+  PDF build passed at 201 pages but exposed two real layout defects.
+- Taking a narrow layout-only handoff in Claude's files: Table 3 in
+  `experiments.tex` overflowed the page footer, so it is now a `longtable`
+  (one package added to `header.tex`). The n19/n21 verifier paths in
+  `appendix_polynomials.tex` and three formalization-map identifiers have
+  explicit line-break opportunities. No benchmark values, claims, or
+  coverage statuses were changed by these layout edits. Re-rendering is
+  being coordinated before declaring the visual pass complete.
+
+### 2026-09-05 — coordinated publication continuation
+
+- The preceding turn made verified progress: the actual degree-23 exit map
+  has an explicit two-sided inverse and the umbrella builds. The publication
+  goal remains active; full characteristic-two coverage is still incomplete.
+- Codex is continuing the degree-23 inverse. A bounded Lean subagent is
+  handling the existing degree-19 crown/outer decoder in fresh Examples
+  modules; all Lean runs are serialized by Codex. Neither is searching for
+  replacement circuits or using global expansion proofs.
+- A separate source-review subagent is checking/fixing c2 items 1–21 in
+  `sections/constructions/` and the corresponding figure sources, including
+  the explicit four-by-four back-substitution. Please avoid concurrent edits
+  in those files until the handoff. No benchmark/stability proof expansion,
+  external submission, or commit/push is authorized by this handoff.
+
 ### 2026-09-05 — explicit inverses required for every decoder proof
 
 - Thomas reiterates: **all** decoder proofs must be via explicit inverses,
@@ -311,6 +559,62 @@ Requests:
 - Read c2/c3. Their other manuscript/benchmark tasks are not part of this current
   user request; I have not taken over the expensive reruns or stability integration.
   New coordination uses this file. Please preserve this outbox when updating yours.
+
+## Degree15 fast-port agent -> Codex
+
+### 2026-09-05 — named-wire replacement, staged checks
+
+- Own lane is fresh `Char2Degree15Fast*.lean` only. The old generated degree-15
+  file and its generator are unchanged until the full equivalent replacement
+  passes. Acknowledged Thomas's explicit-inverse and small-step requirements.
+- `FastCore` passed a direct Lean check at the 20,000-heartbeat cap: 12.52 s
+  wall / 2.72 s user. It preserves the original eight gates, cancels the shared
+  `z*v` in `w+s` before reading coefficients, and proves the resulting branch
+  has degree ten and the final polynomial is monic of degree fifteen.
+- All six replacement modules are now **green**, including `FastInverse`,
+  `FastProgram`, and `FastRealization`, at the 20,000-heartbeat cap. Root has
+  redirected `Char2Finite.degree15` to `Char2Degree15Fast.construction`; its
+  even lift still gives degree sixteen with nine products. The old generated
+  degree-15 source remains untouched but is no longer on the active import path.
+- Method: cancel the shared `z*v` in the named branch `w+s`; eleven direct
+  monic-slope changes handle coordinates 4–14. Four leading changes use one
+  cubic identity in the degree-five wire, with an explicitly bounded lower
+  tail. `FastInverse` then performs literal prefix-evaluation back-substitution
+  and checks both compositions. No expanded coefficient baseline is used.
+- `FastProgram` uses one named gate and bind-tail equation per step, preserving
+  the original eight-product syntax. `FastRealization` proves the counted
+  construction for every monic degree-fifteen target and provides explicit
+  interpolation-then-coefficient inversion at fifteen distinct points.
+  Bijections are in the original verifier's normalized coordinates; this lane
+  does not additionally claim a raw-key bijection. Full rebuild, axiom audit,
+  and isolated inverse CPU timing are being run centrally by root.
+- The existing Python verifier's fifteen symbolic unit-pivot assertions passed
+  in 0.04 s via `runpy`; its optional exhaustive finite-field diagnostic was
+  deliberately not run. The normalized coordinates and circuit are unchanged.
+- Lean checks are centralized in root now. A build approval prompt in this
+  lane was aborted without starting a process; do not launch local checks or
+  hold the shared build slot for permission prompts.
+
+### 2026-09-05 — degree-11 active variant and grouped-offset provenance
+
+- `char2/verify_n11.py` certifies a different appendix circuit requiring two
+  Frobenius inverses. The active `website/js/char2.js` / `Char2Degree11.lean`
+  circuit instead has the square-first universal head and six products with
+  unit pivots only. The new `Char2Degree11FastCore` stays with that active
+  circuit; no historical degree-11 construction is being ported.
+- A read-only symbolic comparison checked **all eleven** grouped scalar
+  offsets in the new core against both the active website coordinate map and
+  every `Char2Degree11.offset_i`, in unrestricted `GF(2)[q0,...,q10]`: PASS.
+  Scalar term counts were `[1,2,3,6,1,1,10,6,1,35,1]`. No circuit polynomial,
+  `B*J` product, field-value enumeration, or search was evaluated. Lean still
+  must independently check the resulting small wire and inverse identities.
+- Degree 13 remains read-only. Its verifier uses the same gate circuit, but
+  `verify_n13.py` has `a4=q9`, whereas the active generated Lean map has
+  `a4=q8+q9`; both are triangular coordinate choices. Preserve the active
+  choice if replacing that certificate. Its nonmonotone row order requires
+  a few explicit zero coefficient-window checks, not degree bounds alone.
+- Core and the forthcoming small `J`-signature module are the two staged
+  layers. Keep `B*J` named and hold unit-pivot work until these layers pass.
 
 ## Open decisions (author)
 

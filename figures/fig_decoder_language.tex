@@ -26,6 +26,7 @@
      \quad$\lambda_j\ne0$};
 
   % Panel (b): nested shells.
+  \begin{scope}[xshift=4mm]
   \node[fp panel title] at (7.45,4.05) {(b) A top-down construction};
   \draw[fp decode] (7.45,3.62) -- node[fp label, above]
     {peel, subtract, expose} (13.45,3.62);
@@ -38,7 +39,7 @@
     {hidden tail};
 
   \node[fp second, minimum width=27mm, anchor=west] (inner) at (9.35,1.82)
-    {next shell};
+    {next block};
   \node[fp seam, minimum width=7mm, anchor=west] at (12.05,1.82)
     {seam};
 
@@ -46,20 +47,21 @@
     {smaller instance};
   \draw[fp dependence] (outer.south east) to[bend left=15] (inner.north west);
   \draw[fp dependence] (inner.south east) to[bend left=15] (rec.north west);
+  \end{scope}
 
   % Complete key.  Labels make the figure readable without colour.
   \node[fp active, minimum width=8mm, minimum height=4mm] at (0.4,0.2) {};
   \node[fp label, anchor=west] at (0.9,0.2) {being recovered};
-  \node[fp second, minimum width=8mm, minimum height=4mm] at (3.35,0.2) {};
-  \node[fp label, anchor=west] at (3.85,0.2) {next block};
-  \node[fp recursive, minimum width=8mm, minimum height=4mm] at (5.85,0.2) {};
-  \node[fp label, anchor=west] at (6.35,0.2) {smaller instance};
-  \node[fp pivot, minimum width=8mm, minimum height=4mm] at (9.1,0.2) {};
-  \node[fp label, anchor=west] at (9.6,0.2) {constant-slope pivot};
+  \node[fp second, minimum width=8mm, minimum height=4mm] at (3.6,0.2) {};
+  \node[fp label, anchor=west] at (4.1,0.2) {next block};
+  \node[fp recursive, minimum width=8mm, minimum height=4mm] at (6.35,0.2) {};
+  \node[fp label, anchor=west] at (6.85,0.2) {smaller instance};
+  \node[fp pivot, minimum width=8mm, minimum height=4mm] at (9.85,0.2) {};
+  \node[fp label, anchor=west] at (10.35,0.2) {constant-slope pivot};
   \node[fp known, minimum width=8mm, minimum height=4mm] at (0.4,-0.45) {};
   \node[fp label, anchor=west] at (0.9,-0.45) {known};
-  \node[fp unread, minimum width=8mm, minimum height=4mm] at (3.35,-0.45) {};
-  \node[fp label, anchor=west] at (3.85,-0.45) {not yet read};
-  \node[fp seam, minimum width=8mm, minimum height=4mm] at (5.85,-0.45) {};
-  \node[fp label, anchor=west] at (6.35,-0.45) {boundary seam};
+  \node[fp unread, minimum width=8mm, minimum height=4mm] at (3.6,-0.45) {};
+  \node[fp label, anchor=west] at (4.1,-0.45) {not yet read};
+  \node[fp seam, minimum width=8mm, minimum height=4mm] at (6.35,-0.45) {};
+  \node[fp label, anchor=west] at (6.85,-0.45) {boundary seam};
 \end{tikzpicture}

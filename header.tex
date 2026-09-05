@@ -3,6 +3,7 @@
 % Third-pass stretch for paragraphs whose only break points sit inside long \texttt paths.
 \setlength{\emergencystretch}{3em}
 \usepackage{booktabs}
+\usepackage{longtable}
 \usepackage[utf8]{inputenc}
 \usepackage[UKenglish]{babel}
 
@@ -12,16 +13,8 @@
 \usepackage{amssymb}
 %\usepackage{nath}
 
-\newtheorem{theorem}{Theorem}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
-\newtheorem{fact}{Fact}
-\theoremstyle{definition}
-\newtheorem{definition}{Definition}
-\newtheorem{example}{Example}
-\theoremstyle{remark}
-\newtheorem{remark}{Remark}
+% Theorem environments are defined after cleveref is loaded (below): a shared
+% counter defined before cleveref makes \Cref print ``Theorem'' for propositions.
 
 
 \usepackage{algorithm}
@@ -43,6 +36,16 @@
 \providecommand*{\theHALG@line}{\arabic{algorithm}.\arabic{ALG@line}}
 \makeatother
 \usepackage{cleveref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{fact}{Fact}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
 \usepackage{autonum}
 % Figures
 \usepackage{graphicx}

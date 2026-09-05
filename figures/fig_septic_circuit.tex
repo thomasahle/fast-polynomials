@@ -11,7 +11,7 @@
   \node[mul] (mz) at (4.9,0) {$\times$};
   \node[mul] (mw) at (7.6,0) {$\times$};
   \node[mul] (mv) at (10.3,0) {$\times$};
-  \node[inp] (out) at (12.9,0) {$P_7$};
+  \node[inp] (out) at (13.6,0) {$P_7$};
   \node[font=\footnotesize] at (2.2,0.55) {$y$};
   \node[font=\footnotesize] at (4.9,0.55) {$z$};
   \node[font=\footnotesize] at (7.6,0.55) {$w$};
@@ -31,4 +31,8 @@
   \draw[->] (mz) to[out=-45, in=-135, looseness=1.0] node[lbl, pos=0.55, below] {$\alpha_2+x+z$} (mv);
   % output: a0 + y + w + v
   \draw[->] (mv) -- node[lbl, above] {$\alpha_0+y+w+v$} (out);
+  % Use the visible ink extent, not the lower Bezier control points.
+  % This changes layout only: no clipping path is installed.
+  \pgfresetboundingbox
+  \path[use as bounding box] (-0.2,-2.9) rectangle (13.9,0.8);
 \end{tikzpicture}
