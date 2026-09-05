@@ -1,0 +1,109 @@
+Reading random bytes from seed
+ARM NEON Benchmark
+==================
+Trials per test: 1000000
+Repetitions: 100
+
+Tabulation 8x2^8: Mean: 1660.02 ± 11.606 min 1614
+
+Degree 2
+Mersenne (traditional): Mean: 1350.93 ± 9.59089 min 1315
+Mersenne (Mikkel): Mean: 1352.78 ± 7.32609 min 1324
+Mersenne, smart: Mean: 1376.43 ± 10.3877 min 1344
+Carryless: Mean: 500.76 ± 2.40882 min 488
+Lemire: Mean: 538.21 ± 3.59248 min 524
+Estrin: Mean: 538.16 ± 3.27329 min 523
+Rabin Winograd: Mean: 615.33 ± 4.61314 min 599
+Smart CL: Mean: 537.55 ± 4.0184 min 523
+Degree 3
+Mersenne (traditional): Mean: 3199.59 ± 14.343 min 3136
+Mersenne (Mikkel): Mean: 2419.22 ± 18.353 min 2354
+Mersenne, smart: Mean: 2461.16 ± 15.0663 min 2406
+Carryless: Mean: 851.81 ± 9.04068 min 818
+Lemire: Mean: 891.79 ± 10.588 min 862
+Estrin: Mean: 1188.01 ± 12.0669 min 1156
+Rabin Winograd: Mean: 927.89 ± 9.06851 min 891
+Smart CL: Mean: 902.74 ± 9.76588 min 869
+Degree 4
+Mersenne (traditional): Mean: 5477.85 ± 32.8242 min 5344
+Mersenne (Mikkel): Mean: 3881.64 ± 23.724 min 3780
+Mersenne, smart: Mean: 4137.61 ± 29.6442 min 4037
+Carryless: Mean: 1357.99 ± 14.4191 min 1313
+Lemire: Mean: 1454.57 ± 13.7929 min 1419
+Estrin: Mean: 1592.73 ± 11.8767 min 1555
+Rabin Winograd: Mean: 1464.28 ± 18.0649 min 1417
+Smart CL: Mean: 1458.19 ± 13.0113 min 1416
+Degree 5
+Mersenne (traditional): Mean: 8279.54 ± 60.7146 min 8012
+Mersenne (Mikkel): Mean: 5663.16 ± 38.7021 min 5539
+Mersenne, smart: Mean: 5584.84 ± 43.9322 min 5428
+Carryless: Mean: 1923.67 ± 18.1296 min 1878
+Lemire: Mean: 2205.11 ± 17.9588 min 2157
+Estrin: Mean: 2425.66 ± 20.1093 min 2343
+Rabin Winograd: Mean: 2290.07 ± 22.051 min 2228
+Smart CL: Mean: 1493.2 ± 14.6068 min 1452
+Degree 6
+Mersenne (traditional): Mean: 11267.3 ± 55.7985 min 11011
+Mersenne (Mikkel): Mean: 7696.32 ± 32.3243 min 7590
+Mersenne, smart: Mean: 7278.77 ± 37.3389 min 7142
+Carryless: Mean: 2585.22 ± 21.8685 min 2500
+Lemire: Mean: 3134.52 ± 31.128 min 3013
+Estrin: Mean: 2773.56 ± 21.2755 min 2705
+Rabin Winograd: Mean: 2706.12 ± 17.754 min 2648
+Smart CL: Mean: 1889.51 ± 17.0091 min 1836
+Degree 7
+Mersenne (traditional): Mean: 14584.9 ± 60.9236 min 14296
+Mersenne (Mikkel): Mean: 9787.1 ± 56.0913 min 9554
+Mersenne, smart: Mean: 8873.6 ± 35.7329 min 8770
+Carryless: Mean: 3326.44 ± 33.6587 min 3225
+Lemire: Mean: 4246.16 ± 33.7955 min 4147
+Estrin: Mean: 3256.42 ± 28.8094 min 3183
+Rabin Winograd: Mean: 2303.19 ± 12.2513 min 2248
+Smart CL: Mean: 2346.1 ± 8.52819 min 2308
+Degree 8
+Mersenne (traditional): Mean: 18370.3 ± 75.21 min 18087
+Mersenne (Mikkel): Mean: 12077.1 ± 44.506 min 11927
+Mersenne, smart: Mean: 9889.6 ± 48.2612 min 9718
+Carryless: Mean: 4203.66 ± 21.1708 min 4102
+Lemire: Mean: 5588.57 ± 25.1906 min 5499
+Estrin: Mean: 3743.81 ± 16.3821 min 3691
+Rabin Winograd: Mean: 3221.42 ± 11.2314 min 3174
+Smart CL: Mean: 2624.41 ± 11.5517 min 2581
+Degree 9
+Mersenne (traditional): Mean: 22401.8 ± 76.8979 min 22137
+Mersenne (Mikkel): Mean: 14335.9 ± 60.9113 min 14129
+Mersenne, smart: Mean: 11863.6 ± 42.1164 min 11716
+Carryless: Mean: 5140.67 ± 29.5784 min 5022
+Lemire: Mean: 7008.16 ± 41.8984 min 6878
+Estrin: Mean: 5123.49 ± 26.2128 min 5025
+Rabin Winograd: Mean: 4175.29 ± 8.99143 min 4159
+Smart CL: Mean: 2833.07 ± 13.7726 min 2782
+
+Injective Polynomial Hashing
+=============================
+(Compares N multiplications vs 2N-1 for same independence)
+
+N=2 (2N=4 keys, 4-wise)
+  Horner (2N-1 mults): Mean: 1458.39 ± 13.292 min 1416
+  Injective (N mults): Mean: 1504.3 ± 10.8457 min 1471
+N=3 (2N=6 keys, 6-wise)
+  Horner (2N-1 mults): Mean: 3146.47 ± 23.3745 min 3066
+  Injective (N mults): Mean: 2313.35 ± 17.1449 min 2253
+N=4 (2N=8 keys, 8-wise)
+  Horner (2N-1 mults): Mean: 5561.4 ± 29.3881 min 5437
+  Injective (N mults): Mean: 3261.51 ± 27.0564 min 3181
+N=5 (2N=10 keys, 10-wise)
+  Horner (2N-1 mults): Mean: 8505.5 ± 31.4253 min 8402
+  Injective (N mults): Mean: 4444.58 ± 23.7277 min 4332
+N=6 (2N=12 keys, 12-wise)
+  Horner (2N-1 mults): Mean: 12256.6 ± 67.782 min 11923
+  Injective (N mults): Mean: 5779.46 ± 29.8595 min 5685
+N=7 (2N=14 keys, 14-wise)
+  Horner (2N-1 mults): Mean: 16358.5 ± 71.2571 min 15974
+  Injective (N mults): Mean: 7334.07 ± 54.1683 min 7145
+N=8 (2N=16 keys, 16-wise)
+  Horner (2N-1 mults): Mean: 20962.1 ± 84.9726 min 20517
+  Injective (N mults): Mean: 8773.29 ± 32.33 min 8642
+N=9 (2N=18 keys, 18-wise)
+  Horner (2N-1 mults): Mean: 26151 ± 99.2081 min 25824
+  Injective (N mults): Mean: 10676 ± 60.2335 min 10480
