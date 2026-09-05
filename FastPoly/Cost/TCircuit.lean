@@ -1,4 +1,4 @@
-import FastPoly.Cost.MersenneCircuit
+import FastPoly.Cost.FillCircuitPolynomial
 import FastPoly.Section5.T
 import FastPoly.Cost.PeeledCircuit
 

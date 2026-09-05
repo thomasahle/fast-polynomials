@@ -1,5 +1,5 @@
 import FastPoly.Cost.FillCircuit
-import FastPoly.Cost.MersenneCircuitCount
+import FastPoly.Cost.PeeledCircuit
 import FastPoly.Cost.RealizationComposition
 import FastPoly.Cost.TCircuitCount
 import FastPoly.Section5.QFourKOne

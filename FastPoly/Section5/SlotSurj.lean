@@ -19,48 +19,6 @@ open Polynomial Algebra
 variable {R A : Type*} [CommRing R] [CommRing A] [Algebra R A] [Nontrivial A]
 variable {K : Subalgebra R A} {Hp : ℕ → A[X]}
 
-/-- The coefficients of the Mersenne gadget lie in the closure of its slot values. -/
-theorem mers_coeff_mem_slots (k : ℕ)
-    (hHp : ∀ i, 1 ≤ i → i < k → (Hp i).Monic ∧ (Hp i).natDegree = 2 ^ i ∧
-      (∀ j, (Hp i).coeff j ∈ K))
-    (hk : 1 ≤ k) (α : ℕ → A) :
-    ∀ j, (mers Hp k α).coeff j
-      ∈ K ⊔ adjoin R ((mersSlot k α (A := A)) '' Set.Ico 0 (2 ^ k - 1)) := by
-  intro j
-  have hcert := mers_unitriangular (K := K) Hp k hHp hk α
-  have hsupp := hcert.supp₂ j
-  have hkey : (mers Hp k α).coeff j
-      = (mers Hp k α - X ^ (2 ^ k - 1)).coeff j + (X ^ (2 ^ k - 1) : A[X]).coeff j := by
-    rw [coeff_sub]
-    ring
-  rw [hkey]
-  refine Subalgebra.add_mem _ ?_ ?_
-  · refine SetLike.le_def.1 (sup_le le_sup_left (adjoin_le ?_)) hsupp
-    rintro _ ⟨g, ⟨hg1, hg2⟩, rfl⟩
-    exact (le_sup_right : adjoin R _ ≤ _)
-      (subset_adjoin ⟨g, ⟨by omega, by omega⟩, rfl⟩)
-  · rw [coeff_X_pow]
-    split
-    · exact (le_sup_left : K ≤ _) (Subalgebra.one_mem _)
-    · exact (le_sup_left : K ≤ _) (Subalgebra.zero_mem _)
-
-/-- **Slot inversion for the Mersenne gadget**: a subalgebra containing the tower data
-and all slot values contains every raw parameter. -/
-theorem mers_param_from_slots (k : ℕ) {V : Subalgebra R A}
-    (hHp : ∀ i, 1 ≤ i → i < k → (Hp i).Monic ∧ (Hp i).natDegree = 2 ^ i ∧
-      (∀ j, (Hp i).coeff j ∈ V))
-    (hk : 1 ≤ k) (α : ℕ → A)
-    (hslots : ∀ g, g < 2 ^ k - 1 → mersSlot k α (A := A) g ∈ V) :
-    ∀ t, t < 2 ^ k - 1 → α t ∈ V := by
-  have hcoeffs : ∀ j, (mers Hp k α).coeff j ∈ V := by
-    intro j
-    have h := mers_coeff_mem_slots (K := V) k hHp hk α j
-    refine SetLike.le_def.1 (sup_le le_rfl (adjoin_le ?_)) h
-    rintro _ ⟨g, ⟨-, hg2⟩, rfl⟩
-    exact hslots g hg2
-  exact mers_correct (K := V) Hp k hHp hk α V le_rfl hcoeffs
-
-
 /-- The coefficients of the peeled gadget lie in the closure of its slot values. -/
 theorem peel_coeff_mem_slots (k : ℕ)
     (hHp : ∀ i, 1 ≤ i → i < k → (Hp i).Monic ∧ (Hp i).natDegree = 2 ^ i ∧

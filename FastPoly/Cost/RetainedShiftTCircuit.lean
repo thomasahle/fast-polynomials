@@ -31,7 +31,7 @@ private abbrev a {R : Type u} (i : ℕ) : Circuit R ConstructionInput 1 :=
   Circuit.constructionParameter i
 
 private abbrev q3 {R : Type u} : Circuit R ConstructionInput 1 :=
-  (mersCircuit 2).reindexConstructionParameters (fun j => 1 + j)
+  (peelCircuit 2).reindexConstructionParameters (fun j => 1 + j)
 
 /-! ## Shared even base -/
 
@@ -161,7 +161,7 @@ theorem oddBaseAux_additions {R : Type u} [CommRing R] (k : ℕ)
     Circuit.gates_constructionParameter, Circuit.gates_reindexConstructionParameters,
     GateCount.add_additions, GateCount.zero_additions, GateCount.adds_additions,
     GateCount.muls_additions, q3]
-  have hq₃ : (mersCircuit (R := R) 2).gates.additions = 3 := by rfl
+  have hq₃ : (peelCircuit (R := R) 2).gates.additions = 3 := by rfl
   rw [hq₃]
   omega
 
@@ -176,7 +176,7 @@ theorem oddBaseAux_multiplications {R : Type u} [CommRing R] (k : ℕ)
     Circuit.gates_constructionParameter, Circuit.gates_reindexConstructionParameters,
     GateCount.add_multiplications, GateCount.zero_multiplications,
     GateCount.adds_multiplications, q3]
-  rw [gates_mersCircuit_multiplications (R := R) 2 (by omega)]
+  rw [gates_peelCircuit_multiplications (R := R) 2 (by omega)]
   omega
 
 theorem oddBaseCircuit_additions {R : Type u} [CommRing R] (k : ℕ)
@@ -341,7 +341,6 @@ theorem eval_oddBaseAux_eq (k : ℕ) (hk : 1 ≤ k)
           Circuit.eval_diffSquareAdd, Circuit.eval_liftLeft, Circuit.eval_rightInput,
           Circuit.input, Circuit.eval_wire, Fin.addCases_left, Fin.addCases_right,
           Sum.elim_inl, Sum.elim_inr, x, h, a, q3]
-        rfl
       · intro q
         have hq : q = 0 := Fin.eq_zero q
         subst q

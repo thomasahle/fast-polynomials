@@ -1,4 +1,4 @@
-import FastPoly.Polynomial.MonicEvaluation
+import FastPoly.Examples.ExplicitEvaluationInverse
 import Mathlib.Algebra.CharP.Lemmas
 
 /-!
@@ -137,7 +137,7 @@ theorem evaluation_bijective {n : ℕ} (hn : 1 ≤ n)
     (hP : ∀ q, P q = monicOfCoefficients (coefficientEquiv pivot tail ht rows q))
     (x : Fin n → F) (hx : Function.Injective x) :
     Function.Bijective (fun q => fun i => (P q).eval (x i)) := by
-  have he := (monicOfCoefficients_eval_bijective hn x hx).comp
+  have he := (ExplicitEvaluationInverse.evaluation_bijective hn x hx).comp
     (coefficientEquiv pivot tail ht rows).bijective
   simpa only [Function.comp_def, ← hP] using he
 

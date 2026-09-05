@@ -1,13 +1,11 @@
 import FastPoly.Section4.Peeled
 import FastPoly.Section4.Unitriangular
-import FastPoly.Section4.MersCert
 
 /-!
 # Unitriangular certificate for the peeled gadget
 
 `peel_unitriangular`: the peeled known-powers gadget is coefficient-triangular with
-unit slopes, in the exact `CoeffTriangular` shape of `mers_unitriangular`, so every
-Section-5 consumer of the certificate can swap gadget families by name.
+unit slopes, in the `CoeffTriangular` form consumed by the Section-5 decoders.
 
 The slot map `peelSlot` mirrors the peel layout: the `B` child occupies rows
 `0 … 2^{k-1}-2`, the glue key `γ` pivots at row `2^{k-1}-1` (the remainder's top
@@ -72,7 +70,7 @@ section main
 variable [Nontrivial A]
 
 /-- **Unitriangular certificate for the peeled gadget** (`lem:peeled-Q-decodable`,
-certificate form): same `CoeffTriangular` shape as `mers_unitriangular`. -/
+certificate form of `lem:Q-unitriangular`). -/
 theorem peel_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X]) :
     ∀ k, (∀ i, 1 ≤ i → i < k → (Hp i).Monic ∧ (Hp i).natDegree = 2 ^ i ∧
         (∀ j, (Hp i).coeff j ∈ K)) →
@@ -111,7 +109,7 @@ theorem peel_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X]) :
       obtain ⟨h1m, h1d, h1K⟩ := hHp 1 (by omega) (by omega)
       have hs2 : peelSlot (A := A) 2 α = α := funext fun r => rfl
       rw [show (2 : ℕ) ^ 2 - 1 = 3 from by norm_num, hs2]
-      exact mers_two_unitriangular Hp h1m h1d h1K α
+      exact peel_two_unitriangular Hp h1m h1d h1K α
     | (kk + 3) =>
       have h1p : (1:ℕ) ≤ 2 ^ (kk + 2) := Nat.one_le_pow _ _ (by omega)
       have hdd : 2 ^ (kk + 3) - 1 = 2 ^ (kk + 2) + (2 ^ (kk + 2) - 1) := by

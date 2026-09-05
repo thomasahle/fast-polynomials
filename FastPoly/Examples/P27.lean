@@ -1,5 +1,5 @@
 import FastPoly.Polynomial.CausalShell
-import FastPoly.Section4.KnownPowers
+import FastPoly.Section4.FillRec
 
 /-!
 # The degree-27 special construction

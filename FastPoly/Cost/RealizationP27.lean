@@ -1,4 +1,4 @@
-import FastPoly.Cost.MersenneCircuitCount
+import FastPoly.Cost.PeeledCircuit
 import FastPoly.Cost.PowerTowerCircuit
 import FastPoly.Cost.TCircuitCount
 import FastPoly.Examples.P27Full

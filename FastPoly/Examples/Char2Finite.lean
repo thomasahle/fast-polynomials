@@ -4,7 +4,9 @@ import FastPoly.Examples.Char2Degree7
 import FastPoly.Examples.Char2Degree9
 import FastPoly.Examples.Char2Degree11
 import FastPoly.Examples.Char2Degree13
-import FastPoly.Examples.Char2Degree15
+import FastPoly.Examples.Char2Degree15FastRealization
+import FastPoly.Examples.Char2Degree19Realization
+import FastPoly.Examples.Char2Degree21Realization
 
 /-!
 # Verified finite characteristic-two constructions
@@ -35,10 +37,27 @@ noncomputable def degree13 : Construction F 13 7 :=
   ⟨Char2Degree13.program, Char2Degree13.decode, Char2Degree13.program_decode_correct⟩
 
 noncomputable def degree15 : Construction F 15 8 :=
-  ⟨Char2Degree15.program, Char2Degree15.decode, Char2Degree15.program_decode_correct⟩
+  Char2Degree15Fast.construction
+
+/-- The existing degree-19 circuit, decoded by monic division and explicit
+thirteen-row back-substitution; no perfect-field assumption is needed. -/
+noncomputable def degree19 : Construction F 19 10 :=
+  Char2Degree19Realization.construction
+
+/-- The one-product lift of the completed degree-19 decoder. -/
+noncomputable def degree20 : Construction F 20 11 := degree19.evenLift
+
+/-- The supplied degree-21 circuit with its two-sided raw-key inverse. -/
+noncomputable def degree21 : Construction F 21 11 :=
+  Char2Degree21Realization.construction
+
+/-- The one-product lift of the completed degree-21 decoder. -/
+noncomputable def degree22 : Construction F 22 12 := degree21.evenLift
 
 /-- A fixed program with exactly `⌊n/2⌋+1` products and its explicit decoder.
-The perfect-field assumption is needed only by the degree-7 base and its lift. -/
+The perfect-field assumption is needed only by the degree-7 base and its lift.
+This contiguous dispatcher ends at 16 while degree17 is pending; the completed
+degree19–degree22 constructions are also exposed separately above. -/
 noncomputable def construction [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi : n ≤ 16) :
     Construction F n (n / 2 + 1) := by
   interval_cases n

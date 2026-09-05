@@ -1,15 +1,13 @@
 import FastPoly.Cost.Model
+import FastPoly.Cost.PeeledCircuit
 import FastPoly.Section5.T
 
 /-!
 # Exact gate counts for the fill, Mersenne, and `T` schedules
 
-The first mutually fuelled schedule is the optimized paper schedule for the fill and
-known-powers gadgets. Its well-founded order is the one used in the LaTeX proof:
-
-* `Q_r` first uses `Q_{r-2}` and the already constructed level-`r-2` fill;
-* the level-`r` fill then uses the level-`r-1` fill, `Q_{r-1}`, and the just constructed
-  `Q_r`.
+The known-powers ledger is read directly from the binary circuit `peelCircuit`.
+The fill ledger recursively combines these gadgets with the two local products.
+There is no separate known-powers schedule or mutual fill/known-powers recursion.
 
 The `T` schedule below mirrors the four branches of `TF`. It records multiplication gates
 only, since this is the cost used by the main theorem.
@@ -25,144 +23,53 @@ private def seq4 (p₁ p₂ p₃ p₄ : Program Unit) : Program Unit :=
 private def seq5 (p₁ p₂ p₃ p₄ p₅ : Program Unit) : Program Unit :=
   thenSchedule p₁ (seq4 p₂ p₃ p₄ p₅)
 
-mutual
-  /-- Fuelled optimized schedule for `Q_{2^k-1}`. Direct bases are available at every
-  fuel; fuel zero marks an unavailable non-base recursive call. -/
-  def mersScheduleF : ℕ → ℕ → Program Unit
-    | _, 0 => schedule (GateCount.of 1 0)
-    | _, 1 => schedule (GateCount.of 1 0)
-    | _, 2 => schedule (GateCount.of 3 1)
-    | _, 3 => schedule (GateCount.of 8 3)
-    | 0, _ + 4 => pure ()
-    | f + 1, k + 4 =>
-        seq4 (mersScheduleF f (k + 2))
-          (fillPairScheduleF f (k + 2))
-          (schedule (GateCount.adds 4))
-          (schedule (GateCount.muls 1))
+/-- Gate-count ledger of the actual binary known-powers circuit. -/
+def mersSchedule (k : ℕ) : Program Unit :=
+  schedule (peelCircuit (R := ℤ) k).gates
 
-  /-- Fuelled optimized schedule for `(A¹_{2^l},A²_{2^l})`, before the final
-  `(x+β₀)A¹+A²` gate. -/
-  def fillPairScheduleF : ℕ → ℕ → Program Unit
-    | _, 0 => pure ()
-    | _, 1 => schedule (GateCount.of 4 2)
-    | _, 2 => schedule (GateCount.of 11 5)
-    | 0, _ + 3 => pure ()
-    | f + 1, l + 3 =>
-        seq4 (fillPairScheduleF f (l + 2))
-          (mersScheduleF f (l + 2))
-          (mersScheduleF f (l + 3))
-          (schedule (GateCount.of 4 2))
-end
+/-- Paper `lem:fill-Q-count`, known-powers part. -/
+theorem mers_count (k : ℕ) (hk : 2 ≤ k) :
+    (mersSchedule k).gates = GateCount.of (5 * 2 ^ (k - 2) - 2) (2 ^ (k - 1) - 1) := by
+  exact gates_peelCircuit k hk
 
-/-- The optimized paper schedule for `Q_{2^k-1}`. -/
-def mersSchedule (k : ℕ) : Program Unit := mersScheduleF k k
+/-- The multiplication formula also includes the linear base `Q₁`. -/
+theorem mers_multiplication_count (k : ℕ) (hk : 1 ≤ k) :
+    (mersSchedule k).gates.multiplications = 2 ^ (k - 1) - 1 := by
+  exact gates_peelCircuit_multiplications k hk
 
-/-- The optimized paper schedule for `(A¹_{2^l},A²_{2^l})`. -/
-def fillPairSchedule (l : ℕ) : Program Unit := fillPairScheduleF l l
+/-- Ledger of the fill pair before its final combination. The known-powers
+children are the binary gadgets counted above. -/
+def fillPairSchedule : ℕ → Program Unit
+  | 0 => pure ()
+  | 1 => schedule (GateCount.of 4 2)
+  | 2 => schedule (GateCount.of 11 5)
+  | l + 3 =>
+      seq4 (fillPairSchedule (l + 2)) (mersSchedule (l + 2))
+        (mersSchedule (l + 3)) (schedule (GateCount.of 4 2))
 
-/-- The optimized paper schedule for `A_{2^l}=(x+β₀)A¹_{2^l}+A²_{2^l}`. -/
+/-- Ledger of `A_{2^l}=(x+β₀)A¹_{2^l}+A²_{2^l}`. -/
 def fillSchedule (l : ℕ) : Program Unit :=
   thenSchedule (fillPairSchedule l) (schedule (GateCount.of 2 1))
-
-theorem mersScheduleF_step (f k : ℕ) :
-    mersScheduleF (f + 1) (k + 4) =
-      seq4 (mersScheduleF f (k + 2)) (fillPairScheduleF f (k + 2))
-        (schedule (GateCount.adds 4)) (schedule (GateCount.muls 1)) := rfl
-
-theorem fillPairScheduleF_step (f l : ℕ) :
-    fillPairScheduleF (f + 1) (l + 3) =
-      seq4 (fillPairScheduleF f (l + 2)) (mersScheduleF f (l + 2))
-        (mersScheduleF f (l + 3)) (schedule (GateCount.of 4 2)) := rfl
-
-private def mersClosed (k : ℕ) : GateCount :=
-  GateCount.of (5 * 2 ^ (k - 2) - 2) (2 ^ (k - 1) - 1)
-
-private def fillPairClosed (l : ℕ) : GateCount :=
-  GateCount.of (5 * (2 ^ (l - 1) + 2 ^ (l - 2)) - 4)
-    (2 ^ l + 2 ^ (l - 1) - 1)
-
-/-- Simultaneous closed forms. The asymmetric fuel bounds are exact: `Q_k` needs `k-3`
-recursive rounds, while the level-`l` fill needs `l-2`. -/
-private theorem fill_mers_closed_fuel : ∀ n,
-    (∀ f, n ≤ f + 3 → 2 ≤ n → (mersScheduleF f n).gates = mersClosed n) ∧
-    (∀ f, n ≤ f + 2 → 2 ≤ n → (fillPairScheduleF f n).gates = fillPairClosed n) := by
-  intro n
-  induction n using Nat.strong_induction_on with
-  | h n ih =>
-      match n with
-      | 0 =>
-          constructor <;> intro f hf hn <;> omega
-      | 1 =>
-          constructor <;> intro f hf hn <;> omega
-      | 2 =>
-          constructor
-          · intro f hf hn
-            simp [mersScheduleF, mersClosed, GateCount.of]
-          · intro f hf hn
-            simp [fillPairScheduleF, fillPairClosed, GateCount.of]
-      | 3 =>
-          constructor
-          · intro f hf hn
-            simp [mersScheduleF, mersClosed, GateCount.of]
-          · intro f hf hn
-            cases f with
-            | zero => omega
-            | succ g =>
-                rw [show fillPairScheduleF (g + 1) 3 =
-                    seq4 (fillPairScheduleF g 2) (mersScheduleF g 2)
-                      (mersScheduleF g 3) (schedule (GateCount.of 4 2)) from rfl]
-                have hf2 := (ih 2 (by omega)).2 g (by omega) (by omega)
-                have hq2 := (ih 2 (by omega)).1 g (by omega) (by omega)
-                have hq3 : (mersScheduleF g 3).gates = mersClosed 3 := by
-                  simp [mersScheduleF, mersClosed, GateCount.of]
-                rw [show (seq4 (fillPairScheduleF g 2) (mersScheduleF g 2)
-                    (mersScheduleF g 3) (schedule (GateCount.of 4 2))).gates =
-                    (fillPairScheduleF g 2).gates + ((mersScheduleF g 2).gates +
-                    ((mersScheduleF g 3).gates + GateCount.of 4 2)) from rfl,
-                  hf2, hq2, hq3]
-                ext <;> norm_num [fillPairClosed, mersClosed, GateCount.of]
-      | k + 4 =>
-          let qNow : ∀ f, k + 4 ≤ f + 3 → 2 ≤ k + 4 →
-              (mersScheduleF f (k + 4)).gates = mersClosed (k + 4) := by
-            intro f hf hn
-            cases f with
-            | zero => omega
-            | succ g =>
-                rw [mersScheduleF_step]
-                have hq := (ih (k + 2) (by omega)).1 g (by omega) (by omega)
-                have ha := (ih (k + 2) (by omega)).2 g (by omega) (by omega)
-                rw [show (seq4 (mersScheduleF g (k + 2)) (fillPairScheduleF g (k + 2))
-                    (schedule (GateCount.adds 4)) (schedule (GateCount.muls 1))).gates =
-                    (mersScheduleF g (k + 2)).gates +
-                    ((fillPairScheduleF g (k + 2)).gates +
-                    (GateCount.adds 4 + GateCount.muls 1)) from rfl,
-                  hq, ha]
-                have hp : 0 < (2 : ℕ) ^ k := by positivity
-                ext <;> simp [mersClosed, fillPairClosed, GateCount.of, pow_succ] <;> omega
-          refine ⟨qNow, ?_⟩
-          intro f hf hn
-          cases f with
-          | zero => omega
-          | succ g =>
-              rw [fillPairScheduleF_step]
-              have haPrev := (ih (k + 3) (by omega)).2 g (by omega) (by omega)
-              have hqPrev := (ih (k + 3) (by omega)).1 g (by omega) (by omega)
-              have hqNow := qNow g (by omega) (by omega)
-              rw [show (seq4 (fillPairScheduleF g (k + 3)) (mersScheduleF g (k + 3))
-                  (mersScheduleF g (k + 4)) (schedule (GateCount.of 4 2))).gates =
-                  (fillPairScheduleF g (k + 3)).gates +
-                  ((mersScheduleF g (k + 3)).gates +
-                  ((mersScheduleF g (k + 4)).gates + GateCount.of 4 2)) from rfl,
-                haPrev, hqPrev, hqNow]
-              have hp : 0 < (2 : ℕ) ^ k := by positivity
-              ext <;> simp [mersClosed, fillPairClosed, GateCount.of, pow_succ] <;> omega
 
 /-- Paper `lem:fill-Q-count`, pair part. -/
 theorem fill_pair_count (l : ℕ) (hl : 2 ≤ l) :
     (fillPairSchedule l).gates =
       GateCount.of (5 * (2 ^ (l - 1) + 2 ^ (l - 2)) - 4)
         (2 ^ l + 2 ^ (l - 1) - 1) := by
-  exact (fill_mers_closed_fuel l).2 l (by omega) hl
+  induction l using Nat.strong_induction_on with
+  | h l ih =>
+      match l with
+      | 0 => omega
+      | 1 => omega
+      | 2 => rfl
+      | l + 3 =>
+          have hprev := ih (l + 2) (by omega) (by omega)
+          change (fillPairSchedule (l + 2)).gates +
+            ((mersSchedule (l + 2)).gates +
+              ((mersSchedule (l + 3)).gates + GateCount.of 4 2)) = _
+          rw [hprev, mers_count (l + 2) (by omega), mers_count (l + 3) (by omega)]
+          have hp : 0 < (2 : ℕ) ^ l := by positivity
+          ext <;> simp [GateCount.of, pow_succ] <;> omega
 
 /-- Paper `lem:fill-Q-count`, final fill part. -/
 theorem fill_count (l : ℕ) (hl : 2 ≤ l) :
@@ -176,19 +83,6 @@ theorem fill_count (l : ℕ) (hl : 2 ≤ l) :
   have hp1 : 0 < (2 : ℕ) ^ (l - 1) := by positivity
   have hp2 : 0 < (2 : ℕ) ^ l := by positivity
   ext <;> simp [GateCount.of] <;> omega
-
-/-- Paper `lem:fill-Q-count`, Mersenne part. -/
-theorem mers_count (k : ℕ) (hk : 2 ≤ k) :
-    (mersSchedule k).gates = GateCount.of (5 * 2 ^ (k - 2) - 2) (2 ^ (k - 1) - 1) := by
-  exact (fill_mers_closed_fuel k).1 k (by omega) hk
-
-/-- The multiplication formula also includes the linear base `Q₁`. -/
-theorem mers_multiplication_count (k : ℕ) (hk : 1 ≤ k) :
-    (mersSchedule k).gates.multiplications = 2 ^ (k - 1) - 1 := by
-  rcases eq_or_ne k 1 with rfl | hk1
-  · simp [mersSchedule, mersScheduleF]
-  · rw [mers_count k (by omega)]
-    rfl
 
 private theorem two_pow_pred (n : ℕ) (hn : 1 ≤ n) :
     2 ^ n = 2 * 2 ^ (n - 1) := by

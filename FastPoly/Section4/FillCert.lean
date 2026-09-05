@@ -4,9 +4,9 @@ import FastPoly.Recover.Multiplication
 import Mathlib.Tactic.LinearCombination
 
 /-!
-# Fill-chain certificates for `lem:Q-unitriangular`
+# Generic fill-chain certificates
 
-The fill-step invariant of the Mersenne chain (validated in
+The fill-step invariant used by the auxiliary odd-degree gadgets (validated in
 `tools/fill_stage_cert.py`): pair-form `CoeffTriangular` certificates over the
 `fillSlot` slot layout, with the dead tail consumed by the `b`/`q` bands.
 -/
@@ -17,7 +17,7 @@ open Polynomial Algebra Finset
 
 variable {R A : Type*} [CommRing R] [CommRing A] [Algebra R A]
 
-/-- The fill-step local slot function (chain invariant of `lem:Q-unitriangular`):
+/-- The fill-step local slot function (local fill-chain invariant):
 row `0` is the second-component additive constant, rows `[1, D)` read the
 `qh`-certificate slots, rows `[D, m)` the shifted input slots, row `m` the
 multiplier scalar `b`, rows `[m+1, m+D/2)` the `q`-certificate slots, and the

@@ -11,14 +11,20 @@ import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 `sections/lower.tex` reduces an arbitrary three-multiplication straight-line program with
 six parameters to the normal form of `Defs.lean` in two steps.
 
-1. *Shape.*  Topologically order the three nonscalar multiplications; every multiplicand is
-   an affine form in `x` and the earlier gate outputs, with **fixed** coefficients on `x`
-   and the `u_j` (multiplying a gate value by a parameter would cost a nonscalar
-   multiplication) and a constant slot that is an affine form in the parameters.  The first
-   multiplication `(Ax+a)(Bx+b)` with `A ≠ 0` is rewritten as `A·x(Bx+b) + a(Bx+b)`,
-   absorbing the correction into the later affine uses, which normalizes it to
-   `u₁ = x(R₁₀x + a₁)`.  This step is *modelling*: it is what the definition
-   `outPolyAffine` below encodes, and it is not formalized as a theorem.
+1. *Shape and gauge.*  Topologically order the three nonscalar multiplications; every
+   multiplicand is an affine form in `x` and the earlier gate outputs, with **fixed**
+   coefficients on `x` and the `u_j` (multiplying a gate value by a parameter would cost a
+   nonscalar multiplication) and a constant slot that is an affine form in the parameters.
+   The first multiplication `(Ax+a)(Bx+b)` with `A ≠ 0` is rewritten by the gauge identity
+   `(Ax+a)(Bx+b) = A·x(Bx + b + (B/A)a) + ab`, whose correction `ab` is free of `x` and is
+   absorbed into the later constant slots; this normalizes it to `u₁ = x(R₁₀x + a₁)` with
+   `a₁ = b + (B/A)a` and makes the six normal-form slots a *quadratic* function of the
+   seven original slots.  In this file the normal form is a definition (`outPolyAffine`
+   below); the gauge step itself is proved in `FastPoly/LowerBound/General/` (`gout_eq` in
+   `Gauge.lean`, `outPolyGeneral_eq_outPolyOf` in `Affine.lean`), and the theorem for
+   general programs is `General.no_rationalInverse_general` (`General/Main.lean`).  Only
+   the shape statement — the topological ordering and the fixed coefficients — remains
+   modelling (the definitions `Circuit` and `GCircuit`).
 
 2. *Reparameterization.*  The six constant slots are then affine images
    `(a₁,a₂,b₂,a₃,b₃,b₁) = M p + m₀` of the actual parameter vector `p`.  This step **is**

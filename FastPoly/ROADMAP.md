@@ -56,13 +56,24 @@ not just the larger degrees.
   recursive back-substitution algorithm. `Char2Frobenius.lean` supplies the
   square-root pivots; only degree 7 among these completed bases needs
   `[PerfectRing F 2]`. This is not a finite-field enumeration proof.
+- `Examples/ExplicitEvaluationInverse.lean` exposes the Lagrange interpolation
+  formula as a named decoder, with both compositions and an explicit evaluation
+  equivalence. The generic finite-family wrapper and the older degree-seven
+  wrapper now use this interface instead of an unnamed local interpolation
+  witness. Its isolated build passed in 3.2s with a 20,000-heartbeat cap.
 - `Examples/Char2Construction.lean` connects coefficient vectors to arbitrary
   monic polynomials and proves the one-product even lift using the same
   `Cost.Circuit` syntax. `Examples/Char2Finite.lean` packages all degrees
   5–16 with exactly `n/2+1` products and is imported by the umbrella.
-- These normalized-family results do not yet assert that every original raw
-  gate-offset vector is uniquely decoded. The arbitrary-polynomial realization
-  theorem is proved; a stronger raw-key-bijection claim needs its own bridge.
+  It also exposes `degree19/degree20` (10/11 products) and
+  `degree21/degree22` (11/12 products). The even bases use the one-product
+  lift; the contiguous dispatcher still ends at 16 because degrees 17 and 18
+  remain pending.
+- The older degree-5–15 normalized-family certificates do not by themselves
+  assert that every original raw gate-offset vector is uniquely decoded.
+  Their arbitrary-polynomial realization theorem is proved; a stronger
+  raw-key-bijection claim needs its own bridge. Degrees19 and21 now have
+  those bridges as well, as detailed below.
   The existing `Char2SmallInverses.lean` still supplies the raw-key degree-9
   theorem for the paper's displayed circuit.
 - `tools/gen_char2_lean.py` replays the existing explicit coordinate changes
@@ -85,8 +96,114 @@ not just the larger degrees.
   quantities opaque and use local rewrites/cancellation, not ring expansion.
   All three new modules have a 20,000-heartbeat limit and are in the umbrella.
   Degree 23's preceding scalar pivots and the bridge from circuit coefficients
-  to the terminal equations remain to be proved. Full coverage remains 5–16,
-  not 5–25.
+  to the terminal equations remain to be proved. Full construction coverage is
+  now 5–16 and 19–22, not 5–25.
+- `Examples/Char2UpdateTriangular.lean` constructs the explicit recursive inverse
+  from single-coordinate update identities. It proves independence from future
+  coordinates by finite resets, then checks both back-substitution compositions.
+  The named circuit baseline is never expanded; the direct check used 1.66s
+  user CPU with a 20,000-heartbeat cap.
+- `Examples/Char2Degree19Shell/Crown.lean` certify the outer cubic decoder
+  against the actual existing circuit: read the shell, divide by its monic
+  cubic (including the row-three boundary correction), then read the low
+  offsets. The crown's fixed top-row signature follows from named square gates.
+  `Char2Degree19Coordinates.lean` checks the supplied key-coordinate inverse in
+  both directions. The inner crown's thirteen unit pivots are now checked in
+  `Char2Degree19InnerTail/Simple/Changes/ZChanges/Direct/Seam`, by finite changes
+  to named gates and degree bounds on the corrections, without expanding any
+  coefficient baseline.
+- `Examples/Char2Degree19Targets.lean` proves that the explicit outer decoder of
+  every monic degree-19 target has the required crown signature (degree 16,
+  rows 15/14/13 equal to 0/0/1), using monic division and four-term convolution.
+  This also checks the outer decoder's existence direction for arbitrary
+  targets. The module builds under the same 20,000-heartbeat cap (7.4s).
+- `Examples/Char2Degree19KeyUpdates/InnerInverse.lean` connect all thirteen
+  supplied coordinate changes to those raw-gate differences. The actual inner
+  decoder is prefix back-substitution, with both compositions checked.
+  `Char2Degree19Realization.lean` assembles it with the outer monic-division
+  inverse and proves `decodePolynomial_correct` for every monic degree-19
+  target. `Char2Degree19Program.lean` identifies the same polynomial with the
+  literal ten-product program; `construction` packages the explicit right
+  inverse and counted circuit. All new degree-19 declarations use the reduced
+  20,000-heartbeat cap.
+- `Examples/Char2Degree19Bijection.lean` also proves recovery of the original
+  nineteen raw keys, not just normalized coordinates. It packages the actual
+  low-coefficient map and its explicit decoder as `coefficientEquiv`, with both
+  compositions. `evaluationEquiv` composes that inverse with named Lagrange
+  interpolation; it works over every characteristic-two field. The module
+  checked in 1.0s under the same heartbeat cap.
+- `Examples/Char2Degree23Coordinates/Keys.lean` check both directions of the
+  complete supplied key-coordinate change, including the circuit-dependent
+  row-eight shear. The row-eight and constant-offset circuit bridge remains
+  separate from the other pending coefficient pivots. These new components
+  are individually checked and imported by the umbrella; degree 23 is not yet
+  a completed construction.
+- `Examples/Char2Degree21Coordinates/Frame/Pivots/Leading/KeyUpdates/Inverse`
+  check all twenty-one single-coordinate differences and the actual prefix
+  decoder, including both compositions on the original raw offsets.
+  `Char2Degree21Program` checks the same eleven-product circuit using named
+  gate environments and one evaluation equation per bind tail, avoiding a
+  whole-circuit reduction. `Char2Degree21Realization` connects that exact
+  program and inverse to every monic degree-21 target and gives the explicit
+  Lagrange-then-circuit evaluation equivalence. All keep the unchanged
+  20,000-heartbeat cap. The degree-22 lift is exposed in `Char2Finite`.
+- `Examples/Char2UnequalOffsets`, `Char2Degree17QuadraticOffsets`,
+  `Char2Degree17Wires`, and `Char2Degree17GateCoordinates` check the existing
+  degree-17 gate hierarchy and its explicit raw-offset/gate-coordinate inverse
+  in both directions. The output coefficient inverse remains pending.
+  `Char2PivotUpdates` now supplies checked explicit prefix back-substitution
+  with specified zero-preserving scalar inverses, including Frobenius pivots.
+  The further `Char2RecoveredProductUpdates` and
+  `Char2Degree17TriangularCoordinates` modules individually check the exact
+  two-row product-update identities and the supplied S/R/E change plus
+  permutation, including its composition with the raw-key inverse. They are
+  now imported; circuit-specific output pivots are still pending.
+  `Char2Degree17TerminalFrame/TerminalPivots` subsequently pass individual
+  checks for seven actual normalized-output unit differences (rows10,7,4,3,2,1,0)
+  and higher-row invariance. The other ten output pivots remain; these two
+  newer modules await the next umbrella batch.
+- `Examples/Char2Degree23Frame` checks monicity of the actual named gates and
+  degree-23 output. `Char2Degree23Cancellations/HighFrame` also individually
+  check the shared-wire cancellations (degrees9→7 and15→14) and split the
+  output into its five-factor degree-23 part and a monic degree-15 remainder
+  (8.1s/2.2s module builds). Both auxiliary modules are now imported. This is
+  structural support, not the still-pending full degree-23 inverse.
+  `Char2Degree23HighDifference/HighPivots` additionally pass individual checks
+  for the five leading raw-coordinate unit differences (rows22–18), using a
+  named cubic-increment identity and the lower remainder. Their bridge to
+  the supplied normalized coordinates is still pending; these two modules
+  are not yet imported by the umbrella.
+- `Examples/Char2Degree15FastCore/Tail/Leading/Inverse/Program/Realization`
+  now replace the old expanded degree-15 certificate on the main import path.
+  The same eight-product circuit and supplied linear key formulas are retained.
+  The proof cancels the shared `w+s` branch before reading rows, verifies all
+  fifteen named-wire differences, and uses explicit prefix back-substitution
+  with both compositions. The program bridge uses named gate/bind-tail steps;
+  the realization covers every monic target, with a displayed evaluation
+  inverse. Every new declaration keeps the20k heartbeat cap. The old generated
+  `Char2Degree15.lean` is an unimported reference, retained without changing
+  generator compatibility; it is no longer a prerequisite of `Char2Finite`.
+
+Latest integration check: `nice -n 10 lake build FastPoly FastPoly.LowerBound.Main
+FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport` passed
+with **2084 jobs** after switching degree15 to the fast named-wire inverse
+and batching the checked degree17/23 helpers (30.14s wall, 3.19s user CPU,
+5.69s system CPU). The preceding degree21/22 integration passed at2075jobs
+(104.85s wall, 7.12s user CPU, 20.77s system CPU on the loaded machine).
+Rebuilding the older generated degree-15
+coefficient certificate previously took123s of an integration critical path;
+it has now been removed from the active import path in favor of the checked
+named-wire inverse. The working tree is checked; no new commit pin is asserted here.
+The twenty-one audited new inverse/constructor/evaluation declarations report
+only `propext`, `Classical.choice`, and `Quot.sound`, with no `sorryAx`.
+An additional nineteen-declaration audit after the degree21 integration
+(coefficient/evaluation inverses, program realization, even lift, degree17
+gate inverse, and new generic helpers) has the same clean result.
+The next twenty-declaration audit, covering the fast degree15 realization
+and batched degree17/23 helpers, is clean as well. An isolated direct recheck
+of `Char2Degree15FastInverse.lean` passed in8.30s wall /3.55s user CPU /1.81s
+system CPU; its prerequisites were already compiled, so this is not a
+clean-build timing for the entire six-module replacement.
 
 Validation: `nice -n 10 lake build FastPoly` passed with 2036 jobs after this
 integration. Axiom audits of `Char2Finite.monic_evaluation`, the degree-15

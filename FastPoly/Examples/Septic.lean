@@ -1,4 +1,4 @@
-import FastPoly.Section4.KnownPowers
+import FastPoly.Section4.FillRec
 import FastPoly.Recover.Context
 import FastPoly.Polynomial.CausalShell
 

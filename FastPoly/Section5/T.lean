@@ -1,5 +1,5 @@
-import FastPoly.Section4.KnownPowers
 import FastPoly.Section4.Peeled
+import FastPoly.Section4.FillRec
 
 /-!
 # The `T_{k,2^l}` recursion
@@ -7,7 +7,7 @@ import FastPoly.Section4.Peeled
 Definitional layer for `alg:constr-Tk2l` and `alg:constr-Tk2l-base`: the recursive pair
 `(T¹_{k,2^l}, T²_{k,2^l})` over a tower of known powers `Hp` (with `Hp i` playing
 `H_{2^i}`) and the shifted top power `Ht` (playing `H̃_{2^l}`).  The recursion is
-fuel-indexed with a fuel-irrelevance lemma, as in `Section4/KnownPowers.lean`.
+fuel-indexed with a fuel-irrelevance lemma.
 
 Each branch component is a named definition (`tS1`, `evenH`, `oddH`, `obH8`, …) so that
 the structural lemmas below can speak about them directly and elaboration stays cheap.

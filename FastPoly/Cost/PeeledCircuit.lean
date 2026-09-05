@@ -117,8 +117,7 @@ theorem gates_peelCircuit {R : Type u} (k : ℕ) (hk : 2 ≤ k) :
       = GateCount.of (5 * 2 ^ (k - 2) - 2) (2 ^ (k - 1) - 1) :=
   gates_peelCircuitF_closed k k hk (by omega)
 
-/-- Multiplication count alone, in the interface shape of
-`gates_mersCircuit_multiplications`. -/
+/-- Exact multiplication count, including the linear base. -/
 theorem gates_peelCircuit_multiplications {R : Type u} (k : ℕ) (hk : 1 ≤ k) :
     (peelCircuit (R := R) k).gates.multiplications = 2 ^ (k - 1) - 1 := by
   rcases Nat.lt_or_ge k 2 with hk1 | hk2

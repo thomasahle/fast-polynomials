@@ -1,5 +1,5 @@
 import FastPoly.Examples.BarQ15
-import FastPoly.Section4.KnownPowers
+import FastPoly.Section4.FillRec
 
 /-!
 # Structural facts for the finite barred degree-15 gadget

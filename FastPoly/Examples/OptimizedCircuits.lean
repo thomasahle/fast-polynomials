@@ -1,4 +1,4 @@
-import FastPoly.Section4.KnownPowers
+import FastPoly.Section4.FillRec
 
 /-!
 # Appendix `A`: optimized polynomial circuits — well-formedness

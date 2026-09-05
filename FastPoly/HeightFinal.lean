@@ -5,7 +5,7 @@ import FastPoly.Cost.SepticProgram
 import FastPoly.Height.Depth
 
 /-!
-# Height of the complete polynomial (`thm:construction-height-peeled`, final clause)
+# Height of the complete polynomial (`thm:construction-height`, final clause)
 
 `odd_realizable_pairs` carries, for every odd `n ≥ 3`, `n ≠ 7`, one fixed
 `Cost.JointPairProgram` of `(n-1)/2` products whose two pair outputs sit at
@@ -227,7 +227,7 @@ section Master
 
 variable [Nontrivial A]
 
-/-- **Height of the complete odd polynomial** (`thm:construction-height-peeled`, final
+/-- **Height of the complete odd polynomial** (`thm:construction-height`, final
 clause, odd degrees): for odd `n ≥ 3`, `n ≠ 7`, over an `n`-admissible base, the
 polynomial `P_n = x·T⁽¹⁾ + T⁽²⁾` of `odd_realizable_pairs` is monic of degree `n`, decodes
 the whole parameter block, and is computed by one fixed program with exactly
@@ -246,7 +246,7 @@ theorem odd_polynomial_height (n : ℕ) (hodd : n % 2 = 1) (hn3 : 3 ≤ n) (hn7 
   have h1 := hh.2.1
   omega
 
-/-- **`thm:construction-count` + `thm:construction-height-peeled`, complete form.**  For
+/-- **`thm:construction-count` + `thm:construction-height`, complete form.**  For
 every `n ≥ 3` over an `n`-admissible base — the odd master family, the direct septic, or
 the even lift `P = x·Q_{n-1} + θ (n-1)` of one of these — there is a monic decodable
 degree-`n` polynomial computed by one fixed program with exactly `⌊n/2⌋ + 1` products and

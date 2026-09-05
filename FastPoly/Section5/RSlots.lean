@@ -1,4 +1,3 @@
-import FastPoly.Section4.MersCert
 import FastPoly.Section4.PeeledCert
 
 /-!

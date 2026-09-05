@@ -1,4 +1,5 @@
 import FastPoly.Examples.OptimizedCircuits
+import FastPoly.Examples.ExplicitEvaluationInverse
 import Mathlib.FieldTheory.Perfect
 import Mathlib.LinearAlgebra.Lagrange
 
@@ -256,55 +257,8 @@ the seven low coefficients to the seven values of the monic degree-7 polynomial
 is a bijection. -/
 theorem monicOf_eval_bijective (x : Fin 7 → F) (hx : Function.Injective x) :
     Function.Bijective (fun p : Fin 7 → F => fun i : Fin 7 =>
-      (monicOf p).eval (x i)) := by
-  constructor
-  · intro p q hpq
-    have heval : ∀ i : Fin 7,
-        (∑ j ∈ Finset.range 7, C (ext7 p j) * X ^ j).eval (x i)
-          = (∑ j ∈ Finset.range 7, C (ext7 q j) * X ^ j).eval (x i) := by
-      intro i
-      have h := congrFun hpq i
-      simp only [monicOf, eval_add, eval_pow, eval_X] at h
-      exact add_left_cancel h
-    have hlow : (∑ j ∈ Finset.range 7, C (ext7 p j) * X ^ j)
-        = ∑ j ∈ Finset.range 7, C (ext7 q j) * X ^ j := by
-      refine Polynomial.eq_of_natDegree_lt_card_of_eval_eq _ _ hx heval ?_
-      have h1 := low_natDegree_le (ext7 p)
-      have h2 := low_natDegree_le (ext7 q)
-      simp only [Fintype.card_fin]
-      omega
-    funext k
-    have h := congrArg (fun P => P.coeff (k : ℕ)) hlow
-    simp only [low_coeff _ k.isLt] at h
-    simpa [ext7, k.isLt] using h
-  · intro v
-    set L : F[X] := Lagrange.interpolate Finset.univ x
-      (fun i => v i - x i ^ 7) with hL
-    have hInj : Set.InjOn x ↑(Finset.univ : Finset (Fin 7)) :=
-      fun i _ j _ h => hx h
-    have hLdeg : L.natDegree < 7 := by
-      rcases eq_or_ne L 0 with h0 | h0
-      · rw [h0]
-        simp
-      · have := Lagrange.degree_interpolate_lt (r := fun i => v i - x i ^ 7) hInj
-        rw [← hL] at this
-        have hcard : (Finset.univ : Finset (Fin 7)).card = 7 := by simp
-        rw [hcard] at this
-        exact natDegree_lt_iff_degree_lt h0 |>.2 (by exact_mod_cast this)
-    refine ⟨fun j => L.coeff j, ?_⟩
-    have hsum : (∑ j ∈ Finset.range 7, C (ext7 (fun j : Fin 7 => L.coeff j) j)
-        * X ^ j) = L := by
-      have hrepr := Polynomial.as_sum_range_C_mul_X_pow' L hLdeg
-      rw [hrepr]
-      refine Finset.sum_congr rfl ?_
-      intro j hj
-      simp only [Finset.mem_range] at hj
-      simp [ext7, hj]
-    funext i
-    simp only [monicOf, hsum, eval_add, eval_pow, eval_X]
-    rw [hL, Lagrange.eval_interpolate_at_node (hvs := hInj)
-      (hi := Finset.mem_univ i)]
-    ring
+      (monicOf p).eval (x i)) :=
+  ExplicitEvaluationInverse.evaluation_bijective (by omega) x hx
 
 end vandermonde
 

@@ -11,7 +11,7 @@ parameter `α t`.  Four exact statements (`lem:peeled-Q-count` of the paper):
 
 * `peelC_multiplications` : exactly `2^(k-1) - 1` products (`k ≥ 1`);
 * `peelC_additions`       : exactly `5·2^(k-2) - 2` additions (`k ≥ 2`)
-  — both identical to the sequential fill's ledger `lem:fill-Q-count`;
+  — the ledger `lem:fill-Q-count`;
 * `peelC_eval`            : the circuit computes the `peel` family of
   `FastPoly.Section4.Peeled` (whose decoder is `peel_correct`);
 * `peelC_multDepth`       : height exactly `k` (`k ≥ 2`) when the power wires
@@ -104,7 +104,7 @@ theorem peelC_additions :
 
 /-- The circuit computes the `peel` family: with the power wires holding `Hp`
 (and `Hp 0 = x`) and the parameter wires holding `C ∘ α`, output `0` is
-`Q^peel_{2^k-1}` on the parameter block starting at `off`. -/
+`Q_{2^k-1}` on the parameter block starting at `off`. -/
 theorem peelC_eval {A : Type*} [CommRing A] [Algebra R A]
     (Hp : ℕ → A[X]) (α : ℕ → A) (env : ℕ ⊕ ℕ → A[X])
     (henv1 : ∀ i, env (.inl i) = Hp i)

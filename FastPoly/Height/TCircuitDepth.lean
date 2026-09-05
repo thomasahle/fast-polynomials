@@ -6,7 +6,7 @@ import FastPoly.Cost.TCircuit
 # Height ledger for the compiled `T` recursion
 
 Depth analogues of the `TCircuit` gate-count layer, mirroring the paper's
-tower/spine invariants (`thm:construction-height-peeled`): over a tower at
+tower/spine invariants (`thm:construction-height`): over a tower at
 depths `dp i ≤ i` (and shifted power at depth `dps ≤ l`), the compiled
 `T_{k,2^l}` pair has multiplicative depth at most `l + 2·log₂ k`.  The
 recursion threads the tower invariant through `withPowerPair`: each branch

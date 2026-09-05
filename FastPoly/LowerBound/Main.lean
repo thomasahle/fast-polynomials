@@ -31,7 +31,7 @@ characteristic hypothesis written as `ringChar F ≠ 2`.
 | the sensitivity display `∂P/∂b₁ = 1`, `∂P/∂b₃ = s₃ℓ₃`, `∂P/∂a₃ = s₃r₃`, `∂P/∂b₂ = ū₂ℓ₂`, `∂P/∂a₂ = ū₂r₂`, `∂P/∂a₁ = ū₁x` | `sens`, proved to be the partial derivatives by `derivation_out` and `pderiv_outPoly` (`Defs.lean`) |
 | `J_{k,i}(p) = ∂P_p(x_k)/∂p_i` | `jacobian` (`Defs.lean`), `polyJacobian` (`Jacobian.lean`), tied together by `polyJacobian_outPoly` (`Normalform.lean`) |
 | "Proof method (Jacobian obstruction)": an everywhere-defined rational inverse forces `det J` to be a nonzero constant | `RationalInverse` and `RationalInverse.isEmpty_of_det_eq_zero` (`Jacobian.lean`) |
-| "Reduction to a normal form", first two paragraphs (topological order, `(Ax+a)(Bx+b) = A·x(Bx+b) + a(Bx+b)`) | **not formalized**: this is the modelling step, encoded in the definitions of `Circuit`/`out` rather than proved — see "What is *not* formalized" below |
+| "Reduction to a normal form": the general program `(Ax+a)(Bx+b), …`, the gauge identity `(Ax+a)(Bx+b) = A·x(Bx + b + (B/A)a) + ab`, the quadratic slot map `Q = ν ∘ H` and cases (i)–(iv) | `FastPoly/LowerBound/General/`: `gout_eq` (`Gauge.lean`), `polyJacobian_outPolyGeneral` (`Affine.lean`), `exists_singular_of_gauge`, `no_rationalInverse_general` (`General/Main.lean`); only the topological-ordering/shape statement is modelling — see "What is *not* formalized" below |
 | "Reduction to a normal form", last paragraph (`(a₁,a₂,b₂,a₃,b₃,b₁) = Mp`, including `det M = 0`) | `slotPoly`, `outPolyAffine`, `polyJacobian_outPolyAffine` (`J_p = J·M`), `exists_singular_polyJacobian_affine` (`Normalform.lean`) |
 | "it suffices to make two of its rows equal, or three of its rows linearly dependent" | `det_eq_zero_of_rows_eq`, `det_eq_zero_of_rows_dep` (`Jacobian.lean`) |
 | "If `s₃ = 0` … the Jacobian is singular" (both cases) | `jacobian_det_eq_zero_of_s3_eq_zero` (`Defs.lean`) |
@@ -70,16 +70,21 @@ characteristic hypothesis written as `ringChar F ≠ 2`.
 
 ## What is *not* formalized
 
-The first two paragraphs of "Reduction to a normal form" — topologically ordering the three
-nonscalar multiplications of an arbitrary straight-line program, observing that every
-multiplicand is then an affine form in `x` and the earlier gate outputs with *fixed*
-coefficients, and absorbing the affine correction of the first multiplication — are
-**modelling**, not a theorem: they are what the definitions `Circuit` and `out` of
-`Defs.lean` and `outPolyAffine` of `Normalform.lean` encode.  There is no Lean datatype of
-straight-line programs here, so "for every three-multiplication program" is not quantified
-over inside Lean; the theorems below quantify over every circuit in the normal form and
-every affine parameterization of its six constant slots.  Everything after that point in
-the paper *is* proved, with no `sorry` anywhere in `FastPoly/LowerBound/`.
+There is no Lean datatype of straight-line programs, so "for every three-multiplication
+program" is not quantified over inside Lean.  The theorems below quantify over every circuit
+in the normal form (`Circuit`) and every affine parameterization of its six constant slots.
+The theorems of `FastPoly/LowerBound/General/` (`no_rationalInverse_general`) quantify over
+every program of the general display of the appendix — sixteen fixed constants
+(`GCircuit`), both first-gate constants among the seven slots, and an arbitrary affine map
+from the six parameters to the slots — and prove the reduction of that display to the
+normal form: the gauge identity `(Ax+a)(Bx+b) = A·x(Bx + b + (B/A)a) + ab`, whose
+correction `ab` is free of `x` (`gout_eq`), the chain rule for the quadratic slot map
+`Q = ν ∘ H`, and the four cases of the appendix.  What remains **modelling** is only the
+first paragraph of the reduction: after topologically ordering the three nonscalar
+multiplications, every multiplicand is a fixed affine form in `x` and the earlier gate
+outputs plus a parameter-affine constant.  That shape is the definition of `Circuit` /
+`GCircuit`, not a theorem.  Everything else in the paper's proof *is* proved, with no
+`sorry` anywhere in `FastPoly/LowerBound/`.
 -/
 
 namespace FastPoly.LowerBound

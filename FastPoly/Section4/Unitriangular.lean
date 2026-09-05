@@ -1,16 +1,14 @@
-import FastPoly.Section4.KnownPowers
+import FastPoly.Section4.Peeled
+import FastPoly.Section4.FillRec
 import FastPoly.Recover.Triangular
 import FastPoly.Section5.Binomial
-import FastPoly.Section4.SlotPerm
 
 /-!
 # `lem:Q-unitriangular`: unit pivots of the known-powers gadgets
 
-The Mersenne gadgets' coefficient maps are unitriangular from high to low degree
-(paper tag `Q-tri`), presented as `CoeffTriangular` certificates in pair form
-`(0, Q - xᵠ)` so the `Rk2l` low-row blocks can consume them.  Pivot slots follow the
-band permutation verified in `tools/mers_slot_table.py`; at `k = 2` the permutation is
-the identity and the certificate is driven by the `Q₃` coefficient lemmas.
+The cubic base has unit pivots in coefficient order. The remaining lemmas certify
+the generic fill head used by the auxiliary odd-degree gadgets. The full binary
+known-powers certificate is proved in `PeeledCert.lean`.
 -/
 
 namespace FastPoly
@@ -21,21 +19,21 @@ variable {R A : Type*} [CommRing R] [CommRing A] [Algebra R A] [Nontrivial A]
 
 /-- The `k = 2` instance of `lem:Q-unitriangular`: `Q₃ - x³` is coefficient-triangular
 with unit pivots at rows `0, 1, 2` in slot order `α₀, α₁, α₂` (identity permutation). -/
-theorem mers_two_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X])
+theorem peel_two_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X])
     (h1m : (Hp 1).Monic) (h1d : (Hp 1).natDegree = 2)
     (h1K : ∀ j, (Hp 1).coeff j ∈ K) (α : ℕ → A) :
     CoeffTriangular K α (fun _ => (1 : R)) 3
-      0 (mers Hp 2 α - X ^ 3) := by
-  have hco2 : (mers Hp 2 α - X ^ 3).coeff 2 = α 2 + (Hp 1).coeff 1 := by
+      0 (peel Hp 2 α - X ^ 3) := by
+  have hco2 : (peel Hp 2 α - X ^ 3).coeff 2 = α 2 + (Hp 1).coeff 1 := by
     show (Q₃ (Hp 1) (α 0) (α 1) (α 2) - X ^ 3).coeff 2 = _
     rw [coeff_sub, coeff_X_pow, if_neg (by omega), sub_zero,
       Q₃_coeff_two (α 0) (α 1) (α 2) h1m h1d]
-  have hco1 : (mers Hp 2 α - X ^ 3).coeff 1
+  have hco1 : (peel Hp 2 α - X ^ 3).coeff 1
       = α 1 + ((Hp 1).coeff 0 + α 2 * (Hp 1).coeff 1) := by
     show (Q₃ (Hp 1) (α 0) (α 1) (α 2) - X ^ 3).coeff 1 = _
     rw [coeff_sub, coeff_X_pow, if_neg (by omega), sub_zero,
       Q₃_coeff_one (α 0) (α 1) (α 2)]
-  have hco0 : (mers Hp 2 α - X ^ 3).coeff 0
+  have hco0 : (peel Hp 2 α - X ^ 3).coeff 0
       = α 0 + α 2 * ((Hp 1).coeff 0 + α 1) := by
     show (Q₃ (Hp 1) (α 0) (α 1) (α 2) - X ^ 3).coeff 0 = _
     rw [coeff_sub, coeff_X_pow, if_neg (by omega), sub_zero,
@@ -45,8 +43,8 @@ theorem mers_two_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X])
     (le_sup_right : adjoin R _ ≤ _) (subset_adjoin ⟨t, ⟨hlo, ht⟩, rfl⟩)
   have hK' : ∀ a ∈ K, ∀ (s : Set A), a ∈ K ⊔ adjoin R s := fun a ha s =>
     (le_sup_left : K ≤ _) ha
-  have hcomb : ∀ j, (combined (0 : A[X]) (mers Hp 2 α - X ^ 3)).coeff j
-      = (mers Hp 2 α - X ^ 3).coeff j := by
+  have hcomb : ∀ j, (combined (0 : A[X]) (peel Hp 2 α - X ^ 3)).coeff j
+      = (peel Hp 2 α - X ^ 3).coeff j := by
     intro j
     cases j with
     | zero => rw [coeff_combined_zero]
@@ -75,14 +73,14 @@ theorem mers_two_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X])
       rw [hco2]
       exact Subalgebra.add_mem _ (hmem _ 2 3 (by omega) (by omega)) (hK' _ (h1K 1) _)
     | (m + 3) =>
-      have hz : (mers Hp 2 α - X ^ 3).coeff (m + 3) = 0 := by
-        have hm := mers_monic Hp 2 (fun i' hi1 hik => by
+      have hz : (peel Hp 2 α - X ^ 3).coeff (m + 3) = 0 := by
+        have hm := peel_monic Hp 2 (fun i' hi1 hik => by
           have : i' = 1 := by omega
           subst this
           exact ⟨h1m, h1d.trans (by norm_num)⟩) (by omega) α
         rcases Nat.eq_zero_or_pos m with rfl | hmpos
         · rw [coeff_sub, coeff_X_pow, if_pos rfl]
-          have hlead : (mers Hp 2 α).coeff 3 = 1 := by
+          have hlead : (peel Hp 2 α).coeff 3 = 1 := by
             have h3 : (2:ℕ) ^ 2 - 1 = 3 := by norm_num
             rw [← h3, ← hm.2]
             exact hm.1.coeff_natDegree
@@ -866,86 +864,5 @@ theorem head_step (hH : H.Monic) (hdH : H.natDegree = 2)
 
 end headStep
 
-
-omit [Nontrivial A] in
-/-- The inner pair of the `k = 3` Mersenne gadget: `(H₄ + α₅, H₄ + α₆)` in pair form,
-with unit pivots at rows `0 ↦ α₆`, `1 ↦ α₅`. -/
-theorem mers_three_inner {K : Subalgebra R A} (Hp : ℕ → A[X])
-    (h2K : ∀ j, (Hp 2).coeff j ∈ K) (α : ℕ → A) :
-    CoeffTriangular K (fun g => if g = 0 then α 6 else α 5) (fun _ => (1 : R)) 2
-      (Hp 2 + C (α 5) - X ^ 4) (Hp 2 + C (α 6) - X ^ 4) := by
-  have hK : ∀ (x : A), x ∈ K → ∀ (s : Set A), x ∈ K ⊔ adjoin R s := fun x hx s =>
-    (le_sup_left : K ≤ _) hx
-  have hXK : ∀ m, ((X : A[X]) ^ 4).coeff m ∈ K := fun m => coeff_X_pow_mem K 4 m
-  refine
-    { unit := fun j hj => isUnit_one
-      supp₁ := ?_
-      supp₂ := ?_
-      pivot := ?_ }
-  · intro j
-    cases j with
-    | zero =>
-      rw [coeff_sub, coeff_add, coeff_C_zero, coeff_X_pow, if_neg (by omega), sub_zero]
-      refine Subalgebra.add_mem _ (hK _ (h2K 0) _) ?_
-      refine (le_sup_right : adjoin R _ ≤ _) (subset_adjoin ⟨1, ⟨by omega, by omega⟩, ?_⟩)
-      simp
-    | succ m =>
-      rw [coeff_sub, coeff_add, coeff_C, if_neg (by omega), add_zero]
-      exact hK _ (Subalgebra.sub_mem _ (h2K _) (hXK _)) _
-  · intro j
-    cases j with
-    | zero =>
-      rw [coeff_sub, coeff_add, coeff_C_zero, coeff_X_pow, if_neg (by omega), sub_zero]
-      refine Subalgebra.add_mem _ (hK _ (h2K 0) _) ?_
-      refine (le_sup_right : adjoin R _ ≤ _) (subset_adjoin ⟨0, ⟨by omega, by omega⟩, ?_⟩)
-      simp
-    | succ m =>
-      rw [coeff_sub, coeff_add, coeff_C, if_neg (by omega), add_zero]
-      exact hK _ (Subalgebra.sub_mem _ (h2K _) (hXK _)) _
-  · intro j hj
-    match j, hj with
-    | 0, _ =>
-      refine ⟨(Hp 2).coeff 0, hK _ (h2K 0) _, ?_⟩
-      show (combined (Hp 2 + C (α 5) - X ^ 4) (Hp 2 + C (α 6) - X ^ 4)).coeff 0
-        = algebraMap R A 1 * α 6 + (Hp 2).coeff 0
-      rw [coeff_combined_zero, coeff_sub, coeff_add, coeff_C_zero, coeff_X_pow,
-        if_neg (by omega), sub_zero, map_one, one_mul]
-      ring
-    | 1, _ =>
-      refine ⟨(Hp 2).coeff 0 + (Hp 2).coeff 1,
-        hK _ (Subalgebra.add_mem _ (h2K 0) (h2K 1)) _, ?_⟩
-      show (combined (Hp 2 + C (α 5) - X ^ 4) (Hp 2 + C (α 6) - X ^ 4)).coeff (0 + 1)
-        = algebraMap R A 1 * α 5 + ((Hp 2).coeff 0 + (Hp 2).coeff 1)
-      rw [coeff_combined, coeff_sub, coeff_sub, coeff_add, coeff_add, coeff_C_zero,
-        coeff_C, if_neg (by omega), coeff_X_pow, coeff_X_pow, if_neg (by omega),
-        if_neg (by omega), sub_zero, sub_zero, add_zero, map_one, one_mul]
-      ring
-
-/-- **`lem:Q-unitriangular` at `k = 3`**: `Q₇ - x⁷` is coefficient-triangular with unit
-slopes, pivot slots the band permutation `σ₃`. -/
-theorem mers_three_unitriangular {K : Subalgebra R A} (Hp : ℕ → A[X])
-    (h1m : (Hp 1).Monic) (h1d : (Hp 1).natDegree = 2) (h1K : ∀ j, (Hp 1).coeff j ∈ K)
-    (h2m : (Hp 2).Monic) (h2d : (Hp 2).natDegree = 4) (h2K : ∀ j, (Hp 2).coeff j ∈ K)
-    (α : ℕ → A) :
-    CoeffTriangular K (fun r => α (sigma 3 r)) (fun _ => (1 : R)) 7
-      0 (mers Hp 3 α - X ^ 7) := by
-  obtain ⟨hs₁m, hs₁d⟩ := monic_add_C h2m (by omega) (α 5)
-  obtain ⟨hs₂m, hs₂d⟩ := monic_add_C h2m (by omega) (α 6)
-  have hcert := head_step (b₀ := α 0) (b₁ := α 1) (b₂ := α 2) (c₀ := α 3) (c₁ := α 4)
-    h1m h1d h1K hs₁m (hs₁d.trans h2d) hs₂m (hs₂d.trans h2d)
-    (mers_three_inner Hp h2K α) (by omega) (by omega)
-  have hm3 : mers Hp 3 α
-      = (X + C (α 0)) * ((Hp 1 + C (α 1)) * (Hp 2 + C (α 5)) + C (α 4))
-        + ((Hp 1 + C (α 2)) * (Hp 2 + C (α 6)) + C (α 3)) := rfl
-  rw [hm3]
-  refine CoeffTriangular.congr_param (fun j hj => ?_) hcert
-  match j, hj with
-  | 0, _ => rfl
-  | 1, _ => rfl
-  | 2, _ => rfl
-  | 3, _ => rfl
-  | 4, _ => rfl
-  | 5, _ => rfl
-  | 6, _ => rfl
 
 end FastPoly

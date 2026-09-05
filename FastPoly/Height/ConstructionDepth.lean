@@ -10,7 +10,7 @@ sits at a given depth `dp i`; the shifted power at `dps`.  The first payload
 theorem is the peeled gadget's ledger height (`lem:peeled-Q-count`, circuit
 form): over a tower with `dp i ≤ i`, the peeled circuit has depth at most
 `k` — the fact that collapses the tower recurrence of
-`thm:construction-height-peeled`.
+`thm:construction-height`.
 -/
 
 namespace FastPoly.Height

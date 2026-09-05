@@ -1,4 +1,4 @@
-import FastPoly.Section4.KnownPowers
+import FastPoly.Examples.Q3
 import FastPoly.Polynomial.MonicDivision
 
 /-!
@@ -6,11 +6,11 @@ import FastPoly.Polynomial.MonicDivision
 
 Formalizes `eq:peeled-Q` / `lem:peeled-Q-decodable` of the paper: the recursion
 
-  `Q^peel_{2^k-1} = (H_{2^{k-1}} + γ) · Q^peel_{2^{k-1}-1} + Q'^peel_{2^{k-1}-1}`
+  `Q_{2^k-1} = (H_{2^{k-1}} + γ) · Q_{2^{k-1}-1} + Q'_{2^{k-1}-1}`
 
 with the bases `Q_1 = X + α₀` and `Q_3 = (X + α₂)(H_2 + α₁) + α₀` of
-`alg:constr-known-2n-1`.  It spans the same family as the sequential fill at the same
-multiplication and addition ledger, with multiplicative height exactly `k`.
+`alg:constr-known-2n-1`.  The two child gadgets run in parallel, with multiplicative height at most `k`
+when the supplied tower has height at most its level.
 
 Parameter layout: slot `0` is the glue key `γ`; slots `1 .. 2^{k-1}-1` are the first
 child (`W`, the quotient); slots `2^{k-1} .. 2^k-2` are the second child (`B`).
@@ -44,7 +44,7 @@ noncomputable def peelF (Hp : ℕ → A[X]) : ℕ → ℕ → (ℕ → A) → A[
       (Hp (kk + 3) + C (α 0)) * peelF Hp f (kk + 3) (fun j => α (1 + j))
         + peelF Hp f (kk + 3) (fun j => α (2 ^ (kk + 3) + j))
 
-/-- The peeled known-powers polynomial `Q^peel_{2^k-1}` over the powers `Hp`
+/-- The peeled known-powers polynomial `Q_{2^k-1}` over the powers `Hp`
 (`Hp i` playing `H_{2^i}`) and parameters `α`. -/
 noncomputable def peel (Hp : ℕ → A[X]) (k : ℕ) (α : ℕ → A) : A[X] := peelF Hp k k α
 
@@ -110,8 +110,7 @@ theorem peel_monic [Nontrivial A] (Hp : ℕ → A[X]) :
 /-- **Decodability of the peeled gadget** (`lem:peeled-Q-decodable`): over known powers
 `Hp i = H_{2^i}` (monic, right degree, coefficients in `K`), every parameter `α t`,
 `t < 2^k - 1`, lies in any subalgebra `V ⊇ K` containing the coefficients of the value.
-Same interface as `mers_correct`, so the two gadget families are interchangeable at
-every consumption site of the master construction. -/
+This is the known-powers decoder used throughout the master construction. -/
 theorem peel_correct [Nontrivial A] {K : Subalgebra R A} (Hp : ℕ → A[X]) :
     ∀ k, (∀ i, 1 ≤ i → i < k →
         (Hp i).Monic ∧ (Hp i).natDegree = 2 ^ i ∧ ∀ j, (Hp i).coeff j ∈ K) →
@@ -241,7 +240,7 @@ theorem peel_correct [Nontrivial A] {K : Subalgebra R A} (Hp : ℕ → A[X]) :
           hBrec (t - 2 ^ (kk + 2)) (by omega)
         rwa [show 2 ^ (kk + 2) + (t - 2 ^ (kk + 2)) = t from by omega] at h
 
-/-- Encode-side coefficient membership (mirror of `mers_coeff_mem`): all
+/-- Encode-side coefficient membership: all
 coefficients of the peeled gadget lie in any subalgebra containing the power
 coefficients and the parameters. -/
 theorem peel_coeff_mem {K : Subalgebra R A} (Hp : ℕ → A[X]) :
