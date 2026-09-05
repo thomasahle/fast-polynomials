@@ -371,3 +371,95 @@ button.share:hover { border-color: var(--accent); }
    mounted and dims briefly (the delay hides the dim on fast compiles) */
 #out { transition: opacity 0.12s ease; }
 #out.stale { opacity: 0.55; transition: opacity 0.15s ease 0.12s; }
+
+
+/* ---- phones (≤ 640px; ui.js shares the breakpoint) --------------------------
+   Header: the title, a short intro and Paper / GitHub ★ n links with the desktop
+   icons (the desktop intro and paper card are hidden); Share floats beside Copy.  Input card: label + three example
+   chips on one line, the auto-growing input, then Field and Method as two
+   dropdowns.  Output card: underline tabs with the form strip beside them, the
+   pane attached right under the tab line with a floating Copy (long rows scroll
+   sideways, as in the C and graph panes), then a stats line.  The comparison
+   table folds into a collapsed "Compare methods" card. */
+@media (max-width: 640px) {
+  .wrap { padding: 1.3rem .85rem 3rem; }
+  header { margin-bottom: 0; gap: 0; }
+  header h1 { font-size: 1.85rem; line-height: 1.15; margin-bottom: .45rem; }
+  header .sub, .header-links { display: none; }
+  .intro-compact { margin-bottom: 1.1rem; }
+  .intro-compact .sub { display: block; font-size: .98rem; line-height: 1.45; }
+  .quick-links { display: flex; align-items: center; gap: 1.4rem; margin-top: .6rem; font-size: 1.05rem; }
+  .quick-links a { display: inline-flex; align-items: center; gap: .4rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .quick-links .stars {
+    display: inline-flex; align-items: center; gap: .25rem; margin-left: .2rem; padding-left: .5rem;
+    border-left: 1px solid var(--border); color: var(--muted); font-weight: 400; font-size: .92rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .pane-actions button.share { background: var(--panel); padding: .22rem .65rem; font-size: .85rem; }
+
+  .card { padding: .95rem .9rem 1rem; margin-bottom: .9rem; border-radius: 12px; }
+  .head-row { margin-bottom: .55rem; gap: .4rem .4rem; flex-wrap: nowrap; }
+  label.head { font-size: 1rem; white-space: nowrap; }
+  .ex-row { margin-left: auto; gap: .35rem; flex-wrap: nowrap; }
+  .examples { gap: .3rem; flex-wrap: nowrap; }
+  .examples a.chip { padding: .16rem .45rem; font-size: .82rem; white-space: nowrap; }
+  /* ≥ 16px in form fields: iOS Safari stops auto-zooming the page on focus */
+  .poly-edit .poly-hl, textarea#poly-in { font-size: 16px; padding: .65rem .75rem; }
+  textarea#poly-in { min-height: 3.6rem; }
+
+  .pickers { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-top: 1rem; }
+  .picker { display: flex; flex-direction: column; gap: .3rem; min-width: 0; color: var(--muted); font-size: .98rem; }
+  .picker select {
+    width: 100%; min-width: 0; font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: .55rem 2rem .55rem .75rem; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236f6a5e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .6rem center; background-size: 1rem;
+    text-overflow: ellipsis;
+  }
+  .picker select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .controls > .lbl { flex-basis: 100%; order: -1; margin-left: 0; }   /* busy row etc. */
+
+  /* output card: tabs + form strip on one line, the pane attached below */
+  .out-card { padding: 0 0 .85rem; overflow: hidden; }
+  .out-card .out { margin-top: 0; }
+  .viewbar { padding: .1rem .8rem 0; border-bottom: 1px solid var(--out-border); gap: .1rem .5rem; flex-wrap: nowrap; }
+  .views { gap: 0; }
+  .views button {
+    border: 0; border-bottom: 2px solid transparent; border-radius: 0; margin: 0 .8rem -1px 0;
+    text-transform: none; letter-spacing: 0; font-size: .98rem; padding: .55rem .05rem .45rem;
+  }
+  .views button.on { background: none; border-color: var(--accent); color: var(--accent); }
+  .subopts { padding: 0 0 .4rem; font-size: .8rem; gap: .2rem .5rem; flex-wrap: nowrap; margin-left: auto; }
+  .subopts .lbl { margin-right: .1rem; font-size: .66rem; }
+  .subopts a { padding: .08rem .45rem; }
+  .pane-wrap { margin: 0; }
+  .out-card .chain, .out-card .graph-pane { border-left: 0; border-right: 0; border-radius: 0; }
+  .pane-actions { top: .45rem; right: .55rem; }
+  button.copy { background: var(--panel); padding: .22rem .65rem; font-size: .85rem; }
+  pre.chain { padding: .7rem .9rem .9rem; }
+  .math-chain { padding: .55rem .8rem .9rem; }
+  .math-chain .katex { font-size: 1.12em; }
+  .math-table { border-spacing: 0 .3rem; }
+  .math-lhs { min-width: 2rem; padding-left: 0; }
+  .math-annotation { display: block; margin: .1rem 0 0; }
+  .graph-legend { padding: 0 .8rem; }
+  .stats-line { padding: .75rem .9rem 0; color: var(--muted); font-size: .95rem; }
+
+  /* comparison card: a native disclosure, collapsed by default */
+  .cmp-card { padding: 0; }
+  .cmp-card summary {
+    display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+    padding: .85rem 1rem; font-weight: 700; font-size: 1.1rem; list-style: none;
+  }
+  .cmp-card summary::-webkit-details-marker { display: none; }
+  .cmp-card summary::after {
+    content: ''; width: .55rem; height: .55rem; margin: -.3rem .3rem 0 0;
+    border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+    transition: transform .15s ease;
+  }
+  .cmp-card[open] summary { border-bottom: 1px solid var(--border); }
+  .cmp-card[open] summary::after { transform: rotate(-135deg); margin-top: .25rem; }
+  .cmp-card .foot { margin: 0; padding: .5rem .5rem .8rem; }
+  .cmp-card table.cmp { max-width: none; }
+}

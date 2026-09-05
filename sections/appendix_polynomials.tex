@@ -251,7 +251,7 @@ For degree $11$, write
 \(P=x^{11}+\sum_{j=0}^{10}c_jx^j\), and put
 \[
  a_0=c_{10},\qquad a_3=c_9+1,\qquad a_4=c_8+a_0,
- \qquad s=a_1+a_2,qquad h=a_5+a_7+a_8.
+ \qquad s=a_1+a_2,\qquad h=a_5+a_7+a_8.
 \]
 Define the already-known expressions
 \[
@@ -339,7 +339,7 @@ baseline
 \]
 The seven gate identities give the following unitriangular certificate:
 \[
- [x^{d_i}]P=q_i+K_i(q_0,\ldots,q_{i-1})qquad(0\le i\le12).
+ [x^{d_i}]P=q_i+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le12).
                                                                \tag{13.4}
 \]
 For reference, its complete pivot table is
@@ -379,7 +379,7 @@ below the indicated row.  This proves (13.4) without a Jacobian argument.
 
 The inverse is now the explicit recurrence
 \[
- q_i=[x^{d_i}]P+K_i(q_0,\ldots,q_{i-1})qquad(0\le i\le12),
+ q_i=[x^{d_i}]P+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le12),
 \]
 followed by the inverse of (13.1).  It uses only addition and multiplication,
 so it works over every characteristic-$2$ field.  The evaluation claim again
@@ -626,7 +626,9 @@ The remaining rows of (A.13) are obtained in exactly the same way: substitute
 the nine gate assignments, set the current and later coordinates to zero for
 the baseline, and collect one coefficient.  Thus (A.13) is a list of literal
 polynomial identities, rather than a Jacobian or finite-field test.  The
-companion script \texttt{char2/verify\_n17\_uniform\_symbolic.py} independently
+companion script \texttt{char2/verify\_n17\_uniform\_symbolic.py} (run from
+the repository root as \texttt{python3 -m char2.verify\_n17\_uniform\_symbolic},
+since it imports \texttt{char2/symexpr.py}) independently
 expands all seventeen identities in $\F_2[z_1,\ldots,z_{17}]$.
 
 Equation (A.13) recovers the $z_i$ in its displayed order.  All slopes are
@@ -1041,7 +1043,8 @@ key map is covered by \Cref{cor:all-odd-decodable}; no separate
 certification is needed.
 
 \medskip
-\noindent\textbf{Note:} In the large-prime implementation, multiplications
-by $x+0$ correspond to squaring operations, which can be computed more
-efficiently than general multiplications using
-$(a+b)^2=a^2+2ab+b^2\pmod{M_{89}}$.
+\noindent\textbf{Note:} In the large-prime implementation, the products
+$(x+0)\cdot(x+0)$, i.e.\ the squaring gates $y=x^2$ of the degree-$9$ and
+degree-$13$ circuits above, can be computed more efficiently than general
+multiplications using $(a+b)^2=a^2+2ab+b^2\pmod{M_{89}}$; a product
+$(x+0)\cdot w$ with $w\ne x$ is an ordinary multiplication.

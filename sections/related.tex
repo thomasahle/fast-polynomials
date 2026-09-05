@@ -15,7 +15,7 @@ In cryptography, Bernstein's BRW polynomials~\cite{Bernstein:2011:RW} specialise
 The two schemes serve different purposes.
 Rabin--Winograd preprocessing is a \emph{bijection} between coefficient vectors and parameter vectors, so a random parameter vector corresponds to a uniformly random monic polynomial and the scheme yields $k$-wise independent hashing.
 BRW is only \emph{injective}: distinct messages give distinct polynomials, but not every polynomial arises, which suffices for almost-universal hashing (an ``authenticator'') but not for $k$-independence.
-Our main construction is of the first kind: it keeps a bijective rational preprocessing and removes the logarithmic number of squarings, evaluating with $\lfloor n/2\rfloor+1$ multiplications while matching the logarithmic multiplicative depth of the recursion (\Cref{thm:construction-height-peeled}).
+Our main construction is of the first kind: it keeps a bijective rational preprocessing and removes the logarithmic number of squarings, evaluating with $\lfloor n/2\rfloor+1$ multiplications while matching the logarithmic multiplicative depth of the recursion (\Cref{thm:construction-height}).
 Its injective counterpart, an almost-universal hash with half the multiplications of Horner's method, is the subject of \Cref{sec:injective}, where we compare it with BRW.
 
 \paragraph{Hashing.}
@@ -32,4 +32,3 @@ Recent work by Degabriele et al.~\cite{degabriele2026multivariate} explores two-
 \paragraph{Cryptographic workloads.}
 Fast evaluation of low-degree polynomials over finite fields appears in symmetric cryptography (e.g.\ polynomial representations of S-boxes and analyses of masking schemes~\cite{DBLP:conf/fse/CarletGPQR12}) and in threshold secret sharing~\cite{shamir1979share}.
 Section~\ref{sec:experiments:crypto} benchmarks our constructions on share-generation and polynomial-PRF style workloads.
-

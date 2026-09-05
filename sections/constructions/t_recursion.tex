@@ -290,7 +290,9 @@ coefficients the two formulas use.
         $\deg R^{(1)}_{k,2^l}=\deg R^{(2)}_{k,2^l}=(k-1)2^l$.
         \item With $d=(k-1)2^l$, the remainder pair is
         coefficient-triangular in the sense of
-        \Cref{def:coefficient-triangular}.  Hence the parameters
+        \Cref{def:coefficient-triangular}, in the row order specified by
+        the stage tables below (with each known-powers block ordered as in
+        \Cref{lem:Q-unitriangular}).  Hence the raw parameters
         $\alpha_0,\ldots,\alpha_{d-1}$ are extractable from
         $xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$, and
         $(T^{(1)}_{k,2^l},T^{(2)}_{k,2^l})$ is compatible on $\rng d$,
@@ -353,6 +355,15 @@ coefficients the two formulas use.
     induction hypothesis in both cases.
     In the odd branch with $l=2$ this automatically means $k\ge3$, so all
     indices in the shared-base formulas are defined.
+
+      Within each known-powers block, parameter pivots use the recursive
+      row order of \Cref{lem:Q-unitriangular}, rather than the raw order in
+      \Cref{alg:constr-known-2n-1}.  The stage tables first recover factor
+      coefficients; the known-powers decoder then recovers the raw block.
+      Row permutations are confined to their displayed blocks and do not
+      change any coefficient cutoff.  In the proof and stage tables below,
+      $\alpha_j$ denotes the parameter assigned to row $j$ by this blockwise
+      permutation; the construction and final decoder retain the raw order.
 
       Each branch is now proved in the same order: one exact remainder
       identity, its degree/support bounds, its tail stage table, and finally
@@ -437,7 +448,7 @@ coefficients the two formulas use.
         =(\alpha_{b},\ldots,\alpha_{b+D-1}),
         \tag{R-even-block}
       \]
-      where the $\eta$'s are the coefficient parameters of the two
+      where the $\eta$'s are the row-ordered pivot parameters of the two
       $Q$-polynomials.
       The recursive definition and the binomial theorem give the single
       identity
@@ -480,8 +491,8 @@ coefficients the two formulas use.
       \end{array}
       \tag{R-even-table}
       \]
-      For example, a coefficient $\eta^+_s$ first occurs as
-      $2\eta^+_s$ in $U^2$ at degree $r+s$; the $x$-shift and the monic
+      For example, the pivot parameter $\eta^+_s$ first occurs as
+      $2\eta^+_s$ plus higher-row terms in $U^2$ at degree $r+s$; the $x$-shift and the monic
       factor $H_1^{k-2}$ put it in row $b+r+s+1$, with slope $-2m$.
       The other rows follow from the same Cauchy-product calculation.  In a
       first-branch row $j$ the displayed occurrence lies in

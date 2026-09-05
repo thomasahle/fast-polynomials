@@ -10,10 +10,9 @@ below are
 \Cref{alg:decode-Q-2kminus1} for $Q_{2^t-1}$,
 \Cref{alg:decode-fill} for $A_{2^l}$,
 and \Cref{alg:decode-Rk2l} for the combined remainder polynomial used in the $T_{k,2^l}$ recursion;
-they assemble into \Cref{alg:final-decoder}.  The schedules certified in
-Lean substitute the peeled gadget $Q^{\mathrm{peel}}$ (\Cref{sec:peeled-Q})
-for every known-powers instance; \Cref{thm:construction-height-peeled}
-records the resulting $O(\log n)$ height at the identical gate ledger.
+they assemble into \Cref{alg:final-decoder}.
+The paper and Lean use the same binary known-powers construction;
+\Cref{thm:construction-height} records its complete logarithmic-height bound.
 \Cref{fig:final-recursion} charts the routing of the strong induction.
 
 \begin{figure}[H]
@@ -27,8 +26,8 @@ records the resulting $O(\log n)$ height at the identical gate ledger.
   (and the degree-$15$ byproduct mismatch).
   The bottom row separates the cost of constructing the shared pair from the
   final multiplication by~$x$.  All known-powers instances inside these
-  branches are scheduled as the peeled $Q^{\mathrm{peel}}$
-  (\Cref{thm:construction-height-peeled}), giving height
+  branches use \Cref{alg:constr-known-2n-1}
+  (\Cref{thm:construction-height}), giving height
   $2\lceil\log_2 n\rceil+4$ for the odd degrees charted here (the even
   lift of \Cref{thm:construction-count} adds one).}
   \label{fig:final-recursion}
@@ -61,10 +60,6 @@ records the resulting $O(\log n)$ height at the identical gate ledger.
   \caption{Final decoder for $P_n$ (structural recursion)}\label{alg:final-decoder}
   \begin{algorithmic}
     \Require odd $n\ge 3$ and $P_n$ produced by \Cref{alg:final-construction}.
-      For the peeled schedules of \Cref{thm:construction-height-peeled}, every
-      invocation of \Cref{alg:decode-Q-2kminus1} below is replaced by the
-      decoder of \Cref{lem:peeled-Q-decodable}, which has the identical
-      interface.
     \Ensure the full parameter list $(\alpha_0,\ldots,\alpha_{n-1})$
 
     \If{$n=7$}
@@ -103,7 +98,7 @@ records the resulting $O(\log n)$ height at the identical gate ledger.
     We argue by strong induction on odd $n$, proving simultaneously the
     asserted compatible-pair conclusion, the exact joint multiplication
     count, and the byproduct statement.  For the height conjunct, the ledger
-    of \Cref{thm:construction-height-peeled} threaded through the same
+    of \Cref{thm:construction-height} threaded through the same
     induction gives $2\lceil\log_2n\rceil+3$ along the pair branches (the
     bound $B(L)=2L+3$ there); the same constant is the height conjunct of
     the machine-checked Lean statement (\texttt{odd\_realizable\_pairs}) for
@@ -238,4 +233,3 @@ records the resulting $O(\log n)$ height at the identical gate ledger.
     set $\mathrm{Bad}(n)$ is read off the displayed pivots and is not
     machine-checked.
 \end{remark}
-

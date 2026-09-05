@@ -10,7 +10,8 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 ## Structure
 
 - `index.html`, `style.css` — the page (no build step; Preact + htm and KaTeX vendored). One card:
-  example chips (Taylor polynomials over ℚ/ℝ; over the hashing fields a random key —
+  example chips (Taylor polynomials over ℚ/ℝ — with monic on, the degree-(n−1) Taylor
+  polynomial plus xⁿ, so the series' coefficients stay recognisable; over the hashing fields a random key —
   a fresh draw per click —, sparse, dense and a fixed reproducible key, all regenerated
   at the chosen degree) → the polynomial input (highlighted through a transparent
   textarea over a painted backdrop) → the field chooser, rendered from the `FIELDS`
@@ -23,11 +24,22 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   per method: multiplications with the scalar count, additions, multiplicative depth,
   exact or ≈ numeric; clicking a row selects the method) + Share. Copy is paired with
   Download, which packages every available C method with benchmark and assembly-audit
-  scripts.
+  scripts. On phones (≤ 640px, `COMPACT_QUERY` in `ui.js` and the matching media query in
+  `style.css`) the same state renders as a short intro with Paper / GitHub (star count) /
+  Share links and three cards: the input (three example chips beside the label, no degree
+  stepper or monic toggle — the page opens on the ℚ e^x example at degree 5, monic, whose
+  chain has small constants) with Field / Method dropdowns; the output with underline tabs
+  and the form strip beside them, a floating Copy (no Download), ℝ constants to six
+  significant digits, and a stats line (long rows scroll sideways, as in every pane);
+  and a collapsed "Compare methods" disclosure.
 - `js/rat.js` — exact rationals over BigInt
 - `js/field.js` — field interface: ℚ, GF(p) and GF(2^k) (carryless mul, Frobenius roots)
 - `js/poly.js` — dense polynomial arithmetic over any field
-- `js/polyparse.js` — input parsing / pretty-printing
+- `js/polyparse.js` — input parsing / pretty-printing. The grammar accepts the spellings
+  people type for the same polynomial: `x^3/6`, `1/6x^3`, `(1/6)x^3`, `x**3`, `x³`, `2*x`,
+  `x·2`, decimals and exponents (`0.5x`, `1.5e-3`), a Unicode minus, hex bit patterns over
+  GF(2^k); rejections say what was wrong (division by zero, a variable other than x, a
+  fraction in a binary field, …). Tested in `test/polyparse.test.js`.
 - `js/char2.js`, `js/n13decode.js`, `js/compile2.js` — the char-2 circuits and
   decoders (odd degrees 3 to 21; all but 7 and 17 have polynomial decoders valid over
   every characteristic-2 field, 7 and 17 take Frobenius roots and need a finite field),
@@ -96,6 +108,15 @@ remain available with `npm run test:stress`; CI runs them weekly and on manual r
     # open http://localhost:8000
 
 (A server is needed because the page uses ES modules; `file://` won't load them.)
+
+## License
+
+The website and compiler are MIT-licensed (see `../LICENSE`). The C code the page
+generates — every method file, the benchmark harness and scripts in a downloaded
+bundle — is released under the BSD Zero Clause License (0BSD), stated in the header
+of each generated file (`C_PROVENANCE` / `C_LICENSE` in `js/cgen.js`), so it can be
+pasted into any project without an attribution notice. Preact + htm and KaTeX are
+vendored under their own MIT licenses in `js/vendor/`.
 
 ## Deploying to GitHub Pages
 

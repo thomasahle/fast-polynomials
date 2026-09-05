@@ -83,45 +83,50 @@ export function nameToTex(raw) {
 
 const NUMBER = /^-?\d+(?:\.\d+)?$/;
 
+// The class commands are emitted only by this parser, never copied from user
+// input.  CSS then gives mathematical variables and constants the same theme-
+// aware colours as the polynomial editor.
+const highlighted = (kind, tex, on) => on ? `\\htmlClass{math-${kind}}{${tex}}` : tex;
+
 /** One non-parenthesized token from the chain grammar -> TeX. */
-export function tokenToTex(token) {
+export function tokenToTex(token, { highlight = false } = {}) {
   const t = String(token);
   let m = /^(-?)(\d+)\/(\d+)$/.exec(t);
-  if (m) return `${m[1]}\\frac{${m[2]}}{${m[3]}}`;
+  if (m) return highlighted('const', `${m[1]}\\frac{${m[2]}}{${m[3]}}`, highlight);
   m = /^(-?)(0x[0-9a-fA-F]+)$/.exec(t);
-  if (m) return `${m[1]}\\mathtt{${m[2]}}`;
+  if (m) return highlighted('const', `${m[1]}\\mathtt{${m[2]}}`, highlight);
   m = /^(-?\d+(?:\.\d+)?)[eE]([+-]?\d+)$/.exec(t);
-  if (m) return `${m[1]}\\mathbin{\\times}10^{${Number(m[2])}}`;
-  if (NUMBER.test(t)) return t;
+  if (m) return highlighted('const', `${m[1]}\\mathbin{\\times}10^{${Number(m[2])}}`, highlight);
+  if (NUMBER.test(t)) return highlighted('const', t, highlight);
   m = /^(.+)·(.+)$/.exec(t);
-  if (m) return `${tokenToTex(m[1])}\\,${nameToTex(m[2])}`;
-  return nameToTex(t);
+  if (m) return `${tokenToTex(m[1], { highlight })}\\,${highlighted('var', nameToTex(m[2]), highlight)}`;
+  return highlighted('var', nameToTex(t), highlight);
 }
 
 const simpleSum = sum => sum.length === 1 && !sum[0].neg && sum[0].t.length === 1;
 
-function factorToTex(factor) {
-  if (factor.tok !== undefined) return tokenToTex(factor.tok);
-  const inside = sumToTex(factor.sum);
+function factorToTex(factor, options) {
+  if (factor.tok !== undefined) return tokenToTex(factor.tok, options);
+  const inside = sumToTex(factor.sum, options);
   return simpleSum(factor.sum) ? inside : `\\left(${inside}\\right)`;
 }
 
-function termToTex(factors) {
-  return factors.map(factorToTex).join(' \\mathbin{\\cdot} ');
+function termToTex(factors, options) {
+  return factors.map(factor => factorToTex(factor, options)).join(' \\mathbin{\\cdot} ');
 }
 
-function sumToTex(sum) {
+function sumToTex(sum, options) {
   return sum.map(({ neg, t }, i) => {
     const sign = i === 0 ? (neg ? '-' : '') : (neg ? ' - ' : ' + ');
-    return sign + termToTex(t);
+    return sign + termToTex(t, options);
   }).join('');
 }
 
 /** A generated right-hand side -> TeX, or null if it falls outside the grammar. */
-export function expressionToTex(rhs) {
+export function expressionToTex(rhs, { highlight = false } = {}) {
   try {
     const normalized = String(rhs).trim().replace(/\s+/g, ' ');
-    return normalized ? sumToTex(parseRhs(normalized).sum) : null;
+    return normalized ? sumToTex(parseRhs(normalized).sum, { highlight }) : null;
   } catch (_) {
     return null;
   }
@@ -167,7 +172,7 @@ export function chainMathRows(text) {
     if (row.kind === 'equation') {
       const { expression, annotation } = splitAnnotation(row.rhs);
       return { ...row, expression, annotation,
-        lhsTex: nameToTex(row.lhs), rhsTex: expressionToTex(expression) };
+        lhsTex: nameToTex(row.lhs), rhsTex: expressionToTex(expression, { highlight: true }) };
     }
     if (row.kind === 'heading') {
       const oneName = /^\S+$/.test(row.text);
@@ -186,8 +191,10 @@ export function renderLatex(tex) {
       displayMode: false,
       output: 'htmlAndMathml',
       throwOnError: true,
-      trust: false,
-      strict: 'error',
+      // Only the parser-generated colour hooks above use KaTeX's HTML
+      // extension.  No user-authored TeX reaches this function.
+      trust: context => context.command === '\\htmlClass',
+      strict: code => code === 'htmlExtension' ? 'ignore' : 'error',
     });
   } catch (_) {
     return null;

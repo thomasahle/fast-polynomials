@@ -4,21 +4,29 @@
 
 \paragraph{Straight-line programs.}
 Fix a field $\mathbb{F}$.
-A (polynomial) straight-line program with input $x$ and parameters $p\in\mathbb{F}^m$ is a sequence of assignments that produces intermediate values $u_0,u_1,\dots$ and finally an output $P_p(x)$, where each assignment is obtained from earlier values using additions and scalar multiplications by fixed elements of $\mathbb{F}$, and using a bounded number of nonscalar multiplications (products of two values that depend on $x$).
-We count only these nonscalar multiplications; in particular, multiplications by fixed scalars are free, but multiplications involving parameters are not.
+A (polynomial) straight-line program with input $x$ and parameters $p\in\mathbb{F}^m$ is a sequence of assignments that produces intermediate values $u_0,u_1,\dots$ and finally an output $P_p(x)$, where each assignment is obtained from earlier values (and from $x$, the parameters and fixed elements of $\mathbb{F}$) using additions and multiplications by fixed elements of $\mathbb{F}$, which are free, and a bounded number of \emph{nonscalar} multiplications, which are counted: a multiplication is nonscalar when neither factor is a fixed element of $\mathbb{F}$.
+Thus multiplications by fixed scalars are free, but multiplications involving $x$ or the parameters are not.
+Consequently each factor of a nonscalar multiplication, and the output, is a fixed linear combination of $x$ and the outputs of the earlier nonscalar multiplications plus an affine function of the parameters (the \emph{constant slot} of that factor); the parameters enter the program only through these constant slots.
+An \emph{everywhere-defined rational left inverse} of a polynomial map $F\colon\mathbb{F}^m\to\mathbb{F}^m$ is a tuple of rational functions $g_i/h_i$ ($1\le i\le m$) such that no $h_i$ has a zero in $\mathbb{F}^m$ and $g_i(F(p))=p_i\,h_i(F(p))$ for every $p\in\mathbb{F}^m$.
 
 
 
 \begin{lemma}[$6$ parameters]
 \label{lem:six-params}
 Assume $\mathbb{F}$ is infinite and $\mathrm{char}(\mathbb{F})\neq 2$.
-Fix any six distinct evaluation points $x_0,\dots,x_5\in\mathbb{F}$, and fix a straight-line program that uses three nonscalar multiplications, has six scalar input parameters $p\in\mathbb{F}^6$, and outputs a polynomial $P_p(x)$.
+Fix any six distinct evaluation points $x_0,\dots,x_5\in\mathbb{F}$, and fix a straight-line program as above that uses at most three nonscalar multiplications, has six scalar input parameters $p\in\mathbb{F}^6$, and outputs a polynomial $P_p(x)$.
+Explicitly, the program is
+\[
+   u_1=(Ax+a)(Bx+b),\qquad u_2=\ell_2r_2,\qquad u_3=\ell_3r_3,\qquad
+   P_p=s_3u_3+s_2u_2+s_1u_1+s_0x+b_1,
+\]
+where $A,B,s_i$ are fixed, $\ell_i,r_i$ are affine in $x$ and the earlier $u_j$ with fixed coefficients and constant slots $a_i,b_i$, and the seven constant slots $(a,b,a_2,b_2,a_3,b_3,b_1)$---both constants of the first multiplication included---are an arbitrary affine function of $p$.
 Let
 \[
    F:\mathbb{F}^6\to\mathbb{F}^6,\qquad
    F(p) = \bigl(P_p(x_0),\dots,P_p(x_5)\bigr).
 \]
-Then $F$ cannot admit an everywhere-defined rational inverse (equivalently: rational decoding with no exceptional inputs).
+Then $F$ admits no everywhere-defined rational left inverse, and in particular no everywhere-defined rational inverse (equivalently: rational decoding with no exceptional inputs).
 \end{lemma}
 
 \paragraph{Connection to degree-$6$ decoding.}
@@ -58,10 +66,12 @@ obstruction we prove is specific to degree~$6$ with three multiplications.
 
 \paragraph{Motzkin's bound, and what is left to prove.}
 Under \emph{any} preprocessing, a program with $m$ multiplications can produce at
-most $2m$ independent coefficients: after the normalization used below, the first
-multiplication carries one free parameter, every later multiplication two, and the
-final addition one, so the coefficient vector is a fixed polynomial function of $2m$
-scalars, and its image cannot cover an $n$-dimensional family of monic polynomials
+most $2m$ independent coefficients: after the normalization of \Cref{appendix:lower}
+(which trades the second constant of the first multiplication for an $x$-free
+correction absorbed into the later constants), the first multiplication carries one
+free slot, every later multiplication two, and the final addition one, so the
+coefficient vector is a fixed polynomial function of $2m$ scalars, themselves
+polynomial in the parameters, and its image cannot cover an $n$-dimensional family of monic polynomials
 unless $2m\ge n$ (Motzkin~\cite{motzkin1955evaluation}; Theorem~M and exercise~30
 in Knuth~\cite[\S4.6.4]{knuth1997seminumerical}, whose proof Knuth credits to
 Pan~\cite{pan1966methods}; see also~\cite[Chapter~5]{burgisser1997algebraic}).
@@ -96,36 +106,47 @@ multiplications, so Pan's hypersurface cannot be avoided.
 
 \begin{proof}[Proof sketch]
 The full proof is in \Cref{appendix:lower}; it is a Jacobian obstruction.
-Let $J(p)$ be the $6\times6$ Jacobian of $F$.  If $F$ had an
+Let $J_F(p)$ be the $6\times6$ Jacobian of $F$.  If $F$ had an
 everywhere-defined rational left inverse with coordinates $g_i/h_i$, then
 $g_i(F(p))=p_i\,h_i(F(p))$ identically; differentiating at a point $p_0$ with
-$J(p_0)v=0$, $v\neq0$, leaves $v_i\,h_i(F(p_0))=0$ for all $i$, which is
+$J_F(p_0)v=0$, $v\neq0$, leaves $v_i\,h_i(F(p_0))=0$ for all $i$, which is
 impossible because no $h_i$ vanishes.  So it suffices to exhibit, for every
 three-multiplication program, one parameter point with singular Jacobian.
 
 Every such program can be brought to a normal form
 $u_1=x(R_{1,0}x+a_1)$, $u_2=\ell_2r_2$, $u_3=\ell_3r_3$ with $\ell_i,r_i$
 affine in $x$ and the earlier $u_j$, and
-$P=s_3u_3+s_2u_2+s_1u_1+s_0x+b_1$, where the six parameters enter the six
-constant slots $(a_1,a_2,b_2,a_3,b_3,b_1)$ through a $6\times6$ matrix $M$
-(a singular $M$ gives a kernel direction at once).  The sensitivities
-$\partial P/\partial(\text{slot})$ are then products of multiplicands with
+$P=s_3u_3+s_2u_2+s_1u_1+s_0x+b_1$, by the gauge identity
+$(Ax+a)(Bx+b)=A\,x(Bx+b+\frac BAa)+ab$, whose $x$-free correction $ab$ is
+absorbed into the later constant slots.  The six normal-form slots
+$q=(a_1,a_2,b_2,a_3,b_3,b_1)$ are therefore a polynomial map $q=Q(p)$ of
+degree two of the parameters, and $J_F(p)=J(Q(p))\,DQ(p)$ with $J$ the
+Jacobian of the normal form.  Unless $Q$ is an explicit quadratic
+automorphism of $\mathbb{F}^6$, $DQ$ is singular at an explicit point (a
+kernel direction of the slot map, or the midpoint of two parameter points
+with the same normal-form slots, using $\mathrm{char}(\mathbb{F})\neq2$);
+when it is, a singular point of $J$ pulls back to one of $J_F$.  So it
+suffices to make $J$ singular for every normal form.  The sensitivities
+$\partial P/\partial(\text{slot})$ are products of multiplicands with
 the adjoints $\bar u_i=\partial P/\partial u_i$.  The argument splits on the
 determinant $D$ of the coefficients with which $u_2,u_1$ enter the last gate.
 If $D\neq0$, the slots can be chosen so that $\ell_3$ and $r_3$ take equal
 values at two evaluation points while $\bar u_1,\bar u_2$ vanish there, so
 two rows of $J$ coincide.  If $D=0$, a second-difference functional over
 three evaluation points that annihilates constants and $x$ annihilates all
-six sensitivities, so three rows of $J$ are dependent.  Both cases are
-machine-checked in Lean (\texttt{FastPoly/LowerBound/}; see
-\Cref{appendix:lower}).
+six sensitivities, so three rows of $J$ are dependent.  The normal-form
+statement---both cases of this split, for every circuit in the normal form and
+every affine reparameterization of its six slots---is machine-checked in Lean
+(\texttt{FastPoly/LowerBound/}); the reduction to the normal form is not yet
+formalized (see \Cref{appendix:lower}).
 \end{proof}
 \subsection{Beyond degree six}
 
 We conjecture that the pattern continues: evaluating a generic monic
 polynomial of degree $2n$ with everywhere-defined rational decoding requires at least $n+1$
 multiplications.  The proof above suggests an approach: in the normal form,
-each additional multiplication contributes one Jacobian row, and the moment
+each additional multiplication contributes two constant slots, hence two
+Jacobian columns (and two further evaluation points, hence two rows), and the moment
 functionals $\langle\,\cdot\,\rangle$ annihilating the partial derivatives
 satisfy one quadratic (conic) consistency condition per level.  Beyond three
 multiplications these conditions are no longer linear in the unknown

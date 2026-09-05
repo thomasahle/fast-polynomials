@@ -308,7 +308,11 @@ $\F_{2^{64}}$ are the three-key recurrence with its state kept in vector
 registers (\texttt{tools/bench/adversarial/}); the framework implementation of
 \Cref{tab:injective:universal}, which moves the state through general
 registers, runs the same one-chain recurrence at $2.2$\,GB/s.  The other
-polynomial rows use the framework implementations.}
+polynomial rows use the framework implementations.  The ChainHash bounds
+(\Cref{sec:ph}) are proved for a key of $W+9$ independent uniform field
+elements; the implementation timed and tested here expands a $64$-bit seed
+with \texttt{splitmix64}, a $2^{64}$-member subfamily that the theorems do
+not cover (\Cref{rem:ph:gaps}).}
 \label{tab:injective:adversarial}
 \begin{tabular}{lrrrr}
 \hline
@@ -360,9 +364,17 @@ addition, carries and all); and the sum is passed through a random monic
 polynomial of degree~$5$ evaluated with three multiplications,
 $\lfloor5/2\rfloor+1$ as in \Cref{thm:main}, by a characteristic-$2$ circuit
 whose coefficient map is a bijection of $\F^5$ (\Cref{sec:ph} gives the
-explicit decoder), so its five parameters are drawn uniformly at random and
-the output is $5$-wise independent, which is the independence that linear
-probing provably needs~\cite{pagh2009linear,patracscu2016kindependence}.
+explicit decoder).  With its five parameters uniform, the finalizer is a
+$5$-wise independent family on distinct field inputs; for the full hash
+\Cref{thm:ph:kwise} gives the qualified form: conditioned on the level-2
+values of up to five messages being distinct, which fails with probability
+at most $\binom{t}{2}(p+1)/2^{64}$, the outputs are independent and uniform,
+so that two messages collide with probability $r+(1-r)/2^{64}$, $r$ being the
+level-1/2 collision probability, rather than $1/2^{64}$.  Five-wise
+independence is what linear probing provably
+needs~\cite{pagh2009linear,patracscu2016kindependence}.  Both statements are
+for the ideal key of $W+9$ uniform words; the implementation derives its key
+from a $64$-bit seed (\Cref{rem:ph:gaps}).
 The twist answers a question that $k$-wise independence never asks: over
 $\F_{2^{64}}$ the $\F_2$-degree of $v\mapsto v^e$ is the number of ones in
 the binary expansion of $e$, so every polynomial of degree at most $6$ is
@@ -393,7 +405,9 @@ interior words, over $2^{24}$ random seeds, $2^{30}$ in an extended tier) that
 \texttt{XXH3} and \texttt{XXH3-128} fail in the extended tier, while \texttt{komihash},
 Polymur, SipHash and the polynomial hashes pass (\Cref{app:adversarial}).
 With $1$\,KB blocks and a $137$-word key it runs at $62$\,GB/s on the M2 Pro,
-above every heuristic hash in the table and above UMASH, with a proof; the
+above every heuristic hash in the table and above UMASH, with a proof---for
+the ideal key; the seeded interface that was timed and tested is a subfamily
+outside the theorems (\Cref{rem:ph:gaps}); the
 block size is exactly the key-budget knob, and at $64$-byte blocks, closest to
 the one-cache-line budget ($17$ key words), the hybrid matches or beats the
 eight-lane recurrence on long messages ($26.6$ against $23.8$\,GB/s at

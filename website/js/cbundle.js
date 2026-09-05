@@ -2,7 +2,8 @@
 // dependency, so we write POSIX ustar directly and use the browser's native
 // gzip stream when available.
 
-import { C_PROVENANCE } from './cgen.js';
+import { C_PROVENANCE, C_LICENSE } from './cgen.js';
+import { selectedCSource } from './uistate.js';
 
 const UTF8 = new TextEncoder();
 
@@ -186,13 +187,21 @@ printf '\nAssembly files are in build/assembly/. Counts are descriptive, not a c
 `;
 }
 
-function readme(state, entries) {
+function readme(state, entries, selected) {
   const field = state.result?.fieldName ?? state.mode;
   return `# Generated polynomial-evaluation benchmark
 
+Code generated from https://thomasahle.com/fast-polynomials/ — for details, see
+"Fast Evaluation of Polynomials with Rational Preprocessing" by Thomas Ahle and
+Jakob Knudsen.  ${C_LICENSE}
+
 Field: ${field}
 
-Each file in \`methods/\` is a self-contained C implementation of the same
+${selected ? `\`selected.c\` is byte-for-byte the ${selected.label} source selected by the
+web page${selected.style === 'fraction' ? ' with fraction literals' : ''}.  The files in
+\`methods/\` are the complete benchmark set.
+
+` : ''}Each file in \`methods/\` is a self-contained C implementation of the same
 polynomial, with its key/preprocessed constants baked in. Successful methods
 available in the web comparison are included; over Q, distinct decimal and
 fraction-literal renderings are both preserved.
@@ -233,6 +242,7 @@ ${entries.map(e => `- \`${e.file}\`: ${e.label}`).join('\n')}
 export function buildCBundle(state) {
   const rows = cRows(state);
   if (!rows.length) throw new Error('no generated C implementations are available');
+  const selected = selectedCSource(state);
   const used = new Set(), entries = [], files = [];
   for (let i = 0; i < rows.length; ++i) {
     const { name, row } = rows[i];
@@ -248,7 +258,8 @@ export function buildCBundle(state) {
   }
   const sources = entries.map(e => e.file);
   files.unshift(
-    { name: 'README.md', text: readme(state, entries), mode: 0o644 },
+    { name: 'README.md', text: readme(state, entries, selected), mode: 0o644 },
+    ...(selected ? [{ name: 'selected.c', text: selected.code, mode: 0o644 }] : []),
     { name: 'benchmark.c', text: benchmarkHarness(state.mode), mode: 0o644 },
     { name: 'benchmark.sh', text: benchmarkScript(state.mode, sources), mode: 0o755 },
     { name: 'inspect.sh', text: inspectionScript(state.mode, sources), mode: 0o755 },

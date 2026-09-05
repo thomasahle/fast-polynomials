@@ -19,15 +19,11 @@ import FastPoly.Polynomial.MonicDivision
 import FastPoly.Section4.FillTwo
 import FastPoly.Section4.Fill
 import FastPoly.Section4.FillRec
-import FastPoly.Section4.KnownPowers
-import FastPoly.Section4.PeepholeDecoder
 import FastPoly.Section4.Peeled
 import FastPoly.Section4.PeeledCert
 import FastPoly.Cost.PeeledCircuit
-import FastPoly.Section4.SlotPerm
 import FastPoly.Section4.Unitriangular
 import FastPoly.Section4.FillCert
-import FastPoly.Section4.MersCert
 import FastPoly.Examples.Q3
 import FastPoly.Section5.T
 import FastPoly.Section5.Binomial
@@ -63,6 +59,8 @@ import FastPoly.Examples.BarredGadgets
 import FastPoly.Examples.OptimizedCircuits
 import FastPoly.Examples.Chain17Bridge
 import FastPoly.Examples.Char2Inverse
+import FastPoly.Polynomial.MonicEvaluation
+import FastPoly.Examples.Char2SmallInverses
 import FastPoly.Examples.P15
 import FastPoly.Examples.P27
 import FastPoly.Examples.P27Composition

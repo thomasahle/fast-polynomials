@@ -5,10 +5,12 @@ The constructions of this paper are exact: over a finite field, or over $\Q$ in
 exact rational arithmetic, the schedules evaluate $P$ without error.  It is
 nevertheless natural to ask how they behave in floating-point arithmetic,
 where Horner's rule and Estrin's scheme are the standard choices.  We show
-that adapted-constant schedules---ours included---are not coefficientwise
-backward stable: their floating-point error is governed by an amplification
-factor $A$ that we define and measure below, the floating-point counterpart of
-the classical observation that adapted-coefficient methods are prone to lose
+that adapted-constant schedules---ours included---do not come with the
+coefficientwise backward-stability guarantee of Horner's rule: their
+floating-point error bound carries an amplification factor $A$, which we
+define and measure below and which is unbounded for our schedules and for
+the classical adapted schemes, the floating-point counterpart of the
+classical observation that adapted-coefficient methods are prone to lose
 significance~\cite[\S4.6.4]{knuth1997seminumerical}.
 
 \subsection{Model and a majorant bound for straight-line programs}
@@ -127,35 +129,143 @@ majorant can be much larger than $\sum_i\abs{a_i}\abs{x}^i$.  Define the
 Theorem~\ref{thm:majorant-bound} then gives the relative forward bound
 $\abs{\widehat P-P}/\abs{P}\le\gamma_{\rho}\,A_{\mathcal C}(P,x)\,\kappa(P,x)$,
 and $A_{\mathcal C}$ is precisely the price paid for the multiplications
-saved; for Horner and Estrin $A\equiv1$.  For every adapted scheme it is
-unbounded:
+saved; for Horner and Estrin $A\equiv1$.  For an adapted scheme it is
+unbounded as soon as a low coefficient is obtained by cancellation.  Write
+$c=(c_1,\dots,c_m)$ for the constants of $\mathcal C$, regarded as
+indeterminates, so that the coefficients $a_j=a_j(c)$ of the computed
+polynomial $P[c]$ are polynomials in $c$, and call $c$ \emph{admissible} if
+the scheme produces it: for our schedules $c=c(\alpha)$ for a key vector
+$\alpha\in K^n$, each constant being a key or a signed integer combination
+of a few keys; for Rabin--Winograd and Motzkin--Eve, $c$ ranges over the
+parameter vectors of the scheme.
 
-\begin{proposition}[Unit pivots preclude backward stability]
+\begin{proposition}[Unit pivots make the amplification unbounded]
 \label{prop:unit-pivot-unstable}
-Suppose the coefficient map of a schedule has an additive unit-pivot
-parameter: some coefficient satisfies $a_d=\alpha_i+f(\alpha_{\text{rest}})$
-with $f\not\equiv0$, and $\alpha_i$ enters the chain through a wire of
-degree $d$.  Then
-$A_{\mathcal C}(P,x)\ge\abs{\alpha_i}\abs{x}^d/\sum_j\abs{a_j}\abs{x}^j$,
-and $\sup_{P,x}A_{\mathcal C}(P,x)=\infty$.
+Suppose that some coefficient has an additive unit pivot,
+$a_d=c_i+f(c_{\mathrm{rest}})$ with $f$ independent of $c_i$ (a pivot of
+slope $\lambda\ne0$, $a_d=\lambda c_i+f$, is handled identically with
+$\lambda c_i$ in place of $c_i$).
+\begin{enumerate}[label=(\roman*)]
+\item\label{it:pivot-lower} For every $c$ and every $x\ne0$,
+  $M_{\mathcal C}(\abs{x})\ge\abs{c_i}\abs{x}^d$, hence
+  \[
+    A_{\mathcal C}(P[c],x)\;\ge\;\frac{\abs{c_i}\abs{x}^d}{\sum_j\abs{a_j}\abs{x}^j}.
+  \]
+\item\label{it:pivot-sup} If some admissible $c$ has
+  $a_0(c)=\dots=a_d(c)=0$ but a nonzero tree monomial of degree $d$---for
+  instance $c_i\ne0$, i.e.\ $f(c_{\mathrm{rest}})\ne0$---then
+  $A_{\mathcal C}(P[c],x)\to\infty$ as $x\to0$, and in particular
+  $\sup_{P,x}A_{\mathcal C}(P,x)=\infty$.  This is the case whenever $f$
+  does not vanish identically on the admissible $c$ (for $c=c(\alpha)$:
+  $f(c(\alpha))\not\equiv0$ as a polynomial in $\alpha$) and either $d=0$
+  and $c_i$ can be varied independently of
+  the other constants, or the coefficient map is onto the monic polynomials
+  of degree $n$ and $f(c_{\mathrm{rest}})$ depends on $c$ only through
+  $a_{d+1},\dots,a_{n-1}$, as it does at row $d$ of a descending triangular
+  decoder.
+\end{enumerate}
 \end{proposition}
 
 \begin{proof}
-The tree monomials of degree $d$ that contain $\alpha_i$ sum to
-$\alpha_ix^d$, so the majorant at $\abs{x}$ is at least
-$\abs{\alpha_i}\abs{x}^d$, which gives the bound.  Fix
-$\alpha_{\text{rest}}$ with $f(\alpha_{\text{rest}})\ne0$ and let
-$\alpha_i=-f(\alpha_{\text{rest}})+\varepsilon$: then $a_d=\varepsilon$
-while $\abs{\alpha_i}$ stays bounded away from zero, and the bound tends to
-infinity as $\varepsilon\to0$ (for $d=0$, let also $x\to0$).
+\ref{it:pivot-lower}: Group the tree monomials of $P[c]$ by their degree in
+$x$.  Those of degree $d$ sum to $a_d(c)\,x^d$, identically in $c$; the ones
+among them that contain no leaf $c_i$ sum to $g(c_{\mathrm{rest}})\,x^d$ for
+some polynomial $g$, and the ones that do contain $c_i$ sum to
+$(a_d-g)\,x^d$.  Setting $c_i=0$ kills every monomial of the second kind, so
+$g=a_d|_{c_i=0}=f$, and the tree monomials of degree $d$ containing $c_i$
+sum to $c_i\,x^d$.  The majorant is the sum of the absolute values of all
+tree monomials (proof of Theorem~\ref{thm:majorant-bound}), so
+$M_{\mathcal C}(\abs{x})\ge\abs{c_i}\abs{x}^d$.
+
+\ref{it:pivot-sup}: Write $M_{\mathcal C}(t)=\sum_e m_e t^e$, where
+$m_e\ge0$ is the sum of the absolute values of the tree monomials of degree
+$e$; the hypothesis says $m_d>0$ (and $m_d\ge\abs{c_i}$ by
+\ref{it:pivot-lower}).  At such a $c$ the polynomial is
+$P[c]=x^n+\sum_{d<j<n}a_jx^j$, so for $0<\abs{x}\le1$
+\[
+  A_{\mathcal C}(P[c],x)\;\ge\;
+  \frac{m_d\abs{x}^d}{\abs{x}^n+\sum_{d<j<n}\abs{a_j}\abs{x}^j}
+  \;\ge\;\frac{m_d}{\abs{x}\bigl(1+\sum_{d<j<n}\abs{a_j}\bigr)}
+  \;\longrightarrow\;\infty\qquad(x\to0).
+\]
+For the sufficient conditions, pick an admissible $c^*$ with
+$f(c^*_{\mathrm{rest}})\ne0$, which exists by hypothesis.  If $d=0$
+and $c_i$ is free, replace $c^*_i$ by $-f(c^*_{\mathrm{rest}})$: then
+$a_0=0$ and $c_i\ne0$.  If the coefficient map is onto and $f$ is
+determined by the top coefficients, let $c$ be admissible with
+$P[c]=x^n+\sum_{d<j<n}a_j(c^*)\,x^j$: then $a_0(c)=\dots=a_d(c)=0$,
+$f(c_{\mathrm{rest}})=f(c^*_{\mathrm{rest}})\ne0$, and $a_d(c)=0$ forces
+$c_i=-f(c_{\mathrm{rest}})\ne0$.
 \end{proof}
 
-Every decoder in this paper is a descending sequence of affine unit pivots,
-and so are the absorption steps of Rabin--Winograd and of Motzkin--Eve; hence
-none of them is coefficientwise backward stable, independently of the
-multiplication count.  The proposition is a statement about the supremum
-(polynomials with a vanishing coefficient), not a quantitative bound on a box
-$\abs{a_j}\le1$; the measurements below show how large $A$ is on such boxes.
+\begin{remark}[The pivot alone does not suffice]
+\label{rem:unit-pivot-counterexample}
+The hypothesis of part~\ref{it:pivot-sup} cannot be dropped: a unit pivot
+with $f\not\equiv0$ does not by itself force $\sup A=\infty$.  The chain
+$w_1=x+c_1$, $w_2=x+c_2$, $P=x\,w_1w_2+c_0$ computes
+$x^3+(c_1+c_2)\,x^2+c_1c_2\,x+c_0$ with two multiplications, and
+$a_2=c_1+c_2$ is a unit pivot in $c_1$ with $f=c_2\not\equiv0$; yet, with
+$t=\abs{x}$,
+\[
+\begin{aligned}
+  M_{\mathcal C}(t)-\sum_j\abs{a_j}t^j
+  &=\bigl(\abs{c_1}+\abs{c_2}-\abs{c_1+c_2}\bigr)\,t^2
+  \le2\min(\abs{c_1},\abs{c_2})\,t^2\\
+  &\le2\sqrt{\abs{c_1c_2}}\,t^2
+  \le t^3+\abs{c_1c_2}\,t ,
+\end{aligned}
+\]
+so $A_{\mathcal C}\le2$ for all real or complex constants and all $x$, with
+equality at $c_1=-c_2=1$, $c_0=0$, $\abs{x}=1$.  What fails is exactly the
+hypothesis of part~\ref{it:pivot-sup}: $a_1=c_1c_2$ vanishes only when a
+factor does, so no admissible $c$ has $a_1=a_2=0$ with $c_1\ne0$.  Over
+$\R$ the coefficient map is not onto (its image is $a_2^2\ge4a_1$); over
+$\C$ it is onto, but the correction $c_2$ is a root of $z^2-a_2z+a_1$ and
+depends on $a_1$ as well, so the decoder is not triangular.  The
+unrestricted claim thus fails already for a two-multiplication cubic, the
+multiplication count of $P_3$.
+\end{remark}
+
+For the schedules of this paper the hypothesis of part~\ref{it:pivot-sup}
+is met at $d=0$: the constant term is the last row of the decoder,
+$a_0=\alpha_i+f(\alpha_{\mathrm{rest}})$ for one key $\alpha_i$, and the
+degree-$0$ tree monomials of the program do not all vanish when $a_0$ does
+(for $P_7$ one has $a_0=\alpha_0+\alpha_1\alpha_2+\alpha_1\alpha_4\alpha_5$
+and the sum of the absolute values of the degree-$0$ tree monomials is
+$\abs{\alpha_0}+\abs{\alpha_1\alpha_2}+\abs{\alpha_1\alpha_4\alpha_5}$, which
+at $a_0=0$ is positive as soon as $\alpha_1\alpha_2\ne0$).  We checked this in exact
+rational arithmetic, on the programs exactly as the measurements below
+evaluate them, at three random key vectors with nonzero entries and $a_0$
+forced to zero through $\alpha_i$, for every odd $5\le n\le63$; for even
+$n\le62$ the program is $P_n=xP_{n-1}+\alpha_0$, which at $\alpha_0=0$ has
+exactly the amplification of $P_{n-1}$; and $P_3$, whose only degree-$0$
+tree monomial is its constant term, has a nonzero degree-$1$ tree monomial
+at $x^3$ instead.  The polynomial $x^n$ itself is such an instance: our
+chains reach it only with nonzero constants (the zero-key skeleton is not
+$x^n$; that of $P_7$ is $x^7+2x^6+2x^5+2x^4+x^3+x^2$, and
+\Cref{prop:centering} below shows that below $n-1$ multiplications the
+skeleton cannot be a pure product tree), and for $3\le n\le31$ we verified
+that its majorant keeps a nonzero term of degree $0$ (odd $n\ge5$), $1$
+($n=3$ and even $n\ge6$) or $2$ ($n=4$).  Hence at these degrees
+$A_{\mathcal C}(x^n,x)\to\infty$ as $x\to0$, and
+$\sup_{P,x}A_{\mathcal C}=\infty$.  Rabin--Winograd's scheme at the degrees
+$n=2^m-1$ measured here (where the balanced recursion is exact and no
+normalization occurs) and Motzkin--Eve's scheme, with its last constant $c_K$
+regarded as a free parameter, both have a free leaf constant that enters
+$a_0$ with unit slope and a nonzero correction $f$---the constant term of the
+innermost monic remainder, respectively $c_K$---so part~\ref{it:pivot-sup}
+applies to them as well.
+What the proposition
+shows is that the forward bound of Theorem~\ref{thm:majorant-bound}---the
+guarantee available for such a schedule---is unbounded relative to
+$\sum_i\abs{a_i}\abs{x}^i$: none of these schemes comes with a
+coefficientwise backward-stability guarantee of the Horner type,
+independently of the multiplication count.  An unbounded upper bound is not
+by itself a proof of instability; that the loss is real is shown by the
+measurements below, which exhibit the errors.  The proposition is a
+statement about the supremum (polynomials whose low coefficients vanish),
+not a quantitative bound on a box $\abs{a_j}\le1$; the measurements below
+show how large $A$ is on such boxes.
 The rounding depth, by contrast,
 differs between the schemes only by constant factors: every scheme has
 $\rho\ge n-1$, because the leading tree monomial $x^n$ alone passes through
@@ -190,8 +300,9 @@ construction: monic square roots of top windows (linear growth), subtraction
 of squares (doubling), and synthetic division by $x+\beta$ inside the
 known-power blocks (geometric in the block length).  For single-digit integer
 input coefficients the keys returned at $n=23$ already have thousands of
-binary digits, and by \Cref{prop:unit-pivot-unstable} the low-row keys are
-exactly the corrections that cancel the chain's own tree monomials: $A$ grows
+binary digits, and the low-row keys are exactly the corrections $-f$ of
+\Cref{prop:unit-pivot-unstable} that cancel the chain's own tree monomials:
+$A$ grows
 explosively---its median already exceeds $10^{43}$ at $n=15$---and
 floating-point evaluation is useless beyond small degrees, even though the
 same schedule evaluates $P$ exactly in rational arithmetic.
@@ -346,8 +457,11 @@ that $\pi\ne0$, which is precisely the generic preconditioning of Motzkin,
 Eve, and Knuth; it is not an automorphism of the coefficient space, and it is
 the automorphism property that this paper is about.  Within that paradigm the
 evidence is uniform: stability was never observed, and
-\Cref{prop:unit-pivot-unstable} rules out coefficientwise backward stability
-for every triangular decoder.
+\Cref{prop:unit-pivot-unstable}\ref{it:pivot-sup} shows that a polynomial
+automorphism with a descending triangular decoder has unbounded
+amplification as soon as one of its rows carries a nonzero correction, so
+the majorant bound cannot certify coefficientwise backward stability for
+any such decoder.
 
 \paragraph{Open problem.}
 Mesztenyi and Witzgall \cite{mesztenyi1967stable} observed in 1967 that

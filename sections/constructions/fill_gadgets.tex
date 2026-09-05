@@ -1,17 +1,162 @@
-\subsection{Fill and known-powers gadgets}
-This section proves two mutually recursive statements.  The level-$l$ fill
-gadget $A_{2^l}$ takes a compatible degree-$n$ pair, together with the monic
-powers $H_2,\ldots,H_{2^l}$, and outputs a monic polynomial of degree
-$n+2^{l+1}-1$.  Its decoder recovers the input pair and its
-$\alpha$- and $\beta$-parameter blocks.  Feeding a simple
-known-power pair into this gadget produces the decodable polynomial
-$Q_{2^k-1}$ given $(H_2,\ldots,H_{2^{k-1}})$.  The proof of
-\Cref{lem:fill-correctness} states the well-founded order explicitly, so this
-mutual definition is not a circular decoding argument.  A depth-balanced
-drop-in variant of the known-powers gadget, with the identical ledger and
-logarithmic height, closes the section (\Cref{sec:peeled-Q}).
-\Cref{fig:fill-slots} pictures the mutual recursion and its well-founded
-decoding order.
+\subsection{Known-powers and fill gadgets}
+\label{sec:peeled-Q}
+
+We first construct $Q_{2^k-1}$ from a tower of known monic polynomials
+$H_2,\ldots,H_{2^{k-1}}$, with $\deg H_{2^i}=2^i$.
+Its two half-size children run in parallel and are joined by one product.
+This is the known-powers construction used throughout the paper and Lean.
+We then define the fill gadget $A_{2^l}$, which uses these $Q$-blocks to
+extend a compatible input pair.  The known-powers decoder is independent
+of the fill decoder, so no mutual recursion is needed.
+
+\begin{algorithm}[H]
+  \caption{Known-powers construction (binary recursion)}\label{alg:constr-known-2n-1}
+  \begin{algorithmic}
+    \Require $k\ge1$, known monic powers $(H_2,\ldots,H_{2^{k-1}})$,
+      and parameters $(\alpha_0,\ldots,\alpha_{2^k-2})$
+    \If{$k=1$}
+      \State $Q_1[\alpha_0]=x+\alpha_0$.
+    \ElsIf{$k=2$}
+      \State $Q_3[\alpha_0,\alpha_1,\alpha_2]=(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$.
+    \Else
+      \State Set $h=2^{k-1}$ and $\gamma=\alpha_0$.
+      \State Compute $W=Q_{h-1}[\alpha_1,\ldots,\alpha_{h-1}]$ and
+        $B=Q_{h-1}[\alpha_h,\ldots,\alpha_{2h-2}]$ in parallel.
+      \State $Q_{2^k-1}=(H_h+\gamma)W+B$.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+Thus, for $k\ge3$, the recursion is
+\begin{equation}
+  Q_{2^k-1}[\gamma,\vec\alpha,\vec\beta]
+  =\bigl(H_{2^{k-1}}+\gamma\bigr)Q_{2^{k-1}-1}[\vec\alpha]
+    +Q_{2^{k-1}-1}[\vec\beta],
+  \label{eq:peeled-Q}
+\end{equation}
+where the two child blocks are fresh and have length $2^{k-1}-1$ each.
+All $Q$-blocks below use this definition, including those inside a fill,
+a tower update, or one of the special degree-$15,27,31$ constructions.
+
+We first record the two direct decoder bases.
+
+\begin{lemma}
+    $Q_{1}[\alpha_0](x)$ is decodable.
+\end{lemma}
+\begin{proof}
+    By definition $Q_1(x)=x+\alpha_0$, so $\alpha_0=[x^0]Q_1$ is extractable from $Q_1$.
+\end{proof}
+
+\begin{lemma}
+    $Q_{3}[\alpha_0, \alpha_1, \alpha_2](x, H_2)$ is decodable given $H_2$.
+\end{lemma}
+\begin{proof}
+    By definition, $Q_3(x,H_2)=(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$ with $H_2$ monic of degree 2.
+    Writing $H_2(x)=x^2 + h_1 x + h_0$, a direct expansion gives
+    \begin{align}
+        [x^2]Q_3 &= h_1 + \alpha_2, \\
+        [x^1]Q_3 &= h_0 + \alpha_1 + h_1\alpha_2, \\
+        [x^0]Q_3 &= \alpha_0 + h_0\alpha_2 + \alpha_1\alpha_2.
+    \end{align}
+    Hence
+    \begin{align}
+        \alpha_2 &= [x^2]Q_3 - [x^1]H_2, \\
+        \alpha_1 &= [x^1]Q_3 - [x^0]H_2 - \alpha_2\,[x^1]H_2, \\
+        \alpha_0 &= [x^0]Q_3 - \alpha_2\bigl([x^0]H_2 + \alpha_1\bigr),
+    \end{align}
+    which are polynomials in the coefficients of $Q_3$ and $H_2$. Thus $Q_3$ is decodable given $H_2$.
+\end{proof}
+
+\begin{lemma}[The known-powers gadget is decodable]
+\label{lem:peeled-Q-decodable}
+For every $k\ge1$, $Q_{2^k-1}$ is monic of degree $2^k-1$ and is decodable
+given $H_2,\ldots,H_{2^{k-1}}$.
+\end{lemma}
+\begin{proof}
+The bases were established above.  For $k\ge3$, write $h=2^{k-1}$ and
+$m=h-1$.  By induction both children $W,B$ in \eqref{eq:peeled-Q} are
+monic of degree $m$, so the output is monic of degree $h+m$.
+Since $\deg(\gamma W+B)\le m<h$, monic division by the known $H_h$
+(\Cref{lem:monic-division}) returns quotient $W$ and remainder
+$R=\gamma W+B$.  The coefficient $[x^m]R=\gamma+1$ recovers $\gamma$;
+then $B=R-\gamma W$, and we decode both children recursively.
+These steps are polynomial in the supplied coefficients.
+
+Conversely, starting with any monic polynomial of degree $h+m$, division
+by $H_h$ gives a monic quotient of degree $m$ and a remainder of degree
+at most $m$.  Setting $\gamma=[x^m]R-1$ makes $B=R-\gamma W$ monic of
+degree $m$.  The child inverses therefore apply, and re-expansion returns
+the input.  This proves both directions of the decoder.
+\end{proof}
+
+\begin{lemma}[Coefficient pivots of the known-powers gadgets]
+\label{lem:Q-unitriangular}
+Let $q=2^k-1$ and write $Q_q=x^q+\sum_{j<q}q_jx^j$.
+There is an explicit row ordering $(\eta_0,\ldots,\eta_{q-1})$ of its
+parameters such that
+\[
+  q_j=\eta_j+f_j(\eta_{j+1},\ldots,\eta_{q-1})
+  \qquad(0\le j<q).
+  \tag{Q-tri}
+\]
+The coefficients of $f_j$ depend polynomially only on the supplied
+known-power coefficients.  For $k=1,2$, the row order is the raw
+parameter order.  For $k\ge3$, put $h=2^{k-1}$ and $m=h-1$:
+the first $m$ slots are the $B$ child's row order, slot $m$ is $\gamma$,
+and slots $h,\ldots,2h-2$ are the $W$ child's row order.
+\end{lemma}
+\begin{proof}
+The base coefficient formulas have the claimed unit slopes.
+For the induction step, the coefficients in rows $h,\ldots,h+m-1$
+come only from $H_hW$.  Descending monic multiplication gives
+$q_{h+j}=[x^j]W$ plus a polynomial in higher coefficients of $W$.
+The induction hypothesis for $W$ therefore gives the high-block pivots.
+In row $m$, both children have leading coefficient one, so
+$q_m=\gamma+1+[x^m](H_hW)$; all parameters of $W$ are in higher rows.
+Finally, each row $j<m$ is $[x^j]B+[x^j]((H_h+\gamma)W)$.
+The second term now depends only on higher-row parameters, and the
+induction hypothesis for $B$ gives the remaining unit pivots.
+The two child blocks and the glue slot are disjoint and exhaust the raw
+parameters, so this recursively defined row order is a permutation.
+\end{proof}
+
+\begin{algorithm}[H]
+  \caption{Decoder summary for $Q_{2^k-1}$ from known powers}\label{alg:decode-Q-2kminus1}
+  \begin{algorithmic}
+    \Require $k\ge1$, known powers $(H_2,\ldots,H_{2^{k-1}})$, and
+      $Q$ produced by \Cref{alg:constr-known-2n-1}
+    \Ensure the raw parameter block $(\alpha_0,\ldots,\alpha_{2^k-2})$
+    \If{$k=1$}
+      \State Output $\alpha_0=[x^0]Q$.
+    \ElsIf{$k=2$}
+      \State Apply the explicit $Q_3$ coefficient formulas above.
+    \Else
+      \State Set $h=2^{k-1}$ and divide $Q$ by the known monic $H_h$,
+        obtaining quotient $W$ and remainder $R$.
+      \State Set $\alpha_0=[x^{h-1}]R-1$ and $B=R-\alpha_0W$.
+      \State Recursively decode $W$ to recover $(\alpha_1,\ldots,\alpha_{h-1})$.
+      \State Recursively decode $B$ to recover $(\alpha_h,\ldots,\alpha_{2h-2})$.
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/fig_peeled_Q}}
+  \caption{The known-powers gadget.  (a) Two half-size children run in
+  parallel under one keyed factor, using one new product.
+  (b) Monic division recovers $W$; the top remainder coefficient reveals
+  $\gamma$ with slope one; subtraction recovers $B$.  Both children then
+  recurse.  The exact gate counts and height are
+  \Cref{lem:fill-Q-count,lem:peeled-Q-count}.}
+  \label{fig:peeled-Q}
+\end{figure}
+
+\paragraph{The fill construction.}
+The level-$l$ fill takes a compatible degree-$n$ pair and known powers
+$H_2,\ldots,H_{2^l}$, and outputs a monic polynomial of degree
+$n+2^{l+1}-1$.  Its decoder recovers the input pair and all fresh
+$\alpha$- and $\beta$-parameters.
 
 \begin{figure}[H]
   \centering
@@ -21,11 +166,10 @@ decoding order.
   delegates to the preceding fill level.  In the inverse direction its
   coefficients separate into three descending pivot bands: new top
   $\beta$-parameters, the shifted input-pair pivots, and new low
-  $\alpha$-parameters.  The bottom line displays the well-founded order in
-  which fill correctness and known-powers decodability are proved.
-  The known-powers gadget assembled this way is the sequential baseline; the
-  shipped schedules substitute the depth-balanced $Q^{\mathrm{peel}}$ of
-  \Cref{sec:peeled-Q} at the identical ledger.}
+  $\alpha$-parameters.  The bottom line displays the proof order:
+  the known-powers decoder is proved independently, before the fill induction.
+  Within each $Q$-block, parameters are read in the row order of
+  \Cref{lem:Q-unitriangular}.}
   \label{fig:fill-slots}
 \end{figure}
 
@@ -191,73 +335,6 @@ Moreover $[x^j]Q$ is read in degree $j+1$ and $b$ in degree zero, so these
 formulas satisfy the two compatibility cutoffs.
 \end{proof}
 
-The known-powers construction below calls the fill gadget, while higher fill
-levels call smaller known-powers gadgets.  The bases $Q_1,Q_3$ and the
-well-founded order in \Cref{lem:fill-correctness} resolve this mutual
-recursion.
-
-\begin{algorithm}[H]
-    \caption{Known powers construction}\label{alg:constr-known-2n-1}
-    \begin{algorithmic}
-        \If{$k = 1$}
-            \Statex $Q_{1}[\alpha_0](x)=x+\alpha_0$
-        \ElsIf{$k = 2$}
-            \Statex $Q_{3}[\alpha_0, \alpha_1, \alpha_2](x, H_2) = (x + \alpha_2)(H_2 + \alpha_1) + \alpha_0$
-        \ElsIf{$k = 3$}
-            \Statex $S^{(1)}_{2} = H_{4} + \alpha_{3}$
-            \Statex $S^{(2)}_{2} = H_{4} + \alpha_{2}$
-            \Statex $Q_{7}[\alpha_0, \ldots, \alpha_{6}](x, H_2, H_{4}) = A_{2}[\alpha_0, \alpha_1, \alpha_4, \alpha_5, \alpha_6](S^{(1)}_{2}, S^{(2)}_{2}, (x, H_2))$
-        \Else
-            \Statex $S^{(1)}_{2^{k - 2}} = H_{2^{k - 1}} + Q_{2^{k - 2} - 1}[\alpha_{2^{k - 1} - 1}, \ldots, \alpha_{2^{k - 1} + 2^{k - 2} - 3}](x, H_2, \ldots, H_{2^{k - 3}})$
-            \Statex $S^{(2)}_{2^{k - 2}} = H_{2^{k - 1}} + \alpha_{2^{k - 1} - 2}$
-            \Statex $Q_{2^k - 1}[\alpha_0, \ldots, \alpha_{2^k - 2}](x, H_2, \ldots, H_{2^{k - 1}})$
-            \Statex \hspace{\algorithmicindent}$= A_{2^{k - 2}}[\alpha_0, \ldots, \alpha_{2^{k - 1} - 3}, \alpha_{2^{k - 1} + 2^{k - 2} - 2}, \ldots, \alpha_{2^k - 2}](S^{(1)}_{2^{k - 2}}, S^{(2)}_{2^{k - 2}}, (x, H_2, \ldots, H_{2^{k - 2}}))$
-        \EndIf
-    \end{algorithmic}
-\end{algorithm}
-
-The separate $k=3$ line is an addition-count optimization, not a distinct
-decoding principle.  The uniform recursive formula could instead take
-$S^{(1)}_2=H_4+Q_1=H_4+x+\alpha_3$; the same fill decoder would apply and the
-multiplication count would remain three, but it would use one additional
-polynomial addition.  We retain the displayed peephole because the exact
-addition count below records the optimized value~eight.  The schedules
-certified in Lean use the depth-balanced drop-in $Q^{\mathrm{peel}}$ of
-\Cref{sec:peeled-Q} (\cref{eq:peeled-Q}) in place of every instance of this
-construction; it has the same parameter interface and gate ledger, and its
-own decoder (\Cref{lem:peeled-Q-decodable}).
-
-We first record the two direct decoder bases.
-
-\begin{lemma}
-    $Q_{1}[\alpha_0](x)$ is decodable.
-\end{lemma}
-\begin{proof}
-    By definition $Q_1(x)=x+\alpha_0$, so $\alpha_0=[x^0]Q_1$ is extractable from $Q_1$.
-\end{proof}
-
-\begin{lemma}
-    $Q_{3}[\alpha_0, \alpha_1, \alpha_2](x, H_2)$ is decodable given $H_2$.
-\end{lemma}
-\begin{proof}
-    By definition, $Q_3(x,H_2)=(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$ with $H_2$ monic of degree 2.
-    Writing $H_2(x)=x^2 + h_1 x + h_0$, a direct expansion gives
-    \begin{align}
-        [x^2]Q_3 &= h_1 + \alpha_2, \\
-        [x^1]Q_3 &= h_0 + \alpha_1 + h_1\alpha_2, \\
-        [x^0]Q_3 &= \alpha_0 + h_0\alpha_2 + \alpha_1\alpha_2.
-    \end{align}
-    Hence
-    \begin{align}
-        \alpha_2 &= [x^2]Q_3 - [x^1]H_2, \\
-        \alpha_1 &= [x^1]Q_3 - [x^0]H_2 - \alpha_2\,[x^1]H_2, \\
-        \alpha_0 &= [x^0]Q_3 - \alpha_2\bigl([x^0]H_2 + \alpha_1\bigr),
-    \end{align}
-    which are polynomials in the coefficients of $Q_3$ and $H_2$. Thus $Q_3$ is decodable given $H_2$.
-\end{proof}
-
-We now prove both decoder statements in their actual dependency order.
-
 \begin{lemma}\label{lem:fill-correctness}
     Let $L\ge 1$ and let $H_2, \ldots, H_{2^L}$ be a sequence of monic polynomials with $\deg H_{2^i} = 2^i$ for $1 \le i \le L$.
     Fix $l$ with $1\le l\le L$.
@@ -275,28 +352,11 @@ We now prove both decoder statements in their actual dependency order.
     \]
     Then the monic polynomial $P$
     satisfies that $\alpha_0, \ldots, \alpha_{2^{l + 1} - 3}, \beta_{2^l}, \ldots, \beta_{0}$ are extractable from $P$ given $(H_2, \ldots, H_{2^L})$, and that $S^{(1)}_{2^l}$ and $S^{(2)}_{2^l}$ are derivable from $(P, H_2, \ldots, H_{2^L})$.
-
-    In particular, $Q_{2^k -1}[\alpha_0, \ldots, \alpha_{2^k - 2}]$ is decodable given $(H_2,\ldots,H_{2^{k-1}})$ for $k \ge 2$.
 \end{lemma}
 \begin{proof}
-    The fill and known-powers assertions are mutually recursive, so we make
-    the well-founded order explicit.  Let $F_l$ denote the fill assertion at
-    level $l$ (uniformly for every $L\ge l$ and every permitted input pair),
-    and let $\mathsf Q_s$ denote decodability of $Q_{2^s-1}$ from its known
-    powers.  The displayed formulas above prove $\mathsf Q_1$ and
-    $\mathsf Q_2$ directly.  We prove,
-    for increasing $l$,
-    \[
-       (F_1,\ldots,F_{l-1};\ \mathsf Q_1,\ldots,\mathsf Q_l)\Longrightarrow F_l,
-       \qquad
-       (F_l;\ \mathsf Q_1,\ldots,\mathsf Q_l)\Longrightarrow \mathsf Q_{l+2}.
-       \tag{fill-order}
-    \]
-    For $l=1$ the second implication is the special $Q_7$ call; for
-    $l\ge2$ it is the ordinary outer fill call.  Thus the logical order is
-    $F_1,\mathsf Q_3,F_2,\mathsf Q_4,F_3,\mathsf Q_5,\ldots$, and no
-    construction is used before its decoder has been proved.  We now prove
-    the first implication.
+    We induct on $l$, uniformly for every $L\ge l$ and every permitted
+    input pair.  Every known-powers child is already decodable by
+    \Cref{lem:peeled-Q-decodable}; only the fill level decreases in this induction.
 
     Base case $l=1$: The output is
     \[
@@ -446,155 +506,9 @@ We now prove both decoder statements in their actual dependency order.
     With these polynomials derived, we can extract $\beta_{2^l}$ from the constant term of $H_{2^l}+\beta_{2^l}$.
     Also, applying \Cref{lem:monic-division} to $S^{(1)}_{2^{l-1}}$ and the monic divisor $H_{2^l}+Q_{\mathrm{low}}$ derives the remainder $Q_{\mathrm{high}}$, and applying it to $S^{(2)}_{2^{l-1}}$ and $H_{2^l}+\beta_{2^l}$ derives the remainder $\alpha_{2^l-2}$.
 
-    Finally, to extract the remaining $\beta$- and $\alpha$-blocks, observe that $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ are the known-powers gadgets with exponents $s=l-1$ and $s=l$, respectively.  Both belong to the already-proved list $\mathsf Q_1,\ldots,\mathsf Q_l$ in (fill-order).  Hence they are decodable given the relevant known powers.
+    Finally, to extract the remaining $\beta$- and $\alpha$-blocks, observe that $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ are the known-powers gadgets with exponents $s=l-1$ and $s=l$, respectively.  Both are decodable by \Cref{lem:peeled-Q-decodable}.  Hence they are decodable given the relevant known powers.
     Hence the remaining $\beta$-block is extractable from $Q_{\mathrm{low}}$, and the remaining $\alpha$-block is extractable from $Q_{\mathrm{high}}$.
-    This proves the first implication, namely $F_l$.
-
-    It remains to verify the second implication in (fill-order).  For $l=1$,
-    the $Q_7$ call takes as input
-    $(H_4+\alpha_3,H_4+\alpha_2)$, which is compatible on $\{0,1\}$ given
-    $H_4$, because subtracting $xH_4+H_4$ from its combined polynomial
-    leaves $\alpha_3x+\alpha_2$.  Thus $F_1$ proves $\mathsf Q_3$.  For $l\ge2$,
-    put $k=l+2$ in \Cref{alg:constr-known-2n-1}.  Its level-$l$ outer fill
-    call has input pair
-    \[
-      \bigl(H_{2^{l+1}}+Q_{2^l-1},
-            H_{2^{l+1}}+\alpha_{2^{l+1}-2}\bigr).
-    \]
-    This pair is compatible on
-    $\idx{2^l-1}=\rng{2^l}$ given $H_{2^{l+1}}$ by
-    \Cref{lem:compatible-aux-add-left}; the inner $Q_{2^l-1}$ is the
-    already-proved assertion $\mathsf Q_l$.  Applying $F_l$, then subtracting
-    $H_{2^{l+1}}$ from the recovered input pair and invoking the decoder for
-    $Q_{2^l-1}$, proves $\mathsf Q_{l+2}$.  This closes the simultaneous induction and
-    proves the ``in particular'' assertion for every $k\ge2$.
-\end{proof}
-
-\begin{lemma}[Coefficient pivots of the known-powers gadgets]
-\label{lem:Q-unitriangular}
-Let $q=2^s-1$ and write
-\[
- Q_q[\eta_0,\ldots,\eta_{q-1}]
-   =x^q+\sum_{j=0}^{q-1}q_jx^j
-\]
-for the instance of \Cref{alg:constr-known-2n-1}, with its known powers
-regarded as auxiliary coefficients.  Then
-\[
- q_j=\eta_j+f_j(\eta_{j+1},\ldots,\eta_{q-1})
- \qquad(0\le j<q).
- \tag{Q-tri}
-\]
-where the coefficients of $f_j$ may depend polynomially on the supplied
-known-power coefficients (and on no active parameter $\eta_i$ with $i\le j$).
-In particular its coefficient map is unitriangular from high degree to low
-degree.
-\end{lemma}
-\begin{proof}
-We spell out the slot invariant, since mere decodability in
-\Cref{lem:fill-correctness} would not by itself imply (Q-tri).
-
-As in the preceding mutual induction, let $\mathsf S_l$ denote the slot
-assertion for a level-$l$ fill call, and let $\mathsf U_s$ denote (Q-tri) for
-$Q_{2^s-1}$.  The direct formulas give $\mathsf U_1,\mathsf U_2$, and the
-argument below proves
-\[
-  (\mathsf S_1,\ldots,\mathsf S_{l-1};
-    \mathsf U_1,\ldots,\mathsf U_l)\Longrightarrow\mathsf S_l,
-  \qquad
-  (\mathsf S_l;\mathsf U_1,\ldots,\mathsf U_l)
-       \Longrightarrow\mathsf U_{l+2}.
-  \tag{slot-order}
-\]
-Thus the order
-$\mathsf S_1,\mathsf U_3,\mathsf S_2,\mathsf U_4,\ldots$ is well founded.
-
-Consider a level-$l$ fill call, put $D=2^l$, and let its input pair have
-degree $n$.  Suppose a parameter $z$ of the input pair has a descending
-affine pivot of slope $\lambda$ in row $g$ of its combined polynomial, and
-that its two component coefficients obey the compatibility cutoffs at that
-row.  A simultaneous induction on the fill level gives the following three
-coefficient bands in the output $A_D$:
-\begin{enumerate}
-  \item the fill parameters $\alpha_0,\ldots,\alpha_{2D-3}$ have unit
-        pivots in rows $0,\ldots,2D-3$, respectively;
-  \item the input pivot for $z$ occurs in row $2D-2+g$, still with slope
-        $\lambda$;
-  \item for $0\le t\le D$, the scalar $\beta_t$ has a unit pivot in row
-        $n+2D-2-t$.
-\end{enumerate}
-In every row, the remaining terms involve only quantities having pivots in
-strictly higher rows.
-
-Here is the induction proving this slot assertion.  For $D=2$, expand
-\[
- (x+\beta_0)\bigl((H_2+\beta_1)S^{(1)}+\alpha_1\bigr)
-   +(H_2+\beta_2)S^{(2)}+\alpha_0.
-\]
-The parameters $\alpha_0,\alpha_1$ occur first in rows $0,1$; multiplication
-by the monic quadratic shifts every input pivot by two rows; and
-$\beta_2,\beta_1,\beta_0$ occur first in rows $n,n+1,n+2$.  All these
-coefficients are~$1$.  A lower-row occurrence cannot affect a higher pivot,
-and the compatibility cutoff says that the extra term
-$\beta_0A^{(1)}_2$ cannot reintroduce the parameter whose pivot is currently
-being read.
-
-For the induction step, first form the intermediate pair in
-\Cref{alg:constr-fill}.  Its three disjoint raw bands are
-\[
-\begin{array}{c|c}
-  0,\ldots,D-1&
-    \alpha_{D-2},\alpha_{D-1},\ldots,\alpha_{2D-3},\\
-  D+g&\text{an input pivot originally in row }g,\\
-  n,\ldots,n+D/2-1&
-    \beta_D,\beta_{D-1},\ldots,\beta_{D/2+1}.
-\end{array}
-\tag{fill-raw-slots}
-\]
-The first band comes from
-$xQ_{D-1}+\alpha_{D-2}$, the second from multiplication by monic
-degree-$D$ factors, and the third from
-$xQ_{D/2-1}+\beta_D$.  The two $Q$-blocks have unit pivots by the
-already-proved $\mathsf U_{l-1}$ and $\mathsf U_l$ cases in
-(slot-order).  (At
-$D=4$ the displayed special branch is checked directly from $Q_3$; it has
-the identical parameter slots.)  The leading term in each Cauchy product
-preserves the pivot slope, while all other summands contain a higher
-coefficient of the relevant factor.
-
-Now apply the level-$(l-1)$ slot assertion to this intermediate pair.  It
-shifts every row in (fill-raw-slots) by $D-2$, creates the new bottom band
-$\alpha_0,\ldots,\alpha_{D-3}$, and creates the remaining top scalars
-$\beta_{D/2},\ldots,\beta_0$.  The resulting rows are exactly the three
-bands stated above.  This proves the slot assertion at level~$l$.
-
-We now prove the second implication in (slot-order) by applying the slot
-assertion to the known-powers construction.  The claims for $Q_1$ and
-$Q_3$ are immediate from their displayed formulas.  For $Q_7$, the raw
-combined polynomial of the pair $(H_4+\alpha_3,H_4+\alpha_2)$, after its
-known common part is subtracted, is
-$x\alpha_3+\alpha_2$.  The $D=2$ slot calculation therefore places
-$\alpha_0,\ldots,\alpha_6$ in rows $0,\ldots,6$ with unit slopes.
-
-For $s\ge4$, put $D=2^{s-2}$, so the input pair to the outer $A_D$ call has degree $2D$.
-After subtracting its known common power, its combined polynomial is
-\[
-  xQ_{D-1}+\alpha_{2D-2}.
-\]
-Thus its raw row zero exposes $\alpha_{2D-2}$, and raw row $j+1$ exposes
-$\alpha_{2D-1+j}$ with unit slope for $0\le j\le D-2$, by induction on
-the smaller $Q_{D-1}$.  The three output bands are consequently
-\[
-\begin{array}{c|c}
-  0,\ldots,2D-3&\alpha_0,\ldots,\alpha_{2D-3},\\
-  2D-2,\ldots,3D-3&\alpha_{2D-2},\ldots,\alpha_{3D-3},\\
-  3D-2,\ldots,4D-2&\alpha_{3D-2},\ldots,\alpha_{4D-2}.
-\end{array}
-\]
-In the last line the call passes
-$\beta_D,\ldots,\beta_0$ in precisely the displayed increasing
-$\alpha$-order, so the row formula $2D+2D-2-t$ gives the indicated slots.
-Since $4D-1=2^s-1=q$, every row $j<q$ therefore has the form
-$q_j=\eta_j+f_j(\eta_{j+1},\ldots,\eta_{q-1})$, as required.
+    This completes the induction on the fill level.
 \end{proof}
 
 \begin{algorithm}[H]
@@ -623,38 +537,10 @@ $q_j=\eta_j+f_j(\eta_{j+1},\ldots,\eta_{q-1})$, as required.
       and then (by the multiplicativity reconstruction) derive the factors $(H_{2^l}+Q_{\mathrm{low}},H_{2^l}+\beta_{2^l})$ and $(S^{(1)}_{2^l},S^{(2)}_{2^l})$.
       \State Extract $\beta_{2^l}$ from the constant term of $H_{2^l}+\beta_{2^l}$.
       \State Apply \Cref{lem:monic-division} to recover the remainders $Q_{\mathrm{high}}$ and $\alpha_{2^l-2}$ from the defining equations for $S^{(1)}_{2^{l-1}}$ and $S^{(2)}_{2^{l-1}}$.
-      \State Decode $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ by the known-powers construction (base cases $Q_3,Q_7$ and otherwise smaller fill levels), extracting the remaining $\beta$- and $\alpha$-blocks.
+      \State Decode $Q_{\mathrm{low}}$ and $Q_{\mathrm{high}}$ by \Cref{alg:decode-Q-2kminus1}, extracting the remaining $\beta$- and $\alpha$-blocks.
     \EndIf
   \end{algorithmic}
 \end{algorithm}
-
-\begin{algorithm}[H]
-  \caption{Decoder summary for $Q_{2^k-1}$ from known powers}\label{alg:decode-Q-2kminus1}
-  \begin{algorithmic}
-    \Require integer $k\ge 1$, known powers $(H_2,\ldots,H_{2^{k-1}})$, and $Q=Q_{2^k-1}[\alpha_0,\ldots,\alpha_{2^k-2}]$ as produced by \Cref{alg:constr-known-2n-1}; the peeled variant $Q^{\mathrm{peel}}_{2^k-1}$ of \Cref{sec:peeled-Q} is decoded by \Cref{lem:peeled-Q-decodable} instead
-    \Ensure the parameter block $(\alpha_0,\ldots,\alpha_{2^k-2})$
-
-    \If{$k=1$}
-      \State Output $\alpha_0=[x^0]Q$.
-    \ElsIf{$k=2$}
-      \State Apply the explicit $Q_3$ decoding lemma to extract $(\alpha_0,\alpha_1,\alpha_2)$ from $(Q,H_2)$.
-    \ElsIf{$k=3$}
-      \State In \Cref{alg:constr-known-2n-1} we have $Q_7=A_2(S^{(1)}_2,S^{(2)}_2,(x,H_2))$ with $S^{(1)}_2=H_4+\alpha_3$ and $S^{(2)}_2=H_4+\alpha_2$.
-      \State Apply the $A_2$ instance of \Cref{alg:decode-fill} (i.e. $l=1$) to recover $(\alpha_0,\alpha_1,\alpha_4,\alpha_5,\alpha_6)$ and derive $(S^{(1)}_2,S^{(2)}_2)$.
-      \State Extract $\alpha_2,\alpha_3$ from the constant-term shifts $S^{(2)}_2-H_4$ and $S^{(1)}_2-H_4$.
-    \Else \Comment{$k\ge 4$}
-      \State In \Cref{alg:constr-known-2n-1} we have
-      \(Q_{2^k-1}=A_{2^{k-2}}(S^{(1)}_{2^{k-2}},S^{(2)}_{2^{k-2}},(x,H_2,\ldots,H_{2^{k-2}}))\)
-      with
-      \(S^{(1)}_{2^{k-2}}=H_{2^{k-1}}+Q_{2^{k-2}-1}\) and \(S^{(2)}_{2^{k-2}}=H_{2^{k-1}}+\alpha_{2^{k-1}-2}\).
-      \State Apply \Cref{alg:decode-fill} at level $l=k-2$ to $Q_{2^k-1}$ to extract the parameters used explicitly in that $A_{2^{k-2}}$ call and to derive the input pair $(S^{(1)}_{2^{k-2}},S^{(2)}_{2^{k-2}})$.
-      \State Extract the scalar $\alpha_{2^{k-1}-2}$ from $S^{(2)}_{2^{k-2}}-H_{2^{k-1}}$.
-      \State Form the lower instance $Q_{2^{k-2}-1}=S^{(1)}_{2^{k-2}}-H_{2^{k-1}}$ and recurse to decode its parameter block.
-      \State Combine the extracted blocks to obtain all $\alpha_0,\ldots,\alpha_{2^k-2}$.
-    \EndIf
-  \end{algorithmic}
-\end{algorithm}
-
 
 \begin{lemma}[Costs of the fill and Mersenne gadgets]\label{lem:fill-Q-count}
     For all $l\ge 2$ and $k\ge 2$:
@@ -670,170 +556,54 @@ $q_j=\eta_j+f_j(\eta_{j+1},\ldots,\eta_{q-1})$, as required.
     \end{align}
 \end{lemma}
 \begin{proof}
-    We count top-level polynomial additions and multiplications (macro-ops),
-    with every shared subexpression charged only once.  To make the mutual
-    dependence of the two recursions explicit, write
-    \[
-      \begin{aligned}
-      q_k^A&\coloneqq\mathcal A(Q_{2^k-1}),&
-      q_k^M&\coloneqq\mathcal M(Q_{2^k-1}),\\
-      a_l&\coloneqq\mathcal A(A^{(1)}_{2^l})+\mathcal A(A^{(2)}_{2^l}),&
-      m_l&\coloneqq\mathcal M(A^{(1)}_{2^l})+\mathcal M(A^{(2)}_{2^l}).
-      \end{aligned}
-    \]
-    The two algorithms give, for $k\ge4$ and $l\ge3$ respectively,
-    \begin{align}
-      q_k^A&=q_{k-2}^A+2+\bigl(a_{k-2}+2\bigr),
-      &q_k^M&=q_{k-2}^M+\bigl(m_{k-2}+1\bigr),
-      \label{eq:count-q-rec}\\
-      a_l&=a_{l-1}+4+q_{l-1}^A+q_l^A,
-      &m_l&=m_{l-1}+2+q_{l-1}^M+q_l^M.
-      \label{eq:count-a-rec}
-    \end{align}
-    Here the two additions in the first line of \eqref{eq:count-q-rec}
-    form the two inputs to the outer fill call; the final product in
-    $A_{2^l}$ is accounted for by the $+2$ and $+1$ in that line.
-
-    The direct bases are
-    \[
-      (q_2^A,q_2^M)=(3,1),\qquad
-      (q_3^A,q_3^M)=(8,3),\qquad
-      (a_2,m_2)=(11,5).
-    \]
-    (For $Q_3$ these are the three additions and one product in
-    $(x+\alpha_2)(H_2+\alpha_1)+\alpha_0$.  For $Q_7$, the two additions
-    forming $H_4+\alpha_3,H_4+\alpha_2$ together with the six additions and
-    three products in $A_2$ give $(8,3)$.)
-
-    We now prove all four closed forms simultaneously.  At stage $r=3$,
-    \eqref{eq:count-a-rec} and the bases give
-    $(a_3,m_3)=(26,11)$; the $Q_3,Q_7$ bases are already known.  For
-    $r\ge4$, assume the formulas for every index $<r$.  First use
-    \eqref{eq:count-q-rec}, whose right-hand side involves only index
-    $r-2$, to obtain
-    \begin{align}
-      q_r^A
-        &=(5\cdot2^{r-4}-2)+2+
-          \bigl(5(2^{r-3}+2^{r-4})-2\bigr)
-          =5\cdot2^{r-2}-2,\\
-      q_r^M
-        &=(2^{r-3}-1)+(2^{r-2}+2^{r-3})
-          =2^{r-1}-1.
-    \end{align}
-    We can then use \eqref{eq:count-a-rec} (now including the just-proved
-    $q_r^A,q_r^M$) to obtain
-    \begin{align}
-      a_r
-        &=\bigl(5(2^{r-2}+2^{r-3})-4\bigr)+4
-          +(5\cdot2^{r-3}-2)+(5\cdot2^{r-2}-2)\\
-        &=5(2^{r-1}+2^{r-2})-4,\\
-      m_r
-        &=\bigl(2^{r-1}+2^{r-2}-1\bigr)+2
-          +(2^{r-2}-1)+(2^{r-1}-1)\\
-        &=2^r+2^{r-1}-1.
-    \end{align}
-    Together with the explicit $r=3$ calculation above, this completes the
-    simultaneous induction.  Finally, the outer combination
-    $A_{2^l}=(x+\beta_0)A^{(1)}_{2^l}+A^{(2)}_{2^l}$ adds two additions and
-    one multiplication:
-    \[
-      \mathcal A(A_{2^l})=a_l+2
-        =5(2^{l-1}+2^{l-2})-2,\qquad
-      \mathcal M(A_{2^l})=m_l+1
-        =2^l+2^{l-1}.
-    \]
-    The $Q$ formulas above are $q_k^A=5\cdot2^{k-2}-2$ and
-    $q_k^M=2^{k-1}-1$, as claimed.
-\end{proof}
-
-
-
-\subsection{A depth-balanced known-powers gadget}
-\label{sec:peeled-Q}
-
-The chains of \Cref{alg:constr-fill,alg:constr-known-2n-1} multiply
-sequentially, so the multiplicative \emph{height} of $Q_{2^k-1}$ --- the
-maximum number of nonscalar multiplications on an input-to-output path,
-studied further in \Cref{sec:addition-count} --- grows quadratically in
-$k$ (\Cref{thm:construction-height}).  The following \emph{peeled}
-variant computes a family with the same span, the same multiplication and
-addition counts, and height exactly $k$ over any tower with
-$h(H_{2^i})\le i$ (\Cref{lem:peeled-Q-count});
-\Cref{thm:construction-height-peeled} supplies such towers throughout the
-construction.  It keeps the bases $Q_1$ and
-$Q_3$ of \Cref{alg:constr-known-2n-1} and, for $k\ge3$, sets
+Count each shared subexpression once.  Write $q_k^A,q_k^M$ for the
+addition and multiplication counts of $Q_{2^k-1}$, and $a_l,m_l$ for
+the joint counts of the fill pair.  The binary construction gives
 \begin{equation}
-  Q^{\mathrm{peel}}_{2^k-1}[\gamma,\vec\alpha,\vec\beta]
-  \;=\;
-  \bigl(H_{2^{k-1}}+\gamma\bigr)\,
-    Q^{\mathrm{peel}}_{2^{k-1}-1}[\vec\alpha]
-  \;+\;
-  Q^{\mathrm{peel}}_{2^{k-1}-1}[\vec\beta],
-  \label{eq:peeled-Q}
+  q_k^A=2q_{k-1}^A+2,\qquad q_k^M=2q_{k-1}^M+1
+  \quad(k\ge3),
+  \label{eq:count-q-rec}
 \end{equation}
-where $\vec\alpha$ and $\vec\beta$ are two fresh parameter blocks of length
-$2^{k-1}-1$ each.  Both children recurse in parallel; the glue factor
-carries the fresh key $\gamma$.  \Cref{fig:peeled-Q} contrasts the two
-schedules and pictures the decoder.
+with $(q_2^A,q_2^M)=(3,1)$.  Induction immediately gives
+$q_k^A=5\cdot2^{k-2}-2$ and $q_k^M=2^{k-1}-1$.
+In particular $Q_7$ uses eight additions and three products.
 
-\begin{figure}[H]
-  \centering
-  \resizebox{\textwidth}{!}{\input{figures/fig_peeled_Q}}
-  \caption{The peeled known-powers gadget.  (a) The sequential fill chain
-  builds $Q_{2^k-1}$ level by level, so each product waits for the previous
-  one; the peeled recursion \eqref{eq:peeled-Q} runs its two half-size
-  children in parallel under one keyed glue factor, reaching height exactly
-  $k$ at the identical multiplication and addition counts.  (b) The decoder:
-  the one-degree offset keeps the top window equal to $H_{2^{k-1}}\cdot W$,
-  so $W$ peels off by monic division; the residual reveals $\gamma$ at one
-  unit pivot because both children are monic; $B$ follows by subtraction,
-  and the decoder recurses on both children.}
-  \label{fig:peeled-Q}
-\end{figure}
-
-\begin{lemma}[The peeled gadget is decodable]
-\label{lem:peeled-Q-decodable}
-$Q^{\mathrm{peel}}_{2^k-1}$ is decodable given $H_2,\ldots,H_{2^{k-1}}$.
-\end{lemma}
-\begin{proof}
-Write $W$ and $B$ for the two children in \eqref{eq:peeled-Q} and
-$m=2^{k-1}-1$, so $\deg W=\deg B=m$ and both are monic by induction.  Since
-$\deg(\gamma W+B)=m<2^{k-1}=\deg H_{2^{k-1}}$, division of
-$Q^{\mathrm{peel}}_{2^k-1}$ by the known monic $H_{2^{k-1}}$
-(\Cref{lem:monic-division}) returns the quotient $W$ and the remainder
-$R=\gamma W+B$ exactly.  Both children are monic of degree $m$, so
-$[x^m]R=\gamma+1$, which extracts $\gamma$; then $B=R-\gamma W$.  The two
-children are decoded by the induction hypothesis, and the bases are the
-lemmas above.  Every step is polynomial in the coefficients, and
-re-expansion returns the input, so the parameter map is bijective onto the
-monic polynomials of degree $2^k-1$.
+The level-two fill pair has $(a_2,m_2)=(11,5)$.  For $l\ge3$,
+\Cref{alg:constr-fill} adds two products, four additions, and its two
+known-powers children:
+\begin{equation}
+  a_l=a_{l-1}+4+q_{l-1}^A+q_l^A,\qquad
+  m_l=m_{l-1}+2+q_{l-1}^M+q_l^M.
+  \label{eq:count-a-rec}
+\end{equation}
+Substituting the already-proved $q$ counts and inducting on $l$ gives
+\[
+  a_l=5(2^{l-1}+2^{l-2})-4,\qquad
+  m_l=2^l+2^{l-1}-1.
+\]
+Finally, $(x+\beta_0)A^{(1)}_{2^l}+A^{(2)}_{2^l}$ adds two additions
+and one product to these joint pair counts.
 \end{proof}
 
-\begin{lemma}[Identical ledger]
+\begin{lemma}[Height of the known-powers gadget]
 \label{lem:peeled-Q-count}
-$Q^{\mathrm{peel}}_{2^k-1}$ uses exactly $2^{k-1}-1$ multiplications and
-$5\,2^{k-2}-2$ additions, the counts of \Cref{lem:fill-Q-count}, and its
-height over towers with $h(H_{2^i})=i$ is exactly~$k$ (and at most $k$
-whenever $h(H_{2^i})\le i$).
+For $k\ge2$, the circuit of \Cref{alg:constr-known-2n-1} has height at
+most $k$ whenever $h(H_{2^i})\le i$; its height is exactly $k$ when
+$h(H_{2^i})=i$.  Its gate counts are those of \Cref{lem:fill-Q-count}.
 \end{lemma}
 \begin{proof}
-The recursion \eqref{eq:peeled-Q} costs one product, one addition inside
-the glue factor, and one addition for the let-bound value $B$, on top of
-two children: $\mathcal M(k)=1+2\mathcal M(k-1)$ and
-$\mathcal A(k)=2+2\mathcal A(k-1)$ with the $k=2$ bases $1$ and $3$.  The
-paper ledger $q^M_k=2^{k-1}-1$, $q^A_k=5\,2^{k-2}-2$ satisfies the same
-recurrences and bases.  For the height,
-$h(Q^{\mathrm{peel}}_{2^k-1})
- =1+\max\bigl(h(H_{2^{k-1}}),h(Q^{\mathrm{peel}}_{2^{k-1}-1})\bigr)
- =1+\max(k-1,k-1)=k$ by induction from $h(Q_3)=2$; the monotone bound
-follows since lowering an operand height never raises a gate height.
+The base $Q_3$ has one product above $H_2$, hence height at most two.
+At each binary node the two children run in parallel; the height is
+\[
+ \max\{1+\max(h(H_{2^{k-1}}),h(W)),\,h(B)\}\le k
+\]
+by induction.  When the tower heights are exact, the path through
+$H_{2^{k-1}}$ attains $k$.  The linear base $Q_1$ has height zero.
 \end{proof}
 
-\begin{theorem}[Peeled schedules have logarithmic height]
-\label{thm:construction-height-peeled}
-Substitute $Q^{\mathrm{peel}}$ for every instance of
-\Cref{alg:constr-known-2n-1} in the complete degree-$n$ construction.
-The resulting schedules compute a decodable monic
+\begin{theorem}[Multiplicative height of the construction]
+\label{thm:construction-height}
+For every $n\ge3$, the complete construction computes a decodable monic
 degree-$n$ family with exactly the multiplication count of
 \Cref{thm:construction-count}, an addition count no larger than that of
 \Cref{thm:construction-addition-count}, and height at most
@@ -843,38 +613,32 @@ degree-$n$ family with exactly the multiplication count of
 \]
 \end{theorem}
 \begin{proof}
-Decodability: every consumer of a known-powers gadget --- including the
-three special cases $15$, $27$, $31$, whose decoders recover their
-$Q_7$-block \emph{values} before descending into them --- first recovers the
-gadget's value (its coefficient vector) and then invokes the gadget
-decoder: each stage-table row first recovers one coefficient of the
-gadget's value (using only monicity, via \eqref{eq:monic-Cauchy}), after
-which the consecutive parameter block is extracted by the gadget decoder
-and discharged by \Cref{lem:triangular-block-concatenation}.  Under this
-value-first reading, \Cref{lem:peeled-Q-decodable} substitutes for
-\Cref{lem:Q-unitriangular} at every site.  The counts are
-\Cref{lem:peeled-Q-count}.  It remains to bound the height by a ledger
-induction over the same components as \Cref{thm:construction-height}; the
-point of the substitution is that every recurrence below has bounded
-increments, whereas the sequential fill's $h(Q_{2^t-1})\approx h(H_{2^{t-1}})+t$ (cf.\ \eqref{eq:fill-height}, \eqref{eq:tower-height}) made the
-tower recurrence quadratic.
+Let $h(U)$ denote the maximum number of nonscalar multiplications on
+an input-to-$U$ path; inputs have height zero, additions take the maximum
+of their operand heights, and a product adds one to that maximum.
+The known-powers decoder and coefficient pivots are
+\Cref{lem:peeled-Q-decodable,lem:Q-unitriangular}; their exact gate counts
+are \Cref{lem:fill-Q-count}.  We prove the height bound by a simultaneous
+ledger induction over the towers, the $T$ recursion, the fills, and the
+complete degree-$n$ branches.  Every component uses the single
+known-powers construction of \Cref{alg:constr-known-2n-1}.
 
 \emph{Towers and gadgets.}  Write $h(U)$ for the height of a wire.  We
 claim, by simultaneous induction on the level,
 \[
   h(H_{2^i})=i,
   \qquad
-  h\bigl(Q^{\mathrm{peel}}_{2^t-1}\bigr)=t .
+  h\bigl(Q_{2^t-1}\bigr)\le t .
 \]
 Every displayed power step forms $H_{2^{\ell+1}}$ with one product whose
 operands are $H_{2^\ell}$ (height $\ell$) and blocks
-$H_{2^{\ell-1}}+Q^{\mathrm{peel}}_{2^{\ell-1}-1}$,
-$H_{2^{\ell-2}}+Q^{\mathrm{peel}}_{2^{\ell-2}-1}$,
-$Q^{\mathrm{peel}}_{2^{\ell-2}-1}$ of height at most $\ell-1$, so
+$H_{2^{\ell-1}}+Q_{2^{\ell-1}-1}$,
+$H_{2^{\ell-2}}+Q_{2^{\ell-2}-1}$,
+$Q_{2^{\ell-2}-1}$ of height at most $\ell-1$, so
 $h(H_{2^{\ell+1}})=\ell+1$; and \eqref{eq:peeled-Q} gives
-$h(Q^{\mathrm{peel}}_{2^t-1})
- =1+\max\bigl(h(H_{2^{t-1}}),h(Q^{\mathrm{peel}}_{2^{t-1}-1})\bigr)=t$
-from the base $h(Q_3)=2$.
+$h(Q_{2^t-1})
+ =1+\max\bigl(h(H_{2^{t-1}}),h(Q_{2^{t-1}-1})\bigr)=t$
+for $t\ge2$, from the base $h(Q_3)=2$; the linear base has height zero.
 
 \emph{The $T$ recursion.}  For $T_{k,2^\ell}$ put
 $\lambda=\ell+\lceil\log_2k\rceil$ and let $s(k)$ be the number of odd
@@ -888,12 +652,12 @@ The base $k=1$ is the tower value $H_{2^\lambda}$ at height $\lambda$; an
 even step recurses at $(k/2,\ell+1)$ with the same $\lambda$ after one
 tower step; an odd step multiplies the recursive pair by factors of height
 at most $\ell$ (a tower level plus peeled blocks of level $<\ell$) and adds
-$Q^{\mathrm{peel}}_{2^\ell-1}$ of height $\ell$, contributing exactly the
+$Q_{2^\ell-1}$ of height $\ell$, contributing exactly the
 $+1$ that separates $s(k)$ from $s\bigl(\tfrac{k-1}2\bigr)$.
 
 \emph{Fills and the odd-degree family.}  The fill
 $A_{2^\ell}(S^{(1)},S^{(2)})$ is a chain of $\ell+1$ products whose factors
-carry towers and peeled blocks of level at most $\ell-1$, so
+carry towers and known-powers blocks of level at most $\ell$, so
 \[
   h(A_{2^\ell})\le\max\bigl(h(S^{(1)}),h(S^{(2)}),\ell\bigr)+\ell+1.
 \]
@@ -938,47 +702,14 @@ statement \texttt{polynomial\_height} (\texttt{FastPoly/HeightFinal.lean}),
 which covers every $n\ge3$.
 \end{proof}
 
-The same peel extends to every odd degree: with
-$h=2^{\lfloor\log_2d\rfloor}$, the three-child node
-\begin{equation}
-  Q_d=(H_h+U)\,W+B,
-  \qquad U=Q_{2h-d}\ \text{inside the factor},\quad W=B=Q_{d-h},
-  \label{eq:odd-peel}
-\end{equation}
-uses exactly $(d-1)/2$ multiplications for every odd $d$ at the
-known-powers interface.  The key-carrying glue factor is essential: a
-balanced product of two \emph{free} half-degree blocks is a factoring
-problem, while symmetric square-difference shells, though decodable, pay
-about $\tfrac43$ of the multiplications and $2.2\times$ the additions.
-Every pivot of the peeled decoders is a monic leading coefficient, so ---
-unlike the square-difference machinery --- the recursion is
-characteristic-independent
-(\texttt{tools/balanced\_gadgets.py} verifies both round-trip directions
-up to degree $255$ over $\mathrm{GF}(2^{61}-1)$, $\mathrm{GF}(1009)$,
-$\mathbb Q$ and $\mathrm{GF}(2)$).
 
 \begin{remark}
-Empirically, over every odd $3\le n\le4095$ (checked by
-\texttt{tools/polychain.py} \texttt{--peeled}, which replays the full
-encode/decode round trip and the per-degree count assertions):
-the maximal height of the peeled schedules
-is exactly $2\lceil\log_2n\rceil-2$, attained at $n=2^L-1$ (the halving
-chain with the most odd steps) and growing by exactly $+2$ per doubling;
-the share-aware addition count is strictly below the sequential
-schedule's from $n\approx250$ on (e.g.\ $5593$ against $5895$ at
-$n=4093$); the odd-degree families additionally route through the
-three-child peel \eqref{eq:odd-peel} wherever enough powers are threaded.
-Machine-checked (Lean): the master statement
-(\texttt{odd\_realizable\_pairs}) carries, alongside decodability and
-the exact multiplication count, the height conjuncts
-$h(T^{(1)}),h(T^{(2)})\le2\lceil\log_2n\rceil+3$ and $h(H_2)\le1$,
-$h(H_4)\le2$ for the very circuit it exhibits --- the plain
-$Q^{\mathrm{peel}}$ substitution of this theorem --- and
-\texttt{FastPoly/HeightFinal.lean} closes the ledger end to end:
-\texttt{odd\_polynomial\_height} gives $h(P_n)\le2\lceil\log_2n\rceil+4$
-for odd $n\ge3$, and \texttt{polynomial\_height} gives
-$2\lceil\log_2n\rceil+4+[n\text{ even}]$ for every $n\ge3$, each for one
-fixed program with exactly $\lfloor n/2\rfloor+1$ products, exactly the
-ledger bound above.
+The Lean statement \texttt{odd\_realizable\_pairs} carries the decoder,
+exact joint multiplication count, and pair-height bound
+$2\lceil\log_2n\rceil+3$ for the very circuit it constructs, together
+with $h(H_2)\le1$ and $h(H_4)\le2$.
+The final assembly in \texttt{FastPoly/HeightFinal.lean} proves
+\texttt{odd\_polynomial\_height} and \texttt{polynomial\_height} for
+this construction: the complete polynomial has exactly
+$\lfloor n/2\rfloor+1$ products and the height bound stated above.
 \end{remark}
-

@@ -19,21 +19,100 @@
 // registry — exact ℚ ℝ · Mersenne primes · binary fields — with the FIELD
 // legend on the same line at the card's full width) → method chips → busy /
 // error → view tabs attached to the output pane → the comparison table (one
-// row per method) + Share.
+// row per method) + Share.  On phones (COMPACT_QUERY) the same state renders
+// as three cards: input with Field / Method dropdowns, the output with a stats
+// line + Share, and a collapsed "Compare methods" disclosure.
 import { html, render, useReducer, useState, useEffect, useRef } from './vendor/preact-htm.module.js';
 import { highlightC } from './highlight.js';
 import { cBundleArchive, hasCBundle } from './cbundle.js';
+import { fetchStars } from './github-stars.js';
 import { chainMathRows, renderLatex } from './mathview.js';
 import {
   reduce, initialState, stateFromHash, hashFromState, VIEWS, examplesFor, exampleHeld,
   exampleDegree, showOutput, compileMessage, methodTabs, comparisonTable, subOptionStrips,
-  paneContent, fieldChooser, tokenizePoly,
+  paneContent, fieldChooser, tokenizePoly, stats, defaultExample, comparisonRow,
 } from './uistate.js';
 
 const DEBOUNCE_MS = 500;   // quiet time after an edit before the chain recompiles
 const COPIED_MS = 1200;    // how long Copy / Share show their transient "copied"
 
 const VIEW_LABEL = { math: 'mathematical', c: 'C code', graph: 'graph' };
+const VIEW_LABEL_COMPACT = { math: 'Math', c: 'C code', graph: 'Graph' };
+
+// Phone layout (style.css shares the breakpoint): a short intro with Paper /
+// GitHub (star count) links, Share floating beside Copy, three example chips beside the label (no
+// degree stepper or monic toggle: the page opens on the ℚ e^x example at
+// degree COMPACT_DEGREE, monic), numeric constants shown to six significant digits,
+// the field and method pill groups become two dropdowns, the output
+// moves into its own card with a stats line (the panes scroll sideways, as on
+// desktop), and the comparison table folds into a collapsed "Compare methods"
+// card.
+const COMPACT_QUERY = '(max-width: 640px)';
+const COMPACT_DEGREE = 5;
+const COMPACT_MODE = 'Q';
+const COMPACT_CHIPS = 3;
+const isCompact = () => typeof matchMedia === 'function' && matchMedia(COMPACT_QUERY).matches;
+
+/** Boot state on a phone: ℚ, the e^x chip at COMPACT_DEGREE (monic: the
+ *  degree-4 Taylor polynomial plus x^5), whose chain has small constants. */
+function compactDefaults(s) {
+  const ex = defaultExample(COMPACT_MODE, COMPACT_DEGREE, s.exSeed, true);
+  return { ...s, mode: COMPACT_MODE, exDegree: COMPACT_DEGREE, exMonic: true, src: ex.src, exKey: ex.key };
+}
+
+/** Phones show numeric constants — every row over ℝ, and the numerically
+ *  preprocessed methods (Knuth–Eve, Pan) over ℚ — to six significant digits:
+ *  the readable rendering, whose toggle strip is hidden there.  Exact
+ *  fractions are left alone. */
+function viewState(state, compact) {
+  if (!compact || state.numfmt === 'decimal' || !state.result) return state;
+  const row = comparisonRow(state);
+  const numeric = state.mode === 'R' || (row ? row.exact === false : state.result.exact === false);
+  return numeric ? { ...state, numfmt: 'decimal' } : state;
+}
+
+/** The GitHub star count once fetched (null until then / when unavailable). */
+function useStars() {
+  const [stars, setStars] = useState(null);
+  useEffect(() => {
+    let live = true;
+    fetchStars().then(count => { if (live) setStars(count); });
+    return () => { live = false; };
+  }, []);
+  return stars;
+}
+
+/** True while the media query matches (re-renders on resize / rotation). */
+function useMediaQuery(query) {
+  const mq = typeof matchMedia === 'function' ? matchMedia(query) : null;
+  const [matches, setMatches] = useState(!!mq?.matches);
+  useEffect(() => {
+    if (!mq) return undefined;
+    const on = e => setMatches(e.matches);
+    mq.addEventListener('change', on);
+    setMatches(mq.matches);
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return matches;
+}
+
+/** Dropdown text of a registry field: the exact fields say what they are. */
+function fieldOptionLabel(f) {
+  if (f.id === 'Q') return 'ℚ  rational';
+  if (f.id === 'R') return 'ℝ  real (doubles)';
+  return f.name;
+}
+
+/** "6 mul · 13 add · depth 5" for the compact output card. */
+function statsLine(state) {
+  const s = stats(state);
+  if (!s.length) return '';
+  const get = label => s.find(x => x.label === label)?.value;
+  const parts = [`${get('multiplications')} mul`, `${get('additions')} add`];
+  if (get('mult. depth') !== undefined && get('mult. depth') !== null) parts.push(`depth ${get('mult. depth')}`);
+  if (get('exact') !== 'yes') parts.push('≈ numeric');
+  return parts.join(' · ');
+}
 
 /** One trusted, generated TeX fragment. KaTeX supplies accessible MathML;
  *  `fallback` remains visible if the runtime or a particular render fails. */
@@ -91,7 +170,9 @@ function useCopied() {
 
 function App() {
   // location.hash seeds the boot state (pure helper; junk falls back to defaults)
-  const [state, dispatch] = useReducer(reduce, initialState, s => stateFromHash(s, location.hash));
+  // (phones open at degree COMPACT_DEGREE: there is no degree stepper there)
+  const [state, dispatch] = useReducer(reduce, isCompact() ? compactDefaults(initialState) : initialState,
+    s => stateFromHash(s, location.hash));
   const workerRef = useRef(null);
   const stateRef = useRef(state);          // latest state, for timer callbacks
   stateRef.current = state;
@@ -156,43 +237,9 @@ function App() {
   const name = t => t.label;
   const tabs = methodTabs(state);
 
-  const [copied, flash] = useCopied();
-  const share = () => {
-    const url = new URL(location.href);
-    url.hash = hashFromState(state);
-    location.hash = url.hash;
-    copyText(url.href).then(flash);
-  };
+  const compact = useMediaQuery(COMPACT_QUERY);
 
-  return html`<div class="card" id="main">
-    <div class="head-row">
-      <label class="head" for="poly-in">Your polynomial</label>
-      <span class="ex-row">
-        <span class="examples" id="examples">
-          ${examplesFor(state.mode, state.exDegree, state.exSeed, state.exMonic).map(ex => html`<a key=${ex.key} class="chip"
-            data-ex=${ex.key} title=${ex.title || null} onClick=${() => runExample(ex.key)}
-            ><${ExampleLabel} example=${ex} /></a>`)}
-        </span>
-        <button id="monic" class=${`monic-toggle${state.exMonic ? ' on' : ''}`}
-          aria-pressed=${state.exMonic} title="normalize generated examples to leading coefficient 1"
-          onClick=${toggleMonic}>monic</button>
-        <span class="degree" id="degree">
-          <button id="deg-minus" title="lower example degree" onClick=${() => stepDeg(-1)}>−</button>
-          <span class="deg-n">degree ${exampleDegree(state)}</span>
-          <button id="deg-plus" title="raise example degree" onClick=${() => stepDeg(+1)}>+</button>
-        </span>
-        <button class="share" id="share" title="copy a link to this chain" onClick=${share}>
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-          ${copied ? 'copied' : 'Share'}</button>
-      </span>
-    </div>
-    <${PolyInput} src=${state.src} onKeyDown=${onKeyDown}
-      onInput=${e => dispatch({ type: 'setSrc', src: e.currentTarget.value })} />
-    <div class="controls" id="field-row">
+  const fieldRow = html`<div class="controls" id="field-row">
       <div class="field-groups" id="mode">
         ${fieldChooser(state).map(g => html`<div class="seg" key=${g.id} data-group=${g.id}>
           ${g.fields.map(f => html`<button key=${f.id} data-mode=${f.id} title=${f.title || null}
@@ -201,8 +248,8 @@ function App() {
         </div>`)}
       </div>
       <span class="lbl">Field</span>
-    </div>
-    ${tabs.length > 0 && html`<div class="controls" id="method-row">
+    </div>`;
+  const methodRow = tabs.length > 0 && html`<div class="controls" id="method-row">
       <div class="seg methods" id="methods">
         ${tabs.map(t => t.enabled
     ? html`<button key=${t.key} data-m=${t.key} data-label=${t.label} class=${t.on ? 'on' : null}
@@ -210,15 +257,113 @@ function App() {
     : html`<button key=${t.key} data-label=${t.label} disabled title=${t.title || null}><span>${name(t)}</span></button>`)}
       </div>
       <span class="lbl">Method</span>
-    </div>`}
+    </div>`;
+  // phones: the same choices as two labelled dropdowns side by side
+  const pickers = html`<div class="pickers" id="pickers">
+      <label class="picker"><span class="lbl">Field</span>
+        <select id="mode-select" value=${state.mode} onChange=${e => setMode(e.currentTarget.value)}>
+          ${fieldChooser(state).map(g => html`<optgroup key=${g.id} label=${g.label}>
+            ${g.fields.map(f => html`<option key=${f.id} value=${f.id} disabled=${!f.enabled}>${fieldOptionLabel(f)}</option>`)}
+          </optgroup>`)}
+        </select></label>
+      ${tabs.length > 0 && html`<label class="picker"><span class="lbl">Method</span>
+        <select id="method-select" value=${state.method}
+          onChange=${e => dispatch({ type: 'setMethod', method: e.currentTarget.value })}>
+          ${tabs.map(t => html`<option key=${t.key} value=${t.key} disabled=${!t.enabled}>${t.label}</option>`)}
+        </select></label>`}
+    </div>`;
+
+  const output = showOutput(state) && html`<${Output} key="out" state=${viewState(state, compact)} dispatch=${dispatch} compact=${compact} />`;
+  const footer = showOutput(state) && html`<${FooterBar} key="foot" state=${state} dispatch=${dispatch} />`;
+
+  const examples = examplesFor(state.mode, state.exDegree, state.exSeed, state.exMonic);
+  const chips = compact ? examples.slice(0, COMPACT_CHIPS) : examples;
+
+  return html`${compact && html`<${CompactIntro} state=${state} />`}
+  <div class="card" id="main">
+    <div class="head-row">
+      <label class="head" for="poly-in">Your polynomial</label>
+      <span class="ex-row">
+        <span class="examples" id="examples">
+          ${chips.map(ex => html`<a key=${ex.key} class="chip"
+            data-ex=${ex.key} title=${ex.title || null} onClick=${() => runExample(ex.key)}
+            ><${ExampleLabel} example=${ex} /></a>`)}
+        </span>
+        ${!compact && html`<button id="monic" class=${`monic-toggle${state.exMonic ? ' on' : ''}`}
+          aria-pressed=${state.exMonic} title="normalize generated examples to leading coefficient 1"
+          onClick=${toggleMonic}>monic</button>
+        <span class="degree" id="degree">
+          <button id="deg-minus" title="lower example degree" onClick=${() => stepDeg(-1)}>−</button>
+          <span class="deg-n">degree ${exampleDegree(state)}</span>
+          <button id="deg-plus" title="raise example degree" onClick=${() => stepDeg(+1)}>+</button>
+        </span>
+        <${ShareButton} state=${state} />`}
+      </span>
+    </div>
+    <${PolyInput} src=${state.src} onKeyDown=${onKeyDown}
+      onInput=${e => dispatch({ type: 'setSrc', src: e.currentTarget.value })} />
+    ${compact ? pickers : [fieldRow, methodRow]}
     ${state.busy && html`<div class="controls"><span id="busy" style="color:var(--muted)">preprocessing…
       <button class="cancel" id="cancel" onClick=${cancel}>cancel</button></span></div>`}
     ${state.error !== null && html`<div id="error">${state.error}</div>`}
-    ${showOutput(state) && html`<${Output} key="out" state=${state} dispatch=${dispatch} />`}
+    ${!compact && output}
   </div>
-  <div>
-    ${showOutput(state) && html`<${FooterBar} key="foot" state=${state} dispatch=${dispatch} />`}
+  ${compact && output && html`<div class="card out-card">${output}
+    <div class="stats-line" id="stats-line">${statsLine(state)}</div>
+  </div>`}
+  ${compact
+    ? footer && html`<details class="card cmp-card" id="cmp-card"><summary>Compare methods</summary>${footer}</details>`
+    : html`<div>${footer}</div>`}`;
+}
+
+/** Phone header under the title: a short intro and the Paper / GitHub (with
+ *  star count) / Share links; the desktop intro and paper card are hidden. */
+function CompactIntro({ state }) {
+  const stars = useStars();
+  return html`<div class="intro-compact">
+    <p class="sub">Horner's rule evaluates a degree-<i>n</i> polynomial with <i>n</i> multiplications.
+      Preprocess the coefficients once and about <b><i>n</i>/2</b> suffice — for approximating
+      functions like exp, sin and cos, or for the polynomials of hashing, cryptography and
+      coding theory. Type a polynomial, pick a field, and read off the evaluation chain.</p>
+    <nav class="quick-links" aria-label="paper and source">
+      <a href="#" title="arXiv link to follow">
+        <svg class="doc-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+          stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M5.5 2.5h9l4 4v15h-13z" /><path d="M14.5 2.5v4h4" />
+          <path stroke-width="1.2" stroke-linecap="round" d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" />
+        </svg>Paper</a>
+      <a href="https://github.com/thomasahle/fast-polynomials" target="_blank" rel="noopener noreferrer"
+        aria-label=${stars !== null ? `fast-polynomials on GitHub (${stars} stars)` : 'fast-polynomials on GitHub'}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
+          <path d=${GITHUB_MARK} />
+        </svg>GitHub
+        ${stars !== null && html`<span class="stars">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="currentColor"><path d=${STAR_MARK} /></svg>
+          ${new Intl.NumberFormat().format(stars)}</span>`}</a>
+    </nav>
   </div>`;
+}
+
+// the GitHub mark and star, as in the desktop header (index.html)
+const GITHUB_MARK = 'M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.6 0-1.2.4-2.3 1.2-3.1-.1-.3-.5-1.6.1-3.1 0 0 1-.3 3.1 1.2a10.7 10.7 0 0 1 5.7 0c2.2-1.5 3.1-1.2 3.1-1.2.6 1.5.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.3-2.8 5.3-5.5 5.6.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z';
+const STAR_MARK = 'M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z';
+
+/** Share: the URL hash encodes the state; the link is copied to the clipboard. */
+function ShareButton({ state }) {
+  const [copied, flash] = useCopied();
+  const share = () => {
+    const url = new URL(location.href);
+    url.hash = hashFromState(state);
+    location.hash = url.hash;
+    copyText(url.href).then(flash);
+  };
+  return html`<button class="share" id="share" title="copy a link to this chain" onClick=${share}>
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+    ${copied ? 'copied' : 'Share'}</button>`;
 }
 
 /** The polynomial input: a transparent textarea over a highlighted backdrop
@@ -229,7 +374,11 @@ function PolyInput({ src, onInput, onKeyDown }) {
   const hlRef = useRef(null), taRef = useRef(null);
   const sync = () => {
     const h = hlRef.current, t = taRef.current;
-    if (h && t) { h.scrollTop = t.scrollTop; h.scrollLeft = t.scrollLeft; }
+    if (!h || !t) return;
+    // grow to fit the polynomial (up to half the viewport; beyond that it scrolls)
+    t.style.minHeight = '';
+    t.style.minHeight = `${Math.min(t.scrollHeight + 2, Math.round(innerHeight * 0.5))}px`;
+    h.scrollTop = t.scrollTop; h.scrollLeft = t.scrollLeft;
   };
   useEffect(sync);   // after every render too: a programmatic value change may move the scroll
   return html`<div class="poly-edit">
@@ -245,13 +394,14 @@ function PolyInput({ src, onInput, onKeyDown }) {
 /** Output section of the card: view tabs (+ the sub-option strips: form and
  *  constant format in the math view, constant style in the ℚ C view) attached
  *  to the pane.  Methods and the comparison table live elsewhere. */
-function Output({ state, dispatch }) {
-  const strips = subOptionStrips(state);
+function Output({ state, dispatch, compact = false }) {
+  const strips = subOptionStrips(state).filter(sub => !compact || sub.kind !== 'numfmt');
+  const labels = compact ? VIEW_LABEL_COMPACT : VIEW_LABEL;
   return html`<div class=${state.busy ? 'out stale' : 'out'} id="out">
     <div class="viewbar">
       <div class="views" id="view">
         ${VIEWS.map(v => html`<button key=${v} data-view=${v} class=${v === state.view ? 'on' : null}
-          onClick=${() => dispatch({ type: 'setView', view: v })}>${VIEW_LABEL[v]}</button>`)}
+          onClick=${() => dispatch({ type: 'setView', view: v })}>${labels[v]}</button>`)}
       </div>
       <div class="subopts" id="view-sub">
         ${strips.map(sub => html`<span class="strip" key=${sub.kind} data-strip=${sub.kind}>
@@ -262,7 +412,7 @@ function Output({ state, dispatch }) {
         </span>`)}
       </div>
     </div>
-    <${Pane} content=${paneContent(state)} state=${state} />
+    <${Pane} content=${paneContent(state)} state=${state} compact=${compact} />
   </div>`;
 }
 
@@ -303,7 +453,7 @@ function CopyButton({ text }) {
     onClick=${() => copyText(text).then(flash)}>${copied ? 'copied' : 'Copy'}</button>`;
 }
 
-/** Download every available C method together with a comparison harness. */
+/** Download the selected source plus every C method and a comparison harness. */
 function DownloadButton({ state }) {
   const [busy, setBusy] = useState(false);
   const download = async () => {
@@ -318,19 +468,21 @@ function DownloadButton({ state }) {
     } finally { setBusy(false); }
   };
   return html`<button class="download" id="download"
-    title="download all C methods with a benchmark script" disabled=${busy}
+    title="download this source, all C methods, and benchmark scripts" disabled=${busy}
     onClick=${download}>${busy ? 'packing…' : 'Download'}</button>`;
 }
 
 /** The pane below the view bar; keyed per kind so switching kinds remounts the element. */
-function Pane({ content, state }) {
+function Pane({ content, state, compact }) {
   const text = content?.kind === 'math' ? content.text
     : content?.kind === 'c' ? content.code
       : content?.kind === 'c-missing' ? `${content.note}\n\n${content.text}` : null;
+  // phones: Share floats here beside Copy (no Download); desktop keeps Share in the head row
   return html`<div class="pane-wrap">
-    ${text !== null && html`<div class="pane-actions">
-      <${CopyButton} text=${text} />
-      ${hasCBundle(state) && html`<${DownloadButton} state=${state} />`}
+    ${(text !== null || compact) && html`<div class="pane-actions">
+      ${text !== null && html`<${CopyButton} text=${text} />`}
+      ${!compact && hasCBundle(state) && html`<${DownloadButton} state=${state} />`}
+      ${compact && html`<${ShareButton} state=${state} />`}
     </div>`}
     ${paneBody(content)}
   </div>`;

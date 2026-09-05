@@ -3,21 +3,21 @@
 
 This appendix proves the $6$-parameter lemma of \Cref{sec:lower}
 (\Cref{lem:six-params}): over an infinite field of characteristic $\neq2$, no
-straight-line program with three nonscalar multiplications and six parameters
-has an everywhere-defined rational inverse from its values at six fixed points.
+straight-line program with at most three nonscalar multiplications and six parameters
+has an everywhere-defined rational left inverse from its values at six fixed points.
 The notation is that of \Cref{sec:lower}.
 
 \begin{proof}[Proof of \Cref{lem:six-params}]
 \noindent\textbf{Proof method (Jacobian obstruction).}
-Let $J(p)$ be the Jacobian matrix of $F$, i.e., $J_{k,i}(p)=\frac{\partial P_p(x_k)}{\partial p_i}$.
-We will show that for every such three-multiplication program there exists a choice of parameters $p$ such that $\det J(p)=0$.
+Let $J_F(p)$ be the Jacobian matrix of $F$, i.e., $(J_F)_{k,i}(p)=\frac{\partial P_p(x_k)}{\partial p_i}$.
+We will show that for every such three-multiplication program there exists a choice of parameters $p$ such that $\det J_F(p)=0$.
 On the other hand, suppose $F$ had an everywhere-defined rational left inverse,
 with coordinates $g_i/h_i$ where no $h_i$ has a zero in $\mathbb{F}^6$.  Clearing
 denominators, $g_i(F(p))=p_i\,h_i(F(p))$ for every $p\in\mathbb{F}^6$, hence
 identically as polynomials because $\mathbb{F}$ is infinite.  Let $p_0$ be a point
-with $\det J(p_0)=0$ and pick $v\neq0$ with $J(p_0)v=0$.  Differentiating the
+with $\det J_F(p_0)=0$ and pick $v\neq0$ with $J_F(p_0)v=0$.  Differentiating the
 identity at $p_0$ in the direction $v$, every term on the left and the second term
-on the right carry a factor $J(p_0)v=0$, leaving
+on the right carry a factor $J_F(p_0)v=0$, leaving
 \[
    0=v_i\,h_i(F(p_0))\qquad(1\le i\le 6).
 \]
@@ -27,27 +27,262 @@ out a left inverse is stronger than ruling out a two-sided one.)
 
 \medskip
 \noindent\textbf{Reduction to a normal form.}
-Consider an arbitrary straight-line program that uses three nonscalar multiplications.
+Consider an arbitrary straight-line program in the model of \Cref{sec:lower} that uses
+three nonscalar multiplications.
 Topologically order the multiplication gates and denote their outputs by $u_1,u_2,u_3$.
-Since additions and scalar multiplications are free, each multiplicand at gate $i$ is an affine form in $x$ and the earlier $u_j$'s.
-For the first multiplication (which is nonscalar), both inputs depend on $x$, so it has the form $(Ax+a)(Bx+b)$ with $(A,B)\neq(0,0)$.
-Then (swapping the two factors if needed) we may assume $A\neq 0$ and rewrite it as
+Every value available as an input to gate $i$ is obtained from $1$, $x$, the parameters
+$p_1,\dots,p_6$ and the earlier $u_j$ by additions and multiplications by fixed field
+elements, so each multiplicand at gate $i$ is a fixed linear combination of $x$ and the
+earlier $u_j$ plus an affine function of the parameters; the same holds for the output.
+(A multiplicand may involve neither $x$ nor any $u_j$: it is then a parameter-affine
+constant, and the gate is a multiplication by a parameter, which the model counts.)
+Thus the program reads
+\begin{align}
+   u_1 &= (Ax+a)(Bx+b),\\
+   u_2 &= (L_{2,1}u_1+L_{2,0}x+a_2)(R_{2,1}u_1+R_{2,0}x+b_2),\\
+   u_3 &= (L_{3,2}u_2+L_{3,1}u_1+L_{3,0}x+a_3)(R_{3,2}u_2+R_{3,1}u_1+R_{3,0}x+b_3),\\
+   P &= s_3u_3+s_2u_2+s_1u_1+s_0x+b_1,
+\end{align}
+where $A,B,L_{i,j},R_{i,j},s_i$ are fixed circuit constants and the seven
+\emph{constant slots}
 \[
-   (Ax+a)(Bx+b) = A\cdot x(Bx+b) + a(Bx+b),
+   z=(a,b,a_2,b_2,a_3,b_3,b_1)=H(p)=Mp+h_0
 \]
-so after defining $u_1:=x(Bx+b)$ (one nonscalar multiplication) we can absorb the affine correction $a(Bx+b)$ into later affine uses of the old product (since later uses are only through affine combinations).
-Thus we may assume the first multiplication has the form $u_1=x(R_{1,0}x+a_1)$.
+are an affine image of the parameter vector, with $M$ a $7\times6$ matrix over
+$\mathbb{F}$ and $h_0\in\mathbb{F}^7$.  (A program with fewer nonscalar multiplications
+is included: an unused gate is one whose output has coefficient zero in all later factors
+and in the output.)  We write $\lambda=(L_{2,1},R_{2,1},L_{3,1},R_{3,1},s_1)\in\mathbb{F}^5$
+for the coefficients with which $u_1$ enters the later factors and the output, and
+$\sigma=(a_2,b_2,a_3,b_3,b_1)$ for the last five slots, so that $z=(a,b,\sigma)$.
 
-Finally, allow the six preprocessing degrees of freedom to enter as arbitrary linear combinations at the constant slots.
-Let $p\in\mathbb{F}^6$ be the underlying parameter vector, and let the six constant slots in the form below be linear forms in $p$, i.e.,
+\smallskip
+\noindent\textit{The scalar first gate.}
+If $A=B=0$ then $u_1=ab$ does not involve $x$, and substituting it into the later gates
+and the output shows that $P$ depends on $z$ only through the five quantities
+$\sigma+\lambda\,ab$.  Hence $F$ factors through a polynomial map
+$\mathbb{F}^6\to\mathbb{F}^5$, so by the chain rule $J_F(p)$ is the product of a
+$6\times5$ and a $5\times6$ matrix and is singular for every $p$.  Otherwise
+$(A,B)\neq(0,0)$, and swapping the two factors of the first gate if necessary (which
+swaps the slots $a,b$, i.e.\ the first two rows of $M$ and of $h_0$) we may assume
+$A\neq0$.
+
+\smallskip
+\noindent\textit{The gauge identity and the slot map.}
+For $A\neq0$ we use the identity
+\begin{equation}
+\label{eq:lower-gauge}
+   (Ax+a)(Bx+b)=A\cdot x\Bigl(Bx+b+\tfrac{B}{A}a\Bigr)+ab ,
+\end{equation}
+whose correction $ab$ is free of $x$ (both sides equal $ABx^2+(Ab+Ba)x+ab$).
+Writing $u_1'=x(Bx+a_1)$ with $a_1=b+\frac BAa$, we have $u_1=Au_1'+ab$, and
+substituting this into the later factors and into the output gives
 \[
-   (a_1,a_2,b_2,a_3,b_3,b_1)=Mp
+   L_{i,1}u_1+\dots+a_i=(AL_{i,1})\,u_1'+\dots+(a_i+L_{i,1}ab),\qquad
+   s_1u_1+b_1=(As_1)\,u_1'+(b_1+s_1ab),
 \]
-for a $6\times 6$ matrix $M$ over $\mathbb{F}$.
-If $\det M=0$, then there is a nonzero direction $v\in\ker M$ along which all six slots (hence the entire program output) are unchanged, so the Jacobian has a nontrivial kernel and is singular.
-Otherwise $\det M\neq 0$ and we may reparameterize by the invertible linear change of coordinates $p\mapsto (a_1,a_2,b_2,a_3,b_3,b_1)$, which puts the program into the form below; Jacobian singularity is preserved since $J_p = J\,M$.
+and likewise for the right factors.  Thus $P$ is computed by the normal form displayed
+below, with the fixed constants
+\[
+   R_{1,0}=B,\qquad L_{i,1}'=AL_{i,1},\qquad R_{i,1}'=AR_{i,1},\qquad s_1'=As_1
+\]
+(all other constants unchanged) and with the six normal-form slots
+\begin{equation}
+\label{eq:lower-nu}
+   \nu(z)=(a_1,a_2',b_2',a_3',b_3',b_1')
+   =\Bigl(b+\tfrac BAa,\ \ \sigma+\lambda\,ab\Bigr),
+\end{equation}
+i.e.\ $a_2'=a_2+L_{2,1}ab$, $b_2'=b_2+R_{2,1}ab$, $a_3'=a_3+L_{3,1}ab$,
+$b_3'=b_3+R_{3,1}ab$, $b_1'=b_1+s_1ab$.  (The rewriting
+$(Ax+a)(Bx+b)=A\,x(Bx+b)+a(Bx+b)$ would not do: its correction $aBx+ab$ changes the
+$x$-coefficient of every later factor that uses $u_1$ by $L_{i,1}aB$, which depends on the
+parameter $a$, whereas the normal form requires those coefficients to be fixed.)
+Let $E'\colon\mathbb{F}^6\to\mathbb{F}^6$, $E'(q)=(P'_q(x_0),\dots,P'_q(x_5))$, be the
+evaluation map of the normal form with these constants, and let $J(q)$ be its Jacobian.
+Then $P_p=P'_{\nu(H(p))}$ identically in $x$, i.e.\ $F=E'\circ Q$ with
+\[
+\begin{aligned}
+   Q&=\nu\circ H\colon\mathbb{F}^6\to\mathbb{F}^6,\\
+   Q_1(p)&=H_2(p)+\tfrac BAH_1(p),\qquad
+   Q_{1+j}(p)=H_{2+j}(p)+\lambda_j\,H_1(p)H_2(p)\quad(j=1,\dots,5),
+\end{aligned}
+\]
+where $H_i$ is the $i$-th coordinate of $H$; $Q$ is a polynomial map whose first
+component is affine and whose other five components have degree two in $p$.  By the
+chain rule,
+\begin{equation}
+\label{eq:lower-chain}
+   J_F(p)=J\bigl(Q(p)\bigr)\,DQ(p),\qquad DQ(p)=D\nu\bigl(H(p)\bigr)\,M ,
+\end{equation}
+so $\det J_F(p)=\det J(Q(p))\cdot\det DQ(p)$: $J_F$ is singular at $p$ as soon as
+$DQ(p)$ is singular or $J$ is singular at $Q(p)$.  The $6\times7$ matrix
+\[
+   D\nu(z)=\begin{bmatrix} \tfrac BA & 1 & 0\\[2pt] \lambda b & \lambda a & I_5\end{bmatrix}
+\]
+(with $\lambda b$ and $\lambda a$ columns of length five) has rank six, and its kernel is
+spanned by the \emph{gauge direction}
+\[
+   \xi(z)=\Bigl(1,\ -\tfrac BA,\ -\lambda\bigl(b-\tfrac BAa\bigr)\Bigr)\in\mathbb{F}^7 .
+\]
+The fibres of $\nu$ are the curves (\emph{gauge orbits})
+\[
+   O_q(u)=\Bigl(u,\ \ a_1-\tfrac BAu,\ \ \sigma^*-\lambda\,u\bigl(a_1-\tfrac BAu\bigr)\Bigr),
+   \qquad q=(a_1,\sigma^*)\in\mathbb{F}^6,\ u\in\mathbb{F}:
+\]
+indeed $\nu(O_q(u))=q$ for all $u$, and every $z=(a,b,\sigma)$ equals $O_{\nu(z)}(a)$.
+In particular $\nu$ is surjective, and $Q(p)=Q(p')$ exactly when $H(p)$ and $H(p')$
+lie on one gauge orbit.  We now distinguish four cases; in each of (i)--(iii) we exhibit
+a point where $DQ$ is singular, and in (iv) $Q$ is invertible and the singular points of
+$J_F$ are the preimages of those of $J$.
 
-Thus we may write the program in the following form (all other scalars are fixed circuit constants):
+\smallskip
+\noindent\textit{Case (i): $M$ is not injective.}
+Pick $v\neq0$ with $Mv=0$.  Then $DQ(p)v=D\nu(H(p))Mv=0$ for every $p$, so
+$\det J_F(p)=0$ for every $p\in\mathbb{F}^6$ by \eqref{eq:lower-chain}.
+
+In the remaining cases $M$ is injective.  Let $\omega\in\mathbb{F}^7$ be its cofactor
+vector, $\omega_i=(-1)^i\det(M\text{ with row $i$ deleted})$.  Then
+$\omega^{\mathsf T}M=0$ (Laplace expansion of $\det[M\mid Me_j]$ along its last column,
+a determinant with two equal columns), $\omega\neq0$ because $M$ has a nonzero
+$6\times6$ minor, and hence $\operatorname{im}M=\ker\omega^{\mathsf T}$, both having
+dimension six.  Therefore
+\[
+   \operatorname{im}H=\mathcal{H}:=\{z\in\mathbb{F}^7:\ \omega\cdot z=\eta\},\qquad
+   \eta:=\omega\cdot h_0 .
+\]
+Choosing six rows $S$ of $M$ with $\det M_S\neq0$ and putting $M^+=M_S^{-1}\Pi_S$
+($\Pi_S$ selects the rows $S$) gives a left inverse, $M^+M=I_6$, with
+$H(M^+(z-h_0))=z$ for every $z\in\mathcal{H}$ (write $z-h_0=Mv$).  Write
+$\omega=(\omega_a,\omega_b,\omega_\sigma)$ with $\omega_\sigma\in\mathbb{F}^5$, and put
+\[
+   \kappa=\omega_\sigma\cdot\lambda .
+\]
+For $q=(a_1,\sigma^*)$ the orbit $O_q$ meets $\mathcal H$ exactly at the roots of the
+\emph{orbit polynomial}
+\begin{equation}
+\label{eq:lower-orbitpoly}
+   \omega\cdot O_q(u)-\eta
+   =\tfrac BA\kappa\,u^2+\bigl(\omega_a-\tfrac BA\omega_b-\kappa a_1\bigr)u
+    +\bigl(\omega_ba_1+\omega_\sigma\cdot\sigma^*-\eta\bigr),
+\end{equation}
+and lies inside $\mathcal H$ exactly when all three coefficients vanish.
+
+\smallskip
+\noindent\textit{Midpoint lemma.}
+Let $G\colon\mathbb{F}^n\to\mathbb{F}^m$ be a polynomial map all of whose components
+have total degree at most two, and assume $\mathrm{char}(\mathbb{F})\neq2$.  Then for
+all $p,p'\in\mathbb{F}^n$
+\begin{equation}
+\label{eq:lower-midpoint}
+   G(p)-G(p')=DG\Bigl(\frac{p+p'}2\Bigr)(p-p') .
+\end{equation}
+Indeed, a component of $G$ has the form $y\mapsto y^{\mathsf T}Ny+\beta^{\mathsf T}y+\gamma$
+with a square matrix $N$, and its derivative at $m$ is
+$m^{\mathsf T}(N+N^{\mathsf T})+\beta^{\mathsf T}$.  Expanding
+$\frac12(p+p')^{\mathsf T}(N+N^{\mathsf T})(p-p')$, the four mixed terms cancel in pairs
+(a $1\times1$ matrix equals its transpose: $p^{\mathsf T}Np'=p'^{\mathsf T}N^{\mathsf T}p$),
+and what remains is $p^{\mathsf T}Np-p'^{\mathsf T}Np'$; the affine part contributes
+$\beta^{\mathsf T}(p-p')$.  The only division is by $2$.  Consequently, if $G(p)=G(p')$
+with $p\neq p'$, then $DG$ has the nonzero kernel vector $p-p'$ at the
+$\mathbb{F}$-rational point $(p+p')/2$.
+
+\smallskip
+\noindent\textit{Case (ii): two parameter points on one gauge orbit.}
+Suppose $p\neq p'$ and $Q(p)=Q(p')$, i.e.\ $H(p)$ and $H(p')$ lie on one gauge orbit.
+Since $Q$ has degree two, \eqref{eq:lower-midpoint} gives $DQ(m)(p-p')=0$ at the
+rational midpoint $m=(p+p')/2$, so $\det DQ(m)=0$ and $\det J_F(m)=0$ by
+\eqref{eq:lower-chain}.  This case arises whenever $\kappa\neq0$ and $B\neq0$: with
+\[
+   a_1^\dagger=\frac{\frac BA\kappa+\omega_a-\frac BA\omega_b}{\kappa},\qquad
+   \sigma^\dagger=\frac{\eta-\omega_ba_1^\dagger}{\kappa}\,\lambda,\qquad
+   q^\dagger=(a_1^\dagger,\sigma^\dagger),
+\]
+the orbit polynomial \eqref{eq:lower-orbitpoly} of $q^\dagger$ is
+$\frac BA\kappa\,u(u-1)$, so $O_{q^\dagger}(0)$ and $O_{q^\dagger}(1)$ lie in
+$\mathcal H$, and $p=M^+(O_{q^\dagger}(0)-h_0)$, $p'=M^+(O_{q^\dagger}(1)-h_0)$ are two
+distinct parameter points (their images $H(p)=O_{q^\dagger}(0)$ and
+$H(p')=O_{q^\dagger}(1)$ differ in the first coordinate) with $Q(p)=q^\dagger=Q(p')$.
+
+\smallskip
+\noindent\textit{Case (iii): a gauge orbit inside $\operatorname{im}H$.}
+Suppose $q$ is such that all three coefficients in \eqref{eq:lower-orbitpoly} vanish,
+so that $O_q\subseteq\mathcal H$.  Then every coefficient vector of the polynomial
+$u\mapsto O_q(u)-h_0$ lies in $\ker\omega^{\mathsf T}=\operatorname{im}M$ and is fixed
+by $MM^+$, so the curve $p(u)=M^+(O_q(u)-h_0)$ satisfies $H(p(u))=O_q(u)$ and
+$Q(p(u))=q$ identically in $u$.  Differentiating in $u$ gives $DQ(p(u))\,p'(u)=0$, and
+$p'(u)\neq0$ because the first coordinate of $Mp'(u)=\frac{d}{du}O_q(u)$ is $1$.  Hence
+$J_F$ is singular along the whole curve: $\det J_F(p(u))=0$ for every $u\in\mathbb{F}$.
+(Alternatively, $p(0)\neq p(1)$ and $Q(p(0))=Q(p(1))$, so this is also an instance of
+case (ii).)  This case arises when $\kappa\neq0$ and $B=0$, with $q^\dagger$ as in
+case (ii), and when $\kappa=0$ and $\omega_a=\frac BA\omega_b$, with $q=\nu(h_0)$: in
+the former the orbit polynomial of $q^\dagger$ is $\frac BA\kappa\,u(u-1)=0$; in the
+latter it is the constant $\omega_ba_1+\omega_\sigma\cdot\sigma^*-\eta$, which vanishes
+for $q=\nu(h_0)$ because $O_{\nu(h_0)}$ passes through $h_0\in\mathcal H$.
+
+\smallskip
+\noindent\textit{Case (iv): the transversal case.}
+Suppose finally that $\kappa=0$ and $\omega^\circ:=\omega_a-\frac BA\omega_b\neq0$.
+Then \eqref{eq:lower-orbitpoly} reads $\omega^\circ u+(\omega_ba_1+\omega_\sigma\cdot\sigma^*-\eta)$,
+so every gauge orbit meets $\mathcal H$ in exactly one point, at
+\[
+   u(q)=-\frac{\omega_ba_1+\omega_\sigma\cdot\sigma^*-\eta}{\omega^\circ}\qquad(q=(a_1,\sigma^*)),
+\]
+an affine function of $q$.  Define
+\[
+   \Theta(q)=M^+\bigl(O_q(u(q))-h_0\bigr)
+   =M^+\Bigl(\bigl(u(q),\ a_1-\tfrac BAu(q),\ \sigma^*-\lambda\,u(q)\bigl(a_1-\tfrac BAu(q)\bigr)\bigr)-h_0\Bigr),
+\]
+a polynomial map of degree at most two.  Then $Q\circ\Theta=\mathrm{id}$: since
+$O_q(u(q))\in\mathcal H$ we have $H(\Theta(q))=O_q(u(q))$, hence
+$Q(\Theta(q))=\nu(O_q(u(q)))=q$.  And $\Theta\circ Q=\mathrm{id}$: for $z=H(p)\in\mathcal H$
+and $q=\nu(z)$ we have $z=O_q(a)$ with $a$ the first coordinate of $z$, and
+$\omega\cdot z=\eta$ forces $a=u(q)$, so $O_q(u(q))=z=Mp+h_0$ and $\Theta(q)=M^+Mp=p$.
+Thus $Q$ is a polynomial automorphism of $\mathbb{F}^6$ with inverse $\Theta$; in
+particular $DQ(p)$ is invertible for every $p$, and $\nu$ restricted to
+$\mathcal H=\operatorname{im}H$ is a bijection onto the six normal-form slots.
+(Conversely, in cases (ii) and (iii) $Q$ is not injective, so $\kappa=0$ and
+$\omega_a\neq\frac BA\omega_b$ is exactly the condition for this.)  In this case the
+singular points of $J_F$ are the preimages of those of $J$: if $\det J(q_0)=0$ then
+$p_0=\Theta(q_0)$ satisfies $Q(p_0)=q_0$ and
+$\det J_F(p_0)=\det J(q_0)\cdot\det DQ(p_0)=0$.
+
+In case (iv) the conclusion of the lemma can also be transferred without the Jacobian,
+because an everywhere-defined rational left inverse of $F=E'\circ Q$ yields one of $E'$
+as soon as $Q$ is surjective (as it is here).  Indeed, let $g_i/h_i$ be such a left
+inverse of $F$, with $h_i$ vanishing nowhere and $g_i(F(p))=p_ih_i(F(p))$ for all $p$;
+let $d=2$ bound the degrees of the components $Q_j(y)=\sum_{|e|\le d}c_{j,e}\,y^e$ of
+$Q$, and put
+\[
+   \Delta=\prod_{i=1}^6h_i^{\,d},\qquad
+   N_j=\sum_{|e|\le d}c_{j,e}\prod_{i=1}^6g_i^{\,e_i}h_i^{\,d-e_i},
+\]
+so that $N_j/\Delta=Q_j(g_1/h_1,\dots,g_6/h_6)$.  Then $\Delta$ vanishes nowhere, and for
+every $q$, choosing $p$ with $Q(p)=q$ and putting $y=E'(q)=F(p)$, we get
+$N_j(y)=\sum_ec_{j,e}\,p^e\prod_ih_i(y)^d=Q_j(p)\,\Delta(y)=q_j\,\Delta(y)$; so
+$N_j/\Delta$ is an everywhere-defined rational left inverse of $E'$, and a statement
+excluding such inverses for every normal form excludes them for $F$.
+
+\smallskip
+The four cases are exhaustive: either $M$ is not injective (i), or $\kappa\neq0$
+(ii if $B\neq0$, iii if $B=0$), or $\kappa=0$ and $\omega_a=\frac BA\omega_b$ (iii), or
+$\kappa=0$ and $\omega_a\neq\frac BA\omega_b$ (iv).  In cases (i)--(iii) we have
+exhibited $p_0$ with $\det DQ(p_0)=0$, hence $\det J_F(p_0)=0$, whatever the normal
+form; in case (iv) a singular point of $J_F$ is the pull-back $\Theta(q_0)$ of a
+singular point $q_0$ of $J$.  It therefore suffices to prove that the normal-form
+Jacobian $J$ is singular somewhere, for every choice of the fixed constants; this is
+what the rest of the proof does.  From now on $J$ denotes this Jacobian, the six
+normal-form slots $(a_1,a_2,b_2,a_3,b_3,b_1)$ are the free parameters, and we drop the
+primes.  (The midpoint lemma is the only place where the reduction uses
+$\mathrm{char}(\mathbb{F})\neq2$, and it can be avoided: by the Cauchy--Binet formula
+$\det DQ(p)=\sum_i\det(D\nu\text{ without column }i)\det(M\text{ without row }i)
+=\omega\cdot\xi(H(p))$, because the cofactor vector of $D\nu(z)$ spans $\ker D\nu(z)$ and
+has first entry $1$, so it equals $\xi(z)$; thus
+$\det DQ(p)=\omega^\circ-\kappa\,\tau(p)$ with $\tau(p)=b-\frac BAa$ evaluated at $H(p)$,
+an affine function of $p$ which is non-constant when $\kappa\neq0$ (if it were constant,
+$e_2-\frac BAe_1$ would lie in the left kernel $\langle\omega\rangle$ of $M$, forcing
+$\omega_\sigma=0$), and one linear pivot then produces $p_0$ with $\det DQ(p_0)=0$.  The
+characteristic hypothesis is still used in Case $D=0$ below.)
+
+Thus it remains to treat the program in the following form (all other scalars are fixed circuit constants):
 \begin{align}
    u_0 &= x
    \\
@@ -358,14 +593,18 @@ so the three Jacobian rows at $x_0,x_1,x_2$ are linearly dependent. Hence the Ja
 \end{proof}
 
 \paragraph{Formalization.}
-The lemma above is machine-checked in Lean~4 (\texttt{FastPoly/\allowbreak LowerBound/}): the
-program semantics, the six sensitivity polynomials, the chain rule for the
-$\bar u_i$, both cases of the case split, and the passage from a vanishing
-Jacobian determinant to the absence of an everywhere-defined rational left
-inverse are all proved, with the reduction to the displayed normal form encoded
-as the definition of the circuit rather than derived from a datatype of
-straight-line programs.  The final statement
-\texttt{no\_rationalInverse\_affine} is proved for an arbitrary affine
-reparameterization of the six slots, with no invertibility assumed, and depends
-only on Lean's standard axioms.
-
+What is machine-checked in Lean~4 today (\texttt{FastPoly/\allowbreak LowerBound/}) is
+the normal-form statement: for every circuit in the displayed normal form
+(\texttt{Circuit}), every field with $2\neq0$ and every six distinct evaluation points,
+the Jacobian $J$ is singular somewhere (\texttt{exists\_singular\_jacobian}: the
+program semantics, the six sensitivity polynomials, the chain rule for the $\bar u_i$
+and both cases of the split on $D$), and, over an infinite field, the evaluation map of
+the normal form has no everywhere-defined rational left inverse
+(\texttt{no\_rationalInverse}), also when its six slots are an arbitrary affine image
+$Mp+m_0$ of the parameter vector, with no invertibility of $M$ assumed
+(\texttt{no\_rationalInverse\_affine}).  These statements depend only on Lean's
+standard axioms.  The reduction of this appendix from an arbitrary
+three-multiplication program to the normal form---the gauge identity
+\eqref{eq:lower-gauge}, the quadratic slot map $Q=\nu\circ H$ and the four cases---is
+not yet formalized: the Lean development takes the normal form as the definition of the
+circuit rather than deriving it from a datatype of straight-line programs.

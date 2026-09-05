@@ -26,6 +26,11 @@ We benchmark on two platforms:
           for carryless multiplication via the \texttt{PMULL} instruction.
     \item \textbf{x86}: Intel Xeon Platinum 8375C (Ice Lake, x86-64) running Linux, using Intel intrinsics
           for carryless multiplication via the \texttt{PCLMULQDQ} instruction.
+          Two x86 results are from a different host: the prime-field kernels
+          of \Cref{sec:experiments:crypto} and the tabulation comparison of
+          \Cref{sec:experiments:tabulation} report the run on an AMD EPYC
+          9R14 (Zen~4, Linux) recorded in
+          \texttt{tools/\allowbreak bench/\allowbreak x86\_output.txt}.
 \end{itemize}
 Both instructions compute the product of two 64-bit polynomials over $\mathbb{F}_2$
 using dedicated hardware support.
@@ -49,19 +54,36 @@ We compare the following evaluation methods, all operating over $\mathbb{F}_{2^{
           This achieves $\lceil n/2 \rceil + O(\log n)$ multiplications.
     \item \textbf{This Paper}: Our optimized polynomial chains,
           using the minimum number of multiplications for each degree
-          as described in this paper.  By \Cref{thm:construction-height-peeled}
+          as described in this paper.  By \Cref{thm:construction-height}
           these schedules can moreover be arranged with multiplicative height
           $2\lceil\log_2 k\rceil+O(1)$ at the same gate counts, so they do not
           trade critical-path depth for the lower multiplication count.
 \end{itemize}
 
-Each algorithm was benchmarked by hashing $10^6$ random 64-bit integers,
-repeated 100 times. We report mean$\pm$standard deviation; figures show $\pm 1$ standard deviation error bars.
-With 100 repetitions, the $95\%$ confidence interval for the mean is approximately $\pm 0.2\cdot\text{std}$.
+\begin{sloppypar}
+Each algorithm was benchmarked by hashing $10^6$ random 64-bit integers per
+repetition.  The harness behind \Cref{tab:kwise_both,tab:injective,tab:injective:universal}
+and the tabulation comparison (\texttt{test\_speed\_function64} in
+\texttt{tools/\allowbreak bench/\allowbreak carryless\_arm.cpp} and
+\texttt{tools/\allowbreak bench/\allowbreak carryless.cpp};
+\texttt{tools/\allowbreak bench/\allowbreak bench\_nonpoly\_arm.cpp} for the non-polynomial hashes)
+runs $200$ repetitions, sorts them, keeps the fastest $100$ and reports their
+mean and population standard deviation.  Every ``mean$\pm$std'' in those
+tables, and every error bar in the figures, is of that selected half: the
+deviation measures the spread of the fast tail, not the sampling variability
+of an ordinary mean, and we derive no confidence interval from it.  The
+application benchmarks use different rules, stated with their tables: the
+fastest $50$ of $100$ repetitions for the sketch kernel; for the hash-table
+and filter kernels a single timed build and, for lookups and queries, the
+total over $5$ passes of the query set, with no selection; and one timed loop
+over the point set for the prime-field kernels.
 We measure evaluation time only; key setup and preprocessing (when applicable) are excluded.
+\end{sloppypar}
 
 \paragraph{Platform scope.}
-We report results for both ARM (Apple M2 Pro) and x86 (Intel Xeon Platinum 8375C).
+We report results for both ARM (Apple M2 Pro) and x86 (Intel Xeon Platinum
+8375C; AMD EPYC 9R14 for the prime-field kernels and the tabulation
+comparison, as noted above).
 The qualitative trade-offs (critical-path structure and the cost of modular reduction)
 are consistent across platforms, though quantitative speedups vary with microarchitecture.
 
@@ -83,6 +105,71 @@ Our ARM implementation uses several key optimizations:
 (2) Modular reduction uses three \texttt{PMULL} operations rather than table lookup,
     which we found to be faster on Apple Silicon;
 (3) Independent multiplication chains are interleaved to exploit instruction-level parallelism.
+
+\paragraph{Measured families.}
+\label{sec:experiments:families}
+\Cref{tab:families} records, for every family timed in this section, the
+implementation that was run, whether the circuit it computes is displayed in
+the paper, and which proof, if any, covers it.  Only the rows with a proof
+carry an independence or collision guarantee; the others are timings of
+search candidates.
+\begin{table}[!htbp]
+\centering
+\caption{Correspondence between the measured families and the proofs.
+         ``Circuit'' names the displayed circuit the implementation computes,
+         or notes that it is not displayed.  The circuits marked ``timing
+         only'' have no inverse displayed in this paper, so no guarantee is
+         claimed for them beyond their multiplication count.}
+\label{tab:families}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{0.95in}p{1.6in}p{1.25in}p{1.7in}}
+\toprule
+Family (field, degree) & Implementation & Circuit & Proof; data \\
+\midrule
+\raggedright $\F_{2^{64}}$, $k=3$ (\Cref{tab:kwise_both}, \Cref{sec:experiments:tabulation}) &
+\raggedright \texttt{smartcl\_64::\allowbreak mult3} in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h} &
+\raggedright the cubic $Q_3$ of \Cref{sec:main-theorem:outline} with $H_2=x^2$ &
+\raggedright triangular decoder given there, every characteristic; $10^6$ uniform inputs, uniform keys \tabularnewline
+\raggedright $\F_{2^{64}}$, $k=4$ (\Cref{sec:experiments:tabulation}) &
+\raggedright ARM: \texttt{mult4}, Motzkin's two-multiplication quartic; x86: \texttt{mult4} is the three-multiplication lift $x\,Q_3(x)+c_0$ &
+\raggedright footnote in \Cref{sec:experiments:kwise} &
+\raggedright ARM: $3$-wise only (footnote); x86: bijective, hence $4$-wise \tabularnewline
+\raggedright $\F_{2^{64}}$, $k=5$ &
+\raggedright \texttt{mult5} &
+\raggedright the finalizer circuit \eqref{eq:ph:chain5} &
+\raggedright \Cref{lem:ph:chain}, every characteristic-$2$ field \tabularnewline
+\raggedright $\F_{2^{64}}$, $k=7$ &
+\raggedright ARM \texttt{mult7}, x86 \texttt{mult7\_alt2}: $y=x(x+k_0)$, $z=(x+k_1)(y+k_2)$, $t=z(z+k_3)$, $u=(x+y+t+k_4)\allowbreak(x+k_5)$, $P=u+k_6$ &
+\raggedright not displayed; differs from the degree-$7$ circuit of \Cref{appendix:polynomials} &
+\raggedright timing only \tabularnewline
+\raggedright $\F_{2^{64}}$, $k=9$ &
+\raggedright ARM \texttt{mult9}, x86 \texttt{mult9\_alt}: $y=x^2$, $z=(x+k_0)(y+k_1)$, $u=(x+k_2)(y+k_3)$, $t=(z+k_4)\allowbreak(y+z+k_5)$, $v=(t+k_6)\allowbreak(x+z+k_7)$, $P=u+v+k_8$ &
+\raggedright not displayed; differs from both degree-$9$ circuits of \Cref{appendix:polynomials} &
+\raggedright timing only \tabularnewline
+\raggedright $\F_{2^{64}}$, degrees $7$--$21$ (nanosecond timings in \Cref{appendix:polynomials}) &
+\raggedright \texttt{tools/\allowbreak bench/\allowbreak appendix\_char2\_\allowbreak circuits\_arm.cpp} &
+\raggedright the displayed circuits &
+\raggedright inverses for $7,15,17,19,21$; the displayed $9,11,13$ are search candidates and their certified alternatives (A.0) are not timed \tabularnewline
+\raggedright $\F_{2^{89}-1}$, $k=3$--$9$ (\Cref{fig:bench_all}) &
+\raggedright \texttt{smartpoly\_64} &
+\raggedright not displayed &
+\raggedright timing only \tabularnewline
+\raggedright $\F_{2^{89}-1}$ and Goldilocks, degrees $13$--$21$ (\Cref{sec:experiments:crypto}) &
+\raggedright \texttt{x2s\_mersenne\_\allowbreak chains.h}, \texttt{x2s\_goldilocks\_\allowbreak chains.h}, generated from \texttt{tools/x2s.res} &
+\raggedright not displayed (the degree-$13$ chain is the degree-$13$ alternative of (A.0)) &
+\raggedright timing only: no inverse over $\F_p$ (the (A.0) certificate is for characteristic~$2$); points $x_i=i$ or uniform \tabularnewline
+\raggedright injective recurrence, $\F_{2^{64}}$ (\Cref{tab:injective,tab:injective:universal,tab:injective:adversarial}) &
+\raggedright \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak injective\_hashing.h}; vector-resident rows: \texttt{tools/\allowbreak bench/\allowbreak adversarial/} &
+\raggedright \eqref{eq:injective-single-key} and \Cref{def:injective:recurrence} &
+\raggedright \Cref{lem:injective:coeffmap} with Schwartz--Zippel; uniform random messages \tabularnewline
+\raggedright ChainHash (\Cref{tab:injective:adversarial}) &
+\raggedright \texttt{tools/\allowbreak bench/\allowbreak chainhash/\allowbreak chainhash.h} &
+\raggedright \Cref{def:ph:hash} &
+\raggedright \Cref{thm:ph:collision,thm:ph:kwise} for the ideal key; the seeded implementation is outside the theorems (\Cref{rem:ph:gaps}); SMHasher3 and \Cref{app:adversarial} \tabularnewline
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{\texorpdfstring{$k$}{k}-wise Independent Hashing}
 \label{sec:experiments:kwise}
@@ -114,7 +201,9 @@ For $k = 9$, our method achieves a speedup of $1.84\times$ over Horner on ARM an
 For smaller $k$, we use Motzkin's quartic (2 multiplications), which over $\F_{2^{64}}$ is only $3$-wise independent\footnote{Over $\F_{2^{64}}$ Motzkin's two-multiplication quartic $(y+b)(y+x+c)+d$ with $y=x(x+a)$ has $x^3$-coefficient $2a+1=1$, so its coefficients range only over the monic quartics with $e_3=1$ and the family is exactly $3$-wise independent (the remaining three coefficients are uniform); a $4$-wise quartic needs a third multiplication in characteristic~$2$, the same Frobenius effect as in \Cref{sec:ph:twist}.}, and the two-multiplication cubic of \Cref{sec:main-theorem:outline} for $k=3$ (the same count as Horner).
 The speedup increases with $k$ because our polynomial chains save more multiplications
 at higher degrees: for monic degree $n$, Horner uses $n-1$ multiplications while our
-chains use only $\lfloor n/2\rfloor+1$ multiplications (by \Cref{thm:main}).
+chains use only $\lfloor n/2\rfloor+1$; \Cref{thm:main} does not apply over
+$\F_{2^{64}}$, so the count here is that of the characteristic-$2$ circuits
+themselves (\Cref{tab:families}).
 
 \paragraph{Discussion.}
 The Rabin--Winograd method is strongest at $k = 7$, where its recursive structure
@@ -150,7 +239,7 @@ and a sign bit, and update an array of counters.
 This mixes hashing with memory traffic, so speedups are expected to be smaller than in the raw
 hash-evaluation benchmark.
 
-With table size $2^{16}$ and $2^{20}$ updates, we measure:
+With table size $2^{16}$ and $2^{20}$ updates (mean of the fastest $50$ of $100$ repetitions), we measure:
 \begin{center}
 \begin{tabular}{l|rrr|rrr}
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
@@ -171,7 +260,9 @@ Finally, we benchmark a simple linear-probing hash table,
 measuring insertion throughput (table construction) and lookup throughput at load factor $70\%$.
 As expected, improvements are smaller than in the microbenchmarks but still measurable.
 
-With table size $2^{20}$, we obtain:
+With table size $2^{20}$ we obtain the following (insertion is a single
+timed build after a $2^{12}$-key warm-up; lookups are the total over $5$
+passes of the query set, reported per lookup; no selection):
 \begin{center}
 \begin{tabular}{l|rrr|rrr}
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
@@ -193,7 +284,9 @@ We also implement a simple XOR-filter-style approximate membership structure, wh
 small fingerprint array using a peeling algorithm and answers queries with three table reads and
 two XORs.
 We measure both build throughput (ns/key) and query throughput (ns/query) at load $75\%$ and table
-size $2^{20}$:
+size $2^{20}$ (build is a single timed construction including any re-seeded
+peel retries; queries are the total over $5$ passes of the query set,
+reported per query; no selection):
 \begin{center}
 \begin{tabular}{l|rrr|rrr}
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
@@ -208,42 +301,57 @@ On x86, our method is fastest for both: $1.46\times$ speedup for build and $1.76
 The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_xorfilter\_arm.cpp} (ARM) and
 \texttt{tools/bench/\allowbreak app\_xorfilter\_x86.cpp} (x86).
 
-\subsection{Cryptographic Workloads: Secret Sharing and Polynomial PRFs}
+\subsection{Prime-Field Evaluation Kernels: Share Generation and Random-Point Evaluation}
 \label{sec:experiments:crypto}
 
-We also benchmark the same ``evaluate one random polynomial at many points'' inner loop that
+We also benchmark the ``evaluate one polynomial at many points'' inner loop that
 appears in threshold secret sharing~\cite{shamir1979share} and related primitives.
+These are evaluation-kernel benchmarks: the chain's keys are drawn uniformly at
+random and the evaluation points are the input; sampling the polynomial,
+placing a secret in it, preprocessing its coefficients into keys, and any
+setup are not timed, and no secret-sharing or pseudorandom-function security
+claim is made.  Each number is one timed loop over the point set, reported
+per evaluation.
 To model prime-field arithmetic (where a multiplication is ``full width'' regardless of whether
 the input happens to be a small integer), we use the Mersenne prime field
 $\F_p$ with $p = 2^{89}-1$ and implement multiplication using 128-bit integer arithmetic and
 Mersenne reduction.
 
-We compare Horner evaluation against our ``x2s'' chains (degrees $13,15,17,19,21$ from our search)
+We compare Horner evaluation against our ``x2s'' chains (degrees $13,15,17,19,21$ from our search;
+\texttt{tools/bench/framework/x2s\_mersenne\_chains.h}, generated from \texttt{tools/x2s.res}).
+These are search candidates: they are not the circuits of \Cref{appendix:polynomials}, and no
+inverse is displayed for them over $\F_p$ (the degree-$13$ chain coincides with the degree-$13$
+alternative of \Cref{appendix:polynomials}, whose certificate is for characteristic~$2$), so
+these rows time evaluation only (\Cref{tab:families}).  We time them
 in two regimes:
 (1) ``Share generation'': evaluation points $x_i = i$ (but treated as elements of $\F_p$, so each
 multiply is a full field multiplication), and
-(2) ``Polynomial PRF'': evaluation points $x_i \sim \F_p$ uniformly at random.
-Both correspond to real cryptographic use cases; the second is also a proxy for polynomial-based
-PRFs / universal hashing keyed by the (preprocessed) coefficients.
+(2) ``random-point evaluation'': evaluation points $x_i \sim \F_p$ uniformly at random,
+the access pattern of a polynomial evaluated at a random point, as in polynomial
+universal hashing keyed by the coefficients.
 
 On an Apple M2 Pro, we observe consistent $2.0\times$--$2.5\times$ speedups over full-field Horner
 evaluation for degrees $13$--$21$ in both regimes; see the benchmark implementation in
 \texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne.cpp}.
 Including the cost of writing shares to memory gives essentially the same speedups; see
 \texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne\_\allowbreak store.cpp}.
+The x86 rows of the two tables below, and the x86 store-to-memory range for
+Goldilocks, are the run on an AMD EPYC 9R14 recorded in
+\texttt{tools/bench/x86\_output.txt}, not the Xeon 8375C of the other x86
+tables; the ARM rows are the Apple M2 Pro.
 
 \begin{center}
 \begin{tabular}{c|ccccc}
 Degree $n$ & 13 & 15 & 17 & 19 & 21 \\
 \hline
 ARM: Sharegen ($x_i=i$) & 2.02$\times$ & 2.37$\times$ & 2.47$\times$ & 2.49$\times$ & 2.44$\times$ \\
-ARM: PRF ($x_i \sim \F_p$) & 2.01$\times$ & 2.34$\times$ & 2.48$\times$ & 2.48$\times$ & 2.48$\times$ \\
+ARM: Random point ($x_i \sim \F_p$) & 2.01$\times$ & 2.34$\times$ & 2.48$\times$ & 2.48$\times$ & 2.48$\times$ \\
 \hline
-x86: Sharegen ($x_i=i$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$ \\
-x86: PRF ($x_i \sim \F_p$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$
+x86 (EPYC 9R14): Sharegen ($x_i=i$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$ \\
+x86 (EPYC 9R14): Random point ($x_i \sim \F_p$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$
 \end{tabular}
 \end{center}
-On x86, the speedups for degrees $15$--$21$ reach $4.5\times$--$4.6\times$, significantly
+On the EPYC, the speedups for degrees $15$--$21$ reach $4.5\times$--$4.6\times$, significantly
 exceeding the ARM results.
 
 \paragraph{Goldilocks prime field.}
@@ -255,35 +363,51 @@ We repeat the same benchmark in $\F_p$ and observe similar improvements:
 Degree $n$ & 13 & 15 & 17 & 19 & 21 \\
 \hline
 ARM: Sharegen ($x_i=i$) & 1.98$\times$ & 2.23$\times$ & 2.39$\times$ & 2.33$\times$ & 2.32$\times$ \\
-ARM: PRF ($x_i \sim \F_p$) & 1.96$\times$ & 2.29$\times$ & 2.35$\times$ & 2.34$\times$ & 2.34$\times$ \\
+ARM: Random point ($x_i \sim \F_p$) & 1.96$\times$ & 2.29$\times$ & 2.35$\times$ & 2.34$\times$ & 2.34$\times$ \\
 \hline
-x86: Sharegen ($x_i=i$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$ \\
-x86: PRF ($x_i \sim \F_p$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$
+x86 (EPYC 9R14): Sharegen ($x_i=i$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$ \\
+x86 (EPYC 9R14): Random point ($x_i \sim \F_p$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$
 \end{tabular}
 \end{center}
 The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_goldilocks\_stark\_eval.cpp}.
 On ARM, including memory stores gives $2.19\times$--$2.36\times$ speedup;
-on x86, the range is $1.31\times$--$1.90\times$.
+on the EPYC, the range is $1.31\times$--$1.90\times$.
 The smaller x86 gains reflect that Goldilocks multiplication (64-bit) is relatively cheaper,
 reducing the benefit of fewer multiplications.
 \par\noindent\texttt{tools/bench/\allowbreak app\_goldilocks\_sharegen\_store.cpp} contains the benchmark.
 
 \subsection{Comparison with Tabulation Hashing}
+\label{sec:experiments:tabulation}
 
 Tabulation hashing~\cite{patracscu2012power} achieves 3-wise independence using
 table lookups, providing excellent performance for applications that only require
 low independence.
 On ARM, simple tabulation (8 tables of 256 entries) achieves
 1660$\pm$12\,\textmu s per $10^6$ hashes; on x86, it achieves 6952$\pm$5\,\textmu s.
-The absolute polynomial timings in this subsection come from the separate
-non-polynomial comparison harness (which gives every method the same wrapper
-and batching), so they should not be compared directly with the evaluation-only
-microbenchmark in Table~\ref{tab:kwise_both}.
+The absolute timings in this subsection are separate runs from those of
+Table~\ref{tab:kwise_both}: the non-polynomial hashes are timed by
+\texttt{tools/bench/bench\_nonpoly\_arm.cpp}, and the polynomial rows are the
+implementations of Table~\ref{tab:kwise_both} timed again under that
+comparison's wrapper and batching (fastest $100$ of $200$ repetitions).  The
+x86 entries of the Tabulation and This-Paper rows below are the run recorded
+in \texttt{tools/bench/x86\_output.txt}, whose host is an AMD EPYC 9R14
+rather than the Xeon 8375C of the other x86 tables (the same host as the
+prime-field kernels of \Cref{sec:experiments:crypto}), and the $k=4$ entry
+of that run is the three-multiplication lift $x\,Q_3(x)+c_0$
+(\Cref{tab:families}); the x86 entries of the MurmurHash3, xxHash64 and
+Dietzfelbinger rows are not in that file and come from an x86 run whose raw
+output was not kept (\texttt{tools/bench/bench\_tabrows.cpp} times every row
+of the table under one wrapper on either platform).  The two tables
+therefore differ for the same implementation (x86, $k=3$: $1750$ against
+$2285$\,\textmu s) and should not be compared with each other.
 
 Notably, our 3-wise independent hash function runs in 914$\pm$4\,\textmu s on ARM---nearly $2\times$ faster than
 tabulation with the same independence guarantee.
 On x86, our method (2285\,\textmu s) is $3\times$ faster than tabulation.
-Our Motzkin-quartic hash ($3$-wise over $\F_{2^{64}}$, see the footnote above) is still faster than 3-wise tabulation on both platforms.
+Our $k=4$ rows---Motzkin's two-multiplication quartic on ARM ($3$-wise over
+$\F_{2^{64}}$, see the footnote above) and the three-multiplication lift
+$x\,Q_3(x)+c_0$ on x86 (bijective, $4$-wise)---are still faster than 3-wise
+tabulation on both platforms.
 
 We also compare against Dietzfelbinger's polynomial hashing over integers~\cite{dietzfelbinger1996universal},
 which evaluates $g(x) = \sum_{i=0}^{k-1} a_i x^i \bmod 2^W$ using standard integer arithmetic
@@ -305,11 +429,16 @@ explaining the performance gap.
     Dietzfelbinger ($k=5$) & 3205$\pm$39 & 5-wise & 8219$\pm$4 & 5-wise \\
     Dietzfelbinger ($k=7$) & 4993$\pm$58 & 7-wise & 13633$\pm$9 & 7-wise \\
     This Paper ($k=3$) & 914$\pm$4 & 3-wise & 2285$\pm$3 & 3-wise \\
-    This Paper (Motzkin quartic) & 1036$\pm$13 & 3-wise & 3930$\pm$4 & 3-wise \\
+    This Paper ($k=4$) & 1036$\pm$13 & 3-wise (Motzkin) & 3930$\pm$4 & 4-wise (lift) \\
     This Paper ($k=5$) & 1521$\pm$8 & 5-wise & 4214$\pm$3 & 5-wise \\
-    This Paper ($k=7$) & 2346$\pm$9 & 7-wise & 6074$\pm$4 & 7-wise \\
+    This Paper ($k=7$) & 2346$\pm$9 & not certified & 6077$\pm$4 & not certified \\
 \end{tabular}
 \end{center}
+In the $k=4$ row the ARM entry is Motzkin's quartic and the x86 entry the
+three-multiplication lift, as recorded in \Cref{tab:families}.  The $k=7$
+row times the search circuit \texttt{mult7} of \Cref{tab:families}, for
+which no inverse is displayed: it has seven keys, but no independence is
+claimed for it.
 
 \subsection{Comparison Across Finite Fields}
 
@@ -586,7 +715,7 @@ At $2N = 256$, Injective-Parallel ($22144$\,\textmu s per $10^5$ hashes, \Cref{t
 by $1.6\times$ despite BRW having theoretically optimal $O(\log N)$ depth,
 because the iterative structure admits better code generation.
 (The depth advantage is also no longer unique: the schedules of
-\Cref{thm:construction-height-peeled} achieve $O(\log N)$ multiplicative
+\Cref{thm:construction-height} achieve $O(\log N)$ multiplicative
 depth at the minimum multiplication count, though the entrants benchmarked
 here are the injective variants.)
 

@@ -40,7 +40,7 @@ Unfortunately, their method requires $n/2 + 2\lceil\log n\rceil$ multiplications
    We have some heuristic arguments to support a suspicion that the above results may be optimal in terms of order of magnitude, but this seems to be a hard problem.
 \end{quote}
 
-In this paper we answer Rabin and Winograd's conjecture in the negative by showing how to evaluate any monic polynomial of degree $n$ using just $\lfloor n/2\rfloor+1$ multiplications with \emph{rational preprocessing}.  At odd degrees this count is optimal under any preprocessing whatsoever, by Motzkin's bound; at even degrees it is one more than the algebraic optimum, and we prove at degree~$6$ that the extra multiplication is necessary once the preprocessing must have no exceptional inputs, conjecturing the same at every even degree at least~$6$.  With fixed scalar multiplications free, the same schedules use at most $2n$ additions or subtractions uniformly and at most $\frac54n+O((\log n)^2)$ asymptotically.  The leading constant is therefore within $25\%$ of the classical $n$-addition lower bound~\cite{belaga1958some,belaga1961evaluation}.
+In this paper we answer Rabin and Winograd's conjecture in the negative by showing how to evaluate any monic polynomial of degree $n$ using just $\lfloor n/2\rfloor+1$ multiplications with \emph{rational preprocessing}.  Their question had two halves, the $O(\log n)$ excess multiplications and the $n+o(n)$ additions; we settle the first and pay on the second, using $\frac54n+O((\log n)^2)$ additions rather than $n+o(n)$, and whether $\lfloor n/2\rfloor+1$ multiplications can be combined with $n+o(n)$ additions is open.  At odd degrees this count is optimal under any preprocessing whatsoever, by Motzkin's bound; at even degrees it is one more than the algebraic optimum, and we prove at degree~$6$ that the extra multiplication is necessary once the preprocessing must have no exceptional inputs, conjecturing the same at every even degree at least~$6$.  With fixed scalar multiplications free, the same schedules use at most $2n$ additions or subtractions uniformly and at most $\frac54n+O((\log n)^2)$ asymptotically.  The leading constant is therefore within $25\%$ of the classical $n$-addition lower bound~\cite{belaga1958some,belaga1961evaluation}.
 
 \paragraph{Main Results.}
 Section~\ref{sec:model} formalizes our model (arithmetic circuits / straight-line programs) and the notion of rational preprocessing/decoding.
@@ -51,7 +51,7 @@ Our main results are:
    (Theorem~\ref{thm:main}).  The schedules can be arranged with
    multiplicative height at most $2\lceil\log_2n\rceil+4$ (odd $n$; $+5$
    for even $n$) at the same gate
-   counts (\Cref{thm:construction-height-peeled}), and the complete
+   counts (\Cref{thm:construction-height}), and the complete
    statement for every $n\ge3$---multiplication count, decoder, and
    height---is formalized in Lean (\Cref{appendix:formalization-map}).  The
    schemes are exact, and that is where they belong: in
@@ -61,16 +61,18 @@ Our main results are:
    Horner, Estrin, Rabin--Winograd, and Motzkin--Eve); the intended use is
    modular or exact arithmetic, as in the hashing applications below, where
    the keys are the data and the question does not arise.
-   For characteristic~2, we have explicit single-circuit constructions up to
-   degree~21 and conjecture the fixed-circuit bound holds in general.
+   For characteristic~2, we have explicit single-circuit constructions, each
+   with an explicit inverse, at every odd degree up to~21 and conjecture the
+   fixed-circuit bound holds in general.
    \item \textbf{Lower bound.} Motzkin's bound shows that monic polynomials of degree $n$ need $\lceil n/2\rceil$ multiplications under any preprocessing, so our odd-degree schemes are optimal.  For even degrees we prove that degree-$6$ evaluation with everywhere-defined rational decoding requires at least $4$ multiplications (Section~\ref{sec:lower})---one more than Pan's rational sextic scheme, which is undefined on a hypersurface---and conjecture that degree $2n$ requires $n+1$ for every $n\ge3$ (at $n=2$ two multiplications suffice, by Motzkin's quartic).
       The key insight is that a polynomial automorphism of $\mathbb{C}^n$ can't have a zero Jacobian determinant, and we show any evaluation scheme with rational decoding would induce such a map if it used too few multiplications.
    \item \textbf{Injective Polynomials}. We give an ``injective'' polynomial hashing construction requiring only a single random key (Section~\ref{sec:injective}) and application-level benchmarks for hashing, data structures, and prime-field workloads (Section~\ref{sec:experiments}).
    \item \textbf{Constructions over $GF(2^n)$.}
       Our rational decoder applies in characteristic $p>n$, but it does not necessarily work in small characteristic, in particular characteristic~2, which is important in computing.
-      We give fixed evaluation schemes for fields of size $2^n$ up to degree
-      21, and we conjecture that such fixed schemes exist for all $n$ and all
-      finite fields.
+      We give fixed evaluation schemes over fields of characteristic~2 at
+      every odd degree up to 21, each with an explicit inverse
+      (\Cref{appendix:polynomials}), and we conjecture that such fixed
+      schemes exist for all $n$ and all finite fields.
       A key insight is that we can use the bijectivity of the Frobenius map $x \mapsto x^2$.
       In the opposite direction we prove a matching lower bound in characteristic~2
       (\Cref{thm:char2-lower}): over a finite field of characteristic~2 with at least

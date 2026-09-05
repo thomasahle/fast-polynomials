@@ -116,7 +116,7 @@ for (const [src, n] of [['x^27 + x + 1', 27], ['x^30 + 1', 30]]) {
   const r1 = await handleMessage({ lane: 'char2', src: 'x + 1', fieldMode: null });
   check(r1.mults === 0 && r1.hornerMults === 0 && /^P = x \+ 1$/m.test(r1.mathText) && graphStats(r1.graph).mul === 0, 'char 2 degree 1: P = x + 1, no multiplication');
   const r2 = await handleMessage({ lane: 'char2', src: 'x^2 + 3x + 1', fieldMode: null });
-  check(r2.mults === 1 && /^y = x \* \(x \+ 3\)$/m.test(r2.mathText) && /^P = y \+ 1$/m.test(r2.mathText), 'char 2 degree 2: y = x * (x + 3), P = y + 1');
+  check(r2.mults === 1 && /^y = x \* \(x \+ 0x3\)$/m.test(r2.mathText) && /^P = y \+ 1$/m.test(r2.mathText), 'char 2 degree 2: y = x * (x + 0x3), P = y + 1');
   const r26 = await handleMessage({ lane: 'char2', src: 'x^26 + 0x1fx^13 + x + 1', fieldMode: null });
   check(r26.mults === 14 && r26.hornerMults === 25 && /P_25/.test(r26.mathTextOriginal), 'char 2 degree 26 compiles with 14 multiplications (degree-25 circuit + lift)');
 }

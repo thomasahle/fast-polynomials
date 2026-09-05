@@ -3,6 +3,18 @@
 import * as P from '../poly.js';
 import { layerLines } from '../chain.js';
 
+/** Rename the e-wires to follow the printed order.  The recursion numbers
+ *  them in post-order, but layerLines groups the lines by multiplicative
+ *  layer, so an affine wire from the right half (a leading coefficient 1,
+ *  no product) would read e4 above e3.  Hex constants and exponents such as
+ *  0x1e5 / 1e-7 have no word boundary before the e and are left alone. */
+function renumber(lines) {
+  const names = new Map();
+  for (const l of lines) if (/^e\d+$/.test(l.lhs)) names.set(l.lhs, `e${names.size}`);
+  const ren = s => s.replace(/\be\d+\b/g, m => names.get(m) ?? m);
+  return lines.map(l => ({ ...l, lhs: ren(l.lhs), rhs: ren(l.rhs) }));
+}
+
 export function compileEstrin(coeffs, F) {
   const n = P.deg(coeffs);
   const lines = [];
@@ -53,7 +65,7 @@ export function compileEstrin(coeffs, F) {
   // depth: structural
   const height = Math.max(root[1], Math.ceil(Math.log2(Math.max(n, 2))));
   return {
-    name: "Estrin's scheme", lines: layerLines(lines), mults, adds, height,
+    name: "Estrin's scheme", lines: renumber(layerLines(lines)), mults, adds, height,
     preprocessing: 'none', exact: true,
     note: 'same multiplications as Horner, but log-depth (parallel-friendly)',
   };

@@ -8,7 +8,7 @@
 %\title{Fast Polynomial Evaluation in Finite Fields}
 %\title{Fast Bijective Polynomials}
 \title{Fast Evaluation of Polynomials with Rational Preprocessing}
-\author{Thomas D. Ahle\thanks{Normal Computing. Email: \texttt{thomas@ahle.dk}.} \and Jakob B. T. Knudsen}
+\author{Thomas D. Ahle\thanks{Normal Computing. Email: \texttt{thomas@ahle.dk}.} \and Jakob B. T. Knudsen\thanks{Alipes ApS.}}
 
 
 \begin{document}
@@ -21,24 +21,29 @@
    can be evaluated using only $\lfloor n/2 \rfloor + 1$ multiplications over
    fields of characteristic zero or of characteristic $p>n$; our
    schedules use at most $\frac54n+O((\log n)^2)$ additions or subtractions and have multiplicative depth $2\lceil\log_2 n\rceil+O(1)$.
-   Everything is checked in Lean.
-   This resolves a conjecture of Rabin and Winograd~\cite{rabin1972number}, who achieved
-   $n/2 + 2\lceil\log_2 n\rceil$ multiplications and conjectured this overhead was necessary.
+   The construction---decoder, multiplication and addition counts, and
+   height---and the characteristic-two lower bound stated below are
+   formalized in Lean~4; Appendix~\ref{appendix:formalization-map} records
+   the exact scope and the formalization hypotheses.
+   This resolves the multiplication side of a conjecture of Rabin and Winograd~\cite{rabin1972number}, who achieved
+   $n/2 + 2\lceil\log_2 n\rceil$ multiplications with $n+o(n)$ additions and suspected the
+   logarithmic overhead was necessary; we remove it at the price of $\frac54n+o(n)$
+   rather than $n+o(n)$ additions.
    For degree~$6$ over the rationals, we prove that three multiplications do
    not suffice when preprocessing is everywhere defined.  In characteristic~2,
    for every $n>1$ and every finite field of size at least $2n$, we prove that
    an $n$-multiplication chain cannot parametrise all value vectors at $2n$
    distinct evaluation points, even with arbitrary preprocessing.
    We give $\lfloor n/2 \rfloor + 1$ multiplication schedules over
-   characteristic~2 for every degree $n\le 21$ and conjecture that this is
-   possible for all $n$.
+   characteristic~2, each with an explicit inverse, for every odd degree
+   $n\le 21$ and conjecture that this is possible for all $n$.
 
    We also give an injective polynomial construction for universal hashing that uses
    $N$ multiplications to hash $2N$ values with a single random key---half the
    multiplications of standard Horner evaluation.
    Experiments on ARM and x86 processors show up to $2\times$ speedups for
    $k$-wise independent hashing and up to $4.6\times$ speedups for
-   cryptographic workloads such as Shamir secret sharing~\cite{shamir1979share}.
+   the prime-field evaluation kernel of Shamir secret sharing~\cite{shamir1979share}.
 \end{abstract}
 
 

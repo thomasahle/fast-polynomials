@@ -7,6 +7,7 @@ const groups = {
     'factor.test.js',
     'graph.test.js',
     'mathview.test.js',
+    'polyparse.test.js',
     'ui-smoke.test.js',
     'uistate.test.js',
   ],

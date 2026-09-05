@@ -14,15 +14,14 @@ at most
 \]
 additions or subtractions, with multiplicative height
 $2\lceil\log_2 n\rceil+4$ for odd $n$ ($+5$ for even $n$, whose lift
-adds one product) under the peeled scheduling of
+adds one product), using the binary known-powers recursion of
 \Cref{sec:peeled-Q}.  Thus the construction has leading arithmetic
 cost $n/2$ multiplications and $5n/4$ additions on a critical path of
 logarithmic length.  The preceding
 decoder-calculus appendix supplies the common recovery language.  This appendix
 certifies the construction, the multiplication count, and the logarithmic
-height of the peeled scheduling; the separate addition-accounting appendix
-proves the two stated addition bounds and the sequential baseline's height
-from the same shared schedules.
+height; the separate addition-accounting appendix proves the two stated
+addition bounds for the same polynomial family.
 
 \paragraph{Characteristic boundary.}
 The recovery and circuit interfaces are characteristic-free.  The formulas
@@ -151,7 +150,7 @@ for an internal index $k$, and these occur as follows.
 The seam corrections $\gamma_m$,
 $\binom m2$, $\tau=k(k-1)(k-2)/3=2\binom k3$ and $\theta_m$ are integers
 that are subtracted, never divided by, and the fill gadgets $A_{2^l}$, the
-known-powers gadgets $Q_{2^t-1}$ with their peeled variant, the gadgets
+known-powers gadgets $Q_{2^t-1}$, the gadgets
 $Q_1,Q_3,Q_7$, the degree-$3$ base and the even lift use only unit pivots
 and monic division.  Let $\mathrm{Bad}(n)$ be the set of primes dividing at
 least one integer in \eqref{eq:bad-primes} along the routing for degree

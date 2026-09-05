@@ -49,11 +49,18 @@ globalThis.katex = sandbox.self.katex;
 eq(globalThis.katex.version, '0.18.5', 'pinned KaTeX runtime');
 check(renderLatex(sample[2].rhsTex)?.includes('class="katex-mathml"'),
   'KaTeX emits accessible MathML and HTML');
+const highlightedSample = renderLatex(sample[1].rhsTex);
+check(highlightedSample?.includes('math-var') && highlightedSample?.includes('math-const'),
+  'KaTeX preserves the generated variable and constant colour hooks');
 const tableRule = (/\.math-table\s*\{([^}]*)\}/.exec(pageCss)?.[1] ?? '')
   .replace(/\/\*[\s\S]*?\*\//g, '');
-check(tableRule.includes('width: max-content') && tableRule.includes('margin-inline: auto') &&
+check(tableRule.includes('width: max-content') && tableRule.includes('margin-inline: 0') &&
       !/\bmin-width\s*:/.test(tableRule),
-  'the alignment table keeps intrinsic column widths instead of distributing spare pane width');
+  'the alignment table keeps intrinsic column widths and stays at the left edge');
+const chainRule = (/\.math-chain\s*\{([^}]*)\}/.exec(pageCss)?.[1] ?? '');
+check(/padding:\s*1rem\s+1\.1rem\s+1\.15rem/.test(chainRule) &&
+      pageCss.includes('.math-chain .math-var') && pageCss.includes('.math-chain .math-const'),
+  'math starts at normal pane padding and uses the shared variable/constant colours');
 
 const CASES = [
   { lane: 'char2', fieldMode: 'gf64',

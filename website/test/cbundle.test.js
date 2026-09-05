@@ -5,11 +5,12 @@ import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { buildCBundle, cBundleArchive, hasCBundle, tarBytes } from '../js/cbundle.js';
 import { C_PROVENANCE } from '../js/cgen.js';
+import { paneContent } from '../js/uistate.js';
 
 let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
-const C = '#include <math.h>\ndouble eval_P(double x) { return x*x + 1.0; }\n';
-const state = { mode: 'Q', src: 'x^2 + 1', result: {
+const C = `${C_PROVENANCE}\n#include <math.h>\ndouble eval_P(double x) { return x*x + 1.0; }\n`;
+const state = { mode: 'Q', method: 'ours', view: 'c', cstyle: 'fraction', src: 'x^2 + 1', result: {
   fieldName: 'ℚ', cText: C, cTextFraction: C.replace('1.0', '(double)1/1'),
   comparisons: [
     { name: 'Horner', ok: true, cText: C, cTextFraction: null },
@@ -21,9 +22,14 @@ const b = buildCBundle(state), names = b.files.map(f => f.name);
 check(hasCBundle(state) && !hasCBundle({ result: { oursFailed: true, comparisons: [] } }),
       'bundle availability follows successful C rows');
 check(b.baseName === 'fast-polyhash-Q-degree-2', 'stable archive name');
-for (const n of ['README.md', 'benchmark.c', 'benchmark.sh', 'inspect.sh', 'methods/this-paper.c',
+for (const n of ['README.md', 'selected.c', 'benchmark.c', 'benchmark.sh', 'inspect.sh', 'methods/this-paper.c',
                  'methods/this-paper-fractions.c', 'methods/horner.c'])
   check(names.includes(n), `bundle contains ${n}`);
+check(b.files.find(f => f.name === 'selected.c').text === paneContent(state).code,
+      'selected.c is byte-for-byte the C source shown in the pane');
+const hornerState = { ...state, method: 'Horner' };
+check(buildCBundle(hornerState).files.find(f => f.name === 'selected.c').text === paneContent(hornerState).code,
+      'selected.c follows the selected method and its effective constant style');
 check(!names.some(n => n.includes('unavailable')), 'failed methods omitted');
 check(b.files.find(f => f.name === 'benchmark.sh').mode === 0o755, 'benchmark script executable mode');
 check(b.files.find(f => f.name === 'inspect.sh').mode === 0o755, 'inspection script executable mode');

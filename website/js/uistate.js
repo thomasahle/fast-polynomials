@@ -201,7 +201,7 @@ function bigPolyToSrc(coeffs, { hex = false } = {}) {
     if (c === 0n) continue;
     const neg = c < 0n, m = neg ? -c : c;
     const xs = d === 0 ? '' : d === 1 ? 'x' : `x^${d}`;
-    const cs = m === 1n && d > 0 ? '' : hex && m > 15n ? '0x' + m.toString(16) : m.toString();
+    const cs = m === 1n && d > 0 ? '' : hex && m > 1n ? '0x' + m.toString(16) : m.toString();   // hex except 0 / 1
     parts.push(parts.length === 0 ? (neg ? '-' : '') + cs + xs : ` ${neg ? '-' : '+'} ${cs}${xs}`);
   }
   return parts.join('') || '0';
@@ -224,9 +224,12 @@ function seriesCoeffs(key, n) {
 }
 
 /** Scale a nonzero rational polynomial so its leading coefficient is one. */
-function monicRat(coeffs) {
-  const lead = coeffs[coeffs.length - 1];
-  return lead.isOne() ? coeffs : coeffs.map(c => c.div(lead));
+/** coeffs (degree < n) with a leading xⁿ added: monic without rescaling. */
+function monicSeries(coeffs, n) {
+  const out = coeffs.slice(0, n);
+  while (out.length < n) out.push(Rat.ZERO);
+  out.push(Rat.ONE);
+  return out;
 }
 
 /** Deterministic 32-bit stream (splitmix-style mixer) seeded on a list of
@@ -304,15 +307,16 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   const f = fieldOf(mode);
   if (!f) return [];
   const n = clampDegree(mode, degree);
-  const normalized = monic ? 'monic normalization of the ' : '';
-  const seriesSrc = key => ratPolyToSrc(monic ? monicRat(seriesCoeffs(key, n)) : seriesCoeffs(key, n));
+  // monic: the degree-(n−1) Taylor polynomial plus xⁿ (the series' own
+  // coefficients stay recognisable; rescaling to a monic leading term would not)
+  const seriesSrc = key => ratPolyToSrc(monic ? monicSeries(seriesCoeffs(key, n - 1), n) : seriesCoeffs(key, n));
+  const seriesTitle = fn => monic
+    ? `degree-${n - 1} Taylor polynomial of ${fn} plus x^${n} (monic)`
+    : `Taylor polynomial of ${fn}, degree ${n}`;
   if (f.char === 0) return [
-    { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: `${normalized}Taylor polynomial of eˣ, degree ${n}`,
-      src: seriesSrc('exp') },
-    { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: `${normalized}Taylor polynomial of ln(1+x), degree ${n}`,
-      src: seriesSrc('ln') },
-    { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: `${normalized}Taylor polynomial of √(1+x), degree ${n}`,
-      src: seriesSrc('sqrt') },
+    { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: seriesTitle('eˣ'), src: seriesSrc('exp') },
+    { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: seriesTitle('ln(1+x)'), src: seriesSrc('ln') },
+    { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: seriesTitle('√(1+x)'), src: seriesSrc('sqrt') },
   ];
   const k = n + 1;
   return [
@@ -592,6 +596,18 @@ export function effectiveCstyle(state) {
   return state.mode === 'Q' && state.cstyle === 'fraction' && src?.cTextFraction ? 'fraction' : 'float';
 }
 
+/** The exact C source selected by the method and constant-style controls.
+ *  Both the visible pane and the downloadable bundle use this selector, so
+ *  they cannot silently choose different variants. */
+export function selectedCSource(state) {
+  const row = selectedRow(state);
+  if (!row) return null;
+  const style = effectiveCstyle(state);
+  const code = style === 'fraction' ? row.cTextFraction : row.cText;
+  if (!code) return null;
+  return { code, style, label: comparisonRow(state)?.name ?? 'This paper' };
+}
+
 /** The exact math text of the selected row in the effective form ('' without one). */
 function exactMathText(state) {
   const src = selectedRow(state);
@@ -689,8 +705,8 @@ export function paneContent(state) {
     return { kind: 'math', text: readable ? readable.text : exactMathText(state) };
   }
   if (state.view === 'c') {
-    const code = effectiveCstyle(state) === 'fraction' ? src.cTextFraction : src.cText;
-    if (code) return { kind: 'c', code };
+    const selected = selectedCSource(state);
+    if (selected) return { kind: 'c', code: selected.code };
     const f = fieldOf(state.result.fieldId ?? state.mode);
     const fieldHasC = state.result.cCode ?? f?.cCode ?? true;
     return { kind: 'c-missing', text: src.mathText ?? '',

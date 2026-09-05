@@ -173,7 +173,7 @@ export function GF2k(k, mod = DEFAULT_MOD[k]) {
     neg: a => a, inv,
     eq: (a, b) => a === b, isZero: a => a === 0n, isOne: a => a === 1n,
     fromInt: n => reduce(BigInt(n)),
-    toDisplay: a => (a > 15n ? '0x' + a.toString(16) : a.toString()),
+    toDisplay: a => (a > 1n ? '0x' + a.toString(16) : a.toString()),   // bit patterns as hex; 0 and 1 as digits
   };
 }
 

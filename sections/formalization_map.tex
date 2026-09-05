@@ -108,7 +108,7 @@ substitution \texttt{MvPolynomial.aeval (fun i => P.coeff i)} is bijective. &
 full\\
 \end{tabular}\par
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
-\raggedright \Cref{thm:construction-height-peeled} &\raggedright
+\raggedright \Cref{thm:construction-height} &\raggedright
 \texttt{polynomial\_\allowbreak height},
 \texttt{odd\_\allowbreak polynomial\_\allowbreak height},
 \texttt{septic\_\allowbreak polynomial\_\allowbreak height},
@@ -134,13 +134,6 @@ at $\le1$, $H_4$ at $\le2$) by the final product $xT_1+T_2$, the direct septic
 \texttt{DecodedAdditionPolynomial} capstone pairs this height witness with the
 addition-certified arrangement on the same semantic polynomial. &
 full (count, decoder, height)\\
-\end{tabular}\par
-\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
-\raggedright \Cref{thm:construction-height} (sequential baseline) &\raggedright only the depth measure \texttt{Circuit.multDepth},
-\texttt{MultiplicationProgram.height} (\texttt{Height/\allowbreak Depth.lean}) &
-\raggedright The $\tfrac14L^2+L+2$ ledger for the sequential-fill schedules has no Lean
-statement; the checked height is the peeled bound above. &
-not formalized\\
 \end{tabular}\par
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
 \raggedright \Cref{thm:construction-addition-count},
@@ -286,8 +279,8 @@ monic quadratic $H_1$. &
 full\\
 \end{tabular}\par
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
-\raggedright \Cref{alg:constr-known-2n-1}, \Cref{lem:Q-unitriangular} &\raggedright \texttt{mers}, \texttt{mers\_\allowbreak correct} (\texttt{Section4/\allowbreak KnownPowers.lean});
-\texttt{mers\_\allowbreak unitriangular} (\texttt{Section4/\allowbreak MersCert.lean}) &
+\raggedright \Cref{alg:constr-known-2n-1}, \Cref{lem:Q-unitriangular} &\raggedright \texttt{peel}, \texttt{peel\_\allowbreak correct} (\texttt{Section4/\allowbreak Peeled.lean});
+\texttt{peel\_\allowbreak unitriangular} (\texttt{Section4/\allowbreak PeeledCert.lean}) &
 \raggedright \texttt{[Nontrivial A]}; a tower of known monic powers of degrees $2^i$. &
 full\\
 \end{tabular}\par
@@ -295,8 +288,8 @@ full\\
 \raggedright \Cref{lem:peeled-Q-decodable}, \Cref{lem:peeled-Q-count} &\raggedright \texttt{peel}, \texttt{peel\_\allowbreak correct} (\texttt{Section4/\allowbreak Peeled.lean});
 \texttt{peelC\_\allowbreak multiplications}, \texttt{peelC\_\allowbreak additions},
 \texttt{peelC\_\allowbreak multDepth} (\texttt{Height/\allowbreak PeeledCircuit.lean}) &
-\raggedright Same interface as \texttt{mers\_\allowbreak correct}; exact counts
-$2^{k-1}-1$ products, $5\cdot2^{k-2}-2$ additions, depth $k$. &
+\raggedright Known monic powers and the binary recursion; exact counts
+$2^{k-1}-1$ products, $5\cdot2^{k-2}-2$ additions, depth $k$ for $k\ge2$. &
 full\\
 \end{tabular}\par
 \noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
@@ -433,6 +426,17 @@ full\\
 \raggedright \Cref{lem:first-char2-circuit-inverse} &\raggedright \texttt{circuit\_\allowbreak eval\_\allowbreak bijective} (\texttt{Examples/\allowbreak Char2Inverse.lean}) &
 \raggedright \texttt{[Field F] [CharP F 2] [PerfectRing F 2]}; seven distinct points. &
 full\\
+\end{tabular}\par
+\noindent\begin{tabular}{p{0.95in}p{2.05in}p{1.75in}p{0.55in}}
+\raggedright \Cref{lem:char2-small-staircase-butterfly} (degree $9$) &\raggedright
+\texttt{coeffMap9Fin\_\allowbreak bijective},
+\texttt{P9\_\allowbreak eval\_\allowbreak bijective}
+(\texttt{Examples/\allowbreak Char2SmallInverses.lean}) &
+\raggedright \texttt{[Field F] [CharP F 2]}; nine distinct points.  The
+literal circuit identity, both directions of the displayed coefficient
+decoder, and the Vandermonde evaluation step are checked.  The degree-$11$
+half of the paper lemma is not yet formalized. &
+partial\\
 \bottomrule
 \end{tabular}\par
 \endgroup
@@ -480,7 +484,7 @@ The construction, cost, height, example, and characteristic-two lower-bound
 files (including \texttt{HeightFinal.lean} and
 \texttt{LowerBoundChar2/\allowbreak General.lean}) are imported by the umbrella
 module \texttt{FastPoly.lean}, the default target; \texttt{lake build FastPoly}
-completes it (2006 jobs) with no errors.  The degree-$6$ lower bound
+completes it with no errors.  The degree-$6$ lower bound
 \texttt{LowerBound/\allowbreak } is a separate module tree built as an explicit
 target.  No file under \texttt{FastPoly/\allowbreak } declares an \texttt{axiom} or
 contains a \texttt{sorry}.  \texttt{\#print axioms} on

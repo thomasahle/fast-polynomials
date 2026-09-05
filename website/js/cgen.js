@@ -26,7 +26,15 @@ import { Rat } from './rat.js';
 import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 
 export { ratToDouble, MERSENNE89 };
-export const C_PROVENANCE = '/* Generated from https://thomasahle.com/fast-polynomials/ */';
+/** License of the generated C (one line; the bundle's README repeats it). */
+export const C_LICENSE = 'License: 0BSD (BSD Zero Clause) — use, modify and redistribute freely; no attribution required.';
+/** Header of every generated C file. */
+export const C_PROVENANCE = `/***
+ Code generated from https://thomasahle.com/fast-polynomials/
+ For details, see "Fast Evaluation of Polynomials with Rational Preprocessing"
+ by Thomas Ahle and Jakob Knudsen.
+ ${C_LICENSE}
+*/`;
 
 // ---------- naming ----------
 const WIRE_LETTERS = ['y', 'z', 't', 'u', 'v', 'w', 's', 'r', 'q', 'p',

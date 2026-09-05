@@ -3,7 +3,10 @@
 
 We work over a field $\F$.
 An \emph{arithmetic circuit} (or straight-line program) takes inputs $(x,\theta)\in\F\times\F^d$ and outputs a value in $\F$ using additions, subtractions, and multiplications.
-We measure the primary cost of a circuit by the number of multiplications.
+We measure the primary cost of a circuit by the number of multiplications,
+where a multiplication is charged whenever neither factor is a fixed element
+of $\F$: products of two $x$-dependent values, of a parameter with an
+$x$-dependent value such as $\theta x$, and of two parameters all count.
 For the supplementary addition count, additions and subtractions are charged
 separately while copying, negation, and multiplication by fixed field
 constants remain free.
@@ -63,7 +66,7 @@ For every $n\ge 1$ and every field $\F$ of characteristic zero, or of characteri
 additions or subtractions, and can be arranged with multiplicative
 height at most $2\lceil\log_2 n\rceil+4$ for odd $n$ and
 $2\lceil\log_2 n\rceil+5$ for even $n$
-(\Cref{thm:construction-height-peeled}).
+(\Cref{thm:construction-height}).
 \end{theorem}
 
 \begin{remark}[Positive characteristic]
@@ -73,7 +76,15 @@ The decoder divides only by explicitly displayed integer pivots, and every
 prime divisor of those pivots is at most~$n$.  Thus the same construction works in any
 characteristic in which the pivots occurring in the degree-$n$ recursion are
 nonzero; $p>n$ guarantees this uniformly.  In small positive characteristic
-some pivots may vanish.  A complete \emph{single-circuit} construction with
+some pivots may vanish.  The characteristic-$2$ circuits of
+\Cref{appendix:polynomials} and \Cref{sec:ph} are decoded by field operations
+and inverse Frobenius, $r\mapsto r^{1/2}$; on a fixed finite field $\F_{2^m}$
+this is the polynomial function $r\mapsto r^{2^{m-1}}$, so those decoders are
+everywhere-defined polynomial \emph{functions} on each such field rather than
+rational maps in the algebraic-geometric sense, and for them ``rational
+preprocessing'' is to be read in this way: an explicit inverse built from
+field operations and $r\mapsto r^{1/2}$, valid on every perfect field of
+characteristic~$2$.  A complete \emph{single-circuit} construction with
 rational preprocessing covering all such cases, including characteristic~2,
 remains open.
 \end{remark}
@@ -145,7 +156,17 @@ we keep a ladder of known-power gadgets $H_2,H_4,\dots,H_{2^{k-1}}$ (computed on
 and we recursively ``fill'' disjoint coefficient windows by multiplying previously constructed pieces by the appropriate $H_{2^i}$ and adding a fresh low-degree correction.
 The compatibility invariant guarantees that each recursive layer introduces new parameters that remain decodable from the top coefficients, despite coefficient mixing in intermediate multiplications.
 The resulting circuits use $\Theta(2^{k-1})$ multiplications for degree $\Theta(2^k)$, i.e.\ about half the multiplications of Horner.
-For the height claim of \Cref{thm:main}, the known-powers gadgets are instead scheduled as a balanced two-child recursion with a keyed glue factor (the peeled gadget of \Cref{sec:peeled-Q}), at the identical gate ledger; the sequential fill remains the baseline used for the addition accounting.
+Concretely, the known-powers recursion is
+\[
+  Q_{2^k-1}=(H_{2^{k-1}}+\gamma)W+B,
+\]
+where $W$ and $B$ are fresh degree-$(2^{k-1}-1)$ known-powers children
+computed in parallel (\Cref{alg:constr-known-2n-1}).
+Monic division recovers $W$, the top remainder coefficient recovers
+$\gamma$, and subtraction recovers $B$.
+This binary recursion is used for the multiplication, addition, and
+height bounds alike; the complete construction has logarithmic height
+(\Cref{thm:construction-height}).
 
 \paragraph{From the recursion to \Cref{thm:main}.}
 The recursion above yields compatible splittable pairs together with one
@@ -206,7 +227,7 @@ There are two widely used alternatives:
   reducing depth to $O(\log k)$ at the cost of extra multiplications (to form powers like $x^2,x^4,\dots$).
   This can help on wide machines when throughput matters more than total work~\cite{estrin1960organization,paterson1973evaluation}.
   (The schedules of \Cref{thm:main} achieve the same logarithmic depth ---
-  height at most $2\lceil\log_2k\rceil+5$, \Cref{thm:construction-height-peeled}
+  height at most $2\lceil\log_2k\rceil+5$, \Cref{thm:construction-height}
   --- without the extra multiplications.)
   \item \textbf{Rabin--Winograd preprocessing.}
   Rabin and Winograd~\cite{rabin1972number} showed that, with preprocessing of the coefficient
@@ -237,9 +258,14 @@ distribution on polynomials (some polynomials may have many preimages, others no
 which can break clean statements like ``the hash is $k$-wise independent'' if the key-generation
 procedure is ``pick a random $\theta$''.
 
-Rational preprocessing, as defined in \Cref{sec:model}, is a formal way to rule out this bias:
-it requires a rational right-inverse $\mathsf{pre}$ of $\mathsf{coeff}$ on a dense set, i.e.\ that
-$\mathsf{coeff}$ is generically one-to-one (birational onto its image).
+A rational right-inverse by itself does not rule out this bias: the map
+$\mathsf{coeff}(u,v)=u$ has the polynomial section $\mathsf{pre}(c)=(c,0)$
+and is nowhere injective.  What rules it out is the stronger property that
+our constructions actually have: the explicit decoder is a polynomial
+\emph{left}-inverse of $\mathsf{coeff}$, so $\mathsf{coeff}$ is a polynomial
+automorphism of $\F^k$ (\Cref{lem:polynomial-left-inverse-automorphism}), a
+bijection over every field of the stated characteristic, finite fields
+included.
 Operationally this gives two benefits:
 \begin{itemize}
   \item \textbf{Soundness of preprocessing.}
@@ -247,10 +273,14 @@ Operationally this gives two benefits:
   parameters $\theta=\mathsf{pre}(c)$ such that $E(x;\theta)\equiv h_c(x)$.
   This lets us implement $k$-wise hashing using the fast circuit while preserving the exact
   algebraic distribution that the usual Vandermonde proof assumes.
-  \item \textbf{Optional ``sample-$\theta$'' viewpoint.}
-  When $\mathsf{coeff}$ is generically injective, there is essentially one parameter vector per
-  polynomial (up to a lower-dimensional exceptional set), so treating $\theta$ itself as the key
-  corresponds to selecting a polynomial from a well-defined family without duplicates.
+  \item \textbf{``Sample-$\theta$'' viewpoint.}
+  Since $\mathsf{coeff}$ is a bijection of $\F^k$, a uniform $\theta\in\F^k$
+  induces a uniform monic coefficient vector, exactly; over a finite field this
+  is precisely the distribution the Vandermonde argument needs, with no generic
+  or exceptional-set qualification.  (A map that is only generically injective
+  would leave a bias on its exceptional set, which over a finite field is not
+  negligible; \Cref{lem:polynomial-left-inverse-automorphism} is what makes
+  the exact statement available.)
 \end{itemize}
 This is the sense in which ``fast evaluation with rational preprocessing'' becomes a
 bijective/injective parameterization problem.

@@ -404,132 +404,13 @@ both overheads simultaneously remains open here.
 
 \subsection*{Multiplicative height}
 
-Gate counts do not describe the parallel (or pipelined) cost of the same
-schedules, so we also record their \emph{height}: the maximum number of
-nonscalar multiplications on a directed path from an input to the output of
-the chain, in the same cost model as above (additions, subtractions,
-negations and fixed scalar multiples are free).  Horner's rule has height
-$n-1$, and the hand-optimized circuits of the appendix have height close to
-$\log_2n$.  The shipped schedules match this: the peeled known-powers
-gadget of \Cref{sec:peeled-Q} gives height $2\lceil\log_2n\rceil+4$ for odd
-$n$ and $2\lceil\log_2n\rceil+5$ for even $n$ at the identical gate ledger
-(\Cref{thm:construction-height-peeled}).  The
-original sequential-fill scheduling, analyzed below as the baseline, has
-height $\Theta((\log n)^2)$, with a small leading constant.
-
-\begin{theorem}[Height of the sequential baseline schedules]
-\label{thm:construction-height}
-Let $L=L(n)=\lceil\log_2n\rceil$.  The sequential-fill schedules above compute
-every complete degree-$n$ construction with height at most
-\[
-  \tfrac14L^2+L+2 \quad (n\text{ odd}),\qquad
-  \tfrac14L^2+L+3 \quad (n\text{ even}).
-\]
-\end{theorem}
-\begin{proof}
-Write $h(U)$ for the height of a wire $U$, so $h(x)=0$ and every displayed
-product raises the maximum operand height by exactly one.  The proof is a
-ledger induction parallel to \Cref{thm:construction-addition-count}, with
-four invariants.
-
-\emph{Fill.}  The first component of the fill $A_{2^\ell}$
-(\Cref{alg:constr-fill}) multiplies $S^{(1)}$ by one factor at each level
-$\ell,\ell-1,\dots,1$ and finishes with the outer $(x+\beta_0)$ gate, a
-sequential chain of $\ell+1$ products; the factor consumed at level $j$ is
-$H_{2^j}+Q_{2^{j-1}-1}$, and the second component is the same chain with
-scalar-shifted factors.  Given the tower and known-powers invariants below
-for all indices $\le\ell$, this yields
-\begin{equation}
-  h\bigl(A_{2^\ell}(S^{(1)},S^{(2)})\bigr)
-  \le\max\Bigl(h(S^{(1)}),\,h(S^{(2)}),\,
-    \bigl\lfloor\tfrac{\ell^2}{4}\bigr\rfloor+1\Bigr)+\ell+1.
-  \label{eq:fill-height}
-\end{equation}
-
-\emph{Tower and known powers.}  By simultaneous induction,
-\begin{equation}
-  h(H_{2^i})\le\bigl\lfloor\tfrac{i^2}{4}\bigr\rfloor+1
-  \quad(i\ge1),
-  \qquad
-  h(Q_{2^t-1})\le\bigl\lfloor\tfrac{(t+1)^2}{4}\bigr\rfloor
-  \quad(t\ge1).
-  \label{eq:tower-height}
-\end{equation}
-Indeed, every displayed power step forms $H_{2^{\ell+1}}$ with one new
-product whose operands involve $H_{2^\ell}$ and blocks of index at most
-$\ell-1$, so
-$h(H_{2^{\ell+1}})
-  \le1+\max\bigl(\lfloor\ell^2/4\rfloor+1,\lfloor\ell^2/4\rfloor\bigr)
-  =\lfloor\ell^2/4\rfloor+2
-  \le\lfloor(\ell+1)^2/4\rfloor+1$
-for $\ell\ge2$, and the two shared bases are checked directly.  For the
-known-powers gadget at $t\ge4$,
-$Q_{2^t-1}=A_{2^{t-2}}\bigl(H_{2^{t-1}}+Q_{2^{t-2}-1},\,
-H_{2^{t-1}}+\alpha\bigr)$, so \eqref{eq:fill-height} gives
-$h(Q_{2^t-1})\le\bigl(\lfloor(t-1)^2/4\rfloor+1\bigr)+(t-1)
-  =\lfloor(t+1)^2/4\rfloor$,
-and $t\le3$ is direct.  The tilde towers and the good-polynomial gadgets
-$\bar Q$ use the same fills and one square-difference per level with
-operands of index at most $\ell$, so they satisfy the same two bounds.
-
-\emph{The $T$ recursion.}  For $T_{k,2^\ell}$ put
-$\lambda=\ell+\lceil\log_2k\rceil$ and let $s(k)\le\lceil\log_2k\rceil$ be
-the number of odd values exceeding $1$ in the halving chain of $k$.  Then
-\begin{equation}
-  h\bigl(T^{(1)}_{k,2^\ell}\bigr),\,
-  h\bigl(T^{(2)}_{k,2^\ell}\bigr)
-  \le\bigl\lfloor\tfrac{\lambda^2}{4}\bigr\rfloor+1+s(k).
-  \label{eq:T-height}
-\end{equation}
-The base $k=1$ is the tower bound; an even step recurses at $(k/2,\ell+1)$
-with the same $\lambda$ after one tower step; an odd step multiplies the
-recursive pair by factors of height at most
-$\lfloor(\ell+1)^2/4\rfloor\le\lfloor\lambda^2/4\rfloor+1+s\bigl(\tfrac{k-1}2\bigr)$
-and adds a $Q$ block, contributing exactly the $+1$ that separates $s(k)$
-from $s\bigl(\tfrac{k-1}2\bigr)$.
-
-\emph{Assembly.}  Let $B(L)=\lfloor L^2/4\rfloor+L+1$.  By strong induction
-on the odd degree, every costed pair of degree $m$ has height at most
-$B\bigl(L(m)\bigr)$: the $4k+1$ family is \eqref{eq:T-height} with
-$\lambda=1+\lceil\log_2 2k\rceil\le L$ for $T_{2k,2}$ and $s\le\lambda-1$, giving height at most $\lfloor L^2/4\rfloor+L<B(L)$; the $8k+3$ and $8k+7$ steps add one
-square-difference on top of $Q$ or $\bar Q$ blocks at level $\le L-1$
-(height $\le\lfloor L^2/4\rfloor+1$ by \eqref{eq:tower-height}) and of a
-recursive pair of degree $\le(n-1)/2$ (height $\le B(L-1)$); and the
-special cases $15$, $27$, $31$ are checked directly.  The final combination
-$P_n=x\cdot T^{(1)}+T^{(2)}$ adds one product, giving
-$B(L)+1=\lfloor L^2/4\rfloor+L+2\le\frac14L^2+L+2$.  For even $n$ the
-lift $c_0+xQ_{n-1}$ of \Cref{thm:construction-count} adds one further
-product on top of the odd-degree schedule, and $L(n-1)\le L(n)$.
-\end{proof}
-
-\begin{remark}[The order $(\log n)^2$ is genuine]
-The quadratic term comes from the sequential fill chains: level $\ell$ of
-the tower waits for a fill of length $\Theta(\ell)$ whose factors wait for
-the tower below it.  The bound reflects the schedules themselves, not slack
-in the analysis: the exact heights (reported by
-\texttt{tools/polychain.py}, whose \texttt{selftest} subcommand also
-checks the bound of \Cref{thm:construction-height} for every
-$3\le n\le N$ with $N=120$ by default; the heights quoted here were
-computed for $3\le n\le6001$) grow as
-$\Theta((\log n)^2)$, e.g.\ height $5$ at $n=17$, $10$ at $n=63$, $12$ at
-$n=127$, $16$ at $n=253$, $25$ at $n=1021$ and $36$ at $n=4093$; the
-observed heights over $3\le n\le6001$ never exceed
-$\lfloor L^2/4\rfloor+3$ (attained only at the even lifts $n=8,16,32$; for
-$7\le L\le12$ the per-$L$ maximum is $\lfloor L^2/4\rfloor+1$, attained at
-$n=2^L-2$), and the best case (near $n=2^{L-1}+3$) is
-$\approx L^2/6$.  As with the addition constant, this is a property of the
-fill.
-
-Depth-balanced decodable known-powers gadgets exist at no gate cost at
-all: the peeled recursion \eqref{eq:peeled-Q} matches the ledger of
-\Cref{lem:fill-Q-count} exactly, with height $k$ in place of the quadratic
-growth, and substituting it at every known-powers site --- leaving the
-keyed tower spine, seam fills and good-polynomial gadgets byte-for-byte
-unchanged, so the multiplication count remains exactly
-$\lfloor n/2\rfloor+1$ and no Rabin--Winograd-style key-free squarings
-appear --- removes the quadratic term entirely; see \Cref{sec:peeled-Q}, \Cref{fig:peeled-Q},
-and \Cref{thm:construction-height-peeled}.
-\end{remark}
+The construction uses the binary known-powers gadget of
+\Cref{alg:constr-known-2n-1} throughout.  Its multiplicative height is
+bounded in \Cref{thm:construction-height}: writing
+$L=\lceil\log_2 n\rceil$, the complete circuit has height at most $2L+4$
+for odd $n\ge3$ and $2L+5$ for even $n\ge4$, with the multiplication
+counts recorded above.  This is the maximum number of nonscalar
+products on an input-to-output path, not the total gate count.
 
 \begin{corollary}[All odd degrees have a decodable construction]
 \label{cor:all-odd-decodable}
