@@ -25,7 +25,7 @@ import { compileHorner } from '../js/methods/horner.js';
 import { compileRW } from '../js/methods/rw.js';
 import { compileEstrin } from '../js/methods/estrin.js';
 import { methodChainC, char0C, char2C, ratToDouble, doubleLiteral, qConst,
-         wireLetter, cIdent, parseRhs, MERSENNE89, C_PROVENANCE } from '../js/cgen.js';
+         wireLetter, cIdent, parseRhs, MERSENNE89, hasCProvenance } from '../js/cgen.js';
 
 const TMP = '/tmp/site2/cgen_test';
 mkdirSync(TMP, { recursive: true });
@@ -73,7 +73,7 @@ const MAINS = {
 };
 function buildAndRun(cText, mode, xs, tag) {
   // xs: bigint[] (finite fields) or number[] (Q / R)
-  check(cText.startsWith(C_PROVENANCE), `${tag}: generated-source provenance`);
+  check(hasCProvenance(cText), `${tag}: generated-source provenance`);
   const outs = {};
   const kind = KINDS[mode];
   if (!kind) throw new Error(`buildAndRun: unknown mode ${mode}`);
@@ -152,7 +152,7 @@ for (const [n, lead] of [[15, 0x9215806a699341f8n], [13, 1n]]) {
   const coeffs = [...Array.from({ length: n }, () => rnd()), lead];
   const r = compileChar2(coeffs, F2);
   check(!/portable|for \(int i/.test(r.cText) && r.cText.includes('#error'), `char2 n=${n}: hardware-only gf64_mul`);
-  check(r.cText.includes('static const uint64_t a[') && r.cText.includes('// z = (') , `char2 n=${n}: keys table + trailing comments`);
+  check(r.cText.includes('static const uint64_t P_a[') && r.cText.includes('// z = (') , `char2 n=${n}: keys table + trailing comments`);
   const xs = Array.from({ length: 6 }, () => rnd());
   const outs = buildAndRun(r.cText, 'gf2k', xs, `ours2_n${n}`);
   compare(outs, xs.map(x => hex16(P.evalAt(F2, coeffs, x))), `ours char2 n=${n}`, (a, b) => a === b);
@@ -180,10 +180,10 @@ for (const [n, lead] of [[14, Rat.ONE], [15, new Rat(3n)], [31, Rat.ONE]]) {
   const src = ratSrc(cs);
   const r = await compileChar0(src, 'p');
   check(r.field.name === 'GF(2^89−1)', 'Mersenne field name');
-  if (n === 14) check(r.cText.includes('2*(__uint128_t)x') && !/[^_a-z0-9]\d+\*x[^_a-z0-9]/.test(r.cText.replace(/\/\/.*$/gm, '')),
+  if (n === 14) check(r.cText.includes('2*(__uint128_t)x') && !/[^_a-z0-9]\d+\*x[^_a-z0-9]/.test(r.cText.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')),
                       'mersenne n=14: integer multiples of x are widened');
   check(r.cText.includes('fast_large_mult_mod_2(') && r.cText.includes('extra_large_mult_add_mod(') &&
-        r.cText.includes('if (P >= M89) P -= M89;') && r.cText.includes('static const __uint128_t alpha['), `mersenne n=${n}: shape`);
+        r.cText.includes('if (P >= M89) P -= M89;') && r.cText.includes('static const __uint128_t P_alpha['), `mersenne n=${n}: shape`);
   check(r.cTextFraction === null, 'mersenne: no fraction variant');
   const fcs = cs.map(c => Fp89.mul(Fp89.fromInt(c.n), Fp89.inv(Fp89.fromInt(c.d))));
   const xs = [(1n << 64n) - 1n, (1n << 63n) | 5n, ...Array.from({ length: 6 }, () => rnd())];
@@ -228,7 +228,7 @@ for (const [n, lead] of [[14, Rat.ONE], [15, new Rat(3n)], [31, Rat.ONE]]) {
     const m = fn(cs, Q);
     for (const style of ['float', 'fraction']) {
       const c = methodChainC(m.lines, 'Q', Q, { name: nm, mults: m.mults, preprocessing: m.preprocessing, cstyle: style });
-      if (nm === 'RW') check(c.includes('static const double c['), 'RW Q: constants table');
+      if (nm === 'RW') check(c.includes('static const double P_c['), 'RW Q: constants table');
       if (nm === 'Horner') check(!c.includes('static const'), 'Horner Q: inline coefficients');
       const o = buildAndRun(c, 'Q', xs, `${nm}Q_${style}`);
       compare(o, want, `${nm} Q ${style}`, (a, b) => relClose(Number(a), b));
@@ -263,7 +263,7 @@ for (const [k, mode, fmt] of [[32, 'gf32', hex8], [128, 'gf128', hex128]]) {
     const r = compileChar2(coeffs, F);
     check(r.cText.includes(`gf${k}_mul(`) && r.cText.includes('#error') && r.cText.includes(k === 32 ? 'clmul32(' : 'clmul64('),
           `gf${k} n=${n}: hardware-only gf${k}_mul`);
-    check(r.cText.includes(`static const ${k === 32 ? 'uint32_t' : '__uint128_t'} a[`) && r.cText.includes('// z = ('), `gf${k} n=${n}: keys table + comments`);
+    check(r.cText.includes(`static const ${k === 32 ? 'uint32_t' : '__uint128_t'} P_a[`) && r.cText.includes('// z = ('), `gf${k} n=${n}: keys table + comments`);
     const xs = [0n, 1n, (1n << BigInt(k)) - 1n, ...Array.from({ length: 6 }, randK)];
     const outs = buildAndRun(r.cText, mode, xs, `ours${k}_n${n}`);
     compare(outs, xs.map(x => fmt(P.evalAt(F, coeffs, x))), `ours gf${k} n=${n}`, (a, b) => a === b);
@@ -292,10 +292,10 @@ for (const [mode, prime, bits, fmt, edge] of [
     check(r.field.name === `GF(2^${bits}−1)` && r.fieldId === mode, `${mode} field name`);
     if (mode === 'p61')
       check(r.cText.includes('mul61(') && r.cText.includes('x = fold61(x);') && r.cText.includes('if (P >= M61) P -= M61;') &&
-            r.cText.includes('static const uint64_t alpha[') && r.cText.includes('uint64_t eval_P(uint64_t x)'), `p61 n=${n}: shape`);
+            r.cText.includes('static const uint64_t P_alpha[') && r.cText.includes('uint64_t eval_P(uint64_t x)'), `p61 n=${n}: shape`);
     else
       check(r.cText.includes('mul127(') && r.cText.includes('add127(') && r.cText.includes('if (P >= M127) P -= M127;') &&
-            r.cText.includes('static const __uint128_t alpha[') && r.cText.includes('__uint128_t eval_P(__uint128_t x)'), `p127 n=${n}: shape`);
+            r.cText.includes('static const __uint128_t P_alpha[') && r.cText.includes('__uint128_t eval_P(__uint128_t x)'), `p127 n=${n}: shape`);
     if (n === 14) check(/2\*x/.test(r.cText.replace(/\/\/.*$/gm, '')) || /add127\(x, x\)/.test(r.cText), `${mode} n=14: doubled x term`);
     check(r.cTextFraction === null, `${mode}: no fraction variant`);
     const fcs = cs.map(c => Fq.fromRat(c));
@@ -328,11 +328,11 @@ for (const [mode, prime, bits, fmt, edge] of [
   const r = await compileChar0(src, 'R');
   const q = await compileChar0(src, 'Q');
   check(typeof r.cText === 'string' && r.cTextFraction === null && r.fieldId === 'R' && r.exact === false && r.status === '≈ numeric', 'R: C variant / status');
-  check(/double P = /.test(r.cText) && /static const double alpha\[/.test(r.cText) && /preprocessed exactly/.test(r.cText) && !/\(double\)/.test(r.cText), 'R: header / constants');
+  check(/double P = /.test(r.cText) && /static const double P_alpha\[/.test(r.cText) && /preprocessed exactly/.test(r.cText) && !/\(double\)/.test(r.cText), 'R: header / constants');
   check(/return P \* 2\.0;/.test(r.cText), 'R: leading coefficient as a double literal');
   // the chain is Q's exact chain: below the banner the C code is identical to Q's float
   // style (only Q's table comments carry the exact fractions)
-  const body = t => t.slice(t.indexOf('/* chain constants')).replace(/[ \t]*\/\/.*$/gm, '');
+  const body = t => t.slice(t.indexOf('/* preprocessed constants')).replace(/[ \t]*\/\/.*$/gm, '');
   check(body(r.cText) === body(q.cText) && !/computed numerically/.test(r.cText) && /\/\/ alpha0 = /.test(q.cText) && /\/\/ alpha0$/m.test(r.cText), 'R: C code identical to Q (float constants)');
   check(!/\d\/\d/.test(r.mathText) && r.mathText.split('\n').length === q.mathText.split('\n').length, 'R: math view shows doubles, same chain as Q');
   const xs = [-1.5, -0.7, 0.3, 0.9, 1.7, 2.5];
@@ -344,7 +344,7 @@ for (const [mode, prime, bits, fmt, edge] of [
   for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
     const m = fn(cs, R);
     const c = methodChainC(m.lines, 'R', R, { name: nm, mults: m.mults, preprocessing: m.preprocessing });
-    if (nm === 'RW') check(c.includes('static const double c[') && !/\(double\)\d+\/\d+/.test(c) && !/\d\/\d/.test(c), 'RW R: constants table of plain doubles');
+    if (nm === 'RW') check(c.includes('static const double P_c[') && !/\(double\)\d+\/\d+/.test(c) && !/\d\/\d/.test(c), 'RW R: constants table of plain doubles');
     check(!/\d\/\d/.test(m.lines.map(l => l.rhs).join(' ')), `${nm} R: rendered constants are doubles`);
     compare(buildAndRun(c, 'R', xs, `${nm}R`), want, `${nm} R`, (a, b) => relClose(Number(a), b));
   }

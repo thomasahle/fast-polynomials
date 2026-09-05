@@ -13,7 +13,7 @@
 // handleMessage(data) is exported so the node smoke test can drive the same
 // code path without a browser; the result is plain JSON (structured-clone
 // safe: strings, numbers, booleans, null, arrays, plain objects only).
-import { parsePoly } from './polyparse.js';
+import { parsePoly, polyToString } from './polyparse.js';
 import { resolveField } from './field.js';
 import { compileChar2 } from './compile2.js';
 import { compileChar0 } from './compile0.js';
@@ -46,19 +46,22 @@ export async function handleMessage({ lane, src, fieldMode }) {
     try { return parsePoly(src, { char2: fd.lane === 'char2' }); }
     catch (e) { throw new Error(`cannot read the polynomial over ${fd.name}: ${e?.message ?? e}`); }
   };
+  let polyText = null;                            // the input, canonically printed, for the C headers
   if (fd.lane === 'char2') {
     const { coeffs } = parse();
+    polyText = polyToString(coeffs, { char2: true });
     cmpCoeffs = coeffs.map(c => F.fromInt(c));
     r = compileChar2(cmpCoeffs, F);
   } else {
     const { coeffs } = parse();
+    polyText = polyToString(coeffs);
     cmpCoeffs = coeffs.map(c => F.fromRat(c));      // exact Rats over ℚ and ℝ; residues over GF(p)
     try {
       r = await compileChar0(src, fd.id);
     } catch (err) {
       // our compiler unavailable/failed: still deliver the classical methods
       let comparisons = [];
-      try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode)); } catch (e2) {}
+      try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, polyText)); } catch (e2) {}
       if (!comparisons.some(c => c.ok)) throw err;
       return {
         oursFailed: err?.message ?? String(err),
@@ -70,7 +73,7 @@ export async function handleMessage({ lane, src, fieldMode }) {
     }
   }
   let comparisons = [];
-  try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode)); } catch (err) { /* table optional */ }
+  try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, polyText)); } catch (err) { /* table optional */ }
   return {
     mathText: r.mathText ?? chainToText(r), mathTextOriginal: r.mathTextOriginal ?? null,
     cText: r.cText ?? null, cTextFraction: r.cTextFraction ?? null,

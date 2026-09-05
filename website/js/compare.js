@@ -20,14 +20,14 @@ const METHODS = [
 /** mode: a field id from js/field.js FIELDS ('Q', 'R', 'p61', 'p89', 'p127',
  *  'gf32', 'gf64', 'gf128'); the legacy 'p' (= p89) and 'gf2k' (F.k decides)
  *  are still accepted by the C emitter. */
-export function buildComparisons(coeffs, F, mode) {
+export function buildComparisons(coeffs, F, mode, poly = null) {
   const rows = [];
   const numericField = !!F.real;         // ℝ: preprocessing with doubles is not exact
   for (const [name, fn] of METHODS) {
     try {
       const r = fn(coeffs, F);
       let cText = null, cTextFraction = null;
-      const copts = { name, mults: r.mults, preprocessing: r.preprocessing };
+      const copts = { name, mults: r.mults, preprocessing: r.preprocessing, poly };
       try { cText = methodChainC(r.lines, mode, F, { ...copts, cstyle: 'float' }); }
       catch (e) { /* math view still available */ }
       if (mode === 'Q' && cText) {
@@ -55,7 +55,7 @@ export function buildComparisons(coeffs, F, mode) {
     { name: 'Pan', fn: compilePan1978Real, preserveLeading: true, need: 'needs numerical real-algebraic preprocessing' },
   ];
   for (const { name, fn, preserveLeading = false, need = 'needs real or complex roots' } of numeric) {
-    if (mode === 'Q' || mode === 'R') rows.push(numericRow(name, fn, coeffs, F, mode, { preserveLeading }));
+    if (mode === 'Q' || mode === 'R') rows.push(numericRow(name, fn, coeffs, F, mode, { preserveLeading, poly }));
     else rows.push({ name, ok: false, note: `${need}: characteristic 0 (\u211a, \u211d) only, not ${F.name}` });
   }
   return rows;
@@ -64,7 +64,7 @@ export function buildComparisons(coeffs, F, mode) {
 // Methods whose preprocessing is numerical: run on floating coefficients.
 // The classical schemes are scaled to monic and get one final multiplication;
 // Pan's non-monic coefficient map receives the original coefficients instead.
-function numericRow(name, compile, coeffs, F, mode = 'Q', { preserveLeading = false } = {}) {
+function numericRow(name, compile, coeffs, F, mode = 'Q', { preserveLeading = false, poly = null } = {}) {
   try {
     let fl = coeffs.map(r => (typeof r === 'number' ? r : Number(r.n) / Number(r.d)));
     if (!fl.every(Number.isFinite)) throw new Error('coefficients too large for float preprocessing');
@@ -81,7 +81,7 @@ function numericRow(name, compile, coeffs, F, mode = 'Q', { preserveLeading = fa
     const complex = r.lines.some(l => /\di\)/.test(l.rhs));
     let cText = null;
     if (!complex) {
-      try { cText = methodChainC(r.lines, mode, F, { name, mults: r.mults, preprocessing: 'numeric' }); }
+      try { cText = methodChainC(r.lines, mode, F, { name, mults: r.mults, preprocessing: 'numeric', poly }); }
       catch (e) { /* math view still available */ }
     }
     return {

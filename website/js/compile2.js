@@ -15,6 +15,7 @@ import { CIRCUITS, evalCircuit, decodeChar2, circuitStats, SUPPORTED_DEGREES, MA
          baseDegree } from './char2.js';
 import { renderGateChain, makeResult, chainToText } from './chain.js';
 import { char2C } from './cgen.js';
+import { polyToString } from './polyparse.js';
 import { buildGraphFromLines } from './graph.js';
 
 // How the keys were recovered (CIRCUITS[n].family); the polynomial decoders are
@@ -109,7 +110,7 @@ export function compileChar2(coeffs, F) {
   result.mathTextOriginal = chainToText({ lines: result.linesPaper });
   // C is emitted for GF(2^32), GF(2^64) (the paper's field) and GF(2^128) with
   // their standard moduli; other fields keep the math view.
-  try { result.cText = char2C(F, spec, keys, { scaleBy: scaleStep ? lc : null, lift: lifted ? c[0] : null }); }
+  try { result.cText = char2C(F, spec, keys, { scaleBy: scaleStep ? lc : null, lift: lifted ? c[0] : null, poly: polyToString(p, { char2: true }) }); }
   catch (e) { result.cText = null; result.note += ` — no C rendering: ${e.message}`; }
   // computational graph IR from the rendered lines (letter wire names; the lift
   // and scale rows become the last '*' nodes; headings carry the groups)

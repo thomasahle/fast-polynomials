@@ -27,14 +27,26 @@ import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 
 export { ratToDouble, MERSENNE89 };
 /** License of the generated C (one line; the bundle's README repeats it). */
-export const C_LICENSE = 'License: 0BSD (BSD Zero Clause) — use, modify and redistribute freely; no attribution required.';
-/** Header of every generated C file. */
-export const C_PROVENANCE = `/***
- Code generated from https://thomasahle.com/fast-polynomials/
- For details, see "Fast Evaluation of Polynomials with Rational Preprocessing"
- by Thomas Ahle and Jakob Knudsen.
- ${C_LICENSE}
-*/`;
+export const C_LICENSE = 'License: 0BSD. Use freely; no attribution required.';
+const PROVENANCE_LINES = [
+  'Code generated from https://thomasahle.com/fast-polynomials/',
+  'For details, see "Fast Evaluation of Polynomials with Rational Preprocessing"',
+  'by Thomas Ahle and Jakob Knudsen.',
+  C_LICENSE,
+];
+const docBlock = lines => ['/**', ...lines.map(l => (l ? ` * ${l}` : ' *')), ' */'].join('\n');
+/** Header of every generated C file: provenance and license, then (per file)
+ *  the polynomial, the field, the multiplication count and how to compile. */
+export const C_PROVENANCE = docBlock(PROVENANCE_LINES);
+export const cFileHeader = (extra = []) => docBlock(extra.length ? [...PROVENANCE_LINES, '', ...extra] : PROVENANCE_LINES);
+const PROVENANCE_START = C_PROVENANCE.slice(0, -'\n */'.length);
+/** True when a generated C text starts with the provenance header (with or without per-file lines). */
+export const hasCProvenance = text => String(text).startsWith(PROVENANCE_START);
+/** The polynomial as an ASCII C-comment line (polyToString uses · and −). */
+const polyLine = poly => (poly ? `P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}` : null);
+/** Table of preprocessed constants: named after the function (eval_P -> P_a) so
+ *  two generated files can share a translation unit. */
+const tableName = (fn, kind) => `${String(fn).replace(/^eval_/, '')}_${kind}`;
 
 // ---------- naming ----------
 const WIRE_LETTERS = ['y', 'z', 't', 'u', 'v', 'w', 's', 'r', 'q', 'p',
@@ -120,7 +132,7 @@ export function gf64Header() {
     '    __m128i ab = _mm_clmulepi64_si128(_mm_cvtsi64_si128((long long)a),',
     '                                      _mm_cvtsi64_si128((long long)b), 0x00);',
     '    __m128i r = _mm_cvtsi64_si128(27);',
-    '    __m128i xr = _mm_clmulepi64_si128(ab, r, 0x01);   /* ab[high] * r */',
+    '    __m128i xr = _mm_clmulepi64_si128(ab, r, 0x01);   // ab[high] * r',
     '    /* Constant 16-byte lookup instead of the second multiplication.  The',
     '       initializer is compile-time data: optimizing compilers hoist/load it. */',
     '    __m128i table = _mm_setr_epi8(0, 27, 54, 45, 108, 119, 90, 65, (char)216,',
@@ -131,8 +143,7 @@ export function gf64Header() {
     '}',
     ARM_PMULL,
     '#include <arm_neon.h>',
-    '/* PMULL implementation from "Fast Evaluation of Polynomials with Rational',
-    '   Preprocessing": multiply once, then fold twice through x^64 = r. */',
+    '/* PMULL implementation from the paper: multiply once, then fold twice through x^64 = r. */',
     'static inline uint64_t gf64_mul(uint64_t a, uint64_t b) {',
     '    const poly64_t r = (poly64_t)27;',
     '    uint64x2_t ab = vreinterpretq_u64_p128(vmull_p64((poly64_t)a, (poly64_t)b));',
@@ -174,10 +185,10 @@ export function gf32Header() {
     '/* Unlike GF(2^64), the residual has seven bits; one 16-entry byte shuffle',
     '   cannot encode it.  The two sparse shift/XOR folds avoid extra tables. */',
     'static inline uint32_t gf32_mul(uint32_t a, uint32_t b) {',
-    '    uint64_t ab = clmul32(a, b);                             /* degree <= 62 */',
+    '    uint64_t ab = clmul32(a, b);                             // degree <= 62',
     '    uint64_t hi = ab >> 32;',
-    '    uint64_t xr = hi ^ (hi << 2) ^ (hi << 3) ^ (hi << 7);    /* hi * r, degree <= 38 */',
-    '    uint64_t hi2 = xr >> 32;                                 /* at most 7 bits */',
+    '    uint64_t xr = hi ^ (hi << 2) ^ (hi << 3) ^ (hi << 7);    // hi * r, degree <= 38',
+    '    uint64_t hi2 = xr >> 32;                                 // at most 7 bits',
     '    uint64_t zr = hi2 ^ (hi2 << 2) ^ (hi2 << 3) ^ (hi2 << 7);',
     '    return (uint32_t)(ab ^ xr ^ zr);',
     '}',
@@ -213,9 +224,9 @@ export function gf128Header(body = '') {
     '#endif',
     '/* Reduce hi*x^128+lo through x^128 = r. */',
     'static inline __uint128_t gf128_reduce(__uint128_t lo, __uint128_t hi) {',
-    '    __uint128_t top = (hi >> 127) ^ (hi >> 126) ^ (hi >> 121); /* hi*r above bit 128 */',
-    '    __uint128_t red = hi ^ (hi << 1) ^ (hi << 2) ^ (hi << 7);  /* hi*r mod x^128 */',
-    '    red ^= top ^ (top << 1) ^ (top << 2) ^ (top << 7);         /* top*r, degree <= 13 */',
+    '    __uint128_t top = (hi >> 127) ^ (hi >> 126) ^ (hi >> 121); // hi*r above bit 128',
+    '    __uint128_t red = hi ^ (hi << 1) ^ (hi << 2) ^ (hi << 7);  // hi*r mod x^128',
+    '    red ^= top ^ (top << 1) ^ (top << 2) ^ (top << 7);         // top*r, degree <= 13',
     '    return lo ^ red;',
     '}',
     ...(needSquare ? [
@@ -235,7 +246,7 @@ export function gf128Header(body = '') {
     '    __uint128_t lo = clmul64(a0, b0), hi = clmul64(a1, b1);',
     '    __uint128_t mid = clmul64(a0, b1) ^ clmul64(a1, b0);',
     '    lo ^= mid << 64;',
-    '    hi ^= mid >> 64;                                           /* a*b = hi*x^128 + lo */',
+    '    hi ^= mid >> 64;                                           // a*b = hi*x^128 + lo',
     '    return gf128_reduce(lo, hi);',
     '}',
   ].join('\n');
@@ -247,13 +258,13 @@ export function gf128Header(body = '') {
 const GF_SPECS = {
   32: { mod: (1n << 32n) | 0b10001101n,
         T: 'uint32_t', mul: 'gf32_mul', header: gf32Header, lit: hex32, inline: v => '0x' + toBig(v).toString(16) + 'U',
-        flags: 'x86  cc -O2 -mpclmul ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
+        compile: ['Compile (x86): cc -O2 -mpclmul ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
   64: { mod: (1n << 64n) | 0b11011n,
         T: 'uint64_t', mul: 'gf64_mul', header: gf64Header, lit: hex64, inline: v => '0x' + toBig(v).toString(16) + 'ULL',
-        flags: 'x86  cc -O2 -mpclmul -mssse3 ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
+        compile: ['Compile (x86): cc -O2 -mpclmul -mssse3 ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
   128: { mod: (1n << 128n) | 0b10000111n,
          T: '__uint128_t', mul: 'gf128_mul', square: 'gf128_square', header: gf128Header, lit: u128, inline: u128,
-         flags: 'x86  cc -O2 -mpclmul ... | ARM  cc -O2 -march=armv8-a+crypto ...' },
+         compile: ['Compile (x86): cc -O2 -mpclmul ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
 };
 /** Emitter spec for a GF(2^k) field object; throws for unsupported k / moduli. */
 function gfSpec(F) {
@@ -271,28 +282,30 @@ export function gfHeader(F) {
  *  lift: the constant term c0 of the paper's even lift P = x · P_{n-1} + c0 (the
  *  circuit then computes the odd part P_{n-1}; c0 is emitted as the last key);
  *  scaleBy: the leading coefficient of a non-monic input (one more multiplication). */
-export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eval_P' } = {}) {
+export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eval_P', poly = null } = {}) {
   const G = gfSpec(F);
   const nk = spec.keys ?? keys.length;
   const lifted = lift !== null;
   const deg = spec.n + (lifted ? 1 : 0);              // degree of the evaluated polynomial
   const nkeys = nk + (lifted ? 1 : 0);                 // the lift constant is key a_{n-1}
   const mults = spec.gates.length + (lifted ? 1 : 0) + (scaleBy !== null ? 1 : 0);
-  const cFactor = f => [...f.t, ...(f.k !== null ? [`a[${f.k}]`] : [])].join(' ^ ');
+  const tbl = tableName(name, 'a');
+  const cFactor = f => [...f.t, ...(f.k !== null ? [`${tbl}[${f.k}]`] : [])].join(' ^ ');
   const mFactor = f => {
     const parts = [...f.t, ...(f.k !== null ? [`a${f.k}`] : [])];
     return parts.length > 1 ? `(${parts.join(' + ')})` : parts[0];
   };
-  const L = [C_PROVENANCE];
   const usesSquare = !!G.square && spec.gates.some(g => cFactor(g.l) === cFactor(g.r));
-  L.push(`/* P(x) over GF(2^${G.k}): ${mults} multiplications` +
-         ` (Horner: ${deg - 1}), ${nkeys} key${nkeys === 1 ? '' : 's'} a_0..a_${nkeys - 1}. */`);
-  L.push('/* Kernel conventions follow "Fast Evaluation of Polynomials with Rational');
-  L.push(`   Preprocessing". Compile: ${G.flags} */`);
+  const L = [cFileHeader([
+    ...(polyLine(poly) ? [polyLine(poly)] : []),
+    `Field: GF(2^${G.k}).  This paper: ${mults} multiplication${mults === 1 ? '' : 's'}` +
+      ` (Horner: ${deg - 1 + (scaleBy !== null ? 1 : 0)}), ${nkeys} preprocessed constant${nkeys === 1 ? '' : 's'}.`,
+    ...G.compile,
+  ])];
   L.push(...G.header(usesSquare ? `${G.square}(` : 'no square').split('\n'));
   L.push('');
-  L.push(`/* keys (the appendix's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
-  L.push(`static const ${G.T} a[${nkeys}] = {`);
+  L.push(`/* preprocessed constants (the paper's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
+  L.push(`static const ${G.T} ${tbl}[${nkeys}] = {`);
   const table = Array.from({ length: nk }, (_, i) => [`    ${G.lit(keys[i])},`, `a${i}`]);
   if (lifted) table.push([`    ${G.lit(lift)},`, `a${nk} (even-degree lift)`]);
   L.push(...withComments(table));
@@ -310,11 +323,11 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   body.push([`    ${G.T} ${core} = ${cFactor(o)};`,
              `${core} = ${[...o.t, ...(o.k !== null ? [`a${o.k}`] : [])].join(' + ')}`]);
   if (lifted)
-    body.push([`    ${G.T} P = ${G.mul}(x, ${core}) ^ a[${nk}];`,
+    body.push([`    ${G.T} P = ${G.mul}(x, ${core}) ^ ${tbl}[${nk}];`,
                `P = x * ${core} + a${nk}   (even-degree lift)`]);
   L.push(...withComments(body));
   if (scaleBy !== null)
-    L.push(`    return ${G.mul}(P, ${G.lit(scaleBy)});  /* leading coefficient */`);
+    L.push(`    return ${G.mul}(P, ${G.lit(scaleBy)});  // leading coefficient`);
   else L.push('    return P;');
   L.push('}');
   return L.join('\n');
@@ -337,8 +350,7 @@ export function mersenneHeader(body = '') {
     '#include <stdint.h>',
     '',
     ...MERSENNE_FOLD_NOTE,
-    '/* p = 2^89 - 1.  Values are kept lazily reduced (< 2p) between gates,',
-    '   as in "Fast Evaluation of Polynomials with Rational Preprocessing." */',
+    '/* p = 2^89 - 1.  Values are kept lazily reduced (< 2p) between gates, as in the paper. */',
     '#define M89 ((((__uint128_t)1) << 89) - 1)',
     '#define U128(hi, lo) ((((__uint128_t)(hi)) << 64) | (__uint128_t)(lo))',
   ];
@@ -447,9 +459,9 @@ export function mersenne127Header(body = '') {
     '    uint64_t b0 = (uint64_t)b, b1 = (uint64_t)(b >> 64);',
     '    __uint128_t ll = (__uint128_t)a0 * b0, lh = (__uint128_t)a0 * b1;',
     '    __uint128_t hl = (__uint128_t)a1 * b0, hh = (__uint128_t)a1 * b1;',
-    '    __uint128_t mid = lh + hl;                         /* no overflow: a1, b1 < 2^63 */',
+    '    __uint128_t mid = lh + hl;                         // no overflow: a1, b1 < 2^63',
     '    __uint128_t lo = ll + (mid << 64);',
-    '    __uint128_t hi = hh + (mid >> 64) + (lo < ll);     /* a*b = hi*2^128 + lo */',
+    '    __uint128_t hi = hh + (mid >> 64) + (lo < ll);     // a*b = hi*2^128 + lo',
     '    /* 2^128 = 2 (mod p): fold to at most 2p, then into [0, p] */',
     '    return fold127(((hi << 1) | (lo >> 127)) + (lo & M127));',
     '}',
@@ -469,8 +481,7 @@ const PRIME_OPS = {
   p89: {
     prime: MERSENNE89, macro: 'M89', T: '__uint128_t', xT: 'uint64_t', lit: u128,
     banner: 'GF(p), p = 2^89 - 1',
-    intro: ['/* Kernel conventions follow "Fast Evaluation of Polynomials with Rational',
-            '   Preprocessing"; x is a 64-bit word as in the hashing experiments. */'],
+    intro: ["/* x is a 64-bit word, as in the paper's hashing experiments. */"],
     header: body => mersenneHeader(body),
     // x is a uint64_t parameter: an integer multiple must be widened first,
     // otherwise k*x wraps modulo 2^64 for x >= 2^63 (wires are already 128-bit).
@@ -492,7 +503,7 @@ const PRIME_OPS = {
     clampOut: v => (v[1] > LAZY_LIMIT ? [`reduce89(${v[0]})`, 1, false] : v),
     wireBound: 2, xBound: 1, entry: [],
     finish: out => [`    ${out} = (${out} & M89) + (${out} >> 89);`, `    if (${out} >= M89) ${out} -= M89;`],
-    scale: (out, c) => `    ${out} = extra_large_mult_mod(${out}, ${u128(c)});  /* leading coefficient */`,
+    scale: (out, c) => `    ${out} = extra_large_mult_mod(${out}, ${u128(c)});  // leading coefficient`,
   },
   p61: {
     prime: MERSENNE61, macro: 'M61', T: 'uint64_t', xT: 'uint64_t', lit: hex64,
@@ -522,7 +533,7 @@ const PRIME_OPS = {
     clampOut: v => v,
     wireBound: 1, xBound: 1, entry: ['    x = fold61(x);'],
     finish: out => [`    ${out} = fold61(${out});`, `    if (${out} >= M61) ${out} -= M61;`],
-    scale: (out, c) => `    ${out} = mul61(fold61(${out}), ${hex64(c)});  /* leading coefficient */`,
+    scale: (out, c) => `    ${out} = mul61(fold61(${out}), ${hex64(c)});  // leading coefficient`,
   },
   p127: {
     prime: MERSENNE127, macro: 'M127', T: '__uint128_t', xT: '__uint128_t', lit: u128,
@@ -546,7 +557,7 @@ const PRIME_OPS = {
     clampOut: v => v,
     wireBound: 1, xBound: 1, entry: ['    x = fold127(fold127(x));'],
     finish: out => [`    if (${out} >= M127) ${out} -= M127;`],
-    scale: (out, c) => `    ${out} = mul127(${out}, ${u128(c)});  /* leading coefficient */`,
+    scale: (out, c) => `    ${out} = mul127(${out}, ${u128(c)});  // leading coefficient`,
   },
 };
 const primeOps = mode => {
@@ -566,16 +577,17 @@ const entriesOf = t => (t instanceof Map ? [...t.entries()] : Object.entries(t).
 const isZeroConst = c => (c instanceof Rat ? c.isZero() : (typeof c === 'number' ? c === 0 : toBig(c) === 0n));
 
 const DOUBLE_NOTE = [
-  '/* Estrin layers leave independent multiply-adds visible to the compiler.',
-  '   Compile with gcc/clang -O3 -march=native (MSVC: /O2); optionally test',
-  '   -ffp-contract=fast (/fp:contract) for more aggressive FMA/auto-SLP. */',
+  '/* Estrin layers leave independent multiply-adds visible to the compiler; optionally',
+  '   test -ffp-contract=fast (/fp:contract) for more aggressive FMA / auto-SLP. */',
 ].join('\n');
+const DOUBLE_COMPILE = 'Compile: cc -O3 -march=native ...  (MSVC: /O2)';
+const PRIME_COMPILE = 'Compile: cc -O2 ...  (gcc / clang: the kernel uses __uint128_t)';
 
 /** C for a char-0 PolynomialChain. mode: 'Q' | 'R' (doubles: the exact chain
  *  constants rounded — the same code, ℝ differs only in its banner),
  *  'p61' | 'p89' | 'p127' (Mersenne primes; 'p' = 'p89').
  *  cstyle (Q only): 'float' | 'fraction'. */
-export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = 'eval_P' } = {}) {
+export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = 'eval_P', poly = null, horner = null } = {}) {
   if (mode === 'p') mode = 'p89';
   const wnames = chain.wire_names ?? [];
   const nameOf = w => {
@@ -591,8 +603,9 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   for (const g of chain.gates) forms.push(g.left, g.right);
   forms.push(chain.output);
   for (const f of forms) if (!isZeroConst(f.const)) { slot.set(f, consts.length); consts.push(f.const); }
+  const tbl = tableName(name, 'alpha');
   const cname = f => `alpha${slot.get(f)}`;
-  const cref = f => `alpha[${slot.get(f)}]`;
+  const cref = f => `${tbl}[${slot.get(f)}]`;
 
   // mathematical rendering for the trailing comments
   const mForm = (f, paren) => {
@@ -608,8 +621,11 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   };
   const mGate = g => `${nameOf(g.out_wire)} = ${mForm(g.left, true)} * ${mForm(g.right, true)}`;
 
-  const L = [C_PROVENANCE];
   const mults = chain.gates.length + (scaleBy !== null ? 1 : 0);
+  const summary = field => `Field: ${field}.  This paper: ${mults} multiplication${mults === 1 ? '' : 's'}` +
+    `${horner !== null ? ` (Horner: ${horner})` : ''}, ${consts.length} preprocessed constant${consts.length === 1 ? '' : 's'}.`;
+  const header = (field, compile) => cFileHeader([...(polyLine(poly) ? [polyLine(poly)] : []), summary(field), compile]);
+  const L = [];
   const gateLabels = chain.gate_labels ?? null;
   const labelLine = i => {
     if (!gateLabels || !gateLabels[i] || (i > 0 && gateLabels[i] === gateLabels[i - 1])) return null;
@@ -620,7 +636,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const ops = PRIME_OPS[mode];
     const M = chain.field?.modulus ?? null;
     if (M !== null && M !== ops.prime) throw new Error(`Mersenne C generation for ${mode}: chain is over another prime`);
-    L.push(`/* P(x) over ${ops.banner}: ${mults} multiplications, ${consts.length} constants. */`);
+    L.push(header(ops.banner, PRIME_COMPILE));
     L.push(...ops.intro);
     const fnL = [`${ops.T} ${name}(${ops.xT} x) {`, ...ops.entry];
     const cForm = f => {
@@ -649,8 +665,8 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const fnText = fnL.join('\n');
     L.push(...ops.header(fnText).split('\n'));
     L.push('');
-    L.push(`/* chain constants (the paper's alpha_i, after gadget preprocessing) */`);
-    L.push(`static const ${ops.T} alpha[${consts.length}] = {`);
+    L.push(`/* preprocessed constants (the paper's alpha_i) */`);
+    L.push(`static const ${ops.T} ${tbl}[${consts.length}] = {`);
     L.push(...withComments(consts.map((c, i) => [`    ${ops.lit(c)},`, `alpha${i} = ${toBig(c)}`])));
     L.push('};');
     L.push('');
@@ -661,12 +677,12 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   // ----- Q / R: doubles -----
   const real = mode === 'R';
   if (real) {
-    L.push(`/* P(x) over R, evaluated in double precision: ${mults} multiplications, ${consts.length} constants. */`);
+    L.push(header('R, evaluated in double precision', DOUBLE_COMPILE));
     L.push('/* The chain was preprocessed exactly (rational arithmetic, as over Q); its constants');
     L.push('   are rounded to the nearest double (shortest decimal that round-trips), so P is');
     L.push('   reproduced approximately. */');
   } else {
-    L.push(`/* P(x) over Q, evaluated in double precision: ${mults} multiplications, ${consts.length} constants. */`);
+    L.push(header('Q, evaluated in double precision', DOUBLE_COMPILE));
     L.push('/* The chain is exact over Q; here the constants are rounded to the nearest double');
     if (cstyle === 'fraction')
       L.push('   ((double)NUM/DEN is correctly rounded whenever NUM and DEN fit in 53 bits). */');
@@ -675,8 +691,8 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   }
   L.push(DOUBLE_NOTE);
   L.push('');
-  L.push(`/* chain constants (the paper's alpha_i, after gadget preprocessing) */`);
-  L.push(`static const double alpha[${consts.length}] = {`);
+  L.push(`/* preprocessed constants (the paper's alpha_i) */`);
+  L.push(`static const double ${tbl}[${consts.length}] = {`);
   L.push(...withComments(consts.map((c, i) => {
     if (real) return [`    ${qConst(c, 'float').expr},`, `alpha${i}`];
     const { expr, note } = qConst(c, cstyle);
@@ -708,7 +724,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   L.push(...withComments(body));
   if (scaleBy !== null) {
     const { expr, note } = qConst(scaleBy, real ? 'float' : cstyle);
-    L.push(`    return P * ${expr};  /* leading coefficient${note ? ' (' + note + ')' : ''} */`);
+    L.push(`    return P * ${expr};  // leading coefficient${note ? ' (' + note + ')' : ''}`);
   } else L.push('    return P;');
   L.push('}');
   return L.join('\n');
@@ -778,7 +794,7 @@ function chainMode(mode, F) {
  *  (the method's preprocessing label; a constants table is emitted when it is
  *  not 'none' — always in the prime-field modes), constants ('auto'|'table'|'inline'). */
 export function methodChainC(lines, mode, F, { name = 'method', mults = null, cstyle = 'float',
-                                               preprocessing = null, constants = 'auto', fn = 'eval_P' } = {}) {
+                                               preprocessing = null, constants = 'auto', fn = 'eval_P', poly = null } = {}) {
   mode = chainMode(mode, F);
   const isPrime = mode in PRIME_OPS;
   const isGF = /^gf\d+$/.test(mode);
@@ -803,12 +819,13 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
     const { expr, comment } = litValue(t);
     if (!useTable) return [!isGF && !isPrime && /[-\/]/.test(expr) ? `(${expr})` : expr, 1, false];
     if (!tableIdx.has(t)) { tableIdx.set(t, table.length); table.push({ expr, comment }); }
-    return [`c[${tableIdx.get(t)}]`, 1, false];
+    return [`${tbl}[${tableIdx.get(t)}]`, 1, false];
   };
+  const tbl = tableName(fn, 'c');
 
-  let T, xT, header, ops, entry = [], finish = () => [];
+  let T, xT, header, ops, entry = [], finish = () => [], compile;
   if (isGF) {
-    T = xT = G.T; header = null;
+    T = xT = G.T; header = null; compile = G.compile;
     ops = { lit, wire: w => [cIdent(w), 2, w === 'x'],
       neg: v => v,
       mul: (a, b) => {
@@ -819,6 +836,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   } else if (isPrime) {
     const P = PRIME_OPS[mode];
     T = P.T; xT = P.xT; header = null;   // emitted after the body (helpers on demand)
+    compile = PRIME_COMPILE;
     entry = P.entry; finish = P.finish;
     ops = { lit, wire: w => [cIdent(w), wireBound.get(w) ?? (w === 'x' ? P.xBound : P.wireBound), w === 'x'],
       neg: v => [...P.neg(v[0], v[1]), false],
@@ -831,6 +849,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
       ? '/* Constants are rounded to double: (double)NUM/DEN is correctly rounded when both fit in 53 bits. */'
       : '/* Constants are rounded to the nearest double (shortest round-trip decimal). */') +
       '\n' + DOUBLE_NOTE;
+    compile = DOUBLE_COMPILE;
     ops = { lit, wire: w => [cIdent(w), 1, w === 'x'],
       neg: v => [`(-${v[0]})`, 1, false],
       mul: (a, b) => [`${a[0]} * ${b[0]}`, 1, false],
@@ -867,10 +886,16 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   if (isGF) header = G.header(fnText);
   else if (header === null) header = PRIME_OPS[mode].header(fnText);
   else if (usesLdexp) header = '#include <math.h>\n' + header;
-  const L = [C_PROVENANCE, `/* ${name}${mults !== null ? `: ${mults} multiplications` : ''} */`, header, ''];
+  const field = isGF ? `GF(2^${G.k})` : isPrime ? PRIME_OPS[mode].banner : `${mode === 'R' ? 'R' : 'Q'}, evaluated in double precision`;
+  const L = [cFileHeader([
+    ...(polyLine(poly) ? [polyLine(poly)] : []),
+    `Field: ${field}.  ${name}${mults !== null ? `: ${mults} multiplication${mults === 1 ? '' : 's'}` : ''}` +
+      `${useTable && table.length ? `, ${table.length} preprocessed constant${table.length === 1 ? '' : 's'}` : ''}.`,
+    ...[].concat(compile),
+  ]), header, ''];
   if (useTable && table.length) {
-    L.push(`/* ${name} constants */`);
-    L.push(`static const ${T} c[${table.length}] = {`);
+    L.push('/* preprocessed constants */');
+    L.push(`static const ${T} ${tbl}[${table.length}] = {`);
     L.push(...withComments(table.map((t, i) => [`    ${t.expr},`, `c${i}${t.comment ? ' = ' + t.comment : ''}`])));
     L.push('};');
     L.push('');

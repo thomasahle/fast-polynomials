@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { buildCBundle, cBundleArchive, hasCBundle, tarBytes } from '../js/cbundle.js';
-import { C_PROVENANCE } from '../js/cgen.js';
+import { C_PROVENANCE, hasCProvenance } from '../js/cgen.js';
 import { paneContent } from '../js/uistate.js';
 
 let fails = 0, checks = 0;
@@ -33,7 +33,7 @@ check(buildCBundle(hornerState).files.find(f => f.name === 'selected.c').text ==
 check(!names.some(n => n.includes('unavailable')), 'failed methods omitted');
 check(b.files.find(f => f.name === 'benchmark.sh').mode === 0o755, 'benchmark script executable mode');
 check(b.files.find(f => f.name === 'inspect.sh').mode === 0o755, 'inspection script executable mode');
-check(b.files.filter(f => f.name.endsWith('.c')).every(f => f.text.startsWith(C_PROVENANCE)),
+check(b.files.filter(f => f.name.endsWith('.c')).every(f => hasCProvenance(f.text)),
       'every generated C file carries the stable site provenance');
 
 const tar = tarBytes(b);

@@ -5,7 +5,7 @@
 //   'R'     the same exact rational preprocessing, with the constants displayed
 //           and emitted in C as doubles (≈ numeric: only that rounding is inexact)
 //   'p61' | 'p89' | 'p127'   Mersenne primes 2^k − 1 ('p' = 'p89', the paper's)
-import { parsePoly } from './polyparse.js';
+import { parsePoly, polyToString } from './polyparse.js';
 import { Rat } from './rat.js';
 import { makeResult, renderAffineChain, chainToText, paperWireNames, gateGroups, renderConstructionsForm } from './chain.js';
 import { buildGraphFromAffineChain } from './graph.js';
@@ -91,7 +91,7 @@ export async function compileChar0(src, fieldMode = 'Q') {
     height: chainHeight(chain),
     scaleStep, note,
   });
-  const copts = { scaleBy: scaleStep ? lc : null };
+  const copts = { scaleBy: scaleStep ? lc : null, poly: polyToString(coeffs), horner: n - 1 + extraMult };
   result.chain = chain;                       // verified PolynomialChain (gate_labels parallel to gates)
   result.fieldId = fd.id;
   result.exact = fd.exact;
