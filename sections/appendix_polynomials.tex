@@ -1,13 +1,13 @@
 \section{Optimized Polynomial Circuits}\label{appendix:polynomials}
 
-This appendix records optimized candidate circuits with four through eleven
+This appendix records optimized candidate circuits with four through thirteen
 multiplication gates.  A circuit with $m$ products below has $2m-1$ keys and
 outputs a monic polynomial of degree $2m-1$.  The circuits were found by
 randomized search, optimizing both the number of additions and the critical
 path depth.  Explicit inverses are proved below for the displayed characteristic-$2$
-circuits of degrees $7$, $15$, $17$, $19$, and $21$, and for separately displayed
-alternatives of degrees $9$, $11$, and $13$.  The other search results are not used in
-the proof of the main theorem.  In particular, a constant nonzero Jacobian found
+circuits of degrees $7$, $15$, $17$, $19$, $21$, $23$, and $25$, and for
+separately displayed alternatives of degrees $9$, $11$, and $13$.  The other
+search results are not used in the proof of the main theorem.  In particular, a constant nonzero Jacobian found
 by the search is only a diagnostic (and a necessary condition for a
 polynomial automorphism), not a proof of bijectivity.
 
@@ -408,9 +408,9 @@ P &= w+s+r+a_{14}.
 
 \smallskip
 \noindent
-The next decoder is unitriangular: like those of degrees $19$ and $21$ below,
-and unlike the degree-$7$ and degree-$17$ decoders, it requires no Frobenius
-roots.
+The next decoder is unitriangular: like those of degrees $19$, $21$, $23$,
+and $25$ below, and unlike the degree-$7$ and degree-$17$ decoders, it
+requires no Frobenius roots.
 
 \begin{lemma}[Uniform inverse for the degree-$15$ characteristic-$2$ circuit]
 \label{lem:char2-degree15-inverse}
@@ -908,6 +908,329 @@ Finally, (A.28)--(A.29) recover the original keys.  Hence the coefficient map
 has a two-sided polynomial inverse over every characteristic-$2$ field; no
 root extraction, scalar division, or Jacobian inference occurs.  Evaluation
 at distinct points is then an invertible Vandermonde transformation.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{12 products, degree 23} (23 keys)
+\[
+\begin{aligned}
+y &= x^2,\\
+z &= (y+a_0)(x+y+a_1),\\
+t &= (x+a_2)(z+a_3),\\
+u &= (y+z+t+a_4)(z+t+a_5),\\
+v &= (x+a_6)(y+z+a_7),\\
+w &= (x+y+z+a_8)(y+v+a_9),\\
+s &= (z+a_{10})(v+a_{11}),\\
+r &= (x+t+a_{12})(u+a_{13}),\\
+g &= (z+t+a_{14})(x+u+a_{15}),\\
+\ell &= (x+a_{16})(z+v+a_{17}),\\
+m &= (x+y+z+a_{18})(x+y+z+w+s+g+\ell+a_{19}),\\
+f &= (z+a_{20})(u+m+a_{21}),\\
+P &= y+v+w+s+r+g+f+a_{22}.
+\end{aligned}
+\]
+\emph{$h=7$, 50 XORs}
+\end{minipage}
+
+\begin{lemma}[Uniform inverse for the degree-$23$ characteristic-$2$ circuit]
+\label{lem:char2-degree23-inverse}
+Let $\F$ be any field of characteristic $2$.  The coefficient map of the
+displayed degree-$23$ circuit is a polynomial automorphism from $\F^{23}$ to
+the monic degree-$23$ polynomials.  Consequently its evaluation map at any
+twenty-three distinct field elements is a bijection $\F^{23}\to\F^{23}$.
+\end{lemma}
+\begin{proof}
+Write $P=x^{23}+\sum_{j=0}^{22}c_jx^j$.  The decoder uses the following
+polynomial coordinates.  The short ones are
+\[
+\begin{array}{lll}
+q_0=a_2,&q_1=a_0+a_1,&q_2=a_0,\\
+q_3=a_3+a_{18}+a_{20},&q_4=a_4+a_5+a_{14}+a_{18}+a_{20},&q_5=a_{18},\\
+q_6=a_{20},&q_7=a_5+a_{14},&q_8=a_6,\\
+q_{15}=a_5+a_{12},&q_{16}=a_5,&q_{17}=a_{13}+a_{16},\\
+q_{18}=a_{16},&q_{19}=a_{21},&q_{20}=a_{15},\\
+q_{21}=a_{17},&q_{22}=a_{22}.&
+\end{array}                                                       \tag{A.35}\label{eq:char2-23-q-forward}
+\]
+With the auxiliary polynomials
+\[
+\begin{gathered}
+ \rho=(a_2+a_6)(a_5a_{14}+a_{15})+a_5a_{14},\qquad
+ \gamma=a_2+a_3+a_6+a_7+a_8+a_{10}+a_{16}+1,\\
+ \alpha=\gamma+(a_5+a_{14})^2,\qquad
+ \beta=(a_5+a_{14})\,\gamma+1,
+\end{gathered}
+\]
+the remaining coordinates are
+\[
+\begin{aligned}
+q_9&=a_5a_{14}+a_8+a_{10}+a_{15}+a_{16},\\
+q_{10}&=\rho+a_9+a_{11}+a_{15}+a_{16},\\
+q_{11}&=a_5a_{14}+a_7+a_{15},\\
+q_{12}&=\rho+a_5+a_{10}+a_{11}+a_{12},\\
+q_{13}&=a_5^4+\alpha a_5^2+\beta a_5+a_{15}^2+\gamma a_{15}+a_{11}+a_{16}+a_{17},\\
+q_{14}&=c_8=a_{19}+H(a).
+\end{aligned}                                                     \tag{A.36}\label{eq:char2-23-q-long}
+\]
+The last line records that literal expansion of row $8$ of $P$ in
+$\F_2[a_0,\ldots,a_{22}][x]$ is affine in $a_{19}$ with unit slope; $H$ is
+its $a_{19}$-free part, a polynomial of $493$ monomials in the keys other
+than $a_{13},a_{19},a_{21},a_{22}$, which we do not display.
+This change has the explicit polynomial inverse
+\[
+\begin{array}{lll}
+a_0=q_2,&a_1=q_1+q_2,&a_2=q_0,\\
+a_3=q_3+q_5+q_6,&a_4=q_4+q_5+q_6+q_7,&a_5=q_{16},\\
+a_6=q_8,&a_7=q_{11}+q_7q_{16}+q_{16}^2+q_{20},&a_{12}=q_{15}+q_{16},\\
+a_{13}=q_{17}+q_{18},&a_{14}=q_7+q_{16},&a_{15}=q_{20},\\
+a_{16}=q_{18},&a_{17}=q_{21},&a_{18}=q_5,\\
+a_{20}=q_6,&a_{21}=q_{19},&a_{22}=q_{22},
+\end{array}                                                       \tag{A.37}\label{eq:char2-23-q-inverse}
+\]
+together with, in this order,
+\[
+\begin{aligned}
+a_{11}&=q_{13}+q_{16}^4+\alpha q_{16}^2+\beta q_{16}+q_{20}^2+\gamma q_{20}
+        +q_{18}+q_{21},\\
+a_{10}&=q_{12}+\rho+q_{16}+a_{11}+a_{12},\\
+a_9&=q_{10}+\rho+a_{11}+q_{18}+q_{20},\\
+a_8&=q_9+q_7q_{16}+q_{16}^2+a_{10}+q_{18}+q_{20},\\
+a_{19}&=q_{14}+H(a),
+\end{aligned}                                                     \tag{A.38}\label{eq:char2-23-q-inverse-long}
+\]
+where now $\rho=(q_0+q_8)(q_7q_{16}+q_{16}^2+q_{20})+q_7q_{16}+q_{16}^2$,
+$\gamma=q_0+q_3+q_5+q_6+q_8+q_9+q_{11}+1$, $\alpha=\gamma+q_7^2$, and
+$\beta=q_7\gamma+1$ are the auxiliary polynomials of \eqref{eq:char2-23-q-long}
+rewritten in the $q$'s, and $H(a)$ in the last line is evaluated at the
+twenty-two keys already listed (it does not involve $a_{19}$).
+Substitution in either direction verifies (A.35)--(A.38) without division.
+
+Let $\mathcal P(q_0,\ldots,q_{22})$ be the displayed circuit after
+substituting (A.37)--(A.38), and define the baselines
+\[
+ K_i(q_0,\ldots,q_{i-1})
+  =\coeff{\mathcal P(q_0,\ldots,q_{i-1},0,\ldots,0)}{22-i}
+  \qquad(0\le i\le17\text{ and }i=22).
+                                                                    \tag{A.39}\label{eq:char2-23-baseline}
+\]
+Literal expansion in $\F_2[q_0,\ldots,q_{22}][x]$ gives the unit-pivot
+identities
+\[
+ c_{22-i}=q_i+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le17\text{ and }i=22),
+                                                                    \tag{A.40}\label{eq:char2-23-triangular}
+\]
+in which $K_{14}=0$, that is, $c_8=q_{14}$ exactly.  For clarity, the first
+six rows are
+\[
+\begin{aligned}
+c_{22}&=q_0,\\
+c_{21}&=1+q_0+q_1+q_0^2,\\
+c_{20}&=1+q_1+q_2+q_0q_1+q_0^3,\\
+c_{19}&=q_1+q_2+q_3+q_0q_2+q_1q_2+q_2^2+q_0^3+q_0^2q_1,\\
+c_{18}&=q_1+q_2+q_4+q_0^2+q_0q_1+q_0q_3+q_1q_2+q_2^2+q_0^3+q_0^2q_1+q_0^2q_2\\
+      &\quad+q_0q_1q_2+q_0q_2^2+q_0^3q_1,\\
+c_{17}&=q_1+q_2+q_5+q_0q_2+q_1q_2+q_2^2+q_0^3+q_0^2q_2+q_0^2q_3+q_0^3q_2\\
+      &\quad+q_0^2q_1q_2+q_0^2q_2^2.
+\end{aligned}                                                     \tag{A.41}\label{eq:char2-23-first-rows}
+\]
+The pivot table is
+\[
+\begin{gathered}
+\begin{array}{c|rrrrrrrrrrrr}
+\text{row}&22&21&20&19&18&17&16&15&14&13&12&11\\ \hline
+\text{pivot}&q_0&q_1&q_2&q_3&q_4&q_5&q_6&q_7&q_8&q_9&q_{10}&q_{11}
+\end{array}\\[1ex]
+\begin{array}{c|rrrrrrcr}
+\text{row}&10&9&8&7&6&5&4,3,2,1&0\\ \hline
+\text{pivot}&q_{12}&q_{13}&q_{14}&q_{15}&q_{16}&q_{17}
+ &\text{block }(q_{18},q_{19},q_{20},q_{21})&q_{22}.
+\end{array}
+\end{gathered}                                                     \tag{A.42}\label{eq:char2-23-pivot-table}
+\]
+Rows $4,3,2,1$ are decoded as a block.  For $j\in\{4,3,2,1\}$ put
+$\kappa_j(q_0,\ldots,q_{17})=\coeff{\mathcal P(q_0,\ldots,q_{17},0,\ldots,0)}{j}$
+and $e_j=c_j+\kappa_j$.  Literal expansion gives
+\[
+\begin{aligned}
+e_4&=(q_0+q_8+1)\,q_{18}+q_{19},\\
+e_3&=(q_0+q_8)\,q_{18}+q_{19},\\
+e_2&=\bigl(q_1(q_0+q_8+1)+q_8\bigr)\,q_{18}+q_1q_{19}+q_{20},\\
+e_1&=T\,q_{18}+q_2q_{19}+(q_8+q_{18}+1)\,q_{20}+q_{21},
+\end{aligned}                                                     \tag{A.43}\label{eq:char2-23-block}
+\]
+with $T=q_0q_2+q_2q_8+q_2+q_3+q_5+q_6+q_7q_{16}+q_{11}+q_{16}^2+1$.  The
+first two rows form a $2\times2$ system in $(q_{18},q_{19})$ whose matrix
+$\bigl(\begin{smallmatrix}q_0+q_8+1&1\\ q_0+q_8&1\end{smallmatrix}\bigr)$
+has determinant $1$ and inverse
+$\bigl(\begin{smallmatrix}1&1\\ q_0+q_8&q_0+q_8+1\end{smallmatrix}\bigr)$;
+the last two rows are then unit pivots for $q_{20}$ and $q_{21}$.  Hence
+\[
+\begin{aligned}
+q_{18}&=e_4+e_3,\\
+q_{19}&=e_3+(q_0+q_8)\,q_{18},\\
+q_{20}&=e_2+\bigl(q_1(q_0+q_8+1)+q_8\bigr)\,q_{18}+q_1q_{19},\\
+q_{21}&=e_1+T\,q_{18}+q_2q_{19}+(q_8+q_{18}+1)\,q_{20}.
+\end{aligned}                                                     \tag{A.44}\label{eq:char2-23-block-solve}
+\]
+Thus the decoder is the descending recurrence
+\[
+\begin{gathered}
+ q_i=c_{22-i}+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le17),\\
+ \text{then \eqref{eq:char2-23-block-solve}},\qquad
+ q_{22}=c_0+K_{22}(q_0,\ldots,q_{21}).
+\end{gathered}                                                     \tag{A.45}\label{eq:char2-23-decoder}
+\]
+Each baseline in \eqref{eq:char2-23-baseline} and each $\kappa_j$ is an
+explicit polynomial: substitute the already decoded coordinates, set the
+later ones to zero, and collect the named row.  The companion script
+\texttt{char2/verify\_n23\_unitriangular\_symbolic.py} (run from the
+repository root as
+\texttt{python3 -m char2.verify\_n23\_unitriangular\_symbolic}, since it
+imports \texttt{tools/char2\_inverse\_finder.py}; its last wire $n$ is our
+$f$) expands every identity exactly in $\F_2[q_0,\ldots,q_{22}][x]$: the
+inverse (A.37)--(A.38) by substitution, the eighteen unit pivots of
+\eqref{eq:char2-23-triangular} for rows $22$ down to $5$ (including
+$c_8=q_{14}$), the four block rows \eqref{eq:char2-23-block} with their
+solution \eqref{eq:char2-23-block-solve}, and the unit slope of $q_{22}$ in
+row $0$.  It performs no finite-field enumeration.
+
+Finally, (A.37)--(A.38) recover the original keys.  Hence the coefficient map
+has a two-sided polynomial inverse over every characteristic-$2$ field; no
+root extraction, scalar division, or Jacobian inference occurs.  Evaluation
+at distinct points is then an invertible Vandermonde transformation.
+\end{proof}
+
+\medskip
+\noindent
+\begin{minipage}[t]{\textwidth}
+\textbf{13 products, degree 25} (25 keys)
+\[
+\begin{aligned}
+y &= x^2,\\
+z &= (y+a_0)(x+y+a_1),\\
+t &= (x+a_2)(z+a_3),\\
+u &= (y+z+t+a_4)(z+t+a_5),\\
+v &= (x+a_6)(y+z+a_7),\\
+w &= (x+y+z+a_8)(y+v+a_9),\\
+s &= (z+a_{10})(v+a_{11}),\\
+r &= (x+t+a_{12})(u+a_{13}),\\
+g &= (z+t+a_{14})(x+u+a_{15}),\\
+\ell &= (x+a_{16})(z+v+a_{17}),\\
+d &= (y+z+t+a_{18})(x+y+z+u+v+w+r+a_{19}),\\
+k &= (x+y+t+a_{20})(\ell+a_{21}),\\
+f &= (x+t+u+s+r+g+\ell+d+k+a_{22})(t+a_{23}),\\
+P &= y+z+u+\ell+f+a_{24}.
+\end{aligned}
+\]
+\emph{$h=7$, 59 XORs}
+\end{minipage}
+
+\begin{lemma}[Uniform inverse for the degree-$25$ characteristic-$2$ circuit]
+\label{lem:char2-degree25-inverse}
+Let $\F$ be any field of characteristic $2$.  The coefficient map of the
+displayed degree-$25$ circuit is a polynomial automorphism from $\F^{25}$ to
+the monic degree-$25$ polynomials.  Consequently its evaluation map at any
+twenty-five distinct field elements is a bijection $\F^{25}\to\F^{25}$.
+\end{lemma}
+\begin{proof}
+Write $P=x^{25}+\sum_{j=0}^{24}c_jx^j$.  The first ten gates are those of
+the degree-$23$ circuit, but the decoder is organized differently: it is a
+chain of unit pivots in the original keys.  Its pivot table assigns to row
+$24-i$ the key $a_{p_i}$:
+\[
+\begin{gathered}
+\begin{array}{c|rrrrrrrrrrrr}
+\text{row}&24&23&22&21&20&19&18&17&16&15&14&13\\ \hline
+\text{key}&a_2&a_0&a_1&a_3&a_4&a_{12}&a_6&a_5&a_{23}&a_7&a_9&a_{13}
+\end{array}\\[1ex]
+\begin{array}{c|rrrrrrrrrrrrr}
+\text{row}&12&11&10&9&8&7&6&5&4&3&2&1&0\\ \hline
+\text{key}&a_8&a_{17}&a_{10}&a_{11}&a_{15}&a_{19}&a_{21}&a_{22}&a_{18}&a_{16}&a_{14}&a_{20}&a_{24}.
+\end{array}
+\end{gathered}                                                     \tag{A.46}\label{eq:char2-25-pivot-table}
+\]
+The coordinates $q_0,\ldots,q_{24}$ are defined by twenty-four elementary
+substitutions, performed in the order $i=0,1,\ldots,23$,
+\[
+ a_{p_i}=q_i+\tau_i,\qquad
+ \tau_i\in\F_2[q_0,\ldots,q_{i-1},\,a_{p_{i+1}},\ldots,a_{p_{23}}],
+ \qquad\text{and}\qquad q_{24}=a_{24}.                            \tag{A.47}\label{eq:char2-25-chain}
+\]
+Each tail $\tau_i$ is determined by literal expansion: after the first $i$
+substitutions, row $24-i$ of $P$ is affine in $a_{p_i}$ with unit slope,
+\[
+ [P]_{24-i}=a_{p_i}+\tau_i+K_i(q_0,\ldots,q_{i-1}),                \tag{A.48}\label{eq:char2-25-step}
+\]
+where $K_i$ is the value of the $a_{p_i}$-free part at
+$a_{p_{i+1}}=\cdots=a_{p_{23}}=0$ and $\tau_i$ is the remainder (so
+$\tau_i$ vanishes when the later keys do).  Seventeen of the tails are
+short:
+\[
+\begin{gathered}
+\tau_0=\tau_2=\tau_3=\tau_6=\tau_7=\tau_8=\tau_{21}=\tau_{22}=\tau_{23}=0,\\
+\tau_1=a_1,\qquad \tau_5=a_{23},\qquad
+\tau_4=a_5+a_{12}+a_{18}+a_{23},\\
+\tau_9=a_8+a_{13}+a_{14}+a_{16}+(q_4+q_5+q_7)\,a_{18}+a_{18}^2,\\
+\tau_{10}=(q_0+q_6)\bigl(a_{13}+a_{14}+(q_4+q_5+q_7)\,a_{18}+a_{18}^2\bigr)+a_{14},\\
+\tau_{11}=(q_0+q_6)\,a_{16}+(q_0+q_4+q_5+q_6+q_7+1)\,a_{18}+a_{18}^2+a_{14},\\
+\tau_{12}=(q_4+q_5+q_7)\,a_{18}+a_{18}^2+a_{14}+a_{16},\qquad
+\tau_{20}=(q_0+q_6+1)\,a_{16}.
+\end{gathered}                                                     \tag{A.49}\label{eq:char2-25-tails}
+\]
+The seven tails $\tau_{13},\ldots,\tau_{19}$ (rows $11$ down to $5$) have
+$71$, $215$, $339$, $212$, $245$, $359$, and $4652$ monomials, involve
+among the later keys only $a_{14},a_{15},a_{16},a_{18},a_{19},a_{20},a_{21}$,
+and are not displayed; the companion script produces and checks them.
+After all twenty-four substitutions, with $\mathcal P(q_0,\ldots,q_{24})$
+the resulting circuit,
+\[
+\begin{gathered}
+ K_i(q_0,\ldots,q_{i-1})
+  =\coeff{\mathcal P(q_0,\ldots,q_{i-1},0,\ldots,0)}{24-i},\\
+ c_{24-i}=q_i+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le24),
+\end{gathered}                                                     \tag{A.50}\label{eq:char2-25-triangular}
+\]
+the $K_i$ of \eqref{eq:char2-25-step} being the same polynomials.  For
+clarity, the first six rows are
+\[
+\begin{aligned}
+c_{24}&=q_0,\\
+c_{23}&=q_0+q_1,\\
+c_{22}&=q_0+q_2+q_0q_1,\\
+c_{21}&=1+q_0+q_2+q_3+q_0^2+q_0q_1+q_0q_2+q_1q_2+q_2^2+q_0^4,\\
+c_{20}&=q_0+q_2+q_4+q_0q_1+q_0q_3+q_1q_2+q_2^2+q_0^3+q_0q_1q_2+q_0q_2^2+q_0^5,\\
+c_{19}&=1+q_2+q_3+q_5+q_0^2+q_0q_1+q_0q_2+q_1q_2+q_2^2+q_0^3+q_0^2q_1+q_0^4\\
+      &\quad+q_0^4q_1+q_0^5.
+\end{aligned}                                                     \tag{A.51}\label{eq:char2-25-first-rows}
+\]
+Thus the decoder is the descending recurrence
+\[
+ q_i=c_{24-i}+K_i(q_0,\ldots,q_{i-1})\qquad(0\le i\le24),        \tag{A.52}\label{eq:char2-25-decoder}
+\]
+followed by back-substitution through \eqref{eq:char2-25-chain} in the
+reverse order $i=23,22,\ldots,0$: each $\tau_i$ involves, besides
+$q_0,\ldots,q_{i-1}$, only keys recovered earlier in this pass, and
+$a_{24}=q_{24}$.  Every baseline $K_i$ is an explicit polynomial (substitute
+the decoded coordinates, set the later ones to zero, collect the named
+row), and every tail is an explicit polynomial by \eqref{eq:char2-25-step}.
+The companion script
+\texttt{char2/verify\_n25\_unitriangular\_symbolic.py} (run as
+\texttt{python3 -m char2.verify\_n25\_unitriangular\_symbolic}; it imports
+\texttt{tools/char2\_inverse\_finder.py} and names our wires $d,k,f$ as
+$h,j,n$) performs the twenty-four substitutions exactly in
+$\F_2[a_0,\ldots,a_{24}][x]$, checking at each step that the named row has
+degree one in $a_{p_i}$ with coefficient $1$ and that $\tau_i$ is free of
+$a_{p_i}$, that the row then reads $q_i+K_i(q_0,\ldots,q_{i-1})$ with $K_i$
+free of the later keys, and finally all twenty-four identities of
+\eqref{eq:char2-25-triangular} together with the unit slope of $a_{24}$ in
+row $0$.  It performs no finite-field enumeration.
+
+Hence the coefficient map has a two-sided polynomial inverse over every
+characteristic-$2$ field; no root extraction, scalar division, or Jacobian
+inference occurs.  Evaluation at distinct points is then an invertible
+Vandermonde transformation.
 \end{proof}
 
 \subsection{Large-prime implementation (\texorpdfstring{$\F_{2^{89}-1}$}{GF(2\textasciicircum 89-1)})}

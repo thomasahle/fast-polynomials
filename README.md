@@ -39,7 +39,7 @@ independence on distinct inputs.
 
 Characteristic two requires different constructions. The website and symbolic
 certificates under `char2/` include explicit circuits and decoders at every odd
-degree through 25; Appendix A of the paper currently describes cases through 21.
+degree through 25; Appendix A of the paper describes the same cases through 25.
 Lean checks the website's odd-degree constructions through 15 and their
 one-product even lifts, covering every degree 5–16. A formal lower bound is also
 included, but a uniform all-degree upper bound remains open. See the examples in
