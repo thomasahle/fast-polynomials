@@ -386,7 +386,8 @@ Every row of the table below is timed by one driver,
 \texttt{tools/bench/bench\_tabrows.cpp}, under the wrapper and batching of the
 $k$-wise comparison ($10^6$ inputs, fastest $100$ of $200$ repetitions with
 fresh keys, mean $\pm$ standard deviation in \textmu s per $10^6$ hashes), on the
-same two machines as the other tables: the Apple M2 Pro (Apple clang~17,
+same two machines as the $k$-wise and injective tables
+(\Cref{tab:kwise_both,tab:injective}): the Apple M2 Pro (Apple clang~17,
 \texttt{-O3 -march=armv8-a+crypto}) and the Intel Xeon Platinum 8375C
 (clang~21.1.8, \texttt{-O3 -march=native}, pinned to eight cores).
 MurmurHash3 and xxHash64 are the single-word variants (the 64-bit finalizer and
@@ -448,9 +449,10 @@ explaining the performance gap.
 The three quartic rows are the implementations \texttt{quartic2\_64},
 \texttt{quartic3\_64} and \texttt{motzkin\_61} of \Cref{tab:families};
 the \texttt{mult4} of Table~\ref{tab:kwise_both} is the first of these on
-ARM and the second on x86.  The $k=7$ row times the search circuit
-\texttt{mult7} of \Cref{tab:families}, for which no inverse is displayed: it
-has seven keys, but no independence is claimed for it.
+ARM and the second on x86.  The $k=7$ row times the search circuit of the
+$k=7$ row of \Cref{tab:families} (ARM \texttt{mult7}, x86
+\texttt{mult7\_alt2}), for which no inverse is displayed: it has seven keys,
+but no independence is claimed for it.
 
 \subsection{Comparison Across Finite Fields}
 
