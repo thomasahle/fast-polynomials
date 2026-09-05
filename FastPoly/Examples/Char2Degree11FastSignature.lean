@@ -16,7 +16,7 @@ private theorem square_head (x b d : R) :
     (x ^ 2 + b) * (x + x ^ 2 + (d + b)) =
       x ^ 4 + x ^ 3 + d * x ^ 2 + b * x + b * (d + b) := by
   ring_nf
-  simp only [CharTwo.two_eq_zero, mul_zero, add_zero]
+  simp only [CharTwo.two_eq_zero, mul_zero, add_zero, zero_add]
 
 theorem z_form (q : Keys R) :
     z q = X ^ 4 + X ^ 3 + C (q 8) * X ^ 2 + C (q 9) * X + C (z0 q) := by
@@ -75,7 +75,7 @@ private theorem quartic_product (x a b c d e : R) :
         (b ^ 2 + c + (d + e) * a + d) * x ^ 2 + (d + e) * b * x +
           (c + d) * (c + e) := by
   ring_nf
-  simp only [CharTwo.two_eq_zero, mul_zero, add_zero]
+  simp only [CharTwo.two_eq_zero, mul_zero, add_zero, zero_add]
 
 theorem quartic_product_shape (a b c d e : R) :
     (quartic a b c + C d) * (X ^ 2 + quartic a b c + C e) =

@@ -109,7 +109,7 @@ def main() -> None:
         25,
         "Circuit: '13 products, degree 25' of sections/appendix_polynomials.tex (= CIRCUITS[25] of website/js/char2.js).  "
         "Decoder: the 24-step chain (A.46)-(A.52) of Lemma lem:char2-degree25-inverse, unit pivots only.\n"
-        "Implementation: char2/verify_n25_unitriangular_symbolic.py (imports tools/char2_inverse_finder.py).",
+        "Implementation: char2/verify_n25_unitriangular_symbolic.py (exact polynomial certificate; no search).",
     )
     rep.check("gate list matches the appendix display and char2.js CIRCUITS[25]", print_circuit(SPEC, "appendix '13 products, degree 25'", (7, 59)))
     print(DECODER)

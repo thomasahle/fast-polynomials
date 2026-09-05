@@ -2,11 +2,13 @@ import FastPoly.Examples.Char2Construction
 import FastPoly.Examples.Char2Degree5
 import FastPoly.Examples.Char2Degree7
 import FastPoly.Examples.Char2Degree9
-import FastPoly.Examples.Char2Degree11
-import FastPoly.Examples.Char2Degree13
+import FastPoly.Examples.Char2Degree11FastRealization
+import FastPoly.Examples.Char2Degree13FastRealization
 import FastPoly.Examples.Char2Degree15FastRealization
+import FastPoly.Examples.Char2Degree17Realization
 import FastPoly.Examples.Char2Degree19Realization
 import FastPoly.Examples.Char2Degree21Realization
+import FastPoly.Examples.Char2Degree23Realization
 
 /-!
 # Verified finite characteristic-two constructions
@@ -31,13 +33,20 @@ noncomputable def degree9 : Construction F 9 5 :=
   ⟨Char2Degree9.program, Char2Degree9.decode, Char2Degree9.program_decode_correct⟩
 
 noncomputable def degree11 : Construction F 11 6 :=
-  ⟨Char2Degree11.program, Char2Degree11.decode, Char2Degree11.program_decode_correct⟩
+  Char2Degree11Fast.construction
 
 noncomputable def degree13 : Construction F 13 7 :=
-  ⟨Char2Degree13.program, Char2Degree13.decode, Char2Degree13.program_decode_correct⟩
+  Char2Degree13Fast.construction
 
 noncomputable def degree15 : Construction F 15 8 :=
   Char2Degree15Fast.construction
+
+/-- The supplied degree-17 circuit with explicit square/fourth-power pivots. -/
+noncomputable def degree17 [PerfectRing F 2] : Construction F 17 9 :=
+  Char2Degree17Realization.construction
+
+/-- The one-product lift of the completed degree-17 decoder. -/
+noncomputable def degree18 [PerfectRing F 2] : Construction F 18 10 := degree17.evenLift
 
 /-- The existing degree-19 circuit, decoded by monic division and explicit
 thirteen-row back-substitution; no perfect-field assumption is needed. -/
@@ -54,11 +63,17 @@ noncomputable def degree21 : Construction F 21 11 :=
 /-- The one-product lift of the completed degree-21 decoder. -/
 noncomputable def degree22 : Construction F 22 12 := degree21.evenLift
 
+/-- The supplied degree-23 circuit with its two-sided raw-key inverse. -/
+noncomputable def degree23 : Construction F 23 12 :=
+  Char2Degree23Realization.construction
+
+/-- The one-product lift of the completed degree-23 decoder. -/
+noncomputable def degree24 : Construction F 24 13 := degree23.evenLift
+
 /-- A fixed program with exactly `⌊n/2⌋+1` products and its explicit decoder.
-The perfect-field assumption is needed only by the degree-7 base and its lift.
-This contiguous dispatcher ends at 16 while degree17 is pending; the completed
-degree19–degree22 constructions are also exposed separately above. -/
-noncomputable def construction [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi : n ≤ 16) :
+The perfect-field assumption is needed by the degree-7 and degree-17 bases
+and their even lifts. Degree25 remains a separate, unfinished inverse port. -/
+noncomputable def construction [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi : n ≤ 24) :
     Construction F n (n / 2 + 1) := by
   interval_cases n
   · exact degree5
@@ -73,9 +88,17 @@ noncomputable def construction [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi 
   · exact degree13.evenLift
   · exact degree15
   · exact degree15.evenLift
+  · exact degree17
+  · exact degree18
+  · exact degree19
+  · exact degree20
+  · exact degree21
+  · exact degree22
+  · exact degree23
+  · exact degree24
 
 /-- The counted program really computes any requested monic polynomial. -/
-theorem monic_evaluation [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi : n ≤ 16)
+theorem monic_evaluation [PerfectRing F 2] (n : ℕ) (hlo : 5 ≤ n) (hhi : n ≤ 24)
     (P : F[X]) (hP : P.Monic) (hn : P.natDegree = n) :
     (construction (F := F) n hlo hhi).program.circuit.eval
       (inputEnv ((construction n hlo hhi).decoder (fun i => P.coeff i))) 0 = P :=

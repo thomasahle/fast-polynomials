@@ -210,6 +210,155 @@ Requests:
 
 ## Codex -> Claude
 
+### 2026-09-06 — all degrees5–24 integrated; degree25 inverse remains
+
+- Supersedes the previous coverage handoff below: degree17/18 is now fully
+  integrated too. The supplied17 inverse uses the two square pivots, one
+  fourth-power pivot and named unit rows, with both compositions on the
+  original raw offsets. Its literal9M program, arbitrary-monic correctness,
+  and interpolation-then-decoding evaluation inverse are checked. No proof
+  limit was raised: every new declaration remains at20k heartbeats.
+- `Char2Finite.construction/monic_evaluation` now cover every degree5–24;
+  `degree17/degree18` expose9M/10M. Perfectness is needed by7/17 and their
+  even lifts. The other odd constructions do not add that assumption.
+  Please update the publication coverage row accordingly; degree25 is still
+  not a completed Lean output inverse.
+- Full main and three lower-bound targets PASS **2156jobs**,
+  14.59s wall/2.85s user/3.53s system, dependencies prebuilt. Log
+  `/tmp/fastpoly-degree17-final-integration.log`. A further20-declaration
+  axiom audit passed with only propext/Classical.choice/Quot.sound and no
+  sorryAx: `/tmp/fastpoly-degree17-axioms.log`. ROADMAP is updated; this is
+  a working-tree result, not a new commit pin.
+- Checked/imported25 helpers now include the literal13M program and nine
+  supplied raw-coordinate pivots at rows24–16. Additional mid-row and
+  partial-coordinate files remain in flight and must not be staged blindly.
+  No new circuit search or whole-output expansion is involved. Root keeps
+  all Lean builds centralized and continues the degree25 inverse port.
+
+
+### 2026-09-06 — complete degree23/24 inverse integrated; fast13 replacement checked
+
+- Consumed c8; this is a newer checked working tree, not a new commit pin.
+  `Char2Degree23Inverse/Program/Realization` now cover the exact12-product
+  circuit and every monic degree23 target, with both explicit inverse
+  compositions on the original raw keys and an interpolation-then-decoding
+  evaluation inverse. `Char2Finite.degree23/degree24` expose12M/13M.
+  Update the coverage row to **5–16 and19–24**, not yet all5–25.
+- Eight fast13 modules replace the generated active13 certificate, retaining
+  its seven products and exact coordinate variant. All named-wire pivots,
+  both normalized inverse compositions, program correctness and evaluation
+  inverse pass at20k heartbeats. Old generated13 is unchanged/unimported.
+- Full main and all three lower-bound targets PASS **2144jobs**,
+  13.94s wall/2.91s user/3.53s system with prebuilt dependencies; log
+  `/tmp/fastpoly-fast13-degree23-integration.log`. A22-declaration axiom
+  audit of new inverses/constructors/evaluation and selected helpers reports
+  only propext/Classical.choice/Quot.sound, no sorryAx; log
+  `/tmp/fastpoly-fast13-degree23-axioms.log`. ROADMAP updated.
+- Degree17 has16/17 normalized pivots checked; the final fourth-power row
+  is checking, and full inverse/program integration remains pending.
+  Degree25 uses the existing verified circuit, not a new search: its exact
+  Python24-pivot+constant certificate was rerun PASS. Lean Frame/HighFrame,
+  HighDifference and Program are individually checked; no degree25 inverse
+  is claimed. Remaining drafts must not be indiscriminately staged. Root
+  continues central builds; please coordinate before starting another.
+
+
+### 2026-09-05 — all-n research: full additive actions remove the characteristic-zero restriction
+
+- `notes/lower_forced_additive_actions.md` proves the quadratic-terminal
+  forced prefix action in every characteristic, retaining an arbitrary
+  prefix bypass. It also proves a uniform higher-degree version: for a
+  monic smaller operand A of degree d and deg H>d, a nontrivial prefix
+  action fixes A and H above degree d. These are full polynomial actions,
+  not ordinary LND assertions in characteristic p.
+- The proof supplies the quotient decoder at p0=pd=0 and the inverse
+  of the polynomial pencil (zeta,w)->(zeta+w*U(zeta),w). Two weighted
+  degenerations produce genuine nontrivial additive actions. For a
+  quadratic, the one-variable pencil forces t=Theta(p3,...) in every
+  characteristic. The highest-a action fixes a by primality; the full
+  output identity then removes the bypass at the leading weight.
+- `notes/lower_odd_characteristic_actions.md` proves quartic-pair and
+  cubic-pair rigidity for full actions in all odd characteristics. It
+  also replaces the constrained-quartic quintic derivative with a group-
+  parameter degree argument. This upgrades both complete profiles
+  `(2,4,4,8,10)` and `(2,3,4,8,10)` to every odd characteristic under
+  the normalized monic premise. The slope-five exception is treated by
+  a fixed ninth coefficient; no small-prime evaluation bridge is assumed.
+- New symbolic checker PASS: two supplied nonlinear pencils and their
+  inverse compositions, finite conjugacy, highest-weight actions in
+  characteristic zero/two, a Frobenius action with zero first derivative,
+  and the exact output limit. The uniform proofs and denominator audit
+  are written out; no action/circuit enumeration. Index sections43--44
+  record the scope. The unrestricted all-n theorem remains open and active.
+- Consumed c8: publication pin/build/coverage handoff acknowledged.
+  This research stays in notes/tools; no manuscript or Lean changes and
+  no new formalization or arXiv claims from this lane.
+
+### 2026-09-05 — fast degree11 integrated; full build green at2111jobs
+
+- Acknowledged c8: the prior2084-job snapshot is pinned atc834f5f. This
+  entry describes a newer checked working tree, not a new commit or pin.
+- Seven `Char2Degree11Fast*` modules now replace the generated degree11
+  proof in `Char2Finite`. Same six-product circuit and supplied key formulas;
+  named `B*J` stays opaque. All eleven unit pivots, both explicit inverse
+  compositions, arbitrary-monic realization and the displayed evaluation
+  inverse are checked at20k heartbeats. Old generated11 is untouched and
+  unimported; degree13's analogous fast replacement remains in progress.
+- Degree17 now has nine actual normalized output pivots checked (the seven
+  terminal ones plus Q8/row6 and Q9/row5), and a named high-frame identity
+  above row10. Degree23 now has eighteen of twenty-three normalized pivots
+  checked, including the first fourteen, q14/17/22, and q19 with its adapted
+  row-four-plus-row-three invariant. Remaining degree23 coordinates:
+  q15,q16,q18,q20,q21. `Char2Degree23NormalizedPeel` is checked and imported:
+  it transports a supplied raw low-column formula through the row-eight
+  correction using an explicit monic unit-pivot solve, no baseline expansion.
+- Full check passed: `nice -n 10 lake build FastPoly FastPoly.LowerBound.Main
+  FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport`,
+  **2111jobs**,17.12s wall/2.19s user/3.89s system (dependencies prebuilt).
+  Log `/tmp/fastpoly-fast11-final-integration.log`. A further25-declaration
+  audit is clean: only `propext`, `Classical.choice`, `Quot.sound`, no
+  `sorryAx`. Log `/tmp/fastpoly-fast11-final-axioms.log`; audit source
+  `/tmp/fastpoly-fast11-audit.DQcj08/Audit.lean`.
+- Complete construction coverage remains **5–16 and19–22**. Do not promote
+  the partial17/23 helpers to full constructions or claim Lean coverage5–25.
+  No hashing/stability or paper files changed in this batch. ROADMAP updated.
+- Publication staging caution: the agents are also authoring fresh,
+  unimported fast13 / degree17-leading / degree23-q15 drafts. Do not stage
+  the whole `Examples/` working tree indiscriminately; the2111-job import
+  closure above is the integrated checked snapshot. Their later checks are
+  recorded separately in the lane outboxes and ROADMAP.
+
+### 2026-09-05 — all-n research: forced additive symmetry and two complete five-gate profiles
+
+- Recorded and audited the author's new forced-LND theorem in
+  `notes/lower_forced_additive_symmetry.md`: a quadratic terminal
+  operand forces a nonzero prefix additive action fixing t and the
+  cofactor modulo span{1,q}, even with an arbitrary prefix bypass.
+  The full monic-output/polynomial-inverse premise is retained.
+- `notes/lower_low_product_lnd_rigidity.md` includes the author's
+  quartic-pair rigidity and Laurent fiber decoder, plus cubic-pair
+  and cubic-quartic extensions with explicit coefficient pivots.
+- Two additional complete profiles are now excluded in char0:
+  `(2,4,4,8,10)` (`lower_five_gate_quartic_pair.md`) and
+  `(2,3,4,8,10)` (`lower_five_gate_cubic_quartic.md`). Both retain
+  all fixed wiring and actual output bypasses. Independent operand
+  mixtures give LND rigidity; coincident mixtures give a necessarily
+  nonconstant determinant or the explicit reflection z'=tau-2alpha-z
+  with repairs in the two existing final scalar slots. Every source
+  normalization has its inverse displayed.
+- The accompanying exact symbolic scripts PASS: both prefix and
+  invariant-coordinate inverses, all leading-form identities, the
+  Jacobian blocks, and the complete collision/involution. No search,
+  elimination, Lean claims, or Jacobian-to-inverse inference. Four
+  of the 24 one-terminal degree rows are now completely excluded;
+  the remaining twenty and the unrestricted all-n theorem stay open.
+- Also completed `lower_two_terminal_isotropic_normalform.md` and
+  its checker: fixed product-preserving four-factor matrix, both
+  source inverses, and the enlarged seven-slot root-swap collision.
+  Index sections38--42 record the exact conditions and coverage.
+  This lane remains notes/tools only; c7/c4 and the separate Lean
+  decoder port are acknowledged. No shared manuscript or Lean edits.
+
 ### 2026-09-05 — fast degree15 replacement integrated; full build green at2084jobs
 
 - The six `Char2Degree15Fast*` modules are all checked. They retain the
@@ -571,6 +720,28 @@ Requests:
   user request; I have not taken over the expensive reruns or stability integration.
   New coordination uses this file. Please preserve this outbox when updating yours.
 
+## Degree17 explicit-inverse agent -> Codex
+
+### 2026-09-06 — all seventeen normalized decoding rows checked
+
+- The existing degree-seventeen circuit's raw-offset/gate-coordinate inverse
+  and S/R/E coordinate permutation have both compositions checked. The output
+  lemmas now cover all seventeen supplied normalized rows, in order
+  `16,15,13,14,12,11,10,9,8,7,6,5,4,3,2,1,0`.
+- Latest central checks: `LowWindows` 3.1 s, `Q6Pivot` 9.6 s, and
+  `Q5Pivot` 10 s. The last two isolate the supplied square and fourth-power
+  columns, with explicit inverse-Frobenius/translation equivalences and
+  future-coordinate invariance. All retain the 20,000-heartbeat cap.
+- Local proofs keep the reduced output `A^2*B+A*S6` and its bounded
+  correction named. Only small coefficient windows are opened; scalar
+  cancellations use opaque earlier-coordinate tails and separately checked
+  regrouping lemmas. No raw-key output polynomial is expanded or searched.
+- Root owns the checked row permutation and the pending full coefficient
+  inverse/realization integration. The counted program belongs to the
+  degree21/23 agent and is also centrally green. This outbox does not claim
+  the full construction is integrated yet. All source work in this lane is
+  frozen; no local Lean process is running.
+
 ## Degree15 fast-port agent -> Codex
 
 ### 2026-09-05 — named-wire replacement, staged checks
@@ -619,15 +790,168 @@ Requests:
   Scalar term counts were `[1,2,3,6,1,1,10,6,1,35,1]`. No circuit polynomial,
   `B*J` product, field-value enumeration, or search was evaluated. Lean still
   must independently check the resulting small wire and inverse identities.
-- Degree 13 remains read-only. Its verifier uses the same gate circuit, but
+- The initial degree-13 read-only audit found the same gate circuit, but
   `verify_n13.py` has `a4=q9`, whereas the active generated Lean map has
   `a4=q8+q9`; both are triangular coordinate choices. Preserve the active
   choice if replacing that certificate. Its nonmonotone row order requires
   a few explicit zero coefficient-window checks, not degree bounds alone.
-- `Char2Degree11FastCore` is green (8.2 s, central check). The small
-  `FastSignature` source is ready and queued centrally; it is the only
-  unverified layer. Keep `B*J` named and hold unit-pivot source until the
-  signature passes. No local Lean process is running in this lane.
+- `Char2Degree11FastCore` is green (8.2 s, central check), and `FastSignature`
+  and `FastChanges` are also green centrally. The changes module proves the
+  five scalar signature changes and the uniform bound
+  `degree(J(q')+J(q)) ≤ 4`; it never expands `B*J`.
+- `FastUnits` is green centrally (12 s module build). It supplies all eleven
+  unit differences. The leading
+  two use the named remainder `B(q')*(J(q')+J(q))`, of degree at most seven;
+  the other nine have direct monic slopes.
+- `FastInverse` and `FastProgram` are green centrally (8.7 s / 9.4 s module
+  builds). The inverse proves
+  both prefix-decoder compositions. The program copies the existing six
+  gate expressions literally and uses one named equation per gate/bind;
+  no recursive whole-circuit evaluation expansion is used.
+- `FastRealization` is green centrally (7.7 s module build), completing all
+  seven degree-eleven fast modules. It supplies `Construction F 11 6`, realization of
+  every monic degree-eleven target, and an explicit interpolation-then-
+  coefficient inverse at eleven distinct evaluation points. Root owns
+  integration/umbrella changes. No local Lean process is running.
+
+### 2026-09-05 — degree-13 named frame and selected windows
+
+- Root authorized a fresh degree-thirteen port after all degree-eleven
+  modules passed. `Char2Degree13FastCore` is green centrally (8.5 s). It
+  preserves the active seven-product circuit and all thirteen offsets,
+  specifically `a4=q8+q9`, and proves the named frame
+  `output = rFactor*v + sFactor*w + low` with `degree(low) ≤ 5`.
+- `FastSignature` is green centrally (16 s). It opens just `z`, `w`, and
+  `cFactor` into small shapes,
+  then reads the selected windows `w[8..5]`, `cFactor[5..2]`, and the two
+  quartic factors at rows 4 through 1. The final output branches remain
+  opaque. These structural files alone did not establish an inverse.
+- `FastChanges` and `FastTailPivots` are green centrally (11 s / 8.6 s).
+  They provide the exact changes of q3–q12,
+  each actual pivot row, preservation above each named slope's degree, and
+  the six exceptional zero-row assertions needed by the nonmonotone order.
+  Only two small degree-5-by-4 coefficient windows (rows 7 and 6) are read;
+  the final output products remain opaque.
+- `FastLeading` is green centrally (13 s), completing all thirteen pivots.
+  The two z changes have a named monic leading slope of degree `k+9` and
+  a named remainder bounded by `k+7`; q0 changes only the last linear factor
+  of u. No large baseline coefficient is expanded.
+- `FastInverse` is green centrally (12 s). It assembles the supplied nonmonotone order,
+  including all six exceptional zero-row cases, and proves both prefix
+  inverse compositions. The row permutation has its own explicit inverse.
+- `FastProgram` and `FastRealization` are green centrally (8.9 s / 7.4 s),
+  completing the degree-thirteen replacement. The literal seven
+  gate expressions are preserved and each gate/bind has its own evaluation
+  equation. Realization provides `Construction F 13 7`, arbitrary monic
+  correctness, and the explicit interpolation-then-coefficient inverse.
+  Root owns integration, audits, and all builds; the old source and umbrella
+  remain untouched by this lane.
+
+### 2026-09-06 — degree-25 five-quintic high pivots
+
+- Root owns the checked `Char2Degree25Frame`/`HighFrame`. This lane owns
+  fresh `HighDifference` and `HighPivots` only. `HighDifference` is green
+  centrally (9.2 s): telescope the five named quintics into five mixed
+  degree-twenty products. Their sum is monic since five is odd in
+  characteristic two. Additional z changes use a separate three-term
+  lower slope, together with the checked remainder difference bound 19.
+- `HighPivots` is green centrally (17 s). Its five
+  raw shifts are exactly a2; a0; (a0,a1); a3; a4, supplying rows 24–20.
+  In particular the second raw shift is a0, unlike the earlier degree-23
+  variant. No expanded output coefficient, candidate search, or local
+  Lean build is used. Root owns the remaining coordinates and integration.
+- `SeamFrame` is green centrally (8.2 s): the paired a12/a4 r change has the named
+  monic degree-nine slope
+  `(X+y+z+C(a4+a12+delta))*uRight+C(a13)`. This would give a monic
+  degree-fourteen h change and the row-nineteen output pivot directly.
+- `RowEighteen` is green centrally (10 s). Raw a6 has a monic quartic
+  v slope, propagated through the actual w/s/ell/h/j/n gates; the h change
+  is the unique degree-thirteen part of nLeft and gives row eighteen.
+- `RowSeventeen` is green centrally (10 s). The supplied paired a4/a5 change has the exact
+  quadratic u slope `y+C(a4+a5+delta)`, then a monic degree-twelve h slope
+  and a degree-seventeen output slope. These are raw symbolic unit steps;
+  normalized-coordinate transport remains root's separate task.
+- Root replayed the original verifier's first nine tails and supplied the
+  bounded partial-coordinate interface. Fresh `PrefixCoordinates` and
+  `PrefixPivots` are now source-complete and frozen for central checking.
+  The first module supplies an explicit raw-key equivalence with both
+  compositions; `q9` through `q24` are still raw placeholders, not final
+  normalized coordinates. The second transports the nine checked raw
+  unit differences through exact key-map equalities (rows 24 through 16),
+  including Kepler's centrally checked paired a12/a23 row-sixteen step.
+  No complete output inverse or later-placeholder invariance is claimed.
+
+## Degree21/23 explicit-inverse agent -> Codex
+
+### 2026-09-06 — both counted program bridges checked; degree25 elementary raw pivots next
+
+- `Char2Degree17Program` passed its recheck in8.3s; the exact nine-product
+  evaluation bridge on finite17 offsets is checked without a perfect-field
+  assumption. `Char2Degree25Program` remains checked (13 products,7.1s).
+- New bounded scope: degree25 raw row15 (a7 alone), then raw row14 (a9 alone),
+  in fresh RowFifteen/RowFourteen files only. These reuse the existing named
+  first ten gates and do not claim a completed normalized degree25 inverse.
+
+### 2026-09-06 — degree25 counted program checked; degree17 program pending recheck
+
+- `Char2Degree25Program` centrally passed in7.1s. It reuses the checked
+  degree23 first ten products, then evaluates the existing h/j/n gates, for
+  thirteen literal multiplications. Its evaluation bridge targets25Frame.output.
+- Fresh `Char2Degree17Program` is authored with the existing nine products
+  and finite17 offsets extended into the standard Nat input environment.
+  First-check residuals were only concrete Fin constructors versus numerals;
+  final `rfl` closures are added and awaiting centralized recheck. No perfect
+  field assumption is used by either counted program.
+
+### 2026-09-06 — all degree23 normalized pivots checked; handoff to integration
+
+- `SixteenWires/Frame/Keys` and `TwentyWires/Keys` are centrally green. The
+  supplied q16 and q20 updates now have explicit row-eight scalar corrections
+  and normalized unit pivots in rows six and two, respectively.
+- All 23 normalized degree23 pivots are checked. The parent owns the final
+  coefficient inverse, counted realization, umbrella integration, and status
+  audit; no completion of those integration layers is claimed in this outbox.
+- Next bounded lane: fresh `Char2Degree25Program.lean` only, replaying the
+  existing 13-product circuit with named gate/environment equations. The
+  parent's degree25 Frame/HighFrame are checked; no new circuit is sought.
+
+### 2026-09-05 — normalized q15 checked; q16 local layers under review
+
+- `MiddleKeys` and both `FifteenSlope/FifteenKeys` are centrally green. The
+  q15 proof removes its explicit row-eight scalar and uses the monic cubic
+  cancellation `z+y²`; the normalized pivot is row seven.
+- `SixteenWires/SixteenFrame` are the current two unverified layers. They
+  calculate named `u/g/v/(W+g)` changes, extract an explicit scalar `D` column,
+  and retain a monic degree-six residual. First-check fixes to the wire layer
+  concern folded definitions and characteristic-two numerals only.
+- Parent owns q20 normalized scalar coordinates and the quadratic certificate;
+  this lane owns q16 and subsequent q20 raw wire/output changes. No third
+  unverified layer or decentralized build is being added.
+
+### 2026-09-05 — degree23 middle pivots checked; normalized transport pending
+
+- Central checks passed `MiddleFrame` and `MiddlePivots` (17s/7.2s): six
+  raw pivots in rows 14 through 9. The first-check issues were only explicit
+  environment inference and an unnecessary typeclass dependency, now repaired.
+- `MiddleCoordinates` also passed (8.6s): small named scalar updates for the
+  supplied eta/rho/gamma/tau expressions and the four middle offsets.
+- `MiddleKeys` is authored and awaiting centralized checking, the only current
+  unverified layer. It transfers those six pivots via raw-slot equality except
+  slot19 and a degree-eight difference bound. Next lane is raw q15/q16 only
+  after this layer is green; the parent owns the remaining terminal updates.
+
+### 2026-09-05 — degree23 middle layers ready for centralized checks
+
+- Consumed the parent handoff: all eight raw high pivots are green; the parent
+  owns `Char2Degree23HighKeys` and `Char2MonicPivotPeel`. No duplicate normalized
+  transport or row-eight baseline expansion is being added in this lane.
+- Fresh `Char2Degree23MiddleFrame` and `Char2Degree23MiddlePivots` are authored,
+  not yet checked. They isolate `W=w+s` and `v`, give their local offset-change
+  identities, and derive the six raw pivots in rows 14 through 9. The arbitrary
+  row-eight correction is bounded by degree eight instead of being expanded.
+- There are exactly two unverified layers. All checking stays centralized with
+  the parent; no Lean process is running in this lane. The completed degree21
+  inverse and the eight degree23 high pivots are unchanged.
 
 ## Open decisions (author)
 

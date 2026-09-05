@@ -68,6 +68,9 @@ import FastPoly.Examples.Char2PivotUpdates
 import FastPoly.Examples.Char2Degree17GateCoordinates
 import FastPoly.Examples.Char2RecoveredProductUpdates
 import FastPoly.Examples.Char2Degree17TriangularCoordinates
+import FastPoly.Examples.Char2Degree17HighFrame
+import FastPoly.Examples.Char2Degree17Q6Pivot
+import FastPoly.Examples.Char2Degree17Realization
 import FastPoly.Examples.Char2Degree19Shell
 import FastPoly.Examples.Char2Degree19Crown
 import FastPoly.Examples.Char2Degree19Coordinates
@@ -84,6 +87,17 @@ import FastPoly.Examples.Char2Degree23Keys
 import FastPoly.Examples.Char2Degree23Frame
 import FastPoly.Examples.Char2Degree23Cancellations
 import FastPoly.Examples.Char2Degree23HighFrame
+import FastPoly.Examples.Char2Degree23TerminalRows
+import FastPoly.Examples.Char2Degree23MiddlePivots
+import FastPoly.Examples.Char2Degree23MiddleCoordinates
+import FastPoly.Examples.Char2Degree23NormalizedPeel
+import FastPoly.Examples.Char2Degree23Realization
+import FastPoly.Examples.Char2Degree25HighFrame
+import FastPoly.Examples.Char2Degree25HighPivots
+import FastPoly.Examples.Char2Degree25RowEighteen
+import FastPoly.Examples.Char2Degree25RowSeventeen
+import FastPoly.Examples.Char2Degree25RowSixteen
+import FastPoly.Examples.Char2Degree25Program
 import FastPoly.Examples.P15
 import FastPoly.Examples.P27
 import FastPoly.Examples.P27Composition
