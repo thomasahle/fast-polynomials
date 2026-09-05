@@ -25,6 +25,50 @@ check compiles the tarball in an empty directory with pdflatex only (last run: 1
 
 ## Claude -> Codex
 
+### 2026-09-05 (c3) — handoff: Claude is winding down (token budget); please take these over
+Claude's session is near its limit and will only commit the results of jobs already running. Everything
+below is handed to Codex. Working material is in `notes/handoff_2026-09-05/` (untracked: /notes/ is in
+.git/info/exclude; read it in place) and `tools/bench/results/`.
+
+A. **Re-run the tables whose raw logs did not survive** (`tools/bench/results/MANIFEST.md`, section
+   "Untraceable numbers"): the three application-benchmark tables (app_countsketch/linearprobe/xorfilter,
+   ARM + x86), the Mersenne 2^89-1 share-generation and Goldilocks rows (ARM; x86 rows currently come from
+   an AMD EPYC run — re-time on the Xeon so the paper has one x86 host), the XXH3-128 cell of
+   tab:injective:adversarial (harness tools/bench/adversarial: `./speed 5 0.5 run XXH3`), the Mersenne
+   SMHasher3 port numbers in injective.tex (1.59 B/c, 133 cycles, 14.4 B/c; `poly-mersenne*` hashes in the
+   fork ~/repos/smhasher3/build-chainhash, `--test=Speed`), the adversarial 2^31-trial counts of
+   appendix_adversarial.tex (tools/bench/adversarial Makefile `results` target; long — run on the Xeon with
+   nohup), and the two tab:numstab cells (regenerate with the script named in manifest §11).
+   Protocol: paper protocol per table (fastest 100 of 200 reps where the source does that), record
+   machine/compiler/date/load, save raw logs under `tools/bench/results/rerun_2026-09-05/{m2,xeon}/` with a
+   README, then update the LaTeX rows and every prose sentence quoting the old numbers (grep the old
+   values). Xeon: `ssh thomas-ahle@hardware.normalcomputing.net`, sources under `~/fastpoly-bench/`,
+   `taskset -c 80-95`, clang 21.1.8. M2 Pro: wait for load < 3.
+B. **Certified 7-wise row**: an agent is timing the certified degree-7 circuit (chainhash's former
+   finalizer; verify7.py / exh7.c) as a new bench_tabrows row on both machines; its result lands in
+   `notes/handoff_2026-09-05/tabrows/k7.md` (or is reported in coordination by Claude). Replace the
+   "not certified" k=7 row of the Section 5.7 table with it.
+C. **Pan's-method stability subsection**: drafts (appendix_pan.tex, integration.md, theory.md, measure.md,
+   new tool scripts) will appear under `notes/handoff_2026-09-05/stability_pan_drafts/` when the running
+   workflow finishes (Claude will copy them and note it here). Integrate into sections/numerical_stability.tex
+   per integration.md (the Proposition-10 repair already landed there), add the numstab rows, `git add -f`
+   the tool scripts.
+D. **Degree-6 normal-form reduction**: LaTeX repair in appendix_lower.tex/lower.tex and new Lean modules
+   FastPoly/LowerBound/General/ are landing from a running workflow; its note goes to the old scratch as
+   n+95 — please mirror the essentials here and check the formalization-map row it edits.
+E. **Front matter coherence + regression proofread**: after A–D, one fresh read of abstract, introduction,
+   conclusion and open problems for a single consistent story and hedges; then a light whole-paper pass for
+   typos/duplicates/broken refs; fix the remaining overfull lines (formalization_map.tex ×3).
+F. **Lean pin**: when your refactor lands and `lake build FastPoly` (+ `FastPoly.LowerBound.Main` and the
+   new General target) is green, put the commit hash and job count into formalization_map.tex's
+   "Build and axioms" paragraph (it says 2012 jobs) and the README's reproduction commands.
+G. **Bundle**: `cd build && bibtex main` (BIBINPUTS/BSTINPUTS = repo root), pdflatex ×2, then
+   `tools/make_arxiv.sh`, then `tools/arxiv_cleanbuild.sh arxiv.tar.gz` (extracts to a temp dir, pdflatex
+   only; require 0 errors, 0 undefined, all fonts embedded). Submission metadata still needs the author:
+   surname (Knudsen vs Houen), categories, license.
+H. **Commits**: stage only your own hunks (`git diff --cached` before every commit); the author keeps
+   uncommitted work in the tree. Push to origin/main when a step is complete.
+
 ### 2026-09-05 (c2) — review findings in your LaTeX lane (constructions/, figures/*.tex): please sweep
 
 These are the items announced in c1 (request 1). Source: two review passes (the 45-reader consistency review of 2026-09-04, `notes/handoff_2026-09-04/review_results.md`, plus the external referee's page notes), each item re-verified against the current tree today (line numbers are current; your Mersenne-family removal already retired the old sec:peeled-Q remark items, `modulo t^8`, `level-4 fill`, `is a algebraically`, `the latter given (H_2,H_4)`, and the `odd\_realizable\_pairs` overfull). The three external-referee items named in c1 (`(A.3a)`, literal `qquad`, "x+0 correspond to squaring") turned out to be outside your lane, see the end.
