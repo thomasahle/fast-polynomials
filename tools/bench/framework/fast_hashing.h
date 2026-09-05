@@ -268,6 +268,64 @@ class smartpoly_64 {
   }
 };
 
+/* ***************************************************
+ * Motzkin's quartic over the Mersenne prime p = 2^61 - 1
+ * (4-wise independent, two multiplications)
+ *
+ *   y = x (x + b0) + b1,      P = y (y + x + b2) + b3
+ *
+ * Expanded:  P = x^4 + (2 b0 + 1) x^3 + (b0^2 + b0 + 2 b1 + b2) x^2
+ *               + (b1 (2 b0 + 1) + b0 b2) x + (b1^2 + b1 b2 + b3).
+ * In odd characteristic the key map (b0,b1,b2,b3) -> (a3,a2,a1,a0) is a
+ * bijection onto the monic quartics, with explicit decoder
+ *   b0 = (a3 - 1)/2,  c = a2 - b0^2 - b0,  b1 = a1 - b0 c,
+ *   b2 = c - 2 b1,    b3 = a0 - b1^2 - b1 b2,
+ * so uniform keys give a uniformly random monic quartic and the hash is
+ * exactly 4-wise independent on the universe [p].  (Over GF(2^64) the same
+ * circuit has a3 = 2 b0 + 1 = 1 and is only 3-wise: see smartcl_64<4>.)
+ * 64-bit inputs are folded modulo p (x and x + p collide); the output is
+ * fully reduced into [0, p).
+ *
+ * The arithmetic is lazy: values stay below 2^64 and are only folded with
+ * 2^61 = 1 (mod p).  The bound at each step is noted inline; all of them
+ * are exercised by `bench_tabrows selftest` (extreme keys and inputs,
+ * compared against Horner evaluation of the expanded quartic).
+ * ***************************************************/
+
+class motzkin_61 {
+  uint64_t b[4];
+  constexpr static uint64_t P61 = ((uint64_t)1 << 61) - 1;
+
+  // v mod p (lazily): (v mod 2^61) + (v >> 61) < 2^61 + 8 for any 64-bit v.
+  static inline uint64_t fold(uint64_t v) { return (v & P61) + (v >> 61); }
+  // a * b mod p (lazily): one 64x64->128 product and one fold.  Requires
+  // a * b < 7 * 2^122 so that the fold cannot overflow; the result is
+  // < 2^61 + (a * b >> 61).
+  static inline uint64_t mul(uint64_t a, uint64_t b) {
+    __uint128_t z = (__uint128_t)a * b;
+    return ((uint64_t)z & P61) + (uint64_t)(z >> 61);
+  }
+
+ public:
+  void init() {
+    for (int i = 0; i < 4; i++) {
+      do { b[i] = getRandomUInt64() >> 3; } while (b[i] >= P61);  // uniform in [0, p)
+    }
+  }
+  void set_keys(uint64_t b0, uint64_t b1, uint64_t b2, uint64_t b3) {
+    b[0] = b0; b[1] = b1; b[2] = b2; b[3] = b3;
+  }
+  const uint64_t* keys() const { return b; }
+  uint64_t operator()(uint64_t x) {
+    x = fold(x);                                 // x < 2^61 + 8,  x + b0 < 2^62 + 8
+    uint64_t y = fold(mul(x, x + b[0]) + b[1]);  // product < 2^123 + 2^66,  y < 2^61 + 4
+    uint64_t t = y + x + b[2];                   // t < 3 * 2^61 + 12
+    uint64_t P = mul(y, t) + b[3];               // product < 3 * 2^122 + 2^66,  P < 5 * 2^61 + 32
+    P = fold(P);                                 // P < 2^61 + 5
+    return P - (P61 & (0 - (uint64_t)(P >= P61)));  // canonical [0, p), branch-free
+  }
+};
+
 template <std::size_t N>
 class smartpoly_64_kar {
   __uint128_t ms[N];
@@ -1032,6 +1090,75 @@ class smartcl_64 {
     __m128i v = lemul(ms[3] ^ t, upper(ms[3]) ^ x ^ z); // v = (t + a6) * (x + z + a7)
     __m128i P = ms[4] ^ u ^ v;                          // P = u + v + a8
     return _mm_cvtsi128_si64(P);
+  }
+};
+
+/* ***************************************************
+ * The two quartic circuits over GF(2^64) as separately named classes, so
+ * that both exist on both platforms with the same names.  (Here
+ * smartcl_64<4>::mult4 is the three-multiplication circuit; in
+ * fast_hashing_arm.h smartcl_64<4>::mult4 is Motzkin's two-multiplication
+ * circuit.  Both existing classes are left untouched.)
+ *
+ * quartic2_64 -- Motzkin's quartic, two multiplications:
+ *   y = x (x + a0) + a1,   P = y (y + x + a2) + a3
+ *     = x^4 + (2 a0 + 1) x^3 + (a0^2 + a0 + a2) x^2 + (a0 a2 + a1) x
+ *       + (a1^2 + a1 a2 + a3).
+ *   In characteristic 2 the x^3 coefficient is 2 a0 + 1 = 1 for every key,
+ *   so the family is exactly 3-wise independent (the other three
+ *   coefficients are uniform).  Same circuit as motzkin_61 over 2^61 - 1,
+ *   where it is 4-wise.
+ *
+ * quartic3_64 -- x Q3(x) + a3 with Q3 the two-multiplication cubic, three
+ * multiplications:
+ *   y = x^2,  z = (x + a0)(y + a1),  t = (z + a2) x,  P = t + a3
+ *     = x^4 + a0 x^3 + a1 x^2 + (a0 a1 + a2) x + a3.
+ *   The key map is a bijection onto the monic quartics, with decoder
+ *   a0 = c3, a1 = c2, a2 = c1 + c3 c2, a3 = c0, so the hash is 4-wise.
+ *
+ * Both are checked against Horner on the expanded polynomial (and the
+ * quartic3_64 decoder round-trip) by `bench_tabrows selftest`.
+ * ***************************************************/
+
+class quartic2_64 {
+  __m128i ms[2];  // ms[0] = (a1 : a0), ms[1] = (a3 : a2)  (high : low)
+
+ public:
+  void init() {
+    for (int i = 0; i < 2; i++)
+      ms[i] = _mm_set_epi64x(getRandomUInt64(), getRandomUInt64());
+  }
+  void set_keys(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3) {
+    ms[0] = _mm_set_epi64x(a1, a0);
+    ms[1] = _mm_set_epi64x(a3, a2);
+  }
+  uint64_t operator()(uint64_t input) {
+    __m128i x = _mm_cvtsi64_si128(input);
+    __m128i y = lemul(x, x ^ ms[0]) ^ upper(ms[0]);      // y = x (x + a0) + a1
+    __m128i P = lemul(y, y ^ x ^ ms[1]) ^ upper(ms[1]);  // P = y (y + x + a2) + a3
+    return _mm_cvtsi128_si64(P);
+  }
+};
+
+class quartic3_64 {
+  __m128i ms[2];  // ms[0] = (a1 : a0), ms[1] = (a3 : a2)  (high : low)
+
+ public:
+  void init() {
+    for (int i = 0; i < 2; i++)
+      ms[i] = _mm_set_epi64x(getRandomUInt64(), getRandomUInt64());
+  }
+  void set_keys(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3) {
+    ms[0] = _mm_set_epi64x(a1, a0);
+    ms[1] = _mm_set_epi64x(a3, a2);
+  }
+  uint64_t operator()(uint64_t input) {
+    // Identical to smartcl_64<4>::mult4 in this file.
+    __m128i x = _mm_cvtsi64_si128(input);
+    __m128i y = lemul(x, x);                         // y = x^2
+    __m128i z = lemul(x ^ ms[0], y ^ upper(ms[0]));  // z = (x + a0) (y + a1)
+    __m128i t = lemul(z ^ ms[1], x);                 // t = (z + a2) x
+    return _mm_cvtsi128_si64(t ^ upper(ms[1]));      // P = t + a3
   }
 };
 
