@@ -6,6 +6,11 @@ specified coordinate changes in GF(2)[q][x], with unrestricted exponents, then
 emit ordinary ring-identity proofs and causal-tail certificates for Lean.
 Python's checks are diagnostics: Lean must independently check every identity.
 Output is JSON {path, content}, or --stats for a compact symbolic audit.
+
+Source generation is retained only for degrees at most 15.
+For degrees 17--25, --stats still replays the supplied verifier, but the Lean
+ports must use its named inverse steps (Char2DecoderSteps and the degree-specific
+stage modules). Flattening all substitutions made those draft proofs too slow.
 """
 from __future__ import annotations
 
@@ -244,6 +249,8 @@ def certificate_data(n):
 
 
 def generate(n, data):
+    if n > 15:
+        raise ValueError("Use the staged inverse proofs for degrees 17--25, not expanded certificates")
     spec, a, wires, p, rows, depths, tails = data
     frob = any(depths)
     out = ["import FastPoly.Examples.Char2Triangular",
@@ -265,6 +272,7 @@ def generate(n, data):
            f"theorem multiplication_count : (circuit (F := F)).gates.multiplications = {len(spec['gates'])} := rfl", "",
            "def program : Cost.MultiplicationProgram F ℕ 1 " + str(len(spec['gates'])) + " :=",
            "  ⟨circuit, multiplication_count⟩", ""]
+    if n >= 17: out += ["set_option linter.unnecessarySeqFocus false", ""]
     out += [f"def offset_{i} (q : ℕ → F) : F := {form(c)}\n" for i, c in enumerate(a)]
     out += ["def offsets (q : ℕ → F) : ℕ → F"]
     out += [f"  | {i} => offset_{i} q" for i in range(n)] + [f"  | _ + {n} => 0", ""]
@@ -300,7 +308,7 @@ def generate(n, data):
                 "  norm_num only [" + ", ".join(norms) + ",",
                 "    coeff_add, coeff_C_mul_X_pow, coeff_X_pow, coeff_X, coeff_C,",
                 "    ite_true, ite_false, zero_add, add_zero, zero_mul, mul_zero, one_mul, mul_one] <;>",
-                "  (try simp only [offsets" + "".join(", " + r for r in row_defs) + "]) <;>",
+                "  (try " + ("dsimp" if n >= 17 else "simp") + " only [offsets" + "".join(", " + r for r in row_defs) + "]) <;>",
                 "  ring_char2"]
         if n >= 17:
             nl = factor_source(gate['l'], normnames, lambda i: f"C (offsets q {i})")
@@ -329,16 +337,42 @@ def generate(n, data):
             "theorem program_eval (a : ℕ → F) :",
             "    (program (F := F)).circuit.eval (fun i => if i = 0 then X else C (a (i-1))) 0 = polynomial a := rfl", ""]
     out += [f"def tail_{i} (q : ℕ → F) : F := {form(t)}\n" for i, t in enumerate(tails)]
+    if n >= 17:
+        for i, t in enumerate(tails):
+            deps = sorted(int(v[1:]) for v in t.variables())
+            args = [f"tail_{i}"] + [f"h {j} (by omega)" for j in deps]
+            out += [f"theorem tail_{i}_causal (q r : ℕ → F) (h : ∀ j, j < {i} → q j = r j) :",
+                    f"    tail_{i} q = tail_{i} r := by",
+                    "  simp only [" + ", ".join(args) + "]", ""]
     out += ["def tail (i : ℕ) (q : ℕ → F) : F :=", "  match i with"]
     out += [f"  | {i} => tail_{i} q" for i in range(n)] + [f"  | _ + {n} => 0", "",
             f"theorem tail_causal : Causal {n} (tail (F := F)) := by", "  intro i hi q r h", "  interval_cases i"]
     for i, t in enumerate(tails):
         deps = sorted(int(v[1:]) for v in t.variables())
         args = ["tail", f"tail_{i}"] + [f"h {j} (by omega)" for j in deps]
-        out += ["  · simp only [" + ", ".join(args) + "]"]
+        out += [f"  · exact tail_{i}_causal q r h" if n >= 17 else "  · simp only [" + ", ".join(args) + "]"]
     out += ["", "noncomputable def pivot (i : ℕ) : F ≃ F :=", "  match i with"]
     out += [f"  | {i} => frobeniusPivot {d}" for i,d in enumerate(depths) if d]
     out += ["  | _ => Equiv.refl F", ""]
+    if n >= 17:
+        normal_output = factor_source(spec['out'], normnames, lambda i: f"C (offsets q {i})")
+        norms = [f"normal_{t}" for t in spec['out']['t']]
+        for k in range(n+1):
+            i = rows.index(k) if k < n else None
+            rhs = f"pivot {i} (q {i}) + tail {i} q" if i is not None else "1"
+            scalars = [f"row_{t}_{k}" for t in spec['out']['t'] if wires[t].coeff(k) not in (ZERO, ONE)]
+            if k == 0 and spec['out']['k'] is not None:
+                scalars += ["offsets", f"offset_{spec['out']['k']}"]
+            if i is not None:
+                scalars += ["tail", f"tail_{i}", "pivot", "Equiv.refl_apply"]
+                if frob: scalars += ["frobeniusPivot_apply", "Nat.reducePow"]
+            out += [f"theorem output_coeff_{k} (q : ℕ → F) :",
+                    f"    ({normal_output}).coeff {k} = {rhs} := by",
+                    "  norm_num only [" + ", ".join(norms) + ",",
+                    "    coeff_add, coeff_C_mul_X_pow, coeff_X_pow, coeff_C, coeff_zero,",
+                    "    ite_true, ite_false, zero_add, add_zero, zero_mul, mul_zero, one_mul, mul_one] <;>",
+                    "    (try dsimp only [" + ", ".join(scalars) + "]) <;>",
+                    "    ring_char2", ""]
     explicit_sum = "0" + "".join(
         f" + C (pivot {rows.index(j)} (extendFin q {rows.index(j)}) + tail {rows.index(j)} (extendFin q)) * X ^ {j}"
         for j in range(n))
@@ -360,7 +394,15 @@ def generate(n, data):
             f"  apply bounded_ext (d := {n})",
             "  · exact " + factor_bound(spec["out"]).replace("_degree q", "_degree (extendFin q)"),
             "  · exact " + rhs_bound,
-            "  · intro k hk", "    interval_cases k <;>",
+            "  · intro k hk"]
+    if n >= 17:
+        out += ["    interval_cases k"]
+        for k in range(n+1):
+            out += [f"    · rw [output_coeff_{k}]",
+                    "      norm_num only [coeff_add, coeff_C_mul_X_pow, coeff_X_pow, coeff_zero,",
+                    "        ite_true, ite_false, zero_add, add_zero, zero_mul, mul_zero, one_mul, mul_one]"]
+    else:
+        out += ["    interval_cases k <;>",
             "      norm_num only [" + ", ".join(f"normal_{t}" for t in spec["out"]["t"]) + ",",
             "        coeff_add, coeff_C_mul_X_pow, coeff_X_pow, coeff_C, coeff_zero,",
             "        ite_true, ite_false, zero_add, add_zero, zero_mul, mul_zero, one_mul, mul_one] <;>",
@@ -370,7 +412,8 @@ def generate(n, data):
             ("frobeniusPivot_apply, Nat.reducePow, " if frob else "") +
             ", ".join(f"row_{t}_{d}" for t in spec["out"]["t"]
                 for d in range(wires[t].degree+1) if wires[t].coeff(d) not in (ZERO, ONE)) + "]) <;>",
-            "      ring_char2", "",
+            "      ring_char2"]
+    out += ["",
             f"theorem evaluation_bijective (x : Fin {n} → F) (hx : Function.Injective x) :",
             "    Function.Bijective (fun q => fun i => (family q).eval (x i)) :=",
             "  Char2Certificate.evaluation_bijective (by omega) _ tail tail_causal rows family family_normal x hx", "",
@@ -396,6 +439,8 @@ def main():
     parser.add_argument("--apply", action="store_true", help="install generated source using apply_patch")
     parser.add_argument("--check", action="store_true", help="check the source matches the current website certificate")
     args = parser.parse_args()
+    if args.degree > 15 and not args.stats:
+        parser.error("degrees 17--25 use staged Lean inverse proofs; only --stats is supported here")
     data = certificate_data(args.degree)
     spec, a, wires, p, rows, depths, tails = data
     if args.stats:

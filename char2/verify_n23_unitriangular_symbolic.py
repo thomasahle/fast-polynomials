@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from tools.char2_inverse_finder import F2Poly, ONE, X, XPoly, ZERO
+from tools.char2_polynomial import F2Poly, ONE, X, XPoly, ZERO
 
 
 def circuit(a: list[F2Poly]) -> tuple[list[XPoly], XPoly]:
@@ -32,7 +32,8 @@ def circuit(a: list[F2Poly]) -> tuple[list[XPoly], XPoly]:
     return [y, z, t, u, v, w, s, r, g, ell, m, n], p
 
 
-def main() -> None:
+def certify() -> dict:
+    """Run the exact certificate; returns the symbolic objects (q, a, gates, p) for reuse by char2/verify_n23.py."""
     q = [F2Poly.var(f"q{i}") for i in range(23)]
     a = [ZERO] * 23
 
@@ -160,6 +161,11 @@ def main() -> None:
 
     constant_without_q22 = p.coeff(0).subs("q22", ZERO)
     assert p.coeff(0) == q[22] + constant_without_q22
+    return {"q": q, "a": a, "gates": gates, "p": p}
+
+
+def main() -> None:
+    certify()
     print("PASS: key-coordinate inverse, 18 scalar pivots, four-row block, and final scalar are exact.")
 
 

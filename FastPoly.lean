@@ -62,6 +62,8 @@ import FastPoly.Examples.Char2Inverse
 import FastPoly.Polynomial.MonicEvaluation
 import FastPoly.Examples.Char2SmallInverses
 import FastPoly.Examples.Char2Finite
+import FastPoly.Examples.Char2Degree23Terminal
+import FastPoly.Examples.Char2Degree23RowEight
 import FastPoly.Examples.P15
 import FastPoly.Examples.P27
 import FastPoly.Examples.P27Composition

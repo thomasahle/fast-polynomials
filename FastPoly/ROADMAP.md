@@ -58,9 +58,42 @@ and inspected. Removed proof files have a local recovery archive at
   The existing `Char2SmallInverses.lean` still supplies the raw-key degree-9
   theorem for the paper's displayed circuit.
 - `tools/gen_char2_lean.py` replays the existing explicit coordinate changes
-  and emits kernel-checked coefficient/ring proofs. Symbolic replay succeeds
-  through degree 25. The Lean degree-17/19/21/23/25 files remain development
-  work, outside the umbrella; do not advertise their proofs as complete.
+  and emits kernel-checked coefficient/ring proofs for the completed small
+  degrees. Symbolic replay (`--stats`) succeeds through degree 25, but expanded
+  Lean source generation is disabled above degree 15: those drafts were too
+  slow and have been archived outside the source tree. The remaining ports
+  must follow the supplied verifiers' named inverse steps.
+- `Examples/Char2DecoderSteps.lean` supplies a unit pivot, a dependent block,
+  and an explicit self-inverse coordinate update with compositional
+  independence lemmas. This is the primitive used by degree 25's supplied
+  24-step shear certificate, not a proof of those 24 circuit-specific rows.
+- `Examples/Char2Degree23Terminal.lean` ports the degree-23 verifier's four-row
+  terminal block, in both directions, including the known row corrections.
+  `Char2Degree23RowEight.lean` proves the actual circuit's row-eight unit
+  pivot: its slope is a product of monic quartics. Both keep the earlier
+  quantities opaque and use local rewrites/cancellation, not ring expansion.
+  All three new modules have a 20,000-heartbeat limit and are in the umbrella.
+  Degree 23's preceding scalar pivots and the bridge from circuit coefficients
+  to the terminal equations remain to be proved. Full coverage remains 5–16,
+  not 5–25.
+
+Validation: `nice -n 10 lake build FastPoly` passed with 2036 jobs after this
+integration. Axiom audits of `Char2Finite.monic_evaluation`, the degree-15
+program decoder and evaluation bijection, and `Construction.evenLift` report
+only `propext`, `Classical.choice`, and `Quot.sound`. The six completed generated
+sources also pass `tools/gen_char2_lean.py DEGREE --check` against the current
+website. The generator's pure polynomial algebra is in
+`tools/char2_polynomial.py`; it has no private research-tool dependency.
+
+Staged-inverse validation: all three new modules passed at the reduced
+heartbeat limit. Lake reported 2.1 s for the degree-23 terminal block and 3.1 s
+for its row-eight bridge (dependencies already available; not a clean-build
+timing). The Python degree-23 and degree-25 verifiers now use the same small
+public algebra helper, rather than the unpublished inverse-search module.
+Both verifier scripts passed unchanged mathematical assertions (23: 0.18 s;
+25: 7.11 s). After adding the staged components, `lake build FastPoly` passed
+at 2040 jobs. Axiom audits of the two block inverse directions and the row-eight
+inverse directions are clean (only the standard Lean axioms; no `sorryAx`).
 
 ## Same-polynomial paper capstone (2026-09-04)
 

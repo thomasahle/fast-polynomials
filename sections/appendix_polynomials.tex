@@ -6,7 +6,14 @@ outputs a monic polynomial of degree $2m-1$.  The circuits were found by
 randomized search, optimizing both the number of additions and the critical
 path depth.  Explicit inverses are proved below for the displayed characteristic-$2$
 circuits of degrees $7$, $15$, $17$, $19$, $21$, $23$, and $25$, and for
-separately displayed alternatives of degrees $9$, $11$, and $13$.  The other
+separately displayed alternatives of degrees $9$, $11$, and $13$.  Every
+inverse below has a companion certificate script
+\texttt{char2/verify\_n$k$.py} ($k=7,9,\ldots,25$; the degree-$5$ ChainHash
+finalizer is \texttt{char2/verify\_n5.py}), run from the repository root as
+\texttt{python3 -m char2.verify\_n$k$}: it prints the gate list it certifies,
+the decoder, the exact identities over $\F_2[\text{keys}]$ and a
+$\mathrm{GF}(2^{64})$ round trip, and ends with \texttt{PASS n=$k$}
+(\texttt{char2/README.md} tabulates them).  The other
 search results are not used in the proof of the main theorem.  In particular, a constant nonzero Jacobian found
 by the search is only a diagnostic (and a necessary condition for a
 polynomial automorphism), not a proof of bijectivity.
@@ -126,6 +133,10 @@ Multiplying by $x+a_4$ and adding $a_6$ gives
 \]
 The displayed recovery procedure solves these equations in order, so it recovers a unique key tuple.
 Conversely, applying the recovered keys gives the same coefficients $p_j$, hence the same values at the $x_i$.
+The companion script \texttt{char2/verify\_n7.py} expands this coefficient
+table and the recovery formulas in $\F_2[a_0,\ldots,a_6][x]$; its first part
+certifies, through \texttt{tools/bench/chainhash/verify7.py}, the variant with
+$t=z(z+a_3)$ (\texttt{septic7\_64}) timed in the experiments.
 \end{proof}
 
 \medskip
@@ -306,6 +317,10 @@ This recovers all eleven keys.  The only non-polynomial-looking operations are
 the two inverse-Frobenius steps in (11.2), and these are unique over a perfect
 field.
 
+The companion scripts \texttt{char2/verify\_n9.py} and
+\texttt{char2/verify\_n11.py} expand (9.1)--(9.3) and (11.1)--(11.4) in
+$\F_2[a_0,\ldots]$ and check decode$\circ$encode $=$ id as a composed identity.
+
 In either degree, evaluation at distinct points is the coefficient map followed
 by the corresponding invertible Vandermonde map.
 \end{proof}
@@ -376,6 +391,9 @@ terms cancel: row $6$ exposes $a_8$.  Row $9$ then exposes $a_{10}$, and
 row $5$ exposes $a_7$.  The remaining entries of (13.5) are the ordinary
 unit offsets in unequal-degree factors; their later offsets lie strictly
 below the indicated row.  This proves (13.4) without a Jacobian argument.
+The companion script \texttt{char2/verify\_n13.py} expands all thirteen
+identities (13.4), the displayed rows and (13.6) exactly in
+$\F_2[q_0,\ldots,q_{12}]$.
 
 The inverse is now the explicit recurrence
 \[
@@ -491,7 +509,10 @@ distinct degrees.  Descending through the rows in
 factor degrees give the named pivot with slope one, while every other term
 contains only coordinates from an earlier column.  This proves
 \eqref{eq:char2-15-triangular}
-without any nonzero-slope or field-size assumption.
+without any nonzero-slope or field-size assumption.  The companion script
+\texttt{char2/verify\_n15.py} (implementation
+\texttt{char2/verify\_n15\_unitriangular\_symbolic.py}) expands all fifteen
+identities exactly in $\F_2[q_0,\ldots,q_{14}][x]$.
 
 The inverse is now literal.  For $i=0,\ldots,14$, successively set
 \[
@@ -626,9 +647,10 @@ The remaining rows of (A.13) are obtained in exactly the same way: substitute
 the nine gate assignments, set the current and later coordinates to zero for
 the baseline, and collect one coefficient.  Thus (A.13) is a list of literal
 polynomial identities, rather than a Jacobian or finite-field test.  The
-companion script \texttt{char2/verify\_n17\_uniform\_symbolic.py} (run from
-the repository root as \texttt{python3 -m char2.verify\_n17\_uniform\_symbolic},
-since it imports \texttt{char2/symexpr.py}) independently
+companion script \texttt{char2/verify\_n17.py} (run from the repository root
+as \texttt{python3 -m char2.verify\_n17}; its implementation
+\texttt{char2/verify\_n17\_uniform\_symbolic.py} imports
+\texttt{char2/symexpr.py}) independently
 expands all seventeen identities in $\F_2[z_1,\ldots,z_{17}]$.
 
 Equation (A.13) recovers the $z_i$ in its displayed order.  All slopes are
@@ -767,9 +789,10 @@ zero and collect the named row.  They give the explicit recurrence
 \[
  q_i=[C]_{15-i}+B_i(q_0,\ldots,q_{i-1})\qquad(3\le i\le15).      \tag{A.24}\label{eq:char2-19-inner-decoder}
 \]
-The companion calculation
-\texttt{char2/verify\_n19\_unitriangular\_symbolic.py} expands all thirteen
-identities exactly in $\F_2[q_0,\ldots,q_{18}][x]$; its finite-field
+The companion script \texttt{char2/verify\_n19.py} (implementation
+\texttt{char2/verify\_n19\_unitriangular\_symbolic.py}) expands all thirteen
+identities, and the nineteen row identities of $P$ that they flatten to,
+exactly in $\F_2[q_0,\ldots,q_{18}][x]$; its finite-field
 enumeration is only a separate diagnostic.
 
 Finally subtract the now-known shell:
@@ -899,8 +922,8 @@ Thus the decoder is the descending recurrence
 \]
 The baseline in \eqref{eq:char2-21-baseline} is an explicit polynomial:
 substitute already decoded coordinates, set the later coordinates to zero,
-and collect the named row.  The companion script
-\texttt{char2/verify\_n21\_unitriangular\_symbolic.py} expands every identity
+and collect the named row.  The companion script \texttt{char2/verify\_n21.py} (implementation
+\texttt{char2/verify\_n21\_unitriangular\_symbolic.py}) expands every identity
 in \eqref{eq:char2-21-triangular} exactly.  Its exhaustive $\F_2$ check is a
 separate diagnostic and is not used in the proof.
 
@@ -1084,12 +1107,11 @@ Thus the decoder is the descending recurrence
 \]
 Each baseline in \eqref{eq:char2-23-baseline} and each $\kappa_j$ is an
 explicit polynomial: substitute the already decoded coordinates, set the
-later ones to zero, and collect the named row.  The companion script
-\texttt{char2/verify\_n23\_unitriangular\_symbolic.py} (run from the
-repository root as
-\texttt{python3 -m char2.verify\_n23\_unitriangular\_symbolic}, since it
-imports \texttt{tools/char2\_inverse\_finder.py}; its last wire $n$ is our
-$f$) expands every identity exactly in $\F_2[q_0,\ldots,q_{22}][x]$: the
+later ones to zero, and collect the named row.  The companion script \texttt{char2/verify\_n23.py} (run from the
+repository root as \texttt{python3 -m char2.verify\_n23}; its implementation
+\texttt{char2/verify\_n23\_unitriangular\_symbolic.py} imports
+\texttt{tools/char2\_inverse\_finder.py} and names our $f$ as its last wire
+$n$) expands every identity exactly in $\F_2[q_0,\ldots,q_{22}][x]$: the
 inverse (A.37)--(A.38) by substitution, the eighteen unit pivots of
 \eqref{eq:char2-23-triangular} for rows $22$ down to $5$ (including
 $c_8=q_{14}$), the four block rows \eqref{eq:char2-23-block} with their
@@ -1215,9 +1237,9 @@ $q_0,\ldots,q_{i-1}$, only keys recovered earlier in this pass, and
 $a_{24}=q_{24}$.  Every baseline $K_i$ is an explicit polynomial (substitute
 the decoded coordinates, set the later ones to zero, collect the named
 row), and every tail is an explicit polynomial by \eqref{eq:char2-25-step}.
-The companion script
-\texttt{char2/verify\_n25\_unitriangular\_symbolic.py} (run as
-\texttt{python3 -m char2.verify\_n25\_unitriangular\_symbolic}; it imports
+The companion script \texttt{char2/verify\_n25.py} (run as
+\texttt{python3 -m char2.verify\_n25}; its implementation
+\texttt{char2/verify\_n25\_unitriangular\_symbolic.py} imports
 \texttt{tools/char2\_inverse\_finder.py} and names our wires $d,k,f$ as
 $h,j,n$) performs the twenty-four substitutions exactly in
 $\F_2[a_0,\ldots,a_{24}][x]$, checking at each step that the named row has

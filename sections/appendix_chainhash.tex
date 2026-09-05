@@ -560,7 +560,7 @@ checks only guard against transcription errors.  The expansion
 \eqref{eq:ph:chain5-q}--\eqref{eq:ph:chain5-cq}, the row structure
 \eqref{eq:ph:chain5-rows} (unit pivots, no later coordinate in any row) and
 both compositions decoder$\circ$rows and rows$\circ$decoder were verified
-symbolically (the expansion over $\F_2[c_0,\dots,c_4][X]$, the compositions over $\F_2[q_0,\dots,q_4]$ and $\F_2[e_0,\dots,e_4]$; \texttt{tools/bench/chainhash/verify5.py});
+symbolically (the expansion over $\F_2[c_0,\dots,c_4][X]$, the compositions over $\F_2[q_0,\dots,q_4]$ and $\F_2[e_0,\dots,e_4]$; \texttt{char2/verify\_n5.py}, which runs \texttt{tools/bench/chainhash/verify5.py});
 test T5 of \texttt{test\_chainhash.cpp} expands the transcribed circuit over
 $\mathrm{GF}(2^{64})[X]$, checks that it is monic of degree $5$, and checks
 decode$\circ$encode and encode$\circ$decode on random parameter vectors and
