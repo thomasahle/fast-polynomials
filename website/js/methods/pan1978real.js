@@ -476,6 +476,24 @@ function compilePanEight(p) {
   };
 }
 
+// Search budget.  Each cell of the enumeration below (spec × Eve candidate ×
+// node subset) is one solveOuterChart: 11 Newton starts of up to 55
+// finite-difference iterations, 2–4 ms.  Without limits an input whose best
+// chain verifies just above ACCEPT (the e^x Taylor polynomials do, ≈3e-8)
+// runs the whole product — 16,800 cells at degree 16, 60,480 at degree 20 —
+// almost all of it after the best chain was already found.  So: node subsets
+// are ranked by how well the plain Eve peels already fit (a division chain,
+// no Newton) and the best-ranked subsets are tried under every spec before
+// the next rank; the search stops EXTRA_CELLS after a chain verifies at GOOD
+// (the trace on e^x at degree 16: first verified chain at cell 11, the best
+// ones near cell 1000); and MAX_CELLS bounds the whole compile, shared by the
+// conditioning rescales in round-robin slices so none of them starves.
+const ACCEPT = 1e-8;        // stop at once
+const GOOD = 1e-6;          // good enough: keep looking a little longer for a better chain
+const EXTRA_CELLS = 1200;   // ≈ 3–4 s
+const MAX_CELLS = 4000;     // ≈ 10–15 s worst case
+const SLICE = 800;          // cells per conditioning rescale per round
+
 function specifications(n, maxN = 32) {
   const Ns = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 28, 32];
   for (let N = 36; N < maxN; N += 4) Ns.push(N);
@@ -485,7 +503,11 @@ function specifications(n, maxN = 32) {
   return out;
 }
 
-function compilePanOddCore(coeffs) {
+/** budget: { cells, skip = 0, best = null } — run at most `cells` new cells,
+ *  skipping the first `skip` of the (deterministic) enumeration, continuing from
+ *  a `best` found earlier; on return / throw it carries `best`, the number of
+ *  cells consumed (`used`) and whether the enumeration `finished`. */
+function compilePanOddCore(coeffs, budget = { cells: MAX_CELLS }) {
   if (!Array.isArray(coeffs) || coeffs.length < 10)
     throw new Error('Pan real: scheme (9) starts at odd degree 9');
   const p = coeffs.map(Number), n = p.length - 1;
@@ -493,7 +515,8 @@ function compilePanOddCore(coeffs) {
   if (n % 2 === 0) throw new Error(`Pan real: scheme (9) is for odd degrees (you entered degree ${n})`);
   if (p[n] === 0) throw new Error('Pan real: the leading coefficient must be nonzero');
 
-  let best = null, attempts = 0;
+  let best = budget.best ?? null, attempts = 0;
+  budget.used = 0; budget.finished = false;
   const ratio = Math.max(1, ...p.slice(0, n).map(v => Math.abs(v / p[n])));
   const rootBound = 1 + ratio;
   const maxN = Math.min(1020, Math.max(32,
@@ -502,12 +525,35 @@ function compilePanOddCore(coeffs) {
   const outerCount = (n - 9) / 2;
   const eve = eveOddDecompositionCandidates(p).sort((a, b) =>
     Number(b.tag === 'eve' || b.tag === 'bound') - Number(a.tag === 'eve' || a.tag === 'bound'));
+  // node subsets of a candidate, best-fitting first: the max vanishing-remainder
+  // residual of the plain Eve peels does not depend on the spec, so rank once
+  const ranked = new Map();
+  const subsetsOf = candidate => {
+    if (!ranked.has(candidate)) {
+      const score = sel => {
+        const r = reduceToBase9(p, candidate.shift, sel, true);
+        return r ? Math.max(0, ...r.linearResiduals.map(Math.abs)) : Infinity;
+      };
+      ranked.set(candidate, combinations(candidate.nodes, outerCount)
+        .map(sel => [score(sel), sel]).sort((a, b) => a[0] - b[0]).map(x => x[1]));
+    }
+    return ranked.get(candidate);
+  };
+  let sinceGood = 0, index = 0, exhausted = false;
+  const specs = specifications(n, maxN);
+  const ranks = Math.max(0, ...eve.map(c => subsetsOf(c).length));
   search:
-  for (const spec of specifications(n, maxN)) {
+  for (let rank = 0; rank < ranks; rank++) {
     for (const candidate of eve) {
-      for (const selected of combinations(candidate.nodes, outerCount)) {
+      const selected = subsetsOf(candidate)[rank];
+      if (!selected) continue;
+      for (const spec of specs) {
+        if (index++ < (budget.skip ?? 0)) continue;              // done in an earlier slice
+        if (budget.cells <= 0) { exhausted = true; break search; }
+        if (best && best.err <= GOOD && ++sinceGood > EXTRA_CELLS) break search;
+        budget.cells--; budget.used++;
         const seed = (0x85ebca6b ^ n * 65537 ^ spec.N * 8191 ^ (spec.gamma + 2) * 131 ^
-                      (spec.delta + 2) * 17 ^ attempts * 104729) >>> 0;
+                      (spec.delta + 2) * 17 ^ index * 104729) >>> 0;
         const solved = solveOuterChart(p, candidate.shift, selected, spec, seed); attempts++;
         if (!solved) continue;
         const f = solved.f;
@@ -516,15 +562,17 @@ function compilePanOddCore(coeffs) {
           if (!best || err < best.err) best = {
             spec, chain, err, shift: solved.shift, selected: solved.nodes,
           };
-          if (err <= 1e-8) break;
+          if (err <= ACCEPT) break;
         }
-        if (best?.err <= 1e-8) break search;
+        if (best?.err <= ACCEPT) break search;
       }
     }
   }
+  budget.best = best; budget.finished = !exhausted;
   if (!best || best.err > 1e-3)
     throw new Error(`Pan real: Eve's explicit outer decomposition and ${attempts} degree-9 sign/radix branches did not find a verified ` +
-      `${(n + 1) / 2}-multiplication real parameterization. Pan's theorem is exact; this reports a numerical coupled-solver failure.`);
+      `${(n + 1) / 2}-multiplication real parameterization${exhausted ? ' within the search budget' : ''}. ` +
+      `Pan's theorem is exact; this reports a numerical coupled-solver failure.`);
 
   const { spec, chain } = best;
   return {
@@ -569,15 +617,25 @@ function compileOddWithConditioning(p) {
   if (ideal !== 0) { add(ideal); add(ideal - 1); add(ideal + 1); add(0); }
   else { add(0); add(-1); add(1); add(-2); add(2); }
 
-  let lastError = null;
-  for (const exponent of exponents) {
+  // every rescale gets SLICE cells per round until one succeeds, the searches
+  // are exhausted, or MAX_CELLS are spent in total
+  let lastError = null, total = MAX_CELLS;
+  const states = exponents.map(exponent => {
     const q = p.map((v, i) => v * Math.pow(2, -exponent * i));
-    if (!q.every(Number.isFinite) || q[n] === 0) continue;
-    try {
-      const r = compilePanOddCore(q);
-      const scaled = withInputRadixScale(r, p, exponent);
-      if (scaled) return scaled;
-    } catch (e) { lastError = e; }
+    return { exponent, q, skip: 0, best: null, done: !q.every(Number.isFinite) || q[n] === 0 };
+  });
+  while (total > 0 && states.some(s => !s.done)) {
+    for (const s of states) {
+      if (s.done || total <= 0) continue;
+      const budget = { cells: Math.min(SLICE, total), skip: s.skip, best: s.best };
+      try {
+        const r = compilePanOddCore(s.q, budget);
+        const scaled = withInputRadixScale(r, p, s.exponent);
+        if (scaled) return scaled;
+        s.done = true;
+      } catch (e) { lastError = e; if (budget.finished) s.done = true; }
+      total -= budget.used ?? 0; s.skip += budget.used ?? 0; s.best = budget.best ?? s.best;
+    }
   }
   throw lastError ?? new Error('Pan real: no numerically safe power-of-two decoding chart was found');
 }

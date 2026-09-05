@@ -56,7 +56,12 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 - `js/methods/` — the comparison methods. The UI shows Horner, Estrin,
   Rabin–Winograd, Knuth–Eve with numeric real-root preprocessing, and Pan's
   real degree-8 / general degree-≥9 schemes solved numerically from their
-  explicit coefficient maps. Belaga and Pan's complex schemes remain as
+  explicit coefficient maps. Pan's search (radix/sign specs × Eve candidates × node
+  subsets, each a multi-start Newton solve) is budgeted: node subsets are tried
+  best-fitting first under every spec, the search stops shortly after a chain verifies
+  at 1e-6, and at most ~4000 cells (10–15 s) are spent, shared across the conditioning
+  rescales; inputs whose chains the solver cannot reach (the e^x Taylor polynomial at
+  degree 20) fail in seconds with a note instead of running for minutes. Belaga and Pan's complex schemes remain as
   reference implementations but are not shown in the comparison table;
   `js/compare.js` runs the displayed methods on the same input
 - `js/cgen.js` — descriptor-driven C emission matching the paper's benchmark code

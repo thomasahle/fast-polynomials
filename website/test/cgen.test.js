@@ -24,6 +24,7 @@ import { compileChar0 } from '../js/compile0.js';
 import { compileHorner } from '../js/methods/horner.js';
 import { compileRW } from '../js/methods/rw.js';
 import { compileEstrin } from '../js/methods/estrin.js';
+import { buildComparisons } from '../js/compare.js';
 import { methodChainC, char0C, char2C, ratToDouble, doubleLiteral, qConst,
          wireLetter, cIdent, parseRhs, MERSENNE89, hasCProvenance } from '../js/cgen.js';
 
@@ -235,6 +236,21 @@ for (const [n, lead] of [[14, Rat.ONE], [15, new Rat(3n)], [31, Rat.ONE]]) {
       const o = buildAndRun(c, 'Q', xs, `${nm}Q_${style}`);
       compare(o, want, `${nm} Q ${style}`, (a, b) => relClose(Number(a), b));
     }
+  }
+  // the numeric methods (Knuth–Eve, Pan) as the page builds them: their C compiles, runs
+  // and evaluates the polynomial to the accuracy of their numerical preprocessing
+  const rows = buildComparisons(cs.map(c => Q.fromRat(c)), Q, 'Q', { poly: src });
+  const coefScale = x => cs.reduce((s, c, i) => s + Math.abs(ratToDouble(c.n, c.d)) * Math.pow(Math.max(1, Math.abs(x)), i), 0);
+  for (const nm of ['Knuth–Eve', 'Pan']) {
+    const row = rows.find(r => r.name === nm);
+    check(!!row?.ok && typeof row.cText === 'string', `${nm} Q: the page has C for it (${row?.note?.slice(0, 60)})`);
+    if (!row?.cText) continue;
+    check(row.cText.includes(' * Reference: ') && /Knuth|Pan/.test(row.cText.split('Reference: ')[1] ?? ''), `${nm} Q: header cites its reference`);
+    const o = buildAndRun(row.cText, 'Q', xs, `${cIdent(nm)}Q`);
+    compare(o, want, `${nm} Q (numeric preprocessing)`, (a, b) => {
+      const x = xs[want.indexOf(b)];
+      return Math.abs(Number(a) - b) <= 1e-6 * (1 + Math.abs(b) + coefScale(x));
+    });
   }
   // exact fraction constants: (double)NUM/DEN must equal the correctly rounded double
   const alphaLines = r.cTextFraction.split('\n').filter(l => /^\s+\(double\)-?\d+\/\d+,/.test(l));
