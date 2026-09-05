@@ -1,0 +1,106 @@
+[  0%] Generating Hashrefs.cpp
+[ 26%] Built target SMHasher3Tests
+[ 26%] Built target SMHasher3Version
+[ 26%] Building CXX object CMakeFiles/SMHasher3Hashlib.dir/hashes/chainhash.cpp.o
+[ 27%] Building CXX object CMakeFiles/SMHasher3Hashlib.dir/Hashrefs.cpp.o
+In file included from /Users/ahle/repos/smhasher3/build-chainhash/Hashrefs.cpp:20:
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:44:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+In file included from /Users/ahle/repos/smhasher3/hashes/chainhash.cpp:105:
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:44:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+      44 |     HashFamilyInfo $(#N);                          \
+      |                    ^
+44/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:46:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ |     HashFamilyInfo $(#N);                          \
+      |                    ^
+   46 |     return $;                                      \
+      |            ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:46:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:54:14: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   46 |     return $;                                      \
+      |            ^
+   54 |     HashInfo $(#N, THIS_HASH_FAMILY.name);       \
+      |              ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:54:14: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:56:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   54 |     HashInfo $(#N, THIS_HASH_FAMILY.name);       \
+      |              ^
+   56 |     register_hash(&$);                           \
+      |                    ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:57:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   57 |     return $;                                    \
+      |            ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:56:20: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   56 |     register_hash(&$);                           \
+      |                    ^
+/Users/ahle/repos/smhasher3/include/hashlib/Hashlib.h:57:12: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+   57 |     return $;                                    \
+      |            ^
+5 warnings generated.
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1066:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1066 |    $.src_status = HashFamilyInfo::SRC_ACTIVE
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1070:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1070 |    $.desc       = "ChainHash (GF(2^64) carry-less PH + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks",
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1071:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1071 |    $.impl       = CHAINHASH_IMPL_STR,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1072:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1072 |    $.hash_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1074:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1074 |    $.impl_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1076:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1076 |    $.bits = 64,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1077:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1077 |    $.verification_LE = 0xDE1AB9F9,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1078:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1078 |    $.verification_BE = 0xCA97ABE0,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1079:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1079 |    $.seedfn          = chainhash_seed_init<32, 5>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1080:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1080 |    $.hashfn_native   = ChainHash<32, 5, 1, false>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1081:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1081 |    $.hashfn_bswap    = ChainHash<32, 5, 1, true>
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1085:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1085 |    $.desc       = "ChainHash (GF(2^64) carry-less PH + three-key injective chain + degree-5 finalizer behind an additive twist), 1024-byte blocks, 2 sub-blocks per block",
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1086:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1086 |    $.impl       = CHAINHASH_IMPL_STR,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1087:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1087 |    $.hash_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1089:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1089 |    $.impl_flags =
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1091:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1091 |    $.bits = 64,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1092:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1092 |    $.verification_LE = 0x32B4EE71,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1093:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1093 |    $.verification_BE = 0xAE91BF9E,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1094:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1094 |    $.seedfn          = chainhash_seed_init<128, 5>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1095:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1095 |    $.hashfn_native   = ChainHash<128, 5, 2, false>,
+      |    ^
+/Users/ahle/repos/smhasher3/hashes/chainhash.cpp:1096:4: warning: '$' in identifier [-Wdollar-in-identifier-extension]
+ 1096 |    $.hashfn_bswap    = ChainHash<128, 5, 2, true>
+      |    ^
+26 warnings generated.
+[ 28%] Linking CXX static library libSMHasher3Hashlib.a
+[ 98%] Built target SMHasher3Hashlib
+[100%] Linking CXX executable SMHasher3
+[100%] Built target SMHasher3

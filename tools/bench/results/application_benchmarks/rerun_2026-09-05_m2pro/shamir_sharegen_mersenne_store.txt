@@ -1,0 +1,24 @@
+Reading random bytes from seed
+Mersenne(2^89-1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 145.909 ns/share
+  Chain : 71.2106 ns/share
+  Speedup: 2.04898x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 172.411 ns/share
+  Chain : 73.619 ns/share
+  Speedup: 2.34194x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 202.83 ns/share
+  Chain : 74.101 ns/share
+  Speedup: 2.73721x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 211.261 ns/share
+  Chain : 82.9313 ns/share
+  Speedup: 2.54742x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 231.057 ns/share
+  Chain : 95.9787 ns/share
+  Speedup: 2.40738x

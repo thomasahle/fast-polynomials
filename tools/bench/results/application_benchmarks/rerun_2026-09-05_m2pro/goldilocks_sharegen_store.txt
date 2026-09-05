@@ -1,0 +1,24 @@
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 132.362 ns/share
+  Chain : 64.9606 ns/share
+  Speedup: 2.03758x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 148.738 ns/share
+  Chain : 69.511 ns/share
+  Speedup: 2.13978x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 170.944 ns/share
+  Chain : 76.5536 ns/share
+  Speedup: 2.23299x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 252.552 ns/share
+  Chain : 108.451 ns/share
+  Speedup: 2.32871x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 288.604 ns/share
+  Chain : 95.5272 ns/share
+  Speedup: 3.02117x

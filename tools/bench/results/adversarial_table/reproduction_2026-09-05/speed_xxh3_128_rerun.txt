@@ -1,0 +1,6 @@
+# reproduction 2026-09-05, Apple M2 Pro, tools/bench/adversarial/speed (binary built 2026-09-04 20:30), cmd: ./speed 9 0.5 run XXH3-128 ; load averages: 5.79 7.44 13.12
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+selftests passed
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":16384,"gbps":22.6950,"gbps_min":19.1504,"gbps_max":30.2413,"ns_per_call":721.92,"reps":407340,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":512,"gbps":20.8618,"gbps_min":16.1402,"gbps_max":23.5055,"ns_per_call":24.54,"reps":13648106,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}

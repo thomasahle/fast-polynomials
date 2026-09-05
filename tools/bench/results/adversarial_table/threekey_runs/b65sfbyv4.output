@@ -1,0 +1,14 @@
+"name":"Paper GF(2^64) injective, sequential","size_bytes":16384,"gbps":3.6311,"gbps_min":3.5677,"gbps_max":3.6482
+"name":"Paper GF(2^64) injective, 2 lanes","size_bytes":16384,"gbps":7.1916,"gbps_min":7.1265,"gbps_max":7.2280
+"name":"Paper GF(2^64) injective, 4 lanes","size_bytes":16384,"gbps":13.8522,"gbps_min":13.8411,"gbps_max":13.9073
+"name":"Paper GF(2^64) injective, 8 lanes","size_bytes":16384,"gbps":16.7233,"gbps_min":16.3368,"gbps_max":16.8963
+"name":"Paper injective over F_{2^89-1} (smart reduction, 15 B/step)","size_bytes":16384,"gbps":4.5599,"gbps_min":4.5090,"gbps_max":4.5681
+"name":"Paper injective over F_{2^89-1} (89x89 product, 16 B/step)","size_bytes":16384,"gbps":3.3076,"gbps_min":3.2555,"gbps_max":3.3230
+"name":"Paper GF(2^64) injective, sequential","size_bytes":512,"gbps":8.0190,"gbps_min":7.7569,"gbps_max":8.2091
+"name":"Paper GF(2^64) injective, 2 lanes","size_bytes":512,"gbps":14.7019,"gbps_min":14.3248,"gbps_max":14.7916
+"name":"Paper GF(2^64) injective, 4 lanes","size_bytes":512,"gbps":18.0311,"gbps_min":17.4420,"gbps_max":18.3058
+"name":"Paper GF(2^64) injective, 8 lanes","size_bytes":512,"gbps":12.0466,"gbps_min":11.6053,"gbps_max":12.2659
+"name":"Paper injective over F_{2^89-1} (smart reduction, 15 B/step)","size_bytes":512,"gbps":4.9399,"gbps_min":4.8240,"gbps_max":4.9758
+"name":"Paper injective over F_{2^89-1} (89x89 product, 16 B/step)","size_bytes":512,"gbps":3.4104,"gbps_min":3.3770,"gbps_max":3.5117
+
+[exited with code 0]

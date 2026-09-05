@@ -1,0 +1,7 @@
+Reading random bytes from seed
+{"name":"ChainHash, 64 B blocks, K=7","size_bytes":16384,"gbps":7.5601,"gbps_min":6.6943,"gbps_max":8.4103,"ns_per_call":2167.16,"reps":88601,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 256 B blocks, K=7","size_bytes":16384,"gbps":24.3531,"gbps_min":22.0876,"gbps_max":27.1253,"ns_per_call":672.77,"reps":186305,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 1 KB blocks, K=7, S=2","size_bytes":16384,"gbps":29.4711,"gbps_min":22.7756,"gbps_max":33.2748,"ns_per_call":555.93,"reps":343537,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 64 B blocks, K=7","size_bytes":512,"gbps":9.3310,"gbps_min":8.3801,"gbps_max":10.9119,"ns_per_call":54.87,"reps":2864614,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 256 B blocks, K=7","size_bytes":512,"gbps":14.7344,"gbps_min":13.9602,"gbps_max":18.9708,"ns_per_call":34.75,"reps":4679756,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}
+{"name":"ChainHash, 1 KB blocks, K=7, S=2","size_bytes":512,"gbps":11.8287,"gbps_min":10.8875,"gbps_max":14.4141,"ns_per_call":43.28,"reps":3278240,"runs":9,"impl_source":"bench/chainhash/chainhash.h"}

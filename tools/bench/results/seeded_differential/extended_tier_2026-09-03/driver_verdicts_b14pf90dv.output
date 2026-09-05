@@ -1,0 +1,42 @@
+DONE sd_rapidhash.txt verdict=[*********FAIL*********] real 38.12
+DONE sd_wyhash.txt verdict=[*********FAIL*********] real 38.50
+DONE sd_XXH3-64.txt verdict=[*********FAIL*********] real 57.98
+DONE sd_XXH3-128.txt verdict=[*********FAIL*********] real 64.90
+DONE sd_mum3.exact.unroll1.txt verdict=[*********FAIL*********] real 76.23
+DONE sd_mum3.exact.unroll2.txt verdict=[*********FAIL*********] real 70.94
+DONE sd_mum3.exact.unroll3.txt verdict=[*********FAIL*********] real 56.14
+DONE sd_mum3.exact.unroll4.txt verdict=[*********FAIL*********] real 95.76
+DONE sd_mum3.inexact.unroll2.txt verdict=[*********FAIL*********] real 123.11
+DONE sd_mum3.inexact.unroll1.txt verdict=[*********FAIL*********] real 175.33
+DONE sd_komihash.txt verdict=[PASS] real 46.50
+DONE sd_mum3.inexact.unroll3.txt verdict=[*********FAIL*********] real 143.84
+DONE sd_mum3.inexact.unroll4.txt verdict=[*********FAIL*********] real 139.54
+DONE sd_polymurhash-tweakseed.txt verdict=[PASS] real 74.16
+DONE sd_chainhash-256.txt verdict=[PASS] real 108.32
+DONE sd_poly-mersenne.deg1.txt verdict=[PASS] real 2.37
+DONE sd_poly-mersenne.deg2.txt verdict=[PASS] real 2.10
+DONE sd_poly-mersenne.deg4.txt verdict=[PASS] real 2.14
+DONE sd_chainhash-256-k7-s1.txt verdict=[PASS] real 138.89
+DONE sd_wyhash.strict.txt verdict=[*********FAIL*********] real 46.07
+DONE sd_rapidhash.protected.txt verdict=[*********FAIL*********] real 46.96
+DONE sd_rapidhash-micro.txt verdict=[*********FAIL*********] real 36.86
+DONE sd_rapidhash-nano.txt verdict=[*********FAIL*********] real 37.65
+DONE sd_XXH3-64.regen.txt verdict=[*********FAIL*********] real 93.09
+DONE sd_XXH3-128.regen.txt verdict=[*********FAIL*********] real 98.16
+DONE sd_mum1.exact.unroll1.txt verdict=[*********FAIL*********] real 92.95
+DONE sd_SipHash-2-4.txt verdict=[PASS] real 0.59
+DONE sd_SipHash-1-3.txt verdict=[PASS] real 2.31
+DONE sd_mum2.exact.unroll1.txt verdict=[*********FAIL*********] real 73.94
+DONE sd_t1ha2-64.txt verdict=[PASS] real 67.18
+DONE sd_t1ha2-128.txt verdict=[PASS] real 91.96
+DONE sd_FarmHash-64.NA.txt verdict=[PASS] real 78.73
+DONE sd_CityHash-64.txt verdict=[PASS] real 84.82
+DONE sd_a5hash.txt verdict=[PASS] real 89.97
+DONE sd_MurmurHash3-128.txt verdict=[PASS] real 173.16
+DONE sd_polymurhash.txt verdict=[PASS] real 948.26
+DONE sd_injective-hash.mum.txt verdict=[*********FAIL*********] real 182.54
+DONE sd_wyhash-32.txt verdict=[PASS] real 157.86
+DONE sd_gxhash-64.txt verdict=[PASS] real 724.16
+[stderr] /bin/bash: child setpgid (80987 to 80987): Operation not permitted
+
+[killed]

@@ -1,0 +1,18 @@
+Reading random bytes from seed
+Linear probing benchmark (ARM NEON, GF(2^64))
+  table=2^20 load=70% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  29.6164 ns/insert
+  lookup: 38.2627 ns/query (avg probes 4.11923)
+Rabin--Winograd
+  build:  24.8036 ns/insert
+  lookup: 36.8235 ns/query (avg probes 4.08129)
+Smart CL (this paper)
+  build:  26.4703 ns/insert
+  lookup: 34.2842 ns/query (avg probes 4.09416)
+
+Speedups vs Horner
+  build:  RW 1.19404x  Ours 1.11885x
+  lookup: RW 1.03908x  Ours 1.11604x

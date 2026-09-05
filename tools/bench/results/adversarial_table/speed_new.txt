@@ -1,0 +1,14 @@
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+{"name":"Polymur (random k, s)","size_bytes":16384,"gbps":19.6602,"gbps_min":19.3384,"gbps_max":19.8476,"ns_per_call":833.36,"reps":181715,"runs":9,"impl_source":"bench/adversarial/vendor/polymur/polymur-hash.h"}
+{"name":"Polymur (random k, s)","size_bytes":512,"gbps":16.1894,"gbps_min":15.9340,"gbps_max":16.2422,"ns_per_call":31.63,"reps":4723192,"runs":9,"impl_source":"bench/adversarial/vendor/polymur/polymur-hash.h"}
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+{"name":"PaperHash, 64 B PH blocks, K=3","size_bytes":16384,"gbps":9.7157,"gbps_min":9.1478,"gbps_max":9.8062,"ns_per_call":1686.34,"reps":89297,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 256 B PH blocks, K=3","size_bytes":16384,"gbps":36.4713,"gbps_min":33.2336,"gbps_max":37.0738,"ns_per_call":449.23,"reps":339858,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 1 KB PH blocks, K=3","size_bytes":16384,"gbps":43.0376,"gbps_min":18.8995,"gbps_max":47.0726,"ns_per_call":380.69,"reps":425154,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 1 KB PH blocks, K=5","size_bytes":16384,"gbps":46.0947,"gbps_min":26.6555,"gbps_max":46.5240,"ns_per_call":355.44,"reps":231206,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 64 B PH blocks, K=3","size_bytes":512,"gbps":16.6075,"gbps_min":16.2915,"gbps_max":16.8619,"ns_per_call":30.83,"reps":4776221,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 256 B PH blocks, K=3","size_bytes":512,"gbps":25.2436,"gbps_min":15.1586,"gbps_max":29.3083,"ns_per_call":20.28,"reps":8463264,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 1 KB PH blocks, K=3","size_bytes":512,"gbps":8.3952,"gbps_min":7.0082,"gbps_max":8.5629,"ns_per_call":60.99,"reps":1825908,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}
+{"name":"PaperHash, 1 KB PH blocks, K=5","size_bytes":512,"gbps":7.7714,"gbps_min":7.2867,"gbps_max":7.8121,"ns_per_call":65.88,"reps":2208836,"runs":9,"impl_source":"bench/paperhash/paperhash.h"}

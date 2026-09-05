@@ -1,0 +1,47 @@
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) polynomial-evaluation benchmark
+  points=4096 iters=1024
+
+Sequential x_i=i:
+x2s/seq (degree 13)
+  Horner: 137.597 ns/eval
+  Chain : 73.1389 ns/eval
+  Speedup: 1.88131x
+x2s/seq (degree 15)
+  Horner: 202.728 ns/eval
+  Chain : 67.412 ns/eval
+  Speedup: 3.00729x
+x2s/seq (degree 17)
+  Horner: 180.088 ns/eval
+  Chain : 84.7756 ns/eval
+  Speedup: 2.12429x
+x2s/seq (degree 19)
+  Horner: 202.599 ns/eval
+  Chain : 93.4674 ns/eval
+  Speedup: 2.16759x
+x2s/seq (degree 21)
+  Horner: 228.522 ns/eval
+  Chain : 120.658 ns/eval
+  Speedup: 1.89397x
+
+Random x_i~F_p:
+x2s/rand (degree 13)
+  Horner: 132.859 ns/eval
+  Chain : 64.8932 ns/eval
+  Speedup: 2.04735x
+x2s/rand (degree 15)
+  Horner: 154.516 ns/eval
+  Chain : 66.8563 ns/eval
+  Speedup: 2.31116x
+x2s/rand (degree 17)
+  Horner: 175.606 ns/eval
+  Chain : 74.6178 ns/eval
+  Speedup: 2.35341x
+x2s/rand (degree 19)
+  Horner: 196.559 ns/eval
+  Chain : 83.4615 ns/eval
+  Speedup: 2.35509x
+x2s/rand (degree 21)
+  Horner: 217.915 ns/eval
+  Chain : 93.7691 ns/eval
+  Speedup: 2.32395x

@@ -1,0 +1,66 @@
+Reading random bytes from seed
+Mersenne(2^89-1) Shamir-style share generation benchmark
+  points=4096 iters=1024
+
+x2s/u64-x (degree 13)
+  Horner: 31.847 ns/eval
+  Chain : 61.4997 ns/eval
+  Speedup: 0.517839x
+x2s/u64-x (degree 15)
+  Horner: 38.3511 ns/eval
+  Chain : 62.5499 ns/eval
+  Speedup: 0.613129x
+x2s/u64-x (degree 17)
+  Horner: 42.2333 ns/eval
+  Chain : 67.4649 ns/eval
+  Speedup: 0.626004x
+x2s/u64-x (degree 19)
+  Horner: 48.2765 ns/eval
+  Chain : 79.6282 ns/eval
+  Speedup: 0.606274x
+x2s/u64-x (degree 21)
+  Horner: 55.2587 ns/eval
+  Chain : 90.7793 ns/eval
+  Speedup: 0.608714x
+
+x2s/sharegen-seq (degree 13, full-field x)
+  Horner: 219.164 ns/eval
+  Chain : 75.7386 ns/eval
+  Speedup: 2.89369x
+x2s/sharegen-seq (degree 15, full-field x)
+  Horner: 168.893 ns/eval
+  Chain : 68.6382 ns/eval
+  Speedup: 2.46063x
+x2s/sharegen-seq (degree 17, full-field x)
+  Horner: 184.113 ns/eval
+  Chain : 74.1828 ns/eval
+  Speedup: 2.48189x
+x2s/sharegen-seq (degree 19, full-field x)
+  Horner: 211.894 ns/eval
+  Chain : 83.5584 ns/eval
+  Speedup: 2.53588x
+x2s/sharegen-seq (degree 21, full-field x)
+  Horner: 229.017 ns/eval
+  Chain : 92.8838 ns/eval
+  Speedup: 2.46563x
+
+x2s/prf-rand (degree 13, full-field x)
+  Horner: 139.087 ns/eval
+  Chain : 67.4946 ns/eval
+  Speedup: 2.06072x
+x2s/prf-rand (degree 15, full-field x)
+  Horner: 163.398 ns/eval
+  Chain : 68.8904 ns/eval
+  Speedup: 2.37186x
+x2s/prf-rand (degree 17, full-field x)
+  Horner: 187.381 ns/eval
+  Chain : 80.3693 ns/eval
+  Speedup: 2.3315x
+x2s/prf-rand (degree 19, full-field x)
+  Horner: 225.214 ns/eval
+  Chain : 97.3564 ns/eval
+  Speedup: 2.3133x
+x2s/prf-rand (degree 21, full-field x)
+  Horner: 229.845 ns/eval
+  Chain : 94.2911 ns/eval
+  Speedup: 2.43761x

@@ -1,0 +1,17 @@
+n=7 done in 0.0s
+n=7 Horner           rho= 13  log10A med=0.0 max=0.0  err/(uΣ) med=0.00e+0 max=0.00e+0  overflow=0/36
+n=7 Estrin           rho=  9  log10A med=0.0 max=0.0  err/(uΣ) med=0.00e+0 max=0.00e+0  overflow=0/36
+n=7 Rabin–Winograd   rho= 11  log10A med=0.8 max=2.3  err/(uΣ) med=0.00e+0 max=0.00e+0  overflow=0/36
+n=7 Motzkin–Eve      rho= 27  log10A med=1.6 max=3.6  err/(uΣ) med=2.34e+3 max=2.01e+6  overflow=0/36
+n=7 this paper       rho= 25  log10A med=12.0 max=27.4  err/(uΣ) med=0.00e+0 max=3.60e+14  overflow=0/36
+n=15 done in 0.3s
+n=15 Horner           rho= 29  log10A med=0.0 max=0.0  err/(uΣ) med=0.00e+0 max=1.16e+0  overflow=0/36
+n=15 Estrin           rho= 18  log10A med=0.0 max=0.0  err/(uΣ) med=0.00e+0 max=7.86e-1  overflow=0/36
+n=15 Rabin–Winograd   rho= 22  log10A med=1.2 max=3.4  err/(uΣ) med=0.00e+0 max=1.07e+0  overflow=0/36
+n=15 Motzkin–Eve      rho= 59  log10A med=5.7 max=7.3  err/(uΣ) med=4.57e+6 max=8.57e+8  overflow=0/33
+n=15 this paper       rho= 54  log10A med=43.0 max=71.4  err/(uΣ) med=2.63e+29 max=2.05e+52  overflow=0/36
+n=31 done in 91.8s
+n=31 Horner           rho= 59  log10A med=0.0 max=0.0  err/(uΣ) med=1.25e-1 max=1.37e+0  overflow=0/36
+n=31 Estrin           rho= 35  log10A med=0.0 max=0.0  err/(uΣ) med=0.00e+0 max=1.13e+0  overflow=0/36
+n=31 Rabin–Winograd   rho= 40  log10A med=3.8 max=8.4  err/(uΣ) med=3.77e-1 max=1.14e+3  overflow=0/36
+n=31 this paper       rho=118  log10A med=4848.5 max=5756.2  err/(uΣ) med=Infinity max=Infinity  overflow=36/36

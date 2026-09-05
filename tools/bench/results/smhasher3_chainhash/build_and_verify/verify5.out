@@ -1,0 +1,35 @@
+degree of f: 5  e5 = 1
+  e0: OK   circuit=c0*c1*c2 + c2*c3 + c4
+  e1: OK   circuit=c0*c1 + c0*c2 + c3
+  e2: OK   circuit=c0*c2 + c0 + c1*c2
+  e3: OK   circuit=c0 + c1 + c2
+  e4: OK   circuit=c2 + 1
+  e5: OK   circuit=1
+coefficient table: ALL OK
+g2 = X^4+X^3+bX^2+c0X+d: True
+g2+c3 quartic: True
+c(q(c)) = c: True
+q(c(q)) = q: True
+  row e0 in q: OK   actual=q0*q1*q2 + q0*q2**2 + q0*q3 + q4
+  row e1 in q: OK   actual=q0*q2 + q1*q2 + q2**2 + q3
+  row e2 in q: OK   actual=q0*q1 + q2
+  row e3 in q: OK   actual=q0 + q1
+  row e4 in q: OK   actual=q0 + 1
+row table: ALL OK
+delta = c0 c1 under c(q): True
+  row 0 (e4) uses [q0], degree in q0 = 1, K_0 = 1, later coords used = [] -> unit pivot
+  row 1 (e3) uses [q0, q1], degree in q1 = 1, K_1 = q0, later coords used = [] -> unit pivot
+  row 2 (e2) uses [q0, q1, q2], degree in q2 = 1, K_2 = q0*q1, later coords used = [] -> unit pivot
+  row 3 (e1) uses [q0, q1, q2, q3], degree in q3 = 1, K_3 = q0*q2 + q1*q2 + q2**2, later coords used = [] -> unit pivot
+  row 4 (e0) uses [q0, q1, q2, q3, q4], degree in q4 = 1, K_4 = q0*q1*q2 + q0*q2**2 + q0*q3, later coords used = [] -> unit pivot
+all pivots are the identity (no Frobenius root needed): True
+q0 decoded: True
+q1 decoded: True
+q2 decoded: True
+q3 decoded: True
+q4 decoded: True
+encode(decode(e)) = e (symbolic, free e): True
+GF(2^64) random round trips (2000x3): failures = 0
+GF(2^1) exhaustive: 32 distinct images of 32, failures = 0
+GF(2^2) exhaustive: 1024 distinct images of 1024, failures = 0
+GF(2^3) exhaustive: 32768 distinct images of 32768, failures = 0

@@ -1,0 +1,18 @@
+Reading random bytes from seed
+Tabulation-table rows (x86)
+Trials per test: 1000000
+Repetitions: 100
+
+MurmurHash3 [murmur3_64 finalizer]: Mean: 857.2 ± 4.93761 min 844
+xxHash64 [xxhash64, 8-byte input]: Mean: 1920.23 ± 19.1347 min 1876
+Tabulation 8x2^8 [tabulation_64]: Mean: 2255.06 ± 8.19856 min 2237
+Dietzfelbinger k=3 [dietz_192<3>]: Mean: 2282.91 ± 4.54334 min 2273
+Dietzfelbinger k=5 [dietz_192<5>]: Mean: 4985.57 ± 18.9411 min 4917
+Dietzfelbinger k=7 [dietz_192<7>]: Mean: 7915.97 ± 5.2028 min 7901
+This Paper (k=3) [smartcl_64<3>]: Mean: 1778.99 ± 4.96285 min 1769
+Quartic GF(2^64), 2 mults, 3-wise [quartic2_64]: Mean: 1900.1 ± 4.49778 min 1883
+Quartic GF(2^64), 3 mults, 4-wise [quartic3_64]: Mean: 2907.75 ± 4.86081 min 2890
+Motzkin quartic 2^61-1, 2 mults, 4-wise [motzkin_61]: Mean: 3207.2 ± 6.98999 min 3182
+This Paper (k=5) [smartcl_64<5>]: Mean: 3141.42 ± 5.57527 min 3127
+This Paper (k=7) [smartcl_64<7>]: Mean: 4970.66 ± 9.05563 min 4936
+Cross-check: this platform's smartcl_64<4> (= quartic3_64 circuit): Mean: 2903.35 ± 4.21752 min 2891

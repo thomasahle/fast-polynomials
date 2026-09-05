@@ -1,0 +1,5 @@
+GF(2): 32 vectors, decode failures 0, duplicate images 0, circuit/table evaluation mismatches 0
+GF(4): 1024 vectors, decode failures 0, duplicate images 0, circuit/table evaluation mismatches 0
+GF(8): 32768 vectors, decode failures 0, duplicate images 0, circuit/table evaluation mismatches 0
+GF(16): 1048576 vectors, decode failures 0, duplicate images 0, circuit/table evaluation mismatches 0
+GF(32): 33554432 vectors, decode failures 0, duplicate images 0, circuit/table evaluation mismatches 0

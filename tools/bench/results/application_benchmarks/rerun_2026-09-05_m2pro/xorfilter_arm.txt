@@ -1,0 +1,21 @@
+Reading random bytes from seed
+XOR-filter-style benchmark (ARM NEON, GF(2^64))
+  table=2^20 load=75% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  112.944 ns/key (attempts 1)
+  query:  6.18733 ns/query
+  FP rate (est.): 0.00387828
+Rabin--Winograd
+  build:  135.457 ns/key (attempts 1)
+  query:  6.09716 ns/query
+  FP rate (est.): 0.00379181
+Smart CL (this paper)
+  build:  130.408 ns/key (attempts 1)
+  query:  5.7462 ns/query
+  FP rate (est.): 0.00378036
+
+Speedups vs Horner
+  build: RW 0.833805x  Ours 0.866085x
+  query: RW 1.01479x  Ours 1.07677x

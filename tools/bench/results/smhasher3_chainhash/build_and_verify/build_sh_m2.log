@@ -1,0 +1,81 @@
+== building test_chainhash (-O3) with clang++
+== building test_chainhash_asan (-O2 -fsanitize=address) with /opt/homebrew/opt/llvm/bin/clang++
+== running test_chainhash (-O3)
+ChainHash tests: K = 5 (char2.js CIRCUITS[5]) behind the additive input twist; grid (8,5,1), (32,5,1), (32,5,2), (32,5,4), (128,5,1), (128,5,2), (128,5,4); ASAN build: no
+length set: 394 lengths = 0..200, 1000..1100, 2030..2070, 4080..4110, and 20 random: 67309 5790 21850 34748 24182 16385 5180 69820 42850 61797 42314 27185 5247 37662 43393 64391 33745 5325 4374 14619
+T7 gfmul fast vs ref: 100049 products checked
+-- shipped: (32,5,1) = chainhash-256, (128,5,2) = chainhash-1k; plus (8,5,1) and the other splits
+  BW=  8 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+T1 fast == reference: 7 grid points, 137900 messages total
+T2 determinism: 700 seeds total;  T3 length sensitivity: 14000 messages total
+T4 guard page after+before message: 7 grid points, 2758 lengths total; ASAN: no
+T5 chain == monic degree-5 polynomial, coefficient map bijective (explicit unit-pivot decoder), twist = integer add:
+  K= 5 (3 mults): monic degree-5, fast == ref == Horner: 4800 points (200 parameter sets; each point also checks finalize == Horner(p, w + t_in)); explicit decoder round trips: 200 rounds (x2: random params, random monic target; closed form == char2.js pivot loop)
+  T6 BW=8 K=5 pairs: 1000000 pairs, 0 collisions, 0 pairs regenerated (were equal)
+  T6 BW=8 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=8 collisions: pairs 1000000; set 1000000
+  T6 BW=128 K=5 pairs: 1000000 pairs, 0 collisions, 1 pairs regenerated (were equal)
+  T6 BW=128 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=128 collisions: pairs 1000000; set 1000000
+checks run: 308650, failed: 0
+ALL TESTS PASSED
+== running test_chainhash_asan (ASAN)
+ChainHash tests: K = 5 (char2.js CIRCUITS[5]) behind the additive input twist; grid (8,5,1), (32,5,1), (32,5,2), (32,5,4), (128,5,1), (128,5,2), (128,5,4); ASAN build: yes
+length set: 394 lengths = 0..200, 1000..1100, 2030..2070, 4080..4110, and 20 random: 67309 5790 21850 34748 24182 16385 5180 69820 42850 61797 42314 27185 5247 37662 43393 64391 33745 5325 4374 14619
+T7 gfmul fast vs ref: 100049 products checked
+-- shipped: (32,5,1) = chainhash-256, (128,5,2) = chainhash-1k; plus (8,5,1) and the other splits
+  BW=  8 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+T1 fast == reference: 7 grid points, 137900 messages total
+T2 determinism: 700 seeds total;  T3 length sensitivity: 14000 messages total
+T4 guard page after+before message: 7 grid points, 2758 lengths total; ASAN: yes
+T5 chain == monic degree-5 polynomial, coefficient map bijective (explicit unit-pivot decoder), twist = integer add:
+  K= 5 (3 mults): monic degree-5, fast == ref == Horner: 4800 points (200 parameter sets; each point also checks finalize == Horner(p, w + t_in)); explicit decoder round trips: 200 rounds (x2: random params, random monic target; closed form == char2.js pivot loop)
+  T6 BW=8 K=5 pairs: 1000000 pairs, 0 collisions, 0 pairs regenerated (were equal)
+  T6 BW=8 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=8 collisions: pairs 1000000; set 1000000
+  T6 BW=128 K=5 pairs: 1000000 pairs, 0 collisions, 1 pairs regenerated (were equal)
+  T6 BW=128 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=128 collisions: pairs 1000000; set 1000000
+checks run: 308650, failed: 0
+ALL TESTS PASSED
+== running test_chainhash under Guard Malloc
+GuardMalloc[test_chainhash-47396]: Allocations will be placed on 16 byte boundaries.
+GuardMalloc[test_chainhash-47396]:  - Some buffer overruns may not be noticed.
+GuardMalloc[test_chainhash-47396]:  - Applications using vector instructions (e.g., SSE) should work.
+GuardMalloc[test_chainhash-47396]: version 064575.39.1
+ChainHash tests: K = 5 (char2.js CIRCUITS[5]) behind the additive input twist; grid (8,5,1), (32,5,1), (32,5,2), (32,5,4), (128,5,1), (128,5,2), (128,5,4); ASAN build: no
+length set: 394 lengths = 0..200, 1000..1100, 2030..2070, 4080..4110, and 20 random: 67309 5790 21850 34748 24182 16385 5180 69820 42850 61797 42314 27185 5247 37662 43393 64391 33745 5325 4374 14619
+T7 gfmul fast vs ref: 100049 products checked
+-- shipped: (32,5,1) = chainhash-256, (128,5,2) = chainhash-1k; plus (8,5,1) and the other splits
+  BW=  8 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW= 32 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=1: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=2: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+  BW=128 K= 5 S=4: T1 19700 messages (50 keys x 394 lengths), T2 100 seeds, T3 2000 messages, T4 394 lengths
+T1 fast == reference: 7 grid points, 137900 messages total
+T2 determinism: 700 seeds total;  T3 length sensitivity: 14000 messages total
+T4 guard page after+before message: 7 grid points, 2758 lengths total; ASAN: no
+T5 chain == monic degree-5 polynomial, coefficient map bijective (explicit unit-pivot decoder), twist = integer add:
+  K= 5 (3 mults): monic degree-5, fast == ref == Horner: 4800 points (200 parameter sets; each point also checks finalize == Horner(p, w + t_in)); explicit decoder round trips: 200 rounds (x2: random params, random monic target; closed form == char2.js pivot loop)
+  T6 BW=8 K=5 pairs: 1000000 pairs, 0 collisions, 0 pairs regenerated (were equal)
+  T6 BW=8 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=8 collisions: pairs 1000000; set 1000000
+  T6 BW=128 K=5 pairs: 1000000 pairs, 0 collisions, 1 pairs regenerated (were equal)
+  T6 BW=128 K=5 set: 1000000 distinct messages (4..64 B), 0 duplicate hashes
+T6 BW=128 collisions: pairs 1000000; set 1000000
+checks run: 308650, failed: 0
+ALL TESTS PASSED

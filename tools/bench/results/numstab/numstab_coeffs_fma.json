@@ -1,0 +1,190 @@
+{
+ "7": {
+  "Horner": {
+   "rho": 13,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 9,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 11,
+   "logA": {
+    "median": 0.8057918595167841,
+    "max": 2.264191320559533
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Motzkin–Eve": {
+   "rho": 27,
+   "logA": {
+    "median": 1.5632825921813271,
+    "max": 3.605645079783308
+   },
+   "err": {
+    "median": 2341.238758317361,
+    "max": 2013737.912118926
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 25,
+   "logA": {
+    "median": 11.974542791140184,
+    "max": 27.412480708985683
+   },
+   "err": {
+    "median": 0,
+    "max": 359599765031369.7
+   },
+   "overflow": 0,
+   "samples": 36
+  }
+ },
+ "15": {
+  "Horner": {
+   "rho": 29,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 1.15656130652215
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 18,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0.7864488033809933
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 22,
+   "logA": {
+    "median": 1.1545079809222543,
+    "max": 3.393931777584392
+   },
+   "err": {
+    "median": 0,
+    "max": 1.0743433702849376
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Motzkin–Eve": {
+   "rho": 59,
+   "logA": {
+    "median": 5.725783032061276,
+    "max": 7.306102696941302
+   },
+   "err": {
+    "median": 4570293.916090426,
+    "max": 857453275.0539992
+   },
+   "overflow": 0,
+   "samples": 33
+  },
+  "this paper": {
+   "rho": 54,
+   "logA": {
+    "median": 43.00121943043138,
+    "max": 71.4271905084343
+   },
+   "err": {
+    "median": 2.6340868248296373e+29,
+    "max": 2.0465317743638445e+52
+   },
+   "overflow": 0,
+   "samples": 36
+  }
+ },
+ "31": {
+  "Horner": {
+   "rho": 59,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.1251764917903729,
+    "max": 1.369984838040217
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 35,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 1.1330988420302706
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 40,
+   "logA": {
+    "median": 3.8093878247898516,
+    "max": 8.41934386154616
+   },
+   "err": {
+    "median": 0.37732435141678805,
+    "max": 1141.590377728982
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 118,
+   "logA": {
+    "median": 4848.516903092234,
+    "max": 5756.202527612826
+   },
+   "err": {
+    "median": null,
+    "max": null
+   },
+   "overflow": 36,
+   "samples": 36
+  }
+ }
+}

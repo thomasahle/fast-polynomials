@@ -1,0 +1,204 @@
+Reading random bytes from seed
+ARM NEON Benchmark
+==================
+Trials per test: 100000
+Repetitions: 100
+
+Tabulation 8x2^8: Mean: 165.62 ± 2.84176 min 161
+Dietz 2-wise (specialized): Mean: 61.27 ± 0.443959 min 61
+Thorup pair-multiply: Mean: 93.5 ± 2.13307 min 88
+
+Degree 2
+Mersenne (traditional): Mean: 132.52 ± 1.65819 min 131
+Mersenne (Mikkel): Mean: 131.44 ± 0.791454 min 131
+Mersenne, smart: Mean: 134.45 ± 1.51245 min 133
+Carryless: Mean: 48.19 ± 0.392301 min 48
+Lemire: Mean: 51.52 ± 0.538145 min 51
+Estrin: Mean: 52.18 ± 0.384187 min 52
+Rabin Winograd: Mean: 59.65 ± 0.779423 min 59
+Smart CL: Mean: 53.6 ± 0.69282 min 52
+Dietz-128 (W=128, valid): Mean: 49.55 ± 0.606218 min 47
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 77.18 ± 1.21145 min 75
+Degree 3
+Mersenne (traditional): Mean: 312.09 ± 5.58945 min 296
+Mersenne (Mikkel): Mean: 236.33 ± 4.42053 min 226
+Mersenne, smart: Mean: 243.77 ± 3.74928 min 237
+Carryless: Mean: 82.09 ± 1.28137 min 79
+Lemire: Mean: 88.02 ± 1.14 min 87
+Estrin: Mean: 116.52 ± 1.36733 min 114
+Rabin Winograd: Mean: 91.81 ± 2.19406 min 89
+Smart CL: Mean: 88.38 ± 1.64791 min 84
+Dietz-128 (W=128, INVALID for k>=3): Mean: 94.56 ± 2.25087 min 89
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 151.34 ± 3.01403 min 145
+Degree 4
+Mersenne (traditional): Mean: 547.1 ± 12.1041 min 514
+Mersenne (Mikkel): Mean: 390.78 ± 7.17298 min 366
+Mersenne, smart: Mean: 416.55 ± 6.86058 min 395
+Carryless: Mean: 137.25 ± 1.89407 min 132
+Lemire: Mean: 146.42 ± 2.88853 min 140
+Estrin: Mean: 161.68 ± 1.87019 min 155
+Rabin Winograd: Mean: 149.11 ± 2.22663 min 143
+Smart CL: Mean: 102.76 ± 1.49077 min 99
+Dietz-128 (W=128, INVALID for k>=3): Mean: 147.77 ± 2.10644 min 141
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 231.19 ± 3.6543 min 225
+Degree 5
+Mersenne (traditional): Mean: 821.28 ± 20.838 min 776
+Mersenne (Mikkel): Mean: 569.44 ± 14.0644 min 535
+Mersenne, smart: Mean: 560.23 ± 15.2032 min 525
+Carryless: Mean: 193.66 ± 2.15044 min 187
+Lemire: Mean: 220.07 ± 5.40787 min 206
+Estrin: Mean: 239.97 ± 4.4237 min 229
+Rabin Winograd: Mean: 231.43 ± 1.62638 min 228
+Smart CL: Mean: 148.56 ± 2.27737 min 143
+Dietz-128 (W=128, INVALID for k>=3): Mean: 198.37 ± 2.83074 min 190
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 306.1 ± 1.9 min 301
+Degree 6
+Mersenne (traditional): Mean: 1080.37 ± 2.78085 min 1072
+Mersenne (Mikkel): Mean: 743.83 ± 2.83568 min 737
+Mersenne, smart: Mean: 703.95 ± 2.70324 min 698
+Carryless: Mean: 249.17 ± 1.217 min 248
+Lemire: Mean: 304.66 ± 2.0011 min 302
+Estrin: Mean: 274.53 ± 4.1145 min 270
+Rabin Winograd: Mean: 269.43 ± 4.61574 min 262
+Smart CL: Mean: 188.23 ± 2.77436 min 183
+Dietz-128 (W=128, INVALID for k>=3): Mean: 251.88 ± 6.03868 min 236
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 399.33 ± 5.92124 min 376
+Degree 7
+Mersenne (traditional): Mean: 1442.46 ± 27.6765 min 1360
+Mersenne (Mikkel): Mean: 962.93 ± 18.8909 min 914
+Mersenne, smart: Mean: 878.26 ± 16.5019 min 827
+Carryless: Mean: 330.52 ± 5.172 min 320
+Lemire: Mean: 419.44 ± 8.22717 min 399
+Estrin: Mean: 323.53 ± 7.29583 min 305
+Rabin Winograd: Mean: 227.88 ± 4.49284 min 217
+Smart CL: Mean: 229.73 ± 4.12518 min 217
+Dietz-128 (W=128, INVALID for k>=3): Mean: 296.56 ± 4.17689 min 289
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 486.36 ± 11.0159 min 463
+Degree 8
+Mersenne (traditional): Mean: 1812.34 ± 44.6959 min 1721
+Mersenne (Mikkel): Mean: 1165.64 ± 2.86538 min 1159
+Mersenne, smart: Mean: 949.03 ± 11.0077 min 918
+Carryless: Mean: 404.4 ± 1.90788 min 402
+Lemire: Mean: 541.51 ± 5.12737 min 524
+Estrin: Mean: 368.41 ± 5.9044 min 361
+Rabin Winograd: Mean: 316.69 ± 6.32882 min 299
+Smart CL: Mean: 257.34 ± 4.59178 min 243
+Dietz-128 (W=128, INVALID for k>=3): Mean: 363.45 ± 7.88464 min 341
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 589.48 ± 8.52817 min 558
+Degree 9
+Mersenne (traditional): Mean: 2222.66 ± 51.9731 min 2095
+Mersenne (Mikkel): Mean: 1421.61 ± 27.605 min 1341
+Mersenne, smart: Mean: 1173.75 ± 14.4972 min 1103
+Carryless: Mean: 506.12 ± 11.8577 min 479
+Lemire: Mean: 693.13 ± 16.1274 min 654
+Estrin: Mean: 509.12 ± 8.25988 min 498
+Rabin Winograd: Mean: 411.74 ± 7.53475 min 390
+Smart CL: Mean: 272.96 ± 4.73058 min 268
+Dietz-128 (W=128, INVALID for k>=3): Mean: 416.97 ± 10.4206 min 399
+Dietz-192 (W=192, valid for k<=~2^33): Mean: 678.42 ± 10.8832 min 644
+
+Universal Hash Comparison
+=========================
+(Compares methods for hashing 2N values)
+
+N=4 (2N=8 blocks)
+  Horner (2N-1 mults):      Mean: 552.16 ± 10.833 min 519
+  Horner-Unrolled:          Mean: 463.72 ± 9.26184 min 435
+  Horner-Parallel:          Mean: 2480.53 ± 57.6681 min 2337
+  Injective (N mults):      Mean: 392.74 ± 9.03838 min 370
+  Injective-Parallel (3N):  Mean: 827.95 ± 13.8624 min 783
+  Injective-Lanes (N+L):    Mean: 604.22 ± 10.955 min 569
+  CLNH (multilinear):       Mean: 183.57 ± 3.55318 min 173
+  BRW (recursive):          Mean: 1237.22 ± 18.9476 min 1184
+  c-decBRW (c=2):           Mean: 1466.5 ± 24.7897 min 1364
+  c-decBRW (c=4):           Mean: 401.44 ± 6.40519 min 394
+
+N=8 (2N=16 blocks)
+  Horner (2N-1 mults):      Mean: 2109.33 ± 49.4597 min 1982
+  Horner-Unrolled:          Mean: 1045.22 ± 21.3956 min 983
+  Horner-Parallel:          Mean: 3462.61 ± 36.0383 min 3306
+  Injective (N mults):      Mean: 990.97 ± 18.8167 min 933
+  Injective-Parallel (3N):  Mean: 1543.55 ± 32.0638 min 1456
+  Injective-Lanes (N+L):    Mean: 1399.59 ± 13.9879 min 1319
+  CLNH (multilinear):       Mean: 345.66 ± 5.43732 min 339
+  BRW (recursive):          Mean: 2331.97 ± 31.4183 min 2238
+  c-decBRW (c=2):           Mean: 2541.8 ± 26.5831 min 2438
+  c-decBRW (c=4):           Mean: 3124.55 ± 43.0298 min 2995
+
+N=16 (2N=32 blocks)
+  Horner (2N-1 mults):      Mean: 7645.74 ± 257.262 min 7254
+  Horner-Unrolled:          Mean: 2727.23 ± 24.1569 min 2654
+  Horner-Parallel:          Mean: 6607.16 ± 75.2853 min 6289
+  Injective (N mults):      Mean: 4099.33 ± 37.7198 min 3898
+  Injective-Parallel (3N):  Mean: 2734.56 ± 28.6036 min 2636
+  Injective-Lanes (N+L):    Mean: 2107.33 ± 33.2244 min 1990
+  CLNH (multilinear):       Mean: 1065.91 ± 20.5061 min 1002
+  BRW (recursive):          Mean: 4481.22 ± 67.4594 min 4337
+  c-decBRW (c=2):           Mean: 4699.82 ± 59.6906 min 4538
+  c-decBRW (c=4):           Mean: 5867.48 ± 74.2569 min 5657
+
+N=32 (2N=64 blocks)
+  Horner (2N-1 mults):      Mean: 22975.9 ± 260.506 min 22292
+  Horner-Unrolled:          Mean: 6684.25 ± 98.5921 min 6388
+  Horner-Parallel:          Mean: 12818 ± 132.075 min 12341
+  Injective (N mults):      Mean: 11672 ± 94.8978 min 11159
+  Injective-Parallel (3N):  Mean: 5162.14 ± 65.1245 min 4971
+  Injective-Lanes (N+L):    Mean: 4153.46 ± 47.2314 min 4003
+  CLNH (multilinear):       Mean: 2115.2 ± 29.0555 min 2039
+  BRW (recursive):          Mean: 8833.28 ± 89.1381 min 8533
+  c-decBRW (c=2):           Mean: 10846 ± 107.703 min 10563
+  c-decBRW (c=4):           Mean: 10294 ± 103.103 min 9995
+
+N=64 (2N=128 blocks)
+  Horner (2N-1 mults):      Mean: 64638.1 ± 420.663 min 62175
+  Horner-Unrolled:          Mean: 13710.3 ± 128.849 min 13271
+  Horner-Parallel:          Mean: 22976.1 ± 258.353 min 22092
+  Injective (N mults):      Mean: 27706.4 ± 150.804 min 27212
+  Injective-Parallel (3N):  Mean: 10287.6 ± 99.3058 min 9938
+  Injective-Lanes (N+L):    Mean: 7849.92 ± 92.5441 min 7541
+  CLNH (multilinear):       Mean: 4657.04 ± 52.5349 min 4477
+  BRW (recursive):          Mean: 17548.2 ± 104.033 min 17225
+  c-decBRW (c=2):           Mean: 23370.6 ± 115.305 min 23072
+  c-decBRW (c=4):           Mean: 20674.5 ± 144.869 min 20159
+
+N=128 (2N=256 blocks)
+  Horner (2N-1 mults):      Mean: 146944 ± 504.111 min 145362
+  Horner-Unrolled:          Mean: 34503.3 ± 222.745 min 33783
+  Horner-Parallel:          Mean: 21156.6 ± 114.685 min 20714
+  Injective (N mults):      Mean: 71018.1 ± 327.477 min 69838
+  Injective-Parallel (3N):  Mean: 22143.9 ± 144.678 min 21617
+  Injective-Lanes (N+L):    Mean: 14336.2 ± 133.507 min 13917
+  CLNH (multilinear):       Mean: 8862.78 ± 88.4527 min 8559
+  BRW (recursive):          Mean: 34878.8 ± 163.172 min 34430
+  c-decBRW (c=2):           Mean: 39539.8 ± 198.391 min 38783
+  c-decBRW (c=4):           Mean: 42001.1 ± 208.671 min 41413
+
+
+128-bit Hash Comparison
+=======================
+
+N=4 (2N=8 keys)
+  CLNH-128 (full product):  Mean: 122.21 ± 22.9949 min 117
+  CLNH 2×64 (two hashes):   Mean: 321.89 ± 11.8844 min 310
+  Poly GF(2^128) Horner:    Mean: 2317.75 ± 49.5702 min 2240
+
+N=8 (2N=16 keys)
+  CLNH-128 (full product):  Mean: 244.88 ± 9.11184 min 235
+  CLNH 2×64 (two hashes):   Mean: 655.16 ± 18.5681 min 635
+  Poly GF(2^128) Horner:    Mean: 7666.84 ± 126.385 min 7441
+
+N=16 (2N=32 keys)
+  CLNH-128 (full product):  Mean: 857.57 ± 22.9792 min 826
+  CLNH 2×64 (two hashes):   Mean: 1623.67 ± 36.7756 min 1566
+  Poly GF(2^128) Horner:    Mean: 24140.3 ± 1735.16 min 23285
+
+N=32 (2N=64 keys)
+  CLNH-128 (full product):  Mean: 1142.37 ± 31.3297 min 1094
+  CLNH 2×64 (two hashes):   Mean: 3239.02 ± 59.164 min 3122
+  Poly GF(2^128) Horner:    Mean: 56327 ± 922.763 min 55055
+
+N=64 (2N=128 keys)
+  CLNH-128 (full product):  Mean: 3181.17 ± 74.7607 min 3057
+  CLNH 2×64 (two hashes):   Mean: 6968.85 ± 977.194 min 6600
+  Poly GF(2^128) Horner:    Mean: 121244 ± 1626.93 min 119200
+

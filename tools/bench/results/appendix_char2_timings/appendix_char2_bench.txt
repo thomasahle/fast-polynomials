@@ -1,0 +1,11 @@
+Apple-silicon PMULL, 1000000 random inputs, median of 41 reps, ns per evaluation
+degree  7 (4 products): 3.54 ns
+degree  9 (5 products): 3.31 ns
+degree 11 (6 products): 4.47 ns
+degree 13 (7 products): 5.52 ns
+Apple-silicon PMULL, 1000000 random inputs, median of 41 reps, ns per evaluation
+degree  7 (4 products): 2.35 ns
+degree  9 (5 products): 3.13 ns
+degree 11 (6 products): 4.49 ns
+degree 13 (7 products): 5.54 ns
+exit=0

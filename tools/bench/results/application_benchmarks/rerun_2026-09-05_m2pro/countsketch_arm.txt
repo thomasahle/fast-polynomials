@@ -1,0 +1,16 @@
+Reading random bytes from seed
+CountSketch update benchmark (ARM NEON, GF(2^64))
+  updates=1048576 reps=50 table=2^16
+  (hash output used for bucket+sign)
+
+Degree 9
+Carryless (Horner):
+  mean 5533.46us ± 33.6168us  (5.27712 ns/update)
+Rabin--Winograd:
+  mean 5013.08us ± 57.7764us  (4.78085 ns/update)
+Smart CL (this paper):
+  mean 4430.26us ± 67.8533us  (4.22503 ns/update)
+
+Speedups vs Horner (ns/update):
+  RW:   1.1038x
+  Ours: 1.24901x

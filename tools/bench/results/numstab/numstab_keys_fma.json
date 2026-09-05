@@ -1,0 +1,244 @@
+{
+ "7": {
+  "Horner": {
+   "rho": 13,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 9,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 12,
+   "logA": {
+    "median": 0.7551758405863556,
+    "max": 4.73769663322275
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Motzkin–Eve": {
+   "rho": 27,
+   "logA": {
+    "median": 1.5417830544172215,
+    "max": 3.670135623295536
+   },
+   "err": {
+    "median": 1468.5961614856456,
+    "max": 183791.07580694222
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 25,
+   "logA": {
+    "median": 0.35847134562049376,
+    "max": 0.9258950081828861
+   },
+   "err": {
+    "median": 0,
+    "max": 0
+   },
+   "overflow": 0,
+   "samples": 36
+  }
+ },
+ "15": {
+  "Horner": {
+   "rho": 29,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.02364090090297343,
+    "max": 1.0888313484677308
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 18,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0,
+    "max": 0.5571038621046674
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 22,
+   "logA": {
+    "median": 3.5449165315483526,
+    "max": 8.062306176098907
+   },
+   "err": {
+    "median": 738.4675964515495,
+    "max": 30414551.50861747
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 52,
+   "logA": {
+    "median": 1.449060965137896,
+    "max": 2.4652946228462618
+   },
+   "err": {
+    "median": 0,
+    "max": 1.4036431754140004
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Motzkin–Eve": {
+   "rho": 59,
+   "logA": {
+    "median": 6.20864931719289,
+    "max": 8.38762023200325
+   },
+   "err": {
+    "median": 4464086.771976348,
+    "max": 1803536397.734544
+   },
+   "overflow": 0,
+   "samples": 30
+  }
+ },
+ "31": {
+  "Horner": {
+   "rho": 61,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.08304827275609016,
+    "max": 2.2283706904863294
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 35,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.1876001062772984,
+    "max": 2.045953118327886
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 40,
+   "logA": {
+    "median": 26.880607557410706,
+    "max": 47.14453272559333
+   },
+   "err": {
+    "median": 6.4353335150998465e+25,
+    "max": 1.1071110271189672e+37
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 118,
+   "logA": {
+    "median": 3.4136371679470656,
+    "max": 4.429693972052242
+   },
+   "err": {
+    "median": 0.0028862906562506967,
+    "max": 3.0689296774918295
+   },
+   "overflow": 0,
+   "samples": 36
+  }
+ },
+ "63": {
+  "Horner": {
+   "rho": 125,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.13694738309445437,
+    "max": 4.625747047659333
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Estrin": {
+   "rho": 68,
+   "logA": {
+    "median": 0,
+    "max": 0
+   },
+   "err": {
+    "median": 0.12084320899812971,
+    "max": 4.628971221258722
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "Rabin–Winograd": {
+   "rho": 74,
+   "logA": {
+    "median": 183.05745434369683,
+    "max": 296.56801886326645
+   },
+   "err": {
+    "median": 2.1740445941088344e+115,
+    "max": 5.386910190101551e+205
+   },
+   "overflow": 0,
+   "samples": 36
+  },
+  "this paper": {
+   "rho": 266,
+   "logA": {
+    "median": 6.790126905863644,
+    "max": 10.385873715641885
+   },
+   "err": {
+    "median": 0.00009274828601820459,
+    "max": 3.4693102857444997
+   },
+   "overflow": 0,
+   "samples": 36
+  }
+ }
+}

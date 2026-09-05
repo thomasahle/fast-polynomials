@@ -1,0 +1,242 @@
+=== x86 (AMD EPYC 9R14) Benchmark Results ===
+Date: $(date)
+
+--- k-wise Carryless Benchmark ---
+Reading random bytes from seed
+Tabulation 16x2^4: Mean: 3891.96 ± 4.03217 min 3877
+Tabulation 8x2^8: Mean: 6952.14 ± 4.54977 min 6933
+Tabulation 8x2^8 tree: Mean: 6952.66 ± 5.61644 min 6935
+Tabulation 4x2^16: Mean: 2678.76 ± 4.63275 min 2669
+Mixed(8x2^8, 1): Mean: 4335 ± 3.29242 min 4328
+
+Degree 2
+Mersenne (traditional): Mean: 2194.61 ± 2.39539 min 2191
+Mersenne (Mikkel): Mean: 2248.46 ± 2.62076 min 2244
+Mersenne (AKT): Mean: 7106.28 ± 2.85685 min 7097
+Mersenne, Estrin: Mean: 3045.56 ± 5.51964 min 3028
+Mersenne, smart: Mean: 7117.35 ± 7.44228 min 7099
+Carryless: Mean: 1636.13 ± 4.15369 min 1631
+Lemire: Mean: 1091.86 ± 0.648383 min 1091
+Estrin: Mean: 1092.49 ± 0.4999 min 1092
+Rabin Winograd: Mean: 1362.76 ± 1.48405 min 1361
+Smart CL: Mean: 1092.22 ± 0.558211 min 1091
+Degree 3
+Mersenne (traditional): Mean: 8205.68 ± 5.98311 min 8193
+Mersenne (Mikkel): Mean: 4721.84 ± 4.80982 min 4710
+Mersenne (AKT): Mean: 7931.64 ± 5.72454 min 7916
+Mersenne, Estrin: Mean: 9298.89 ± 5.48068 min 9280
+Mersenne, smart: Mean: 8691.96 ± 177 min 8483
+Carryless: Mean: 3276.86 ± 2.45772 min 3271
+Lemire: Mean: 2197.9 ± 2.11896 min 2195
+Estrin: Mean: 3278.05 ± 2.60144 min 3273
+Rabin Winograd: Mean: 2280.36 ± 4.35091 min 2266
+Smart CL: Mean: 2285 ± 2.54558 min 2281
+Degree 4
+Mersenne (traditional): Mean: 7962.07 ± 4.71011 min 7944
+Mersenne (Mikkel): Mean: 7742.72 ± 5.95832 min 7724
+Mersenne (AKT): Mean: 9021.9 ± 4.04599 min 9012
+Mersenne, Estrin: Mean: 9582.33 ± 8.57211 min 9562
+Mersenne, smart: Mean: 11121.8 ± 914.392 min 9766
+Carryless: Mean: 4917.42 ± 3.41227 min 4907
+Lemire: Mean: 3874.18 ± 6.79615 min 3854
+Estrin: Mean: 4371.2 ± 2.44131 min 4366
+Rabin Winograd: Mean: 3915.38 ± 4.00694 min 3902
+Smart CL: Mean: 3929.74 ± 4.6618 min 3915
+Degree 5
+Mersenne (traditional): Mean: 11020.8 ± 5.53845 min 11005
+Mersenne (Mikkel): Mean: 10676.8 ± 14.4785 min 10640
+Mersenne (AKT): Mean: 10799.3 ± 9.92292 min 10764
+Mersenne, Estrin: Mean: 16097 ± 8.86609 min 16076
+Mersenne, smart: Mean: 14621.7 ± 1393.89 min 12054
+Carryless: Mean: 6557.83 ± 4.03251 min 6546
+Lemire: Mean: 5652.97 ± 4.48655 min 5644
+Estrin: Mean: 6557.92 ± 4.91056 min 6548
+Rabin Winograd: Mean: 6140.14 ± 2.89144 min 6131
+Smart CL: Mean: 4213.69 ± 3.21153 min 4203
+Degree 6
+Mersenne (traditional): Mean: 14701.2 ± 6.32502 min 14685
+Mersenne (Mikkel): Mean: 13143.8 ± 5.98895 min 13129
+Mersenne (AKT): Mean: 14257.3 ± 8.16805 min 14236
+Mersenne, Estrin: Mean: 17341.6 ± 9.57933 min 17315
+Mersenne, smart: Mean: 15288.5 ± 162.812 min 15105
+Carryless: Mean: 8202.66 ± 3.00406 min 8196
+Lemire: Mean: 7577.45 ± 14.3244 min 7533
+Estrin: Mean: 7664.02 ± 5.28579 min 7650
+Rabin Winograd: Mean: 7276.14 ± 3.86269 min 7266
+Smart CL: Mean: 5500.08 ± 4.1296 min 5492
+Degree 7
+Mersenne (traditional): Mean: 18588.9 ± 9.07662 min 18563
+Mersenne (Mikkel): Mean: 17380.6 ± 38.7749 min 17261
+Mersenne (AKT): Mean: 17527 ± 21.7097 min 17474
+Mersenne, Estrin: Mean: 20813 ± 12.4007 min 20778
+Mersenne, smart: Mean: 19409.7 ± 499.133 min 18788
+Carryless: Mean: 10501.3 ± 5.06178 min 10488
+Lemire: Mean: 10008.7 ± 14.9152 min 9959
+Estrin: Mean: 8745.46 ± 5.2923 min 8733
+Rabin Winograd: Mean: 6236.3 ± 3.7027 min 6227
+Smart CL: Mean: 6076.65 ± 4.1842 min 6064
+Degree 8
+Mersenne (traditional): Mean: 22253 ± 10.3556 min 22219
+Mersenne (Mikkel): Mean: 20370 ± 17.3257 min 20293
+Mersenne (AKT): Mean: 21013.6 ± 12.6729 min 20980
+Mersenne, Estrin: Mean: 22731.5 ± 12.1815 min 22691
+Mersenne, smart: Mean: 19841.1 ± 71.5519 min 19765
+Carryless: Mean: 12569.2 ± 5.11542 min 12552
+Lemire: Mean: 12236.4 ± 18.915 min 12146
+Estrin: Mean: 10004.3 ± 3.23883 min 9995
+Rabin Winograd: Mean: 8026.73 ± 2.6939 min 8019
+Smart CL: Mean: 7627.68 ± 4.89873 min 7614
+Degree 9
+Mersenne (traditional): Mean: 27064.3 ± 17.6847 min 27006
+Mersenne (Mikkel): Mean: 26133.6 ± 30.4172 min 26034
+Mersenne (AKT): Mean: 24361.6 ± 15.2102 min 24307
+Mersenne, Estrin: Mean: 32902.6 ± 22.5191 min 32819
+Mersenne, smart: Mean: 20493.2 ± 493.589 min 19940
+Carryless: Mean: 14753.6 ± 12.435 min 14690
+Lemire: Mean: 14488.9 ± 20.1072 min 14426
+Estrin: Mean: 12546.2 ± 5.24324 min 12532
+Rabin Winograd: Mean: 10300.3 ± 3.93013 min 10287
+Smart CL: Mean: 7303.45 ± 4.33445 min 7287
+
+--- Mersenne Shamir Benchmark ---
+Reading random bytes from seed
+Mersenne(2^89-1) Shamir-style share generation benchmark
+  points=4096 iters=1024
+
+x2s/u64-x (degree 13)
+  Horner: 47.7601 ns/eval
+  Chain : 53.8176 ns/eval
+  Speedup: 0.887444x
+x2s/u64-x (degree 15)
+  Horner: 58.2496 ns/eval
+  Chain : 57.261 ns/eval
+  Speedup: 1.01726x
+x2s/u64-x (degree 17)
+  Horner: 68.6075 ns/eval
+  Chain : 63.476 ns/eval
+  Speedup: 1.08084x
+x2s/u64-x (degree 19)
+  Horner: 64.35 ns/eval
+  Chain : 72.2475 ns/eval
+  Speedup: 0.890689x
+x2s/u64-x (degree 21)
+  Horner: 88.6094 ns/eval
+  Chain : 80.3843 ns/eval
+  Speedup: 1.10232x
+
+x2s/sharegen-seq (degree 13, full-field x)
+  Horner: 227.606 ns/eval
+  Chain : 136.889 ns/eval
+  Speedup: 1.6627x
+x2s/sharegen-seq (degree 15, full-field x)
+  Horner: 271.378 ns/eval
+  Chain : 60.261 ns/eval
+  Speedup: 4.50338x
+x2s/sharegen-seq (degree 17, full-field x)
+  Horner: 303.196 ns/eval
+  Chain : 66.4279 ns/eval
+  Speedup: 4.56429x
+x2s/sharegen-seq (degree 19, full-field x)
+  Horner: 351.072 ns/eval
+  Chain : 75.8418 ns/eval
+  Speedup: 4.629x
+x2s/sharegen-seq (degree 21, full-field x)
+  Horner: 375.772 ns/eval
+  Chain : 81.6734 ns/eval
+  Speedup: 4.60091x
+
+x2s/prf-rand (degree 13, full-field x)
+  Horner: 227.589 ns/eval
+  Chain : 136.886 ns/eval
+  Speedup: 1.66263x
+x2s/prf-rand (degree 15, full-field x)
+  Horner: 271.257 ns/eval
+  Chain : 60.2909 ns/eval
+  Speedup: 4.49914x
+x2s/prf-rand (degree 17, full-field x)
+  Horner: 303.097 ns/eval
+  Chain : 66.3814 ns/eval
+  Speedup: 4.56599x
+x2s/prf-rand (degree 19, full-field x)
+  Horner: 350.925 ns/eval
+  Chain : 75.812 ns/eval
+  Speedup: 4.62889x
+x2s/prf-rand (degree 21, full-field x)
+  Horner: 375.806 ns/eval
+  Chain : 81.6462 ns/eval
+  Speedup: 4.60286x
+
+--- Goldilocks STARK Eval ---
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) polynomial-evaluation benchmark
+  points=4096 iters=1024
+
+Sequential x_i=i:
+x2s/seq (degree 13)
+  Horner: 147.236 ns/eval
+  Chain : 115.752 ns/eval
+  Speedup: 1.27199x
+x2s/seq (degree 15)
+  Horner: 169.009 ns/eval
+  Chain : 122.242 ns/eval
+  Speedup: 1.38258x
+x2s/seq (degree 17)
+  Horner: 189.996 ns/eval
+  Chain : 134.247 ns/eval
+  Speedup: 1.41527x
+x2s/seq (degree 19)
+  Horner: 212.458 ns/eval
+  Chain : 148.797 ns/eval
+  Speedup: 1.42784x
+x2s/seq (degree 21)
+  Horner: 236.317 ns/eval
+  Chain : 172.483 ns/eval
+  Speedup: 1.37008x
+
+Random x_i~F_p:
+x2s/rand (degree 13)
+  Horner: 147.269 ns/eval
+  Chain : 115.735 ns/eval
+  Speedup: 1.27246x
+x2s/rand (degree 15)
+  Horner: 169.063 ns/eval
+  Chain : 122.218 ns/eval
+  Speedup: 1.38329x
+x2s/rand (degree 17)
+  Horner: 190.023 ns/eval
+  Chain : 134.2 ns/eval
+  Speedup: 1.41598x
+x2s/rand (degree 19)
+  Horner: 212.537 ns/eval
+  Chain : 148.774 ns/eval
+  Speedup: 1.42859x
+x2s/rand (degree 21)
+  Horner: 235.965 ns/eval
+  Chain : 172.472 ns/eval
+  Speedup: 1.36813x
+
+--- Goldilocks Sharegen Store ---
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 175.233 ns/share
+  Chain : 116.4 ns/share
+  Speedup: 1.50544x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 165.016 ns/share
+  Chain : 126.126 ns/share
+  Speedup: 1.30835x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 181.593 ns/share
+  Chain : 138.405 ns/share
+  Speedup: 1.31205x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 209.14 ns/share
+  Chain : 154.034 ns/share
+  Speedup: 1.35776x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 328.476 ns/share
+  Chain : 172.498 ns/share
+  Speedup: 1.90423x
