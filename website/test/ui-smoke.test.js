@@ -226,11 +226,10 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
         ShimWorker.instances.map(w => w.messages[0].part).join(',') === 'main,numeric' &&
         JSON.stringify(ShimWorker.instances[0].messages[0]) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q', part: 'main' }),
         'the first load over ℚ compiles the initial example through a main and a numeric worker');
-  check($('#busy') && $('#cancel'), 'the busy row with Cancel shows while a job runs');
-  $('#cancel').click(); await settle();
-  check(ShimWorker.instances.every(w => w.terminated) && !$('#busy'), 'Cancel terminates both workers and clears the busy row');
-
+  check(!$('#busy') && !$('#cancel') && !$('#out'), 'no busy row while the first job runs (nothing to show yet, nothing to shift)');
+  const firstWorkers = ShimWorker.instances.slice();
   $('a.chip[data-ex="ln"]').click(); await settle();
+  check(firstWorkers.every(w => w.terminated) && ShimWorker.instances.length === 4, 'a new job while one runs terminates its workers and starts fresh ones');
   check($('#poly-in').value === examplesFor('Q', 7, 0, true).find(e => e.key === 'ln').src &&
         lastMessage()?.src === $('#poly-in').value, 'a chip fills the input and compiles it');
   const before = messageCount();

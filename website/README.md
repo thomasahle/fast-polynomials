@@ -86,7 +86,8 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   control is rendered from (`selectedRow`, `paneContent`, `availableSubOptions`, …);
   testable under node without a DOM
 - `js/ui.js` — the page as a Preact + htm app mounted into `#app`: renders `uistate.js`
-  and owns the side effects (the Web Worker, created lazily and terminated on Cancel);
+  and owns the side effects (the Web Workers, created lazily and terminated when a
+  newer job supersedes them);
   `App` → `DesktopLayout` | `CompactLayout` over shared pieces (`InputCard`, `FieldPills`,
   `MethodPills`, `FieldMethodPickers`, `Output`, `FooterBar`); the phone boot state and the
   six-digit rule for numeric rows are `initialStateFor` / `presentedState` in `uistate.js`

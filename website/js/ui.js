@@ -7,8 +7,8 @@
 // unbounded exact-rational preprocessing off the UI thread — a main worker
 // for our chain and the classical methods, and over ℚ / ℝ a second one for
 // the numeric methods (Knuth–Eve, Pan), whose rows arrive later and show as
-// spinners meanwhile (created lazily, terminated on Cancel and whenever a
-// newer job supersedes a running one) — the
+// spinners meanwhile (created lazily, terminated whenever a newer job
+// supersedes a running one) — the
 // timers that make compilation automatic — the initial example compiles on
 // load, a mode switch recompiles immediately (the reducer starts that job
 // itself), and edits recompile after DEBOUNCE_MS of no typing — plus the
@@ -21,7 +21,7 @@
 // style.css shares the breakpoint COMPACT_QUERY):
 //   desktop  ONE card: heading row (label + example chips + monic + degree
 //            stepper + Share) → the polynomial input → field pill groups (from
-//            the js/field.js registry) → method chips → busy / error → view
+//            the js/field.js registry) → method chips → error → view
 //            tabs attached to the output pane; the comparison table below.
 //   phones   a short intro with Paper / GitHub links, then three cards: the
 //            input (three chips beside the label, Field / Method dropdowns),
@@ -213,7 +213,6 @@ function App() {
   // Everything the controls can do; a running job is abandoned only when the
   // action will start a new one (the reducer's conditions, mirrored here).
   const actions = {
-    cancel: () => { abandonJob(); dispatch({ type: 'cancel' }); },
     runExample: key => { abandonJob(); dispatch({ type: 'example', key }); },
     setMode: mode => { abandonJob(); dispatch({ type: 'setMode', mode }); },
     toggleMonic: () => { if (exampleHeld(stateRef.current)) abandonJob(); dispatch({ type: 'setExMonic' }); },
@@ -238,7 +237,7 @@ function DesktopLayout({ state, dispatch, actions }) {
       chips=${examplesFor(state.mode, state.exDegree, state.exSeed, state.exMonic)}>
       <${FieldPills} state=${state} setMode=${actions.setMode} />
       ${tabs.length > 0 && html`<${MethodPills} tabs=${tabs} dispatch=${dispatch} />`}
-      <${Status} state=${state} cancel=${actions.cancel} />
+      <${Status} state=${state} />
       ${out && html`<${Output} key="out" state=${state} dispatch=${dispatch} />`}
     <//>
     <div>${out && html`<${FooterBar} key="foot" state=${state} dispatch=${dispatch} />`}</div>`;
@@ -251,7 +250,7 @@ function CompactLayout({ state, dispatch, actions }) {
   return html`<${CompactIntro} />
     <${InputCard} state=${state} actions=${actions} chips=${chips}>
       <${FieldMethodPickers} state=${state} tabs=${tabs} setMode=${actions.setMode} dispatch=${dispatch} />
-      <${Status} state=${state} cancel=${actions.cancel} />
+      <${Status} state=${state} />
     <//>
     ${out && html`<div class="card out-card">
       <${Output} key="out" state=${presentedState(state, { compact: true })} dispatch=${dispatch} compact />
@@ -341,11 +340,12 @@ function FieldMethodPickers({ state, tabs, setMode, dispatch }) {
   </div>`;
 }
 
-/** The busy row (with Cancel) and the error line. */
-function Status({ state, cancel }) {
-  return html`${state.busy && html`<div class="controls"><span id="busy" style="color:var(--muted)">preprocessing…
-      <button class="cancel" id="cancel" onClick=${cancel}>cancel</button></span></div>`}
-    ${state.error !== null && html`<div id="error">${state.error}</div>`}`;
+/** The error line.  A running job shows no row of its own: the last output
+ *  stays mounted and dims (stale-while-revalidate), the numeric methods spin,
+ *  and a new input supersedes the job — a busy row here would shift the layout
+ *  and flicker on every quick recompile. */
+function Status({ state }) {
+  return html`${state.error !== null && html`<div id="error">${state.error}</div>`}`;
 }
 
 /** Phone header under the title: a short intro and the Paper / GitHub (with

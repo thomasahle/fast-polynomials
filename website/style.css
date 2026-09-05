@@ -183,11 +183,6 @@ textarea#poly-in::selection { background: rgba(138, 75, 45, .28); }
 .seg button sup { font-size: .7em; }
 .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .seg button:disabled { opacity: .45; cursor: default; }
-button.cancel {
-  margin-left: .6rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
-  background: transparent; color: var(--muted); font: inherit; font-size: .82rem;
-  padding: .12rem .55rem;
-}
 
 /* field chooser: one pill group per registry group (exact ℚ ℝ · Mersenne
    primes 2⁶¹−1 2⁸⁹−1 2¹²⁷−1 · binary fields GF(2³²) GF(2⁶⁴) GF(2¹²⁸)), each led
