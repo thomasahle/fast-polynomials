@@ -39,21 +39,6 @@ body {
 }
 .wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
 /* two-column header: title + intro left, "Read the paper" card right; stacks when narrow */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  padding: .55rem 0 .7rem; margin-bottom: 1.6rem; border-bottom: 1px solid var(--line);
-  font-size: .92rem;
-}
-.topbar .brand { font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: -.005em; }
-.topbar .brand:hover { color: var(--accent); }
-.topbar-links { display: flex; align-items: center; gap: .9rem; }
-.topbar-paper { color: var(--ink); text-decoration: none; font-weight: 500; }
-.topbar-paper:hover { color: var(--accent); }
-.topbar-paper .arrow { font-size: .8em; margin-left: .15em; }
-.topbar-sep { width: 1px; height: 1.1rem; background: var(--line); }
-.topbar .github-link { margin: 0; }
-@media (max-width: 540px) { .topbar { flex-wrap: wrap; } }
-
 header {
   display: flex; flex-wrap: wrap; gap: 1.25rem 2.5rem; align-items: flex-start;
   justify-content: space-between; margin-bottom: 1.75rem;
@@ -266,10 +251,9 @@ pre.chain .none { color: var(--muted); font-style: italic; }
 
 /* Mathematical view: KaTeX cells in a real alignment table. The canonical
    plain-text chain remains behind Copy and the operation counter; this is only
-   its typeset presentation. The action buttons float over the unused top-right
-   corner rather than reserving a blank row above the equations. */
+   its typeset presentation. Extra top padding reserves the action-button row. */
 .math-chain {
-  padding: 1rem 1.1rem 1.15rem; overflow-x: auto;
+  padding: 2.55rem 1.1rem 1.15rem; overflow-x: auto;
   color: var(--ink); -webkit-overflow-scrolling: touch;
 }
 .math-table {
@@ -277,15 +261,13 @@ pre.chain .none { color: var(--muted); font-style: italic; }
   /* Keep the three alignment columns at their intrinsic widths. `min-width:
      100%` makes HTML tables distribute spare pane width between the columns,
      so short chains acquire huge gaps around `=` while longer chains do not. */
-  width: max-content; margin-inline: 0;
+  width: max-content; margin-inline: auto;
 }
 .math-table td, .math-table th { white-space: nowrap; vertical-align: baseline; }
 .math-equation td { padding-block: .06rem; }
 .math-lhs { min-width: 2.4rem; padding: 0 .25rem 0 .2rem; text-align: right; color: var(--accent); }
 .math-rel { padding: 0 .55rem; text-align: center; color: var(--muted); }
 .math-rhs { padding: 0 .4rem 0 .05rem; text-align: left; }
-.math-chain .math-var { color: var(--in-var); }
-.math-chain .math-const { color: var(--in-num); }
 .math-chain .katex { font-size: 1.08em; }
 .math-equation.result td { padding-top: .42rem; }
 .math-equation.result .math-lhs { font-weight: 700; }
