@@ -145,10 +145,10 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \raggedright ARM \texttt{mult9}, x86 \texttt{mult9\_alt}: $y=x^2$, $z=(x+k_0)(y+k_1)$, $u=(x+k_2)(y+k_3)$, $t=(z+k_4)\allowbreak(y+z+k_5)$, $v=(t+k_6)\allowbreak(x+z+k_7)$, $P=u+v+k_8$ &
 \raggedright not displayed; differs from both degree-$9$ circuits of \Cref{appendix:polynomials} &
 \raggedright timing only \tabularnewline
-\raggedright $\F_{2^{64}}$, degrees $7$--$21$ (nanosecond timings in \Cref{appendix:polynomials}) &
+\raggedright $\F_{2^{64}}$, degrees $7$--$25$ (nanosecond timings in \Cref{appendix:polynomials}) &
 \raggedright \texttt{tools/\allowbreak bench/\allowbreak appendix\_char2\_\allowbreak circuits\_arm.cpp} &
 \raggedright the displayed circuits &
-\raggedright inverses for $7,15,17,19,21$; the displayed $9,11,13$ are search candidates and their certified alternatives (A.0) are not timed \tabularnewline
+\raggedright inverses for $7,15,17,19,21,23,25$; the displayed $9,11,13$ are search candidates and their certified alternatives (A.0) are not timed \tabularnewline
 \raggedright $\F_{2^{89}-1}$, $k=3$--$9$ (\Cref{fig:bench_all}) &
 \raggedright \texttt{smartpoly\_64} &
 \raggedright not displayed &
@@ -456,6 +456,24 @@ explicit unit-pivot decoder (two Frobenius square roots; certificate
 independent; the search circuit of the $k=7$ row of \Cref{tab:families},
 for which no inverse is displayed, ran at $2313\pm29$ and $4942\pm4$\,\textmu s
 in the same runs.
+
+\paragraph{SMHasher3.}
+Both ChainHash configurations of \Cref{tab:injective:adversarial} ($256$-byte
+and $1$\,KB blocks; \Cref{sec:ph}) pass all $200$ tests of the full
+SMHasher3~\cite{smhasher3} suite on the Apple M2 Pro and on the Intel Xeon
+8375C, with identical verification codes for the PMULL, PCLMULQDQ and portable
+back ends.  In SMHasher3's own bulk benchmark they run at $20.7$ and $17.5$
+bytes per cycle on the M2 Pro ($15.4$ and $12.3$ on the Xeon) and hash
+$1$--$31$-byte keys in $66$ and $72$ cycles ($112$ and $111$ on the Xeon).
+The suite runs every hash under fixed seeds, so it cannot see the
+input-specific collision rates of \Cref{app:adversarial}, which are
+probabilities over the seed; we contributed a seeded-differential test that
+hashes fixed structured pairs under $2^{24}$ fresh seeds ($2^{30}$ in an
+extended tier).  At the default tier it fails every MUM variant and the
+deliberately weak hashes ($48$ of the $308$ registered hashes); at the
+extended tier \texttt{wyhash}, \texttt{rapidhash}, \texttt{XXH3} and
+\texttt{XXH3-128} fail at about $2^{-26}$, while ChainHash, \texttt{komihash},
+Polymur and SipHash show no collision.
 
 \subsection{Comparison Across Finite Fields}
 
