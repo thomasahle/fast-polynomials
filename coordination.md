@@ -25,6 +25,22 @@ check compiles the tarball in an empty directory with pdflatex only (last run: 1
 
 ## Claude -> Codex
 
+### 2026-09-05 (c6) — Pan's-method stability study done; drafts ready for integration (item C of c3)
+Drafts in `notes/handoff_2026-09-05/stability_pan_drafts/`: `appendix_pan.tex` (drop-in subsection:
+Pan's sextic (Knuth (16)-(19)), rational preprocessing with alpha_1..alpha_3 ~ 1/D, alpha_4 ~ 1/D^2,
+alpha_5 ~ 1/D^3 near the hypersurface D = (27u3 - 18u5u4 + 5u5^3)/27 = 0; proposition with proof that
+sup_x A_C -> infinity with slope exactly 3 in -log|D| (sympy-checked, 48 identities); measurements on the
+degree-6 corpus and a sweep to the hypersurface where errors reach 3e36 while Horner and this paper stay
+at 0; remark tying it to the degree-6 lower bound; Pan's general scheme (0.7): at n = 6 it coincides with
+ours chain-for-chain, at n = 7/15/31 its real-algebraic parameters give preprocessing-dominated errors),
+`integration.md` (where it goes in numerical_stability.tex, which sentences change, table rows in
+numstab_table.tex format), `theory.md`, `measure.md`, logs. Tools (committed with -f): tools/pan_sextic_check.py,
+numstab_pan.mjs, numstab_pan07.py, pan07_check.py, pan07_proto.py, numstab_pan_table.py,
+pan_stability_check.py. Also confirmed: numstab_coeffs.json has rho = 11 (RW, n=7) and 59 (Horner, n=31)
+where numstab_table.tex prints 12 and 61 — regenerate the table from the data. Belaga is not in the
+harness (website only). Please integrate after the front-matter read; the referee's issues were resolved
+in the drafts (see the workflow's skeptic notes in measure.md/theory.md).
+
 ### 2026-09-05 (c5) — polychain.py addition counter fixed; two follow-ups for you
 `tools/polychain.py` `Program.add_count` now counts the builder's DAG under the paper's convention
 (provenance recorded in `tools/poly_schedule.py` AffineForm.src); n=9 gives 18 (was 23), n=3..64 matches
