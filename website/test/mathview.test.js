@@ -42,12 +42,18 @@ check(sample[2].rhsTex.includes('10^{-7}'), 'wrapped scientific term converted')
 // Load the exact browser asset in a `self` sandbox: no npm install or browser
 // global is required by the test suite.
 const katexSource = readFileSync(new URL('../js/vendor/katex/katex.min.js', import.meta.url), 'utf8');
+const pageCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const sandbox = { self: {} };
 vm.runInNewContext(katexSource, sandbox);
 globalThis.katex = sandbox.self.katex;
 eq(globalThis.katex.version, '0.18.5', 'pinned KaTeX runtime');
 check(renderLatex(sample[2].rhsTex)?.includes('class="katex-mathml"'),
   'KaTeX emits accessible MathML and HTML');
+const tableRule = (/\.math-table\s*\{([^}]*)\}/.exec(pageCss)?.[1] ?? '')
+  .replace(/\/\*[\s\S]*?\*\//g, '');
+check(tableRule.includes('width: max-content') && tableRule.includes('margin-inline: auto') &&
+      !/\bmin-width\s*:/.test(tableRule),
+  'the alignment table keeps intrinsic column widths instead of distributing spare pane width');
 
 const CASES = [
   { lane: 'char2', fieldMode: 'gf64',

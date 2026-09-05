@@ -258,7 +258,10 @@ pre.chain .none { color: var(--muted); font-style: italic; }
 }
 .math-table {
   border-collapse: separate; border-spacing: 0 .24rem;
-  width: max-content; min-width: 100%;
+  /* Keep the three alignment columns at their intrinsic widths. `min-width:
+     100%` makes HTML tables distribute spare pane width between the columns,
+     so short chains acquire huge gaps around `=` while longer chains do not. */
+  width: max-content; margin-inline: auto;
 }
 .math-table td, .math-table th { white-space: nowrap; vertical-align: baseline; }
 .math-equation td { padding-block: .06rem; }

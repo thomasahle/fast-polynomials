@@ -78,6 +78,7 @@ import FastPoly.Height.ConstructionDepth
 import FastPoly.Height.TCircuitDepth
 import FastPoly.Height.RealizationDepth
 import FastPoly.HeightFinal
+import FastPoly.PaperMain
 import FastPoly.LowerBoundChar2.General
 
 /-!
