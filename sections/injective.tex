@@ -185,11 +185,11 @@ SMHasher3~\cite{smhasher3}, a hash-testing framework, on an Apple M2 Pro
 (ARM64), with $L=9$ independent lanes each consuming 16 bytes per step, a
 ternary-tree reduction of the lane states and a finalizer that mixes in the
 message length.  Over the Mersenne prime field $p=2^{61}-1$ (128-bit product
-and two rounds of shift-and-add reduction) it reaches $1.59$~bytes/cycle of
-bulk throughput on a 256\,KiB message and $133$~cycles per hash on short
+and two rounds of shift-and-add reduction) it reaches $1.49$~bytes/cycle of
+bulk throughput on a 256\,KiB message and $142$~cycles per hash on short
 (1--31 byte) keys.  Replacing the field multiplication by the ``MUM'' fold
 $\mathrm{lo}_{64}(ab)\oplus\mathrm{hi}_{64}(ab)$ of the $128$-bit product makes
-the bulk throughput $9\times$ higher ($14.4$~bytes/cycle), but that variant is
+the bulk throughput $9\times$ higher ($14.1$~bytes/cycle), but that variant is
 not a field operation: the fold is many-to-one, so the injectivity argument of
 this section and the Schwartz--Zippel collision bound do not apply to it, and
 message sets with elevated collision rates exist.  We report the number only to
@@ -331,7 +331,7 @@ Polymur~\cite{polymur}                      & 4 & 57 & 19.7 & 16.2 \\
 \texttt{wyhash} v4.3                        & 5 & 28.6$^*$ & 26.5 & 34.8 \\
 \texttt{rapidhash} v1                       & 4 & 28.4$^*$ & 27.1 & 32.1 \\
 \texttt{XXH3}                               & 1 & 27.3$^*$ & 38.2 & 27.2 \\
-\texttt{XXH3-128} (128-bit output)          & 1 & 28.5$^*$ & 33.8 & 24.0 \\
+\texttt{XXH3-128} (128-bit output)          & 1 & 28.5$^*$ & 33.8 & 24.7 \\
 \texttt{MUM} v3                             & 1 &  0$^*$   & 33.0 & 26.8 \\
 \texttt{komihash} v5.34                     & 1 & $\ge32^*$ & 24.8 & 24.3 \\
 \hline

@@ -1,0 +1,73 @@
+# date: 2026-09-05 20:58:33 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:58  up 3 days,  8:59, 1 user, load averages: 8.43 5.71 5.17
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./shamir_sharegen_mersenne   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto shamir_sharegen_mersenne.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: shamir_sharegen_mersenne.cpp md5 08abd1b8fc5860bc8cf239ddf87cd8a5; x2s_mersenne_chains.h d5f5d6b57fefd0ddaca911e8d5249827; x2s_goldilocks_chains.h 12bf5dccc0dd891c185a3a53a8af91e8
+Reading random bytes from seed
+Mersenne(2^89-1) Shamir-style share generation benchmark
+  points=4096 iters=1024
+
+x2s/u64-x (degree 13)
+  Horner: 30.9294 ns/eval
+  Chain : 60.3046 ns/eval
+  Speedup: 0.512886x
+x2s/u64-x (degree 15)
+  Horner: 37.7991 ns/eval
+  Chain : 61.3299 ns/eval
+  Speedup: 0.616324x
+x2s/u64-x (degree 17)
+  Horner: 40.9881 ns/eval
+  Chain : 66.4312 ns/eval
+  Speedup: 0.617002x
+x2s/u64-x (degree 19)
+  Horner: 47.2189 ns/eval
+  Chain : 74.4962 ns/eval
+  Speedup: 0.633843x
+x2s/u64-x (degree 21)
+  Horner: 53.2023 ns/eval
+  Chain : 85.2321 ns/eval
+  Speedup: 0.624205x
+
+x2s/sharegen-seq (degree 13, full-field x)
+  Horner: 137.303 ns/eval
+  Chain : 66.6557 ns/eval
+  Speedup: 2.05988x
+x2s/sharegen-seq (degree 15, full-field x)
+  Horner: 158.962 ns/eval
+  Chain : 67.7068 ns/eval
+  Speedup: 2.3478x
+x2s/sharegen-seq (degree 17, full-field x)
+  Horner: 184.322 ns/eval
+  Chain : 73.4313 ns/eval
+  Speedup: 2.51013x
+x2s/sharegen-seq (degree 19, full-field x)
+  Horner: 204.143 ns/eval
+  Chain : 82.3366 ns/eval
+  Speedup: 2.47937x
+x2s/sharegen-seq (degree 21, full-field x)
+  Horner: 224.777 ns/eval
+  Chain : 91.771 ns/eval
+  Speedup: 2.44933x
+
+x2s/prf-rand (degree 13, full-field x)
+  Horner: 137.205 ns/eval
+  Chain : 66.9582 ns/eval
+  Speedup: 2.04911x
+x2s/prf-rand (degree 15, full-field x)
+  Horner: 159.123 ns/eval
+  Chain : 67.5181 ns/eval
+  Speedup: 2.35675x
+x2s/prf-rand (degree 17, full-field x)
+  Horner: 181.526 ns/eval
+  Chain : 73.3501 ns/eval
+  Speedup: 2.47479x
+x2s/prf-rand (degree 19, full-field x)
+  Horner: 206.863 ns/eval
+  Chain : 83.7941 ns/eval
+  Speedup: 2.46871x
+x2s/prf-rand (degree 21, full-field x)
+  Horner: 225.007 ns/eval
+  Chain : 91.7537 ns/eval
+  Speedup: 2.4523x
+# uptime after: 20:58  up 3 days, 9 hrs, 1 user, load averages: 7.52 5.64 5.16

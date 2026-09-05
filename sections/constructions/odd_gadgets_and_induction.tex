@@ -70,8 +70,10 @@
 
 \subsection{Induction steps}
 
-The $8k+3$ induction step and the special case $n=31$ require a small auxiliary ingredient: a degree-$15$ polynomial that is decodable given only $(H_2,H_4)$.
-We define the explicit barred gadgets needed when the available power list
+Both the $8k+3$ and $8k+7$ induction steps require auxiliary odd-degree
+gadgets that are decodable given only $(H_2,H_4)$.  The special case $n=31$
+also needs such a degree-$15$ gadget.  We define the explicit family
+$\bar Q_{8k+7}$ for precisely these calls when the available power list
 does not contain the next power.  In the induction steps below this choice is
 abbreviated by the selected-gadget notation $\mathcal Q_d$.
 \Cref{fig:odd-gadgets} summarizes both gadget families and their decoders.
@@ -147,7 +149,7 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
     base.
     For the outer $A_4$ call put
     \[
-      b_i=\alpha_{N+2+i}\ (0\le i\le4),\qquad
+      b_i=\alpha_{N+6-i}\ (0\le i\le4),\qquad
       a_i=\alpha_{N-4+i}\ (0\le i\le5).
     \]
     Thus the six $a_i$'s are the consecutive parameters in the $Q_3$ and
@@ -186,9 +188,11 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
         \text{slope}&1&1&1
       \end{array}
     \]
-    All entries to the right of a pivot in this table involve only parameters
-    already recovered.  This follows directly by expanding the monic factors
-    in the displayed definition of $\bar Q_{N+7}$.
+    Thus, for $i=0,1,2$ in order, set $b_i=p_{i+1}-K_i$, where $K_i$
+    is row $p_{i+1}$ of the displayed outer expression with the already
+    recovered $b_0,\ldots,b_{i-1}$ substituted and all remaining unknown
+    parameters set to zero.  Expanding the monic factors shows that this
+    row is exactly $b_i+K_i$: no later parameter reaches it.
 
     We next solve simultaneously for $(b_3,b_4,u,v)$.  For a compact
     verification of the four pivots, put
@@ -212,7 +216,10 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
        =\begin{pmatrix}p^0_4\\p^0_5\\p^0_6\\p^0_7\end{pmatrix}
         +M\begin{pmatrix}b_3\\b_4\\u\\v\end{pmatrix},
     \]
-    with
+    where $p^0_r$ is the coefficient obtained by setting
+    $b_3=b_4=u=v=0$ in the displayed outer expression.  These four baseline
+    coefficients depend only on $H_2,H_4$ and the already recovered
+    $b_0,b_1,b_2$.  The matrix entries are
     \[
     \begin{gathered}
       A_1=b_0+r_1+c_1,\qquad D=r_1+c_1,\\
@@ -237,17 +244,32 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
     $C_3-kC_1-kC_2$ and $C_4-kC_1-kC_2$ gives
     $(0,0,0,-k)^{\mathsf T}$ and $(0,0,-k,-kL)^{\mathsf T}$.
     Since the upper $2\times2$ block in the first two columns has determinant
-    one, this proves $\det M=-k^2$.  Thus this block is
-    inverted by the explicit decoder
+    one, this proves $\det M=-k^2$.  More importantly, the same reduction
+    gives the following explicit inverse.  Put $\Delta p_r=p_r-p^0_r$ and
+    successively compute
     \[
-      \begin{pmatrix}b_3\\b_4\\u\\v\end{pmatrix}
-        =-\frac1{k^2}\operatorname{adj}(M)
-          \left(
-            \begin{pmatrix}p_4\\p_5\\p_6\\p_7\end{pmatrix}
-            -\begin{pmatrix}p^0_4\\p^0_5\\p^0_6\\p^0_7\end{pmatrix}
-          \right).
+      \begin{aligned}
+        y_1&=\Delta p_4,&
+        y_2&=\Delta p_5-A_1y_1,\\
+        v&=(Cy_1+Dy_2-\Delta p_6)/k,&
+        u&=(Ey_1+Fy_2-kLv-\Delta p_7)/k,\\
+        b_3&=y_1-k(u+v),&
+        b_4&=y_2-k(u+v).
+      \end{aligned}
     \]
-    The only division is by the fixed field constant $k^2$, which is
+    Indeed the four forward equations become
+    \[
+      \begin{aligned}
+        \Delta p_4&=y_1,&
+        \Delta p_5&=A_1y_1+y_2,\\
+        \Delta p_6&=Cy_1+Dy_2-kv,&
+        \Delta p_7&=Ey_1+Fy_2-ku-kLv,
+      \end{aligned}
+    \]
+    when $y_1=b_3+k(u+v)$ and $y_2=b_4+k(u+v)$.
+    Substitution therefore recovers the four input parameters from their
+    rows, and sends any four proposed rows back to themselves.  The only
+    divisions are by the fixed field constant $k$, which is
     invertible under $(8k+7)$-admissibility; there is no data-dependent
     division.
 
@@ -269,9 +291,16 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
       [x^{N-1}]\bar Q_{N+7}=kw+K_{N-1},\qquad
       [x^{N-2}]\bar Q_{N+7}=k\rho+K_{N-2}(w),
     \]
-    for known polynomials $K_{N-1},K_{N-2}$.  Thus $w$ and then $\rho$ are
-    recovered (the first boundary coefficient of $H_8^k$ contributes $kw$;
-    the second branch contributes $k(w+\rho)$ one row later).
+    for known polynomials $K_{N-1},K_{N-2}$, computed by setting the current
+    scalar to zero and using the supplied remainder boundary coefficients.
+    The explicit pivots are
+    \[
+      w=\bigl([x^{N-1}]\bar Q_{N+7}-K_{N-1}\bigr)/k,
+      \qquad
+      \rho=\bigl([x^{N-2}]\bar Q_{N+7}-K_{N-2}(w)\bigr)/k.
+    \]
+    The first boundary coefficient of $H_8^k$ contributes $kw$; the
+    second branch contributes $k(w+\rho)$ one row later.
     Consequently $H_8$ and $\widetilde H_8$ are now known.
 
     Subtract the known main terms and set
@@ -318,9 +347,22 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
         \text{slope}&1&1&1&1&1&1.
       \end{array}
     \]
-    (The coefficient in degree $6$ is the known monic leading term.)  A direct
-    expansion of $Q_3=(x+a_5)(H_2+a_4)+a_3$ verifies the table, so these six
-    parameters are recovered in descending order.  Together with the already
+    The coefficient in degree $6$ is the known monic leading term.  An
+    explicit inverse for these six rows is monic division by
+    $J=(x+b_0)(H_2+b_1)$: the quotient is $Q_3$, since
+    \[
+      F=JQ_3+(x+b_0)a_1+(H_2+b_2)a_2+a_0
+    \]
+    and the last three terms have degree at most $2<\deg J$.
+    Apply the explicit $Q_3$ decoder to the quotient to recover
+    $a_5,a_4,a_3$.  For the remainder $R=F-JQ_3$, compute
+    \[
+      a_2=[x^2]R,\qquad a_1=[x]R-r_1a_2,\qquad
+      a_0=[x^0]R-b_0a_1-(r_0+b_2)a_2.
+    \]
+    Monic division and these assignments give both inverse compositions
+    directly and recover the six parameters in descending order.
+    Together with the already
     recovered internal block and $(w,u,v,\rho)$ this is every parameter in
     $\bar Q_{N+7}$, proving decodability given $(H_2,H_4)$.
 \end{proof}
@@ -344,7 +386,7 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
         $Q_7$ constructions above.  If
         $n\equiv 3\pmod 8$ and $n\ge 11$, then $Q_n$ is decodable given
         $(H_2,H_4)$ by the known-powers construction with $l=2$ (i.e.
-        \Cref{alg:constr-known-2n-1} and \Cref{lem:Q-odd-degree-with-powers}
+        \Cref{alg:constr-Q-odd} and \Cref{lem:Q-odd-degree-with-powers}
         specialized to $l=2$).
         \item If $n\equiv 7\pmod 8$ and $n\ge 15$, then $\bar Q_n$ is
         decodable given $(H_2,H_4)$ by \Cref{lem:barQ8k+7}; its $k=1$
@@ -358,7 +400,7 @@ abbreviated by the selected-gadget notation $\mathcal Q_d$.
     The cases $n=3,7$ are the explicit $Q_3,Q_7$ constructions.  For
     $n\equiv 3\pmod 8$
     with $n\ge11$, write $n=2^{l+1}k+(2^l-1)$ with $l=2$ and apply the
-    construction \Cref{alg:constr-known-2n-1} together with
+    construction \Cref{alg:constr-Q-odd} together with
     \Cref{lem:Q-odd-degree-with-powers} (specialized to $l=2$).
 
     For $n\equiv 7\pmod 8$ and $n\ge 15$, write $n=8k+7$ with $k\ge1$
@@ -434,7 +476,7 @@ powers, and has the cost $\lfloor d/2\rfloor$ recorded below.
     \Cref{lem:odd-gadgets-H2H4} (including $Q_1,Q_3,Q_7$).
 \end{proof}
 
-\subsubsection{The $8k+7$ step}
+\subsubsection{The \texorpdfstring{$8k+7$}{8k+7} step}
 
 \Cref{fig:odd-induction-steps} pictures the two induction steps.
 
@@ -445,9 +487,12 @@ powers, and has the cost $\lfloor d/2\rfloor$ recorded below.
   shells are peeled in succession and leave the smaller polynomial
   $P_{2k+1}$.  For $8k+3$, the outer shell exposes a compatible squared
   smaller pair; its monic square roots recover the smaller instance, whose
-  decoder reconstructs the powers needed by the low auxiliary gadget.  The
-  red cells are the fixed leading-coefficient corrections at shared
-  boundaries.}
+  decoder reconstructs $H_2$.  Decoding $S_2=Q_{4k+1}(x,H_2)$ next
+  reconstructs $H_4$, after which the low auxiliary gadget can be decoded.
+  Red cells mark the square-gadget boundary corrections; the second shell
+  in the $8k+7$ panel is read after negating the first residual.  The
+  additional row-$2k$ correction for the squared recursion in the $8k+3$
+  step is given in the proof.}
   \label{fig:odd-induction-steps}
 \end{figure}
 
@@ -623,7 +668,7 @@ powers, and has the cost $\lfloor d/2\rfloor$ recorded below.
     \]
 \end{example}
 
-\subsubsection{The $8k+3$ step}
+\subsubsection{The \texorpdfstring{$8k+3$}{8k+3} step}
 \begin{algorithm}[H]
     \caption{
         Extending a compatible joint realization from $2k+1$ to $8k+3$.
@@ -778,4 +823,3 @@ powers, and has the cost $\lfloor d/2\rfloor$ recorded below.
     The total is $m+2k+(k-1)+2=m+3k+1$.  The first auxiliary call forms and
     records $H_4$, while the smaller circuit's $H_2$ wire is retained.
 \end{proof}
-

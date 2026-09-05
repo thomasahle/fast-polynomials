@@ -40,7 +40,10 @@ u &= (x + a_4)(y + t + a_5) \\
 P &= u + a_6
 \end{aligned}
 \]
-\emph{2.3 ns, h=4, 12 XORs}
+\emph{2.3 ns, h=4, 12 XORs}; the $k=7$ row of
+\Cref{sec:experiments:tabulation} and the website use the variant
+$t=z(z+a_3)$ in place of the displayed $t$, also certified by
+\texttt{char2/verify\_n7.py}.
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.47\textwidth}
@@ -790,7 +793,7 @@ zero and collect the named row.  They give the explicit recurrence
  q_i=[C]_{15-i}+B_i(q_0,\ldots,q_{i-1})\qquad(3\le i\le15).      \tag{A.24}\label{eq:char2-19-inner-decoder}
 \]
 The companion script \texttt{char2/verify\_n19.py} (implementation
-\texttt{char2/verify\_n19\_unitriangular\_symbolic.py}) expands all thirteen
+\texttt{char2/\allowbreak verify\_\allowbreak n19\_\allowbreak unitriangular\_\allowbreak symbolic.py}) expands all thirteen
 identities, and the nineteen row identities of $P$ that they flatten to,
 exactly in $\F_2[q_0,\ldots,q_{18}][x]$; its finite-field
 enumeration is only a separate diagnostic.
@@ -923,7 +926,7 @@ Thus the decoder is the descending recurrence
 The baseline in \eqref{eq:char2-21-baseline} is an explicit polynomial:
 substitute already decoded coordinates, set the later coordinates to zero,
 and collect the named row.  The companion script \texttt{char2/verify\_n21.py} (implementation
-\texttt{char2/verify\_n21\_unitriangular\_symbolic.py}) expands every identity
+\texttt{char2/\allowbreak verify\_\allowbreak n21\_\allowbreak unitriangular\_\allowbreak symbolic.py}) expands every identity
 in \eqref{eq:char2-21-triangular} exactly.  Its exhaustive $\F_2$ check is a
 separate diagnostic and is not used in the proof.
 

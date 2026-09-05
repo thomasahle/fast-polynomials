@@ -43,9 +43,10 @@ throughout:
 \end{aligned}
 \]
 The decoder calculus of \Cref{appendix:decoder-calculus} records polynomial
-recovery and its causal version.  The fill construction supplies the known-powers gadgets
-$Q_{2^s-1}$; the depth-balanced peeled variant of \Cref{sec:peeled-Q}
-computes the same family at the identical ledger with height $s$.  The central $T_{k,2^l}$ lemma proves one
+recovery and its causal version.  The binary known-powers construction of
+\Cref{sec:peeled-Q} supplies the gadgets $Q_{2^k-1}$, with height at most
+$k$, and the fill construction uses these gadgets to extend a compatible
+pair.  The central $T_{k,2^l}$ lemma proves one
 coefficient-triangular remainder invariant by three stage tables (even,
 shared odd base, and ordinary odd).  The remaining lemmas attach small outer
 gadgets and close a strong induction on the target degree.  Decoder summaries
@@ -65,15 +66,15 @@ certify the stated arrows.
 Sum, multiply, or square two pairs; descend through the translated windows
 and peel the unique unresolved row.  These are the composition rules.
 
-\smallskip\noindent\textbf{Fill $A_l$.}
+\smallskip\noindent\textbf{Fill $A_{2^l}$.}
 Attach monic heads above and below a pair; decode upper head
-$\to$ shifted input window $\to$ lower head.  Iterating this move gives the
-Mersenne gadgets $Q_{2^s-1}$.
+$\to$ shifted input window $\to$ lower head.  The heads contain
+binary known-powers $Q$-gadgets.
 
-\smallskip\noindent\textbf{Peeled $Q^{\mathrm{peel}}$.}
+\smallskip\noindent\textbf{Binary $Q_{2^k-1}$.}
 Two half-size children under one keyed glue factor; decode by peeling
-against the known monic $H$, reading $\gamma$ at the top row, and
-subtracting.  Same ledger as the fill route, height $k$.
+against the known monic $H$, reading $\gamma$ at the leading row of the
+remainder, and subtracting.  The height is at most $k$.
 
 \smallskip\noindent\textbf{The $T_{k,2^l}$ recursion.}
 Halve the exponent and attach a fresh tail; decode tail pivots
@@ -121,8 +122,8 @@ pivots, root extractions and block solves whose slopes, root indices and
 determinants are fixed integers; it is therefore defined, and inverts the
 construction, over every field in which those integers are units.
 Replaying the routing of \Cref{alg:final-construction} lists them exactly.
-Along the recursive calls made for degree~$n$, every integer divided by is
-one of
+Along the recursive calls made for degree~$n$, every integer divided by
+divides one of
 \begin{equation}
 \label{eq:bad-primes}
   2,\qquad 2k,\qquad k\ (k\text{ even})\ \text{or}\ k(k-1)\ (k\text{ odd}),
@@ -135,8 +136,8 @@ for an internal index $k$, and these occur as follows.
     the septic base (\Cref{lem:septic-base}) and the finite bases $15,27,31$
     (\Cref{lem:special-cases-splittable}).
   \item $2k$: the five crown slopes $2k,2k,-2k,k,k$ of the $4k+1$ branch
-    (\Cref{lem:4k+1-splittable}) and of $Q_{4k+1}(x,H_2)$
-    (\Cref{lem:Q4k+1-from-H2}), and the slope $M=2k$ of a perturbed
+    (\Cref{lem:4k+1-splittable}), the slopes $1,2k,-2k,k,k$ of
+    $Q_{4k+1}(x,H_2)$ (\Cref{lem:Q4k+1-from-H2}), and the slope $M=2k$ of a perturbed
     $T_{2k,2^l}$ call (\Cref{lem:causal-perturbed-T}).
   \item $k$ or $k(k-1)$: the $T$ recursion at index $k$
     (\Cref{lem:Rk2l,lem:Rk2l-leading-coeff}), followed down its halving
@@ -150,7 +151,7 @@ for an internal index $k$, and these occur as follows.
 The seam corrections $\gamma_m$,
 $\binom m2$, $\tau=k(k-1)(k-2)/3=2\binom k3$ and $\theta_m$ are integers
 that are subtracted, never divided by, and the fill gadgets $A_{2^l}$, the
-known-powers gadgets $Q_{2^t-1}$, the gadgets
+known-powers gadgets $Q_{2^k-1}$, the gadgets
 $Q_1,Q_3,Q_7$, the degree-$3$ base and the even lift use only unit pivots
 and monic division.  Let $\mathrm{Bad}(n)$ be the set of primes dividing at
 least one integer in \eqref{eq:bad-primes} along the routing for degree

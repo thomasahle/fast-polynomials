@@ -9,9 +9,10 @@ that adapted-constant schedules---ours included---do not come with the
 coefficientwise backward-stability guarantee of Horner's rule: their
 floating-point error bound carries an amplification factor $A$, which we
 define and measure below and which is unbounded for our schedules and for
-the classical adapted schemes, the floating-point counterpart of the
-classical observation that adapted-coefficient methods are prone to lose
-significance~\cite[\S4.6.4]{knuth1997seminumerical}.
+the classical adapted schemes (and, for Pan's rational sextic, along its
+exceptional hypersurface, \Cref{sec:numstab-pan}), the floating-point
+counterpart of the classical observation that adapted-coefficient methods
+are prone to lose significance~\cite[\S4.6.4]{knuth1997seminumerical}.
 
 \subsection{Model and a majorant bound for straight-line programs}
 
@@ -36,7 +37,8 @@ earlier wires.  Integer multiples $k\cdot w$ of a wire count as one product.
 Constants that are input data (the coefficients $a_i$ in Horner's rule) are
 assumed exactly representable, so that Horner's rule has no preprocessing
 rounding at all; the preprocessed constants of our schedules, of
-Rabin--Winograd, and of Motzkin--Eve carry the one rounding above.
+Rabin--Winograd, of Motzkin--Eve, and of the schemes of Belaga, Knuth, and
+Pan measured in \Cref{sec:numstab-pan} carry the one rounding above.
 
 \begin{definition}[Rounding depth and majorant]
 \label{def:rounding-depth}
@@ -254,7 +256,11 @@ normalization occurs) and Motzkin--Eve's scheme, with its last constant $c_K$
 regarded as a free parameter, both have a free leaf constant that enters
 $a_0$ with unit slope and a nonzero correction $f$---the constant term of the
 innermost monic remainder, respectively $c_K$---so part~\ref{it:pivot-sup}
-applies to them as well.
+applies to them as well.  So does Pan's general scheme~(0.7), whose top
+parameter $\lambda_n$ is such a constant (\Cref{lem:pan07-bounded}); Pan's
+rational sextic is unbounded for a different reason, a rational pivot whose
+denominator vanishes on a hypersurface of coefficients
+(\Cref{prop:pan-hypersurface}).
 What the proposition
 shows is that the forward bound of Theorem~\ref{thm:majorant-bound}---the
 guarantee available for such a schedule---is unbounded relative to
@@ -312,7 +318,8 @@ same schedule evaluates $P$ exactly in rational arithmetic.
 Table~\ref{tab:numstab} reports, for random monic polynomials of degree
 $n\in\{7,15,31\}$ (prescribed coefficients) and $n\in\{7,15,31,63\}$
 (prescribed keys) and random dyadic points $x\in[-2,2]$, the rounding depth
-$\rho$ of each schedule, the median and maximum of the amplification $A$, and
+$\rho$ of each schedule (on generic constants: a constant that happens to
+vanish drops a rounding), the median and maximum of the amplification $A$, and
 the observed double-precision forward error in units of
 $u\sum_i\abs{a_i}\abs{x}^i$.  The reference values are computed in exact
 rational arithmetic.  In the prescribed-coefficients regime the coefficients
@@ -355,6 +362,492 @@ error is zero despite the large latent amplification; the maximum,
 $3.6\times10^{14}$ units, comes from instances where they were not, and
 exactness is not guaranteed even at that degree.
 
+% Pan's method.  Every identity below is verified exactly in
+% tools/pan_stability_check.py (sympy; 52 checks); the measurements are produced
+% by tools/numstab_pan.mjs, tools/numstab_pan07.py and tools/pan_error_mechanism.py,
+% and the two tables by tools/numstab_pan_table.py.
+\subsection{Pan's method}
+\label{sec:numstab-pan}
+
+The schemes measured above are polynomial automorphisms (ours), have algebraic
+preprocessing (Motzkin--Eve), or use the coefficients themselves (Horner,
+Estrin, Rabin--Winograd).  Pan's three-multiplication
+sextic~\cite{pan1961schemes}, displayed in \Cref{sec:lower} and as (16) in
+Knuth~\cite[\S4.6.4]{knuth1997seminumerical}, represents the remaining
+class---\emph{rational} preprocessing with an exceptional hypersurface---and
+is the even-degree scheme of Pan's survey~\cite{pan1966methods} that attains
+$n/2$ multiplications without leaving $\Q$.  Its parameters are rational
+functions of the coefficients with the single denominator
+$27a_3-18a_5a_4+5a_5^3$, and Knuth's warning that this quantity ``should not
+be so small that $\alpha_1$ becomes too large''~\cite[\S4.6.4,
+after~(18)]{knuth1997seminumerical} is a statement about amplification.  We
+make it precise.  Write the chain with its five wires,
+\begin{equation}
+\label{eq:pan-chain}
+  z=(x+\alpha_0)\,x+\alpha_1,\quad w=z+x+\alpha_2,\quad v=z-x+\alpha_3,\quad
+  q=v\,w+\alpha_4,\quad P=q\,z+\alpha_5 ,
+\end{equation}
+three multiplications and eight additions, and for a monic sextic
+$P=x^6+\sum_{i<6}a_ix^i$ put $\alpha_0=a_5/3$,
+\begin{equation}
+\label{eq:pan-DN}
+\begin{aligned}
+  \Delta(P)&=27a_3-18a_5a_4+5a_5^3, &
+  D(P)&=\tfrac{1}{27}\Delta(P)=a_3-2\alpha_0a_4+5\alpha_0^3,\\
+  N(P)&=a_1-\alpha_0a_2+\alpha_0^2a_3-\alpha_0^3a_4+2\alpha_0^5,
+\end{aligned}
+\end{equation}
+and $H=\{\Delta=0\}$, Knuth's exceptional set~(18).
+
+\paragraph{The decoder.}
+Since $P-\alpha_5=q\,z$, the quadratic $z$ divides $P-\alpha_5$.  Divide $P$
+by $z=x^2+\alpha_0x+\alpha_1$ with $\alpha_1$ still symbolic:
+$P=z\cdot(x^4+\beta_1x^3+\beta_2x^2+\beta_3x+\beta_4)+r_1x+r_0$ with
+$\beta_1=a_5-\alpha_0$, $\beta_{k+1}=a_{5-k}-\alpha_0\beta_k-\alpha_1\beta_{k-1}$
+($\beta_0=1$), $r_1=a_1-\alpha_0\beta_4-\alpha_1\beta_3$ and
+$r_0=a_0-\alpha_1\beta_4$.  The quotient must be $q=vw+\alpha_4$, whose
+$x^3$-coefficient is $(\alpha_0+1)+(\alpha_0-1)=2\alpha_0$; so
+$\beta_1=2\alpha_0$, i.e.\ $\alpha_0=a_5/3$, a constant pivot of slope $3$.
+With this choice the $\alpha_1^2$-terms of $r_1$ cancel---its
+$\alpha_1^2$-coefficient is $\beta_1-2\alpha_0$ in general---and
+\[
+  \beta_2=a_4-2\alpha_0^2-\alpha_1,\qquad
+  \beta_3=c_3-\alpha_0\alpha_1,\qquad
+  \beta_4=c_4+(3\alpha_0^2-a_4)\,\alpha_1+\alpha_1^2,\qquad
+  r_1=N-D\,\alpha_1,
+\]
+where $c_3=a_3-\alpha_0a_4+2\alpha_0^3$ and
+$c_4=a_2-\alpha_0a_3+\alpha_0^2a_4-2\alpha_0^4$.  The row $r_1=0$ is a
+\emph{rational} pivot of slope $-D$: $\alpha_1=N/D=27N/\Delta$, Knuth's~(17).
+Comparing the quotient with
+$vw+\alpha_4=x^4+2\alpha_0x^3+(\alpha_0^2-1+2\alpha_1+\alpha_2+\alpha_3)x^2
++\bigl(2\alpha_0\alpha_1+(\alpha_0-1)\alpha_2+(\alpha_0+1)\alpha_3\bigr)x
++(\alpha_1+\alpha_2)(\alpha_1+\alpha_3)+\alpha_4$ gives constant pivots of
+slopes $2$ and $1$, then two unit pivots:
+\begin{equation}
+\label{eq:pan-closed}
+\begin{aligned}
+  \alpha_3&=e_3-\tfrac32\alpha_1, \qquad\qquad
+  \alpha_2=e_2-\tfrac32\alpha_1, \\
+  \alpha_4&=\tfrac34\alpha_1^2+\tfrac12(3\alpha_0^2-a_4+1)\,\alpha_1+(c_4-e_2e_3), \\
+  \alpha_5&=r_0=-\alpha_1^3-(3\alpha_0^2-a_4)\,\alpha_1^2-c_4\,\alpha_1+a_0 ,
+\end{aligned}
+\end{equation}
+with $e_3=\tfrac12\bigl(c_3-(\alpha_0-1)(a_4-2\alpha_0^2)+(\alpha_0-1)(\alpha_0^2-1)\bigr)$
+and $e_2=a_4-3\alpha_0^2+1-e_3$.  This is Knuth's~(19), with every parameter
+written as a polynomial in $\alpha_0$ and $\alpha_1$ whose coefficients are
+polynomials in $a_0,a_2,a_3,a_4$; the only divisions are by $3$, $2$ and $D$.
+The rounding depth of~\eqref{eq:pan-chain} is $\rho=20$ ($z$ is reused three
+times, and products add depths; Horner's monic sextic has $11$).
+
+\paragraph{The majorant.}
+With $\bar\alpha_j=\abs{\alpha_j}$ and $t=\abs x$, the majorant program of
+\Cref{def:rounding-depth} is
+\begin{equation}
+\label{eq:pan-majorant}
+  Z=t^2+\bar\alpha_0t+\bar\alpha_1,\qquad
+  M_{\mathcal C}(t)=\bigl[(Z+t+\bar\alpha_2)(Z+t+\bar\alpha_3)+\bar\alpha_4\bigr]Z+\bar\alpha_5
+  =\sum_{e=0}^{6}m_e\,t^e ,
+\end{equation}
+a polynomial in $t$ and the $\bar\alpha_j$ with nonnegative integer
+coefficients.  Its constant term is
+\[
+  m_0=\bar\alpha_1(\bar\alpha_1+\bar\alpha_2)(\bar\alpha_1+\bar\alpha_3)+\bar\alpha_1\bar\alpha_4+\bar\alpha_5 ,
+\]
+and if $\bar\alpha_1,\bar\alpha_2,\bar\alpha_3$ are given weight $1$,
+$\bar\alpha_4$ weight $2$ and $\bar\alpha_5$ weight $3$, then $m_0$ has weight
+$3$, $m_1,m_2$ have weight at most $2$, $m_3,m_4$ at most $1$, and
+$m_5=3\bar\alpha_0+2$, $m_6=1$.
+
+\begin{proposition}[Pan's sextic near its exceptional hypersurface]
+\label{prop:pan-hypersurface}
+Let $P$ be a real monic sextic with $\Delta(P)\ne0$ and $\abs{a_i}\le B$ for
+$i<6$, let $\alpha=\alpha(P)$ be Pan's parameters, and let $\mathcal C$ be the
+chain~\eqref{eq:pan-chain}.
+\begin{enumerate}[label=(\roman*)]
+\item\label{it:pan-lower} For every $x$, $M_{\mathcal C}(\abs x)\ge\abs{\alpha_5}$ and
+  $\abs{\alpha_5}\ge\abs{\alpha_1}^3-b_2\abs{\alpha_1}^2-b_1\abs{\alpha_1}-B$
+  with $b_2=B^2/3+B$ and $b_1=B+B^2/3+B^3/9+2B^4/81$; hence for
+  $0<\abs x\le R$,
+  \[
+    A_{\mathcal C}(P,x)\;\ge\;
+    \frac{\abs{\alpha_1}^3-b_2\abs{\alpha_1}^2-b_1\abs{\alpha_1}-B}
+         {R^6+B(1+R+\dots+R^5)},\qquad
+    \alpha_1=\frac{27\,N(P)}{\Delta(P)} .
+  \]
+\item\label{it:pan-blowup} Let $P^{(k)}$ be monic sextics with
+  $\abs{a^{(k)}_i}\le B$, $\Delta(P^{(k)})\ne0$ and
+  $\abs{N(P^{(k)})/\Delta(P^{(k)})}\to\infty$---as happens whenever
+  $P^{(k)}\to P^*\in H$ with $N(P^*)\ne0$.  Then $\alpha_1,\dots,\alpha_5$
+  are all unbounded, with $\alpha_2,\alpha_3=-\tfrac32\alpha_1+O(1)$,
+  $\alpha_4=\tfrac34\alpha_1^2+O(\alpha_1)$,
+  $\alpha_5=-\alpha_1^3+O(\alpha_1^2)$, and
+  $M_{\mathcal C}(\abs x)=(8+o(1))\abs{\alpha_1}^3$ uniformly for
+  $\abs x\le R$; in particular
+  $\inf_{0<\abs x\le R}A_{\mathcal C}(P^{(k)},x)\to\infty$, and at fixed
+  $x\ne0$ the amplification grows like $\abs{\Delta}^{-3}$.
+\item\label{it:pan-sharp} The majorant bound is attained within a constant
+  in the model: the rounding pattern that rounds only $\alpha_5$,
+  $\operatorname{fl}(\alpha_5)=\alpha_5(1\pm u)$, gives
+  $\abs{\widehat P(x)-P(x)}=u\abs{\alpha_5}\ge(\tfrac18-o(1))\,u\,M_{\mathcal C}(\abs x)$
+  along the sequences of~\ref{it:pan-blowup}.  So the worst-case forward
+  error of the model, not only its bound, is unbounded relative to
+  $u\sum_i\abs{a_i}\abs x^i$ while the coefficients stay in a box.
+\item\label{it:pan-necessary} The hypothesis $\abs{N/\Delta}\to\infty$ cannot
+  be weakened to $\Delta\to0$: for $P_d=x^6+dx^3$ one has $\Delta=27d$ but
+  $N\equiv0$, the parameters are
+  $(0,0,\tfrac{1-d}2,\tfrac{1+d}2,-\tfrac{1-d^2}4,0)$, and
+  $A_{\mathcal C}(P_d,x)$ stays bounded for $\abs x\ge\epsilon$ as $d\to0$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\ref{it:pan-lower}: Every quantity in~\eqref{eq:pan-majorant} is nonnegative,
+so $M_{\mathcal C}(t)\ge\bar\alpha_5$; in the language of
+\Cref{thm:majorant-bound}, $\alpha_5$ is by itself a tree monomial of the
+output, of degree $0$, and no cancellation can remove it from the majorant.
+The expression for $\alpha_5$ in~\eqref{eq:pan-closed} is a cubic in
+$\alpha_1$ with leading coefficient $-1$, and on the box
+$\abs{3\alpha_0^2-a_4}\le B^2/3+B$, $\abs{c_4}\le B+B^2/3+B^3/9+2B^4/81$,
+$\abs{a_0}\le B$; the denominator of $A_{\mathcal C}$ is at most
+$R^6+B\sum_{i<6}R^i$ for $\abs x\le R$.
+
+\ref{it:pan-blowup}: $\alpha_1=27N/\Delta$ is unbounded by hypothesis, and
+if $P^{(k)}\to P^*\in H$ with $N(P^*)\ne0$ then $N(P^{(k)})\to N(P^*)$
+while $\Delta(P^{(k)})\to0$.  The asymptotics of $\alpha_2,\dots,\alpha_5$
+are read off~\eqref{eq:pan-closed}, whose non-leading coefficients are
+bounded in terms of $B$.  Inserting them into~\eqref{eq:pan-majorant} gives
+$m_0=\bigl(\tfrac{25}{4}+\tfrac34+1\bigr)\abs{\alpha_1}^3\,(1+O(1/\abs{\alpha_1}))
+=8\abs{\alpha_1}^3(1+O(1/\abs{\alpha_1}))$, while by the weights listed
+after~\eqref{eq:pan-majorant} $m_1,\dots,m_6=O(\alpha_1^2)$; hence
+$M_{\mathcal C}(t)=8\abs{\alpha_1}^3+O\bigl(\abs{\alpha_1}^2(1+t)^6\bigr)$
+with constants depending only on $B$.  The lower bound on
+$\inf_{0<\abs x\le R}A_{\mathcal C}$ is~\ref{it:pan-lower}; at fixed
+$x\ne0$ the denominator $\sum_i\abs{a_i}\abs x^i$ is bounded above and below
+by $\abs x^6$ and $R^6+B\sum_{i<6}R^i$, so
+$A_{\mathcal C}\asymp\abs{\alpha_1}^3\asymp\abs{\Delta}^{-3}$ when $N$ is
+bounded away from $0$.
+
+\ref{it:pan-sharp}: In the model every rounding is an arbitrary
+$\delta_j$ with $\abs{\delta_j}\le u$.  Taking $\delta=0$ for every operation
+and for every constant except $\alpha_5$, and $\delta_5=\pm u$, is
+admissible and gives $\widehat P=P+\alpha_5\delta_5$; then use
+$\abs{\alpha_5}=(1+o(1))\abs{\alpha_1}^3$ and $M_{\mathcal C}=(8+o(1))\abs{\alpha_1}^3$.
+
+\ref{it:pan-necessary}: For $P_d$ one has $\alpha_0=0$, $D=d$, $N=0$, so
+$\alpha_1=0$; the pivots give $\beta=(0,0,d,0)$ and the stated parameters,
+and~\eqref{eq:pan-chain} with these parameters is
+$\bigl[(x^2-x+\tfrac{1+d}2)(x^2+x+\tfrac{1-d}2)-\tfrac{1-d^2}4\bigr]x^2
+=x^6+dx^3$.  The majorant is a polynomial in $d$ and $\abs x$, and
+$\sum_i\abs{a_i}\abs x^i\ge\abs x^6$.
+\end{proof}
+
+The mechanism is different from that of \Cref{prop:unit-pivot-unstable}, and
+it survives the objection of \Cref{rem:unit-pivot-counterexample}: there the
+constants of a chain with a unit pivot stay bounded when the coefficients do,
+because they are roots of a polynomial with those coefficients; here the
+decoder divides by $D$, so the parameters are unbounded on every box---indeed
+on every bounded open set---of coefficients that meets $H$, and the parameter
+$\alpha_5$ added at the output enters the majorant without any cancellation.
+(The reason is that $N$ does not vanish identically on $H$, which is the graph
+$a_3=(18a_5a_4-5a_5^3)/27$: $N(x^6+x)=1$, so every relatively open subset of
+$H$ contains points with $N\ne0$, at which~\ref{it:pan-blowup} applies.  On a
+bounded set that is not open the parameters may stay bounded, as
+$P_d=x^6+dx^3$, $\abs d\le1$, shows.)  On the box $[-5,5]^6$ used in
+\Cref{tab:numstab}, the corpus of \Cref{sec:numerical-stability} at degree six
+(\Cref{tab:numstab-pan}) gives, for Pan's chain, $\log_{10}A$ median $0.9$ and
+maximum $3.0$---the maximum, $A=978$, at the sextic nearest to $H$,
+$\abs D=14/27$, where the computed value happens to be exact---and errors of
+at most $18.5$ units, attained at another sextic ($D=-778/27$, largest
+parameter $10^{2.2}$): as stable as our even lift $P_6=xP_5+a_0$ (median
+$0.8$, maximum $2.9$, error $0$) and better than Knuth's cubic-root
+scheme~(12) (median $1.7$, errors up to $10^3$).  Along $D=2^{-k}$ with the
+other coefficients fixed (\Cref{tab:numstab-pan-sweep}; three such families
+were measured), the slope $d\log_{10}A/d\log_{10}D$ between successive rows is
+$-3.00$ to two decimals from $k\ge12$ on and within $0.05$ of $-3$ from
+$k\ge8$ on ($-2.95$, $-3.00$, $-2.96$ at $k=8$).  The observed error is zero
+while every constant and every intermediate is exactly representable ($k\le8$:
+the constants are dyadic there), and appears at the first inexact
+quantity---the constant $\alpha_4$, whose numerator has $4k+2$ bits, or the
+products $vw\approx\alpha_1^2/4$ and $qz\approx\alpha_1^3$---at $k=12$--$16$,
+where $\abs{\alpha_5}\approx10^{11}$--$10^{14}$ is still far below $2^{53}$; it
+is then one rounding of a quantity of size $\abs{\alpha_1}^2$--$\abs{\alpha_1}^3$,
+a fixed fraction ($0.02$--$0.06$) of $uM_{\mathcal C}(\abs x)$, as the majorant
+predicts.  From $k\approx20$ the two terms of $P=qz+\alpha_5$, both of size
+$\abs{\alpha_1}^3$, cancel exactly in double precision, the computed value is
+$0$, and double precision is entirely lost (the reported error is then
+$\abs{P(x)}/(u\sum_i\abs{a_i}\abs x^i)\le1/u$, the ceiling of the metric);
+Horner's rule and our chain on the same polynomials and points have error $0$
+throughout.
+
+\begin{table}[htbp]
+\centering\footnotesize
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+regime & scheme & $n$ & $\rho$ & $A$ med. & $A$ max & err.\ med. & err.\ max \\
+\midrule
+prescribed coefficients & Horner & 6 & 11 & $1$ & $1$ & $0$ & $0$ \\
+ & Estrin & 6 & 8 & $1$ & $1$ & $0$ & $0$ \\
+ & Rabin--Winograd & 6 & 9 & $1.4$ & $92$ & $0$ & $1.12$ \\
+ & Motzkin--Eve & 6 & 23 & $4.1$ & $10^{4}$ & $449$ & $2.8\times10^{4}$ \\
+ & Belaga$^{\dagger}$ & 6 & 17 & $12$ & $859$ & $2.0\times10^{3}$ & $3.0\times10^{4}$ \\
+ & Knuth (12) & 6 & 20 & $47$ & $10^{3}$ & $0$ & $1.1\times10^{3}$ \\
+ & \textbf{this paper} & 6 & 13 & $6.8$ & $761$ & $0$ & $0$ \\
+ & Pan sextic (16) & 6 & 20 & $7.2$ & $978$ & $0$ & $18.5$ \\
+ & Pan (0.7) & 6 & 13 & $6.8$ & $761$ & $0$ & $0$ \\
+\addlinespace[2pt]
+ & Belaga$^{\dagger}$ & 7 & 19 & $9.9$ & $318$ & $2.6\times10^{3}$ & $4.7\times10^{4}$ \\
+ & Pan (0.7) & 7 & 15 & $222$ & $10^{4}$ & $0.495$ & $846$ \\
+\addlinespace[2pt]
+ & Pan (0.7) & 15 & 33 & $10^{4}$ & $10^{5}$ & $17$ & $7.8\times10^{4}$ \\
+\addlinespace[2pt]
+ & Pan (0.7) & 31 & 69 & $10^{8}$ & $10^{13}$ & $2.9\times10^{4}$ & $1.8\times10^{9}$ \\
+\bottomrule
+\end{tabular}
+\caption{The schemes of Pan in the setting of \Cref{tab:numstab}
+(prescribed coefficients; the same quantities, model and formatting).  Degree
+$6$ is the generator of \Cref{tab:numstab} run at $n=6$ (12 monic sextics
+with integer coefficients in $[-5,5]$, three dyadic points each); the rows at
+$n=7,15,31$ are on the corpus of \Cref{tab:numstab}, whose other rows apply
+unchanged.  Pan sextic~(16): rational preprocessing, three multiplications,
+defined off $H$.  Pan (0.7): the general real scheme, $\floor{n/2}+1$
+multiplications; rational at $n\le6$, where it coincides with our degree-6
+chain; real-algebraic numeric preprocessing beyond (60 digits, constants
+rounded once, the branch with the smallest majorant at $\abs x=2$ among those
+found).  Knuth~(12): Knuth's own three-multiplication sextic scheme, whose
+cubic is solved by exact bisection.  $\rho$ is the generic rounding depth
+(constants none of which vanishes; Motzkin--Eve at $n=6$ with a nonzero
+shift).  $^{\dagger}$: polynomials with complex Belaga constants skipped
+(3 of 12 at $n=6$ and $7$; all 12 at $n=15$ and $31$); medians and maxima over
+the remaining samples.}
+\label{tab:numstab-pan}
+\end{table}
+
+\begin{table}[htbp]
+\centering\footnotesize
+\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule
+$k$ & $\log_{10}\abs{\alpha_1}$ & $\log_{10}\abs{\alpha_5}$ & $\log_{10}A$ med. & slope & exact & err.\ med. & err.\ max \\
+\midrule
+0 & 0.6 & 1.6 & 1.2 & $\text{--}$ & 6/6 & $0$ & $0$ \\
+4 & 1.9 & 5.7 & 4.9 & $-3.00$ & 6/6 & $0$ & $0$ \\
+8 & 3.1 & 9.3 & 8.5 & $-3.00$ & 6/6 & $0$ & $0$ \\
+12 & 4.3 & 12.9 & 12.1 & $-3.00$ & 4/6 & $3.7\times10^{10}$ & $5.3\times10^{10}$ \\
+16 & 5.5 & 16.5 & 15.7 & $-3.00$ & 4/6 & $3.2\times10^{14}$ & $5.1\times10^{15}$ \\
+20 & 6.7 & 20.2 & 19.3 & $-3.00$ & 4/6, $\widehat P=0$ & $3.3\times10^{15}$ & $8.6\times10^{15}$ \\
+24 & 7.9 & 23.8 & 22.9 & $-3.00$ & 4/6 & $8.6\times10^{15}$ & $1.1\times10^{22}$ \\
+32 & 10.3 & 31.0 & 30.2 & $-3.00$ & 2/6, $\widehat P=0$ & $3.3\times10^{15}$ & $8.6\times10^{15}$ \\
+40 & 12.7 & 38.2 & 37.4 & $-3.00$ & 2/6, $\widehat P=0$ & $3.3\times10^{15}$ & $8.6\times10^{15}$ \\
+\bottomrule
+\end{tabular}
+\caption{Pan's sextic approaching its exceptional hypersurface:
+$a_3=2\alpha_0a_4-5\alpha_0^3+2^{-k}$ (so $D=2^{-k}$) with $a_5=3$, $a_4=-4$,
+$a_2=-3$, $a_1=-1$, $a_0=-2$ fixed, at $x\in\{3/2,-5/4,1/2\}$.  Slope:
+$d\log_{10}A/d\log_{10}D$ between $k-4$ and $k$ (medians over $x$).  Exact:
+how many of the six constants are exactly representable in double precision;
+$\widehat P=0$ marks the rows where the two terms of $P=qz+\alpha_5$, both of
+size $\abs{\alpha_1}^3$, cancel exactly in double precision and the computed
+value is $0$, so that the reported error is
+$\abs{P(x)}/(u\sum_i\abs{a_i}\abs x^i)\le1/u\approx9.0\times10^{15}$, the
+ceiling of the metric.  Horner's rule on the same polynomials and points has
+error $0$ throughout.}
+\label{tab:numstab-pan-sweep}
+\end{table}
+
+\begin{lemma}[Boundary of the image]
+\label{lem:image-boundary}
+Let $\Phi\colon\R^m\to\R^m$ be the coefficient map of a chain with $m$
+parameters, and let $P^*\in\overline{\Phi(\R^m)}\setminus\Phi(\R^m)$.  Then
+every sequence of parameter vectors $\theta^{(k)}$ with
+$\Phi(\theta^{(k)})\to P^*$ is unbounded.
+\end{lemma}
+
+\begin{proof}
+A bounded subsequence has a limit point $\theta^*$, and
+$\Phi(\theta^*)=P^*$ by continuity, contradicting $P^*\notin\Phi(\R^m)$.
+\end{proof}
+
+\begin{remark}[Relation to the degree-six lower bound]
+\label{rem:pan-lower-bound}
+Let $\Phi$ be the coefficient map $\alpha\mapsto P$ of~\eqref{eq:pan-chain}.
+Identically in $\alpha$,
+\[
+  D(\Phi(\alpha))=\alpha_0-\alpha_2+\alpha_3,\qquad
+  N(\Phi(\alpha))=\alpha_1\,D(\Phi(\alpha)),\qquad
+  \det J_\Phi(\alpha)=6\,D(\Phi(\alpha)) ,
+\]
+the factor $6=3\cdot2$ being the product of the two constant pivots (Knuth's
+``relatively prime to $6u_6$'').  Hence the image of $\Phi$ is
+$(\R^6\setminus H)\cup(H\cap\{N=0\})$: a point of $H$ is reached only if
+$N=0$, and then by a one-parameter fibre---$x^6$ has the parameters
+$(0,s,\tfrac12-\tfrac32s,\tfrac12-\tfrac32s,\tfrac34s^2+\tfrac s2-\tfrac14,-s^3)$
+for every $s$---while the critical set of $\Phi$ is exactly $\Phi^{-1}(H)$
+and its critical values are $H\cap\{N=0\}$.  \Cref{lem:six-params} shows
+that no three-multiplication sextic chain has an everywhere-defined rational
+decoder, by exhibiting a parameter point with singular Jacobian; for Pan's
+chain those points are $\Phi^{-1}(H)$, their image is the codimension-two
+part $H\cap\{N=0\}$ of $H$, on which bounded parameters exist (though, the
+fibre being one-dimensional, $A_{\mathcal C}$ is not defined there: along the
+fibre of $x^6$ it is $\approx8\abs s^3/\abs x^6$), and on the complementary
+part $H\setminus\{N=0\}$, which is not in the image,
+\Cref{lem:image-boundary} forces the parameters and, by
+\Cref{prop:pan-hypersurface}\ref{it:pan-lower}, the majorant to diverge along
+every approach.  The floating-point instability near $H$ is in this sense
+the analytic shadow of the algebraic obstruction: the hypersurface that
+rational decoding cannot avoid is the hypersurface along which
+$A_{\mathcal C}=\infty$.  We record what is and what is not proven.  For
+Pan's chain the set where parameter blow-up is forced along every sequence is
+exactly $H\setminus\{N=0\}$, with rates $\abs\Delta^{-1}$ for the parameters
+and $\abs\Delta^{-3}$ for $A_{\mathcal C}$; but the supremum of
+$A_{\mathcal C}$ over every neighbourhood of every point of $H$ is infinite,
+$H\cap\{N=0\}$ included: for $P_k=x^6+x^3/k^2+x/k\to x^6$ one has
+$\Delta\ne0$, $\alpha_1=27N/\Delta=k$ and $A_{\mathcal C}(P_k,1)=8k^3(1+O(1/k))$
+($8.65\times10^3$, $8.07\times10^6$, $8.01\times10^9$ at $k=10,10^2,10^3$),
+and in general one may take $\Delta=\pm\epsilon^2$, $N=\epsilon$; what
+item~\ref{it:pan-necessary} shows is only that divergence is not forced
+there.  For an arbitrary three-multiplication rational scheme,
+\Cref{lem:six-params} guarantees a real zero of some denominator of the
+decoder, but not that the decoder is unbounded there---a reduced denominator
+such as $a_1^2+a_2^2$ with numerator $a_1^3$ is excluded by the lemma's
+definition yet bounded---and \Cref{lem:image-boundary} yields divergence only
+at points of the closure of the real image that lie outside it (the chain of
+\Cref{rem:unit-pivot-counterexample} is dominant but not surjective over
+$\R$, with the closed image $\{a_2^2\ge4a_1\}$ and $A_{\mathcal C}\le2$), and
+turns it into divergence of the majorant only when a diverging constant
+survives in the majorant without a vanishing cofactor, as the $x$-independent
+term $\abs{\alpha_5}$ does for Pan.  So ``every rational three-multiplication
+sextic scheme has a set of infinite amplification'' is a conjecture,
+consistent with the septic search of the next subsection, where the three
+stable circuits are exactly the ones with a rational pivot; which points of
+$\{\pi=0\}$ lie in the closure of the image of the septic circuit displayed
+there, but outside it, we have not computed.  The polynomial automorphisms
+of this paper, by contrast, have parameters bounded on every box and no such
+set; their amplification is finite everywhere and exponentially large.
+Finally, Pan's own use of the word
+\emph{stability}~\cite[Note~3.1]{pan1966methods}---continuity and piecewise
+analyticity of the parameter map---concerns the conditioning of the
+preprocessing, not $A_{\mathcal C}$; his sextic is stable in that sense on
+$\R^6\setminus H$ and its parameters are unbounded at $H$.
+\end{remark}
+
+\paragraph{Pan's general scheme.}
+Pan's everywhere-defined real scheme (0.7) of~\cite{pan1966methods},
+$\floor{n/2}+1$ multiplications for monic input at every $n$, computes
+$p_1=x+\lambda_1$, quartic blocks
+$q^{(s)}=(x^2+x+\lambda_{4s-2})(x^2+\lambda_{4s-1})+\lambda_{4s}
+=x^4+x^3+\dots$, $p_{4s+1}=p_{4s-3}\,q^{(s)}+\lambda_{4s+1}$, and for
+$n=4s+3$ a last block $p_n=p_{n-2}(x^2+\lambda_{n-1})+\lambda_n$; for even
+$n$, $P=x\,p_{n-1}+a_0$.  Its parameters are real algebraic numbers: the top
+parameter $t=\lambda_n$ must make $P-t$ divisible by a real quartic with
+$x^3$-coefficient $1$ (a conjugation-closed set $S$ of four roots of $P-t$
+with $\sum_S\xi=-1$), respectively by a real $x^2+\lambda$ (two roots with
+sum $0$), and Pan proves that such a real $t$ always exists by an
+intermediate-value argument on the root branches~\cite[Lemma~3.3]{pan1966methods}.
+The mechanism of \Cref{prop:pan-hypersurface} does not transfer to it: its
+parameters are bounded on boxes.
+
+\begin{lemma}[Parameters of Pan's general scheme are bounded on boxes]
+\label{lem:pan07-bounded}
+For $n\ge5$ and $B\ge1$ there is $\Lambda_n(B)<\infty$ such that for every
+real monic $P$ of degree $n$ with $\abs{a_i}\le B$, every parameter vector
+$\lambda$ of scheme (0.7) realising $P$ satisfies
+$\max_j\abs{\lambda_j}\le\Lambda_n(B)$.  Consequently
+$A_{\mathcal C}(P,x)\le\Lambda_n'(B,R)\,\abs x^{-n}$ for $0<\abs x\le R$: the
+scheme has no set of infinite amplification in the interior of a box, and on
+a box its amplification diverges only as $x\to0$, through
+\Cref{prop:unit-pivot-unstable}\ref{it:pivot-sup} ($\lambda_n$ is an
+additive output constant with unit slope and a nonzero correction).
+\end{lemma}
+
+\begin{proof}
+Let $n=4s+1$ be odd (even $n$ reduces to the parameters of $(P-a_0)/x$;
+$n=4s+3$ is treated below), and let $t=\lambda_n$ with
+$P-t=q\,r$, $q=x^4+x^3+\dots$ real.  The roots of $q$ form a
+conjugation-closed multiset $S$ of four roots of $P-t$ with $\sum_S\xi=-1$.
+Suppose $\abs t\ge1$ and write $\xi=\abs t^{1/n}y$; the $y$'s are the roots of
+$g(y)=y^n\mp1+\epsilon(y)$, $\epsilon(y)=\sum_{i<n}a_i\abs t^{(i-n)/n}y^i$,
+with $\abs{\epsilon(y)}\le nB\abs t^{-1/n}(3/2)^{n-1}$ for $\abs y\le3/2$.
+Let $\mu_n=\min\bigl(\min_{j\ne k}\abs{2\cos\tfrac{2\pi j}n+2\cos\tfrac{2\pi k}n},
+\ \min_j\abs{2\cos\tfrac{2\pi j}n}\bigr)$ over $1\le j,k\le(n-1)/2$; it is
+positive because $n$ is odd ($2\cos a+2\cos b=0$ with $a=2\pi j/n$,
+$b=2\pi k/n$ would force $2(j\pm k)=n(2m\pm1)$, and $\cos(2\pi j/n)=0$ would
+force $4j=n(2m+1)$); numerically $\mu_5=0.618$, $\mu_{15}=0.129$,
+$\mu_{31}=0.031$.  Put $\eta=\min(\mu_n/8,\tfrac12\sin(\pi/n))$.  The roots
+$\zeta$ of $y^n\mp1$ are simple with mutual distances at least
+$2\sin(\pi/n)$, and on the circle $\abs{y-\zeta}=\eta$ one has
+$\abs{y^n\mp1}\ge\eta\,\sin^{n-1}(\pi/n)$; so for
+$\abs t\ge T_1(B,n)=\bigl(2nB(3/2)^{n-1}/(\eta\sin^{n-1}(\pi/n))\bigr)^n$,
+Rouch\'e's theorem places exactly one root of $g$ in each of the $n$
+disjoint discs $\abs{y-\zeta}<\eta$.  The disc around the real root $\pm1$
+contains one root, which is therefore real (its conjugate lies in the same
+disc), and the discs around $\zeta,\bar\zeta$ contain conjugate roots.  Thus
+$P-t$ has exactly one real root, $S$ is the union of two conjugate pairs
+corresponding to $\{\zeta_j,\bar\zeta_j,\zeta_k,\bar\zeta_k\}$ with $j\ne k$,
+and $\abs{\sum_Sy-\sum(\pm\omega)}\le4\eta\le\mu_n/2$ while
+$\abs{\sum(\pm\omega)}=\abs{2\cos\tfrac{2\pi j}n+2\cos\tfrac{2\pi k}n}\ge\mu_n$.
+Hence $\abs{\sum_S\xi}\ge\abs t^{1/n}\mu_n/2$, and $\sum_S\xi=-1$ gives
+$\abs t\le(2/\mu_n)^n$.  Altogether
+$\abs{\lambda_n}\le T_n(B):=\max\bigl(1,T_1(B,n),(2/\mu_n)^n\bigr)$.  For
+$n=4s+3$ the factor $x^2+\lambda$ has two roots with sum $0$; for
+$\abs t\ge T_1$ they cannot both be real, so they are a conjugate pair with
+$\abs{2\operatorname{Re}y}\ge\mu_n-2\eta>0$, a contradiction; hence
+$\abs{\lambda_n}\le\max(1,T_1)$.  In either case every root of $P-t$ is
+bounded by Cauchy's bound $1+B+T_n(B)$, so the coefficients of $q$ and of the
+cofactor $r$---elementary symmetric functions of sub-multisets of those
+roots---are bounded by $B_1=2^n(1+B+T_n(B))^n$.  The block parameters
+$\lambda_{4s-1}=\beta_3$, $\lambda_{4s-2}=\beta_2-\beta_3$,
+$\lambda_{4s}=\beta_4-\lambda_{4s-2}\lambda_{4s-1}$ are polynomials in the
+coefficients $\beta_i$ of $q$ (three unit pivots), and $r$ is a real monic
+polynomial of degree $n-4$ (or $n-2$) with coefficients bounded by $B_1$, to
+which the argument applies again; the last stage $n=5$ is polynomial:
+$\lambda_1=a_4-1$, $\lambda_5=P(1-a_4)$, then the three unit pivots of the
+quartic quotient.  $\Lambda_n(B)$ is the resulting (large but finite) tower.
+For the bound on $A_{\mathcal C}$, the majorant is a polynomial in $\abs x$
+and the $\abs{\lambda_j}$ with nonnegative coefficients, and
+$\sum_i\abs{a_i}\abs x^i\ge\abs x^n$.
+\end{proof}
+
+\begin{remark}[Root separation, and what was measured]
+\label{rem:pan07-roots}
+Root separation enters Pan's general scheme through the conditioning of the
+parameter map, not through the amplification.  The top parameter is defined
+implicitly by $\sigma_P(t)=\sum_{\xi\in S(t)}\xi=-1$, and differentiating
+$P(\xi)=t$ gives, wherever the roots in $S$ are simple and
+$\sum_{S}1/P'(\xi)\ne0$,
+\[
+  \frac{\partial\lambda_n}{\partial a_i}
+  =\frac{\sum_{\xi\in S}\xi^i/P'(\xi)}{\sum_{\xi\in S}1/P'(\xi)},\qquad
+  \frac1{P'(\xi)}=\prod_{\xi'\ne\xi}\frac1{\xi-\xi'} ,
+\]
+which is unbounded at folds of $\sigma_P$ (a tangential crossing of the level
+$-1$) and involves the reciprocal root separations.  Such points make the
+numerically computed parameters inaccurate---an effect the model charges to
+preprocessing, as for Motzkin--Eve---but they leave $A_{\mathcal C}$, a
+property of the exact chain, bounded by \Cref{lem:pan07-bounded}.  On the
+corpus of \Cref{tab:numstab}, with the branch of smallest majorant at
+$\abs x=2$ among those found, $\log_{10}A$ has median $2.3$, $3.6$, $7.5$ and
+maximum $3.8$, $5.4$, $13.1$ at $n=7$, $15$, $31$ (\Cref{tab:numstab-pan})---
+roughly $0.2$ decades per degree, between Rabin--Winograd and
+Motzkin--Eve---the largest parameters are $1.9\times10^3$, $2.8\times10^4$
+and $1.1\times10^{10}$, and the error column is dominated by the
+preprocessing error of the rounded algebraic constants (the exact residual of
+the chain with double constants is of the size of the observed error in every
+row).  Whether the growth of $A_{\mathcal C}$ with $n$ is exponential on the
+unit box, as for Motzkin--Eve, we have not proved; the structure suggests it,
+since $\lambda_n=P(\xi)$ for every root $\xi$ of the quartic factor.  These
+rows are, moreover, the output of a heuristic numerical search over a
+real-algebraic parameter set (up to two candidates per stage): a different
+branch changes a row by up to $3.6$ decades of $A$ at $n=15$, and the survey
+gives no canonical choice.  The three classes are thus separated by
+\emph{where} the amplification is infinite: nowhere on a box for polynomial
+automorphisms (ours) and for everywhere-defined algebraic preprocessing
+(Motzkin--Eve, Knuth's~(12), Pan's (0.7)), which pay instead with exponential
+size or with the conditioning of the root-finding; and on the exceptional
+hypersurface for rational preprocessing with a rational pivot (Pan's sextic,
+the septic circuit of the next subsection), which is otherwise the most
+accurate class.
+\end{remark}
+
 \subsection{Discussion}
 
 The multiplication count $\floor{n/2}+1$ is achieved by an exact change of
@@ -385,7 +878,11 @@ $\sim10^2$ units at $n=15$, but no variant is usable in double precision much
 beyond $n\approx15$.  A preprocessing-time guard---the majorant evaluated once
 in log scale at the largest $\abs{x}$ of the domain, falling back to Horner
 when $\rho uA$ exceeds the tolerance---costs no runtime multiplication and is
-the practical safeguard.  Rescaling the argument by a power of two is exact (no rounding is
+the practical safeguard.  For rational preprocessing the same guard detects
+the approach to the exceptional hypersurface, where $A\asymp\abs{\Delta}^{-3}$
+for Pan's sextic (\Cref{prop:pan-hypersurface}); Knuth's advice that
+$\Delta$ ``should not be so small'' is this guard, and the remedy there is
+the shift $x\mapsto x+t$ that moves $P$ off $H$.  Rescaling the argument by a power of two is exact (no rounding is
 introduced) and is the most effective single modification, at the cost of two
 multiplications by constants, $x\cdot s^{-1}$ and $s^n\cdot(\cdot)$---one if
 the latter is merged with the leading-coefficient scaling of a non-monic
@@ -443,7 +940,9 @@ unstable, the best with median $A=10^{6.6}$ and maximum $10^{17.5}$ on
 coefficients in $[-5,5]$; all $4096$ sign variants of $P_7$ are automorphisms
 with $A\approx10^{11}$.  The three remaining circuits are dominant but not
 surjective (one rational pivot), and they are exactly the stable ones, with
-medians $10^{0.6}$, $10^{1.4}$, and $10^{2.1}$.  The best is
+medians $10^{0.6}$, $10^{1.4}$, and $10^{2.1}$; the degree-six instance of
+this class is Pan's sextic, stable off its hypersurface and unbounded along
+it (\Cref{sec:numstab-pan}).  The best is
 \begin{align}
   g_0&=(a_0-x)\,x, & g_1&=(x-g_0+a_1)(x+g_0+a_2),\\
   g_2&=(g_0+a_3)(x+g_1+a_4), & g_3&=x\,(x+g_0-g_1+g_2+a_5),
@@ -468,12 +967,21 @@ Mesztenyi and Witzgall \cite{mesztenyi1967stable} observed in 1967 that
 schemes with fewer operations lose significance; Rice
 \cite{rice1965conditioning} introduced condition numbers of polynomial forms,
 and Miller \cite{miller1975computational} the programme of deriving
-complexity lower bounds from stability requirements.  We know of no stability lower bound
+complexity lower bounds from stability requirements.  For the adapted
+schemes analysed here, \Cref{prop:unit-pivot-unstable}\ref{it:pivot-sup}
+makes the Mesztenyi--Witzgall observation a theorem, in the restricted form
+of a supremum: a unit-pivot row whose correction survives at an admissible
+instance with vanishing low coefficients forces $\sup_{P,x}A=\infty$, but it
+bounds nothing on a box, which is what the following question asks.  We know of no stability lower bound
 for preconditioned polynomial evaluation.  Is there a scheme with
 $(1-\epsilon)n$ multiplications and rational preprocessing whose amplification
 is $n^{O(1)}$ for all real monic $P$ with $\abs{a_i}\le1$ and $\abs{x}\le1$?
 We conjecture not: that $A=n^{O(1)}$ forces $n-O(\log n)$ multiplications,
 and that $\floor{n/2}+O(1)$ multiplications force $A\ge\exp(\Omega(n))$.
+Pan's sextic is consistent with this: its amplification is unbounded already
+on the unit box (\Cref{prop:pan-hypersurface}; $x^6+x$ lies on $H$ with
+$N=1$), so an everywhere-defined scheme would be needed, and at $n=6$ none
+with three multiplications exists (\Cref{lem:six-params}).
 For polynomial automorphisms the question may be more tractable: we conjecture
 that every automorphism with $\floor{n/2}+O(1)$ multiplications has a decoder
 of degree exponential in $n$, and already at $n=7$ we know of no stable one.

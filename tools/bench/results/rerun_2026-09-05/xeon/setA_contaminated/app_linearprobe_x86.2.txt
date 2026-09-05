@@ -1,0 +1,25 @@
+# 2026-09-05T18:06:07+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:06:07 up 65 days, 11:42,  1 user,  load average: 15.27, 8.63, 8.56
+# cmd: taskset -c 80-95 ./app_linearprobe_x86   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC; repetition 2 of 3)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: 88367ce236d1a2e182695bf02b58ca4e  ../app_linearprobe_x86.cpp
+Reading random bytes from seed
+Linear probing benchmark (x86, GF(2^64))
+  table=2^20 load=70% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  40.5492 ns/insert
+  lookup: 58.0897 ns/query (avg probes 4.10954)
+Rabin--Winograd
+  build:  27.7878 ns/insert
+  lookup: 39.3038 ns/query (avg probes 4.10047)
+Smart CL (this paper)
+  build:  24.1444 ns/insert
+  lookup: 34.8615 ns/query (avg probes 4.12109)
+
+Speedups vs Horner
+  build:  RW 1.45924x  Ours 1.67945x
+  lookup: RW 1.47797x  Ours 1.6663x
+# exit=0 wall_ms=1495
+# uptime after:  18:06:08 up 65 days, 11:42,  1 user,  load average: 15.64, 8.82, 8.63

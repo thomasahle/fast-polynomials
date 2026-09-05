@@ -1,0 +1,73 @@
+# 2026-09-05T18:14:43+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:14:43 up 65 days, 11:51,  1 user,  load average: 5.93, 13.08, 11.93
+# cmd: taskset -c 80-95 ../shamir_sharegen_mersenne   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC/setB; set B, repetition 2 of 3; binary built 2026-09-05 18:04:37 by run_laneC.sh)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: 08abd1b8fc5860bc8cf239ddf87cd8a5  ../../shamir_sharegen_mersenne.cpp
+Reading random bytes from seed
+Mersenne(2^89-1) Shamir-style share generation benchmark
+  points=4096 iters=1024
+
+x2s/u64-x (degree 13)
+  Horner: 39.6164 ns/eval
+  Chain : 72.2003 ns/eval
+  Speedup: 0.548701x
+x2s/u64-x (degree 15)
+  Horner: 46.4198 ns/eval
+  Chain : 76.5718 ns/eval
+  Speedup: 0.606226x
+x2s/u64-x (degree 17)
+  Horner: 53.6127 ns/eval
+  Chain : 86.4608 ns/eval
+  Speedup: 0.620081x
+x2s/u64-x (degree 19)
+  Horner: 60.759 ns/eval
+  Chain : 97.4693 ns/eval
+  Speedup: 0.623365x
+x2s/u64-x (degree 21)
+  Horner: 67.8118 ns/eval
+  Chain : 107.489 ns/eval
+  Speedup: 0.63087x
+
+x2s/sharegen-seq (degree 13, full-field x)
+  Horner: 145.451 ns/eval
+  Chain : 82.0366 ns/eval
+  Speedup: 1.77301x
+x2s/sharegen-seq (degree 15, full-field x)
+  Horner: 168.289 ns/eval
+  Chain : 84.2482 ns/eval
+  Speedup: 1.99753x
+x2s/sharegen-seq (degree 17, full-field x)
+  Horner: 190.798 ns/eval
+  Chain : 95.3356 ns/eval
+  Speedup: 2.00134x
+x2s/sharegen-seq (degree 19, full-field x)
+  Horner: 213.113 ns/eval
+  Chain : 105.796 ns/eval
+  Speedup: 2.01438x
+x2s/sharegen-seq (degree 21, full-field x)
+  Horner: 235.703 ns/eval
+  Chain : 115.85 ns/eval
+  Speedup: 2.03456x
+
+x2s/prf-rand (degree 13, full-field x)
+  Horner: 145.722 ns/eval
+  Chain : 82.1312 ns/eval
+  Speedup: 1.77426x
+x2s/prf-rand (degree 15, full-field x)
+  Horner: 168.275 ns/eval
+  Chain : 84.168 ns/eval
+  Speedup: 1.99928x
+x2s/prf-rand (degree 17, full-field x)
+  Horner: 190.819 ns/eval
+  Chain : 95.3063 ns/eval
+  Speedup: 2.00217x
+x2s/prf-rand (degree 19, full-field x)
+  Horner: 213.09 ns/eval
+  Chain : 105.729 ns/eval
+  Speedup: 2.01543x
+x2s/prf-rand (degree 21, full-field x)
+  Horner: 235.683 ns/eval
+  Chain : 115.857 ns/eval
+  Speedup: 2.03426x
+# exit=0 wall_ms=15467
+# uptime after:  18:14:58 up 65 days, 11:51,  1 user,  load average: 5.72, 12.68, 11.81

@@ -1,0 +1,25 @@
+# date: 2026-09-05 20:23:50 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:23  up 3 days,  8:25, 1 user, load averages: 2.95 5.11 6.20
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./linearprobe_arm   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto app_linearprobe_arm.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: app_linearprobe_arm.cpp md5 5c7d87ae92a0f89e00cd1ad022af9f3e; fast_hashing_arm.h md5 e527ea4256769667b80b4f0920fe1cba
+Reading random bytes from seed
+Linear probing benchmark (ARM NEON, GF(2^64))
+  table=2^20 load=70% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  32.3607 ns/insert
+  lookup: 41.5767 ns/query (avg probes 4.11923)
+Rabin--Winograd
+  build:  26.7095 ns/insert
+  lookup: 36.8708 ns/query (avg probes 4.08129)
+Smart CL (this paper)
+  build:  23.3866 ns/insert
+  lookup: 34.449 ns/query (avg probes 4.09416)
+
+Speedups vs Horner
+  build:  RW 1.21158x  Ours 1.38373x
+  lookup: RW 1.12763x  Ours 1.2069x
+# uptime after: 20:23  up 3 days,  8:25, 1 user, load averages: 2.95 5.11 6.20

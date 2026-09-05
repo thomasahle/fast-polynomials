@@ -26,10 +26,6 @@ We benchmark on two platforms:
           for carryless multiplication via the \texttt{PMULL} instruction.
     \item \textbf{x86}: Intel Xeon Platinum 8375C (Ice Lake, x86-64) running Linux, using Intel intrinsics
           for carryless multiplication via the \texttt{PCLMULQDQ} instruction.
-          One x86 result is from a different host: the prime-field kernels
-          of \Cref{sec:experiments:crypto} report the run on an AMD EPYC
-          9R14 (Zen~4, Linux) recorded in
-          \texttt{tools/\allowbreak bench/\allowbreak x86\_output.txt}.
 \end{itemize}
 Both instructions compute the product of two 64-bit polynomials over $\mathbb{F}_2$
 using dedicated hardware support.
@@ -81,7 +77,7 @@ We measure evaluation time only; key setup and preprocessing (when applicable) a
 
 \paragraph{Platform scope.}
 We report results for both ARM (Apple M2 Pro) and x86 (Intel Xeon Platinum
-8375C; AMD EPYC 9R14 for the prime-field kernels, as noted above).
+8375C).
 The qualitative trade-offs (critical-path structure and the cost of modular reduction)
 are consistent across platforms, though quantitative speedups vary with microarchitecture.
 
@@ -111,20 +107,30 @@ implementation that was run, whether the circuit it computes is displayed in
 the paper, and which proof, if any, covers it.  Only the rows with a proof
 carry an independence or collision guarantee; the others are timings of
 search candidates.
-\begin{table}[!htbp]
-\centering
-\caption{Correspondence between the measured families and the proofs.
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{p{0.95in}p{1.6in}p{1.25in}p{1.7in}}
+\caption{\normalsize Correspondence between the measured families and the proofs.
          ``Circuit'' names the displayed circuit the implementation computes,
          or notes that it is not displayed.  The circuits marked ``timing
          only'' have no inverse displayed in this paper, so no guarantee is
          claimed for them beyond their multiplication count.}
-\label{tab:families}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{0.95in}p{1.6in}p{1.25in}p{1.7in}}
+\label{tab:families}\\
 \toprule
 Family (field, degree) & Implementation & Circuit & Proof; data \\
 \midrule
+\endfirsthead
+\multicolumn{4}{l}{Table~\thetable\ (continued)}\\
+\toprule
+Family (field, degree) & Implementation & Circuit & Proof; data \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{Continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 \raggedright $\F_{2^{64}}$, $k=3$ (\Cref{tab:kwise_both}, \Cref{sec:experiments:tabulation}) &
 \raggedright \texttt{smartcl\_64::\allowbreak mult3} in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h} &
 \raggedright the cubic $Q_3$ of \Cref{sec:main-theorem:outline} with $H_2=x^2$ &
@@ -165,9 +171,8 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \raggedright \texttt{tools/\allowbreak bench/\allowbreak chainhash/\allowbreak chainhash.h} &
 \raggedright \Cref{def:ph:hash} &
 \raggedright \Cref{thm:ph:collision,thm:ph:kwise} for the ideal key; the seeded implementation is outside the theorems (\Cref{rem:ph:gaps}); SMHasher3 and \Cref{app:adversarial} \tabularnewline
-\bottomrule
-\end{tabular}
-\end{table}
+\end{longtable}
+\endgroup
 
 \subsection{\texorpdfstring{$k$}{k}-wise Independent Hashing}
 \label{sec:experiments:kwise}
@@ -243,11 +248,11 @@ With table size $2^{16}$ and $2^{20}$ updates (mean of the fastest $50$ of $100$
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
 Method & Horner & R--W & Ours & Horner & R--W & Ours \\
 \hline
-ns/update & 5.49 & 4.96 & \textbf{4.33} & 38.3 & 24.9 & \textbf{23.7}
+ns/update & 5.31 & 4.84 & \textbf{4.16} & 16.2 & 9.64 & \textbf{7.35}
 \end{tabular}
 \end{center}
-On ARM, our method achieves $1.27\times$ speedup over Horner.
-On x86, the speedup is $1.62\times$, reflecting the larger benefit from reducing multiplications.
+On ARM, our method achieves $1.28\times$ speedup over Horner.
+On x86, the speedup is $2.20\times$, reflecting the larger benefit from reducing multiplications.
 The benchmark is implemented in \texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak arm.cpp} (ARM) and
 \texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak x86.cpp} (x86).
 
@@ -266,12 +271,12 @@ passes of the query set, reported per lookup; no selection):
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
 Method & Horner & R--W & Ours & Horner & R--W & Ours \\
 \hline
-ns/insert & 32.5 & 28.5 & \textbf{28.5} & 37.4 & 29.9 & \textbf{24.5} \\
-ns/query  & 42.7 & 41.9 & \textbf{38.6} & 46.3 & 35.4 & \textbf{31.4}
+ns/insert & 26.5 & 23.9 & \textbf{23.4} & 40.7 & 28.0 & \textbf{24.2} \\
+ns/query  & 36.3 & 35.4 & \textbf{33.6} & 58.2 & 39.5 & \textbf{34.9}
 \end{tabular}
 \end{center}
-On ARM, our method achieves $1.14\times$ speedup for inserts and $1.11\times$ for lookups.
-On x86, speedups are larger: $1.53\times$ for inserts and $1.47\times$ for lookups.
+On ARM, our method achieves $1.13\times$ speedup for inserts and $1.08\times$ for lookups.
+On x86, speedups are larger: $1.68\times$ for inserts and $1.67\times$ for lookups.
 The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_linearprobe\_arm.cpp} (ARM) and
 \texttt{tools/bench/\allowbreak app\_linearprobe\_x86.cpp} (x86).
 
@@ -290,12 +295,13 @@ reported per query; no selection):
 & \multicolumn{3}{c|}{ARM} & \multicolumn{3}{c}{x86} \\
 Method & Horner & R--W & Ours & Horner & R--W & Ours \\
 \hline
-ns/key (build) & 96.1 & \textbf{82.4} & 92.0 & 142.0 & 110.3 & \textbf{97.1} \\
-ns/query       & 5.56 & 5.53 & \textbf{5.04} & 19.6 & 15.6 & \textbf{11.1}
+ns/key (build) & 80.7 & 84.2 & \textbf{75.6} & 136.6 & 101.2 & \textbf{96.1} \\
+ns/query       & 5.55 & 5.44 & \textbf{5.21} & 20.9 & 13.4 & \textbf{10.5}
 \end{tabular}
 \end{center}
-On ARM, our method improves query throughput by $1.10\times$ over Horner, while R--W is faster at build time.
-On x86, our method is fastest for both: $1.46\times$ speedup for build and $1.76\times$ for queries.
+On ARM, our method improves query throughput by $1.07\times$ over Horner and is also fastest at build time
+($1.07\times$), although the single timed builds of the three methods are within run-to-run noise.
+On x86, our method is fastest for both: $1.42\times$ speedup for build and $1.99\times$ for queries.
 The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_xorfilter\_arm.cpp} (ARM) and
 \texttt{tools/bench/\allowbreak app\_xorfilter\_x86.cpp} (x86).
 
@@ -333,24 +339,23 @@ evaluation for degrees $13$--$21$ in both regimes; see the benchmark implementat
 \texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne.cpp}.
 Including the cost of writing shares to memory gives essentially the same speedups; see
 \texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne\_\allowbreak store.cpp}.
-The x86 rows of the two tables below, and the x86 store-to-memory range for
-Goldilocks, are the run on an AMD EPYC 9R14 recorded in
-\texttt{tools/bench/x86\_output.txt}, not the Xeon 8375C of the other x86
-tables; the ARM rows are the Apple M2 Pro.
+The x86 rows of the two tables below are the Xeon 8375C and the ARM rows
+the Apple M2 Pro; the logs of these runs are in
+\texttt{tools/\allowbreak bench/\allowbreak results/}.
 
 \begin{center}
 \begin{tabular}{c|ccccc}
 Degree $n$ & 13 & 15 & 17 & 19 & 21 \\
 \hline
-ARM: Sharegen ($x_i=i$) & 2.02$\times$ & 2.37$\times$ & 2.47$\times$ & 2.49$\times$ & 2.44$\times$ \\
-ARM: Random point ($x_i \sim \F_p$) & 2.01$\times$ & 2.34$\times$ & 2.48$\times$ & 2.48$\times$ & 2.48$\times$ \\
+ARM: Sharegen ($x_i=i$) & 2.05$\times$ & 2.35$\times$ & 2.51$\times$ & 2.47$\times$ & 2.45$\times$ \\
+ARM: Random point ($x_i \sim \F_p$) & 2.06$\times$ & 2.38$\times$ & 2.51$\times$ & 2.47$\times$ & 2.44$\times$ \\
 \hline
-x86 (EPYC 9R14): Sharegen ($x_i=i$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$ \\
-x86 (EPYC 9R14): Random point ($x_i \sim \F_p$) & 1.66$\times$ & 4.50$\times$ & 4.57$\times$ & 4.63$\times$ & 4.60$\times$
+x86 (Xeon 8375C): Sharegen ($x_i=i$) & 1.77$\times$ & 2.00$\times$ & 2.00$\times$ & 2.02$\times$ & 2.03$\times$ \\
+x86 (Xeon 8375C): Random point ($x_i \sim \F_p$) & 1.77$\times$ & 2.00$\times$ & 2.00$\times$ & 2.02$\times$ & 2.03$\times$
 \end{tabular}
 \end{center}
-On the EPYC, the speedups for degrees $15$--$21$ reach $4.5\times$--$4.6\times$, significantly
-exceeding the ARM results.
+On the Xeon the speedups are $1.77\times$ at degree $13$ and $2.00\times$--$2.03\times$ for
+degrees $15$--$21$, slightly below the ARM results.
 
 \paragraph{Goldilocks prime field.}
 Prime fields of 64-bit size are widely used in proof systems; a common choice is the
@@ -360,17 +365,18 @@ We repeat the same benchmark in $\F_p$ and observe similar improvements:
 \begin{tabular}{c|ccccc}
 Degree $n$ & 13 & 15 & 17 & 19 & 21 \\
 \hline
-ARM: Sharegen ($x_i=i$) & 1.98$\times$ & 2.23$\times$ & 2.39$\times$ & 2.33$\times$ & 2.32$\times$ \\
-ARM: Random point ($x_i \sim \F_p$) & 1.96$\times$ & 2.29$\times$ & 2.35$\times$ & 2.34$\times$ & 2.34$\times$ \\
+ARM: Sharegen ($x_i=i$) & 2.00$\times$ & 2.25$\times$ & 2.37$\times$ & 2.35$\times$ & 2.33$\times$ \\
+ARM: Random point ($x_i \sim \F_p$) & 2.00$\times$ & 2.26$\times$ & 2.36$\times$ & 2.34$\times$ & 2.33$\times$ \\
 \hline
-x86 (EPYC 9R14): Sharegen ($x_i=i$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$ \\
-x86 (EPYC 9R14): Random point ($x_i \sim \F_p$) & 1.27$\times$ & 1.38$\times$ & 1.42$\times$ & 1.43$\times$ & 1.37$\times$
+x86 (Xeon 8375C): Sharegen ($x_i=i$) & 1.69$\times$ & 1.84$\times$ & 1.86$\times$ & 1.89$\times$ & 1.89$\times$ \\
+x86 (Xeon 8375C): Random point ($x_i \sim \F_p$) & 1.69$\times$ & 1.85$\times$ & 1.86$\times$ & 1.89$\times$ & 1.90$\times$
 \end{tabular}
 \end{center}
 The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_goldilocks\_stark\_eval.cpp}.
-On ARM, including memory stores gives $2.19\times$--$2.36\times$ speedup;
-on the EPYC, the range is $1.31\times$--$1.90\times$.
-The smaller x86 gains reflect that Goldilocks multiplication (64-bit) is relatively cheaper,
+On ARM, including memory stores gives $1.98\times$--$2.34\times$ speedup;
+on the Xeon, the range is $1.68\times$--$1.89\times$.
+The gains are slightly smaller than for the Mersenne field on both platforms, reflecting
+that Goldilocks multiplication (64-bit) is relatively cheaper,
 reducing the benefit of fewer multiplications.
 \par\noindent\texttt{tools/bench/\allowbreak app\_goldilocks\_sharegen\_store.cpp} contains the benchmark.
 

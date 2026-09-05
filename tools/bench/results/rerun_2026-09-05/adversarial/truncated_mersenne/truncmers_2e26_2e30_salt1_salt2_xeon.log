@@ -1,0 +1,41 @@
+# truncated_mersenne on hardware.normalcomputing.net, Sat Sep  5 18:07:26 UTC 2026, clang clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9), md5 2397f9458981f8577fdaccf161993974  truncated_mersenne.cpp
+BUILD_OK
+uptime before (salt 1):  18:07:27 up 65 days, 11:43,  1 user,  load average: 17.90, 11.00, 9.40
+cmd: taskset -c 80-95 ./truncated_mersenne 8 26 30 1
+selfcheck m89: a=0x000000000166b1f5ee9df2ecb48eb87b b=0x0000000001ade3a6932a58f32df65270 (a*b) mod (2^89-1) = 0x00000000009315f689f3382e7c93225d
+selfcheck m89: a=0x0000000001fb5209d8fca80631bedc39 b=0x00000000001f1ae5852bd8b0a835789b (a*b) mod (2^89-1) = 0x000000000188e10eb08da980d7731a69
+selfcheck m89: a=0x0000000000ceb29f2d95910a404dbad7 b=0x0000000001152e2245ac3ec32f76b61e (a*b) mod (2^89-1) = 0x0000000001320869b389470bf1d203e9
+selfcheck m61: a=0x166b1f5ee9df2ecb b=0x08eb87b2c9e9059a (a*b) mod (2^61-1) = 0x088531464f176f60
+selfcheck m61: a=0x1ade3a6932a58f32 b=0x1f65270e63d00e48 (a*b) mod (2^61-1) = 0x1eb604c52c553843
+selfcheck m61: a=0x1fb5209d8fca8063 b=0x1bedc39c76c43189 (a*b) mod (2^61-1) = 0x039b1b34eb6eeb2f
+threads=8 salt=1
+Hash A: F_{2^89-1} injective recurrence (PaperMers89Smart), 30-byte messages a1=0xbe6a36374160d49b b1=0x214aaa0637a688 a2={0, 2^64-1} b2=0xf69d16de9954d3, low-64-bit output, 2^26 random keys (x,y)
+  truncated (low 64 bits) collisions: 2 / 2^26  (expected 2^26 * 2^64/p = 2.00)
+  full-residue collisions (control):  0 / 2^26
+  residues in the top window [p-(2^64-1), p): 2
+Hash B: F_{2^61-1} recurrence with 32-bit words (PaperMersenne), 32-byte messages w=(0x0c60048c4e96e033,0x8e2076aeed51c648,0x02bbcc1c1fc50f84,0x28e72a4f|{0,0xFFFFFFFF}), low-32-bit output, 2^30 random keys x
+  truncated (low 32 bits) collisions: 2 / 2^30  (expected 2^30 * 2^32/p = 2.00)
+  full-residue collisions (control):  0 / 2^30
+  residues in the top window [p-(2^32-1), p): 2
+wall 13.91 s user 76.15 s
+uptime after:  18:07:41 up 65 days, 11:43,  1 user,  load average: 19.33, 11.66, 9.64
+uptime before (salt 2):  18:07:41 up 65 days, 11:43,  1 user,  load average: 19.33, 11.66, 9.64
+cmd: taskset -c 80-95 ./truncated_mersenne 8 26 30 2
+selfcheck m89: a=0x000000000166b1f5ee9df2ecb48eb87b b=0x0000000001ade3a6932a58f32df65270 (a*b) mod (2^89-1) = 0x00000000009315f689f3382e7c93225d
+selfcheck m89: a=0x0000000001fb5209d8fca80631bedc39 b=0x00000000001f1ae5852bd8b0a835789b (a*b) mod (2^89-1) = 0x000000000188e10eb08da980d7731a69
+selfcheck m89: a=0x0000000000ceb29f2d95910a404dbad7 b=0x0000000001152e2245ac3ec32f76b61e (a*b) mod (2^89-1) = 0x0000000001320869b389470bf1d203e9
+selfcheck m61: a=0x166b1f5ee9df2ecb b=0x08eb87b2c9e9059a (a*b) mod (2^61-1) = 0x088531464f176f60
+selfcheck m61: a=0x1ade3a6932a58f32 b=0x1f65270e63d00e48 (a*b) mod (2^61-1) = 0x1eb604c52c553843
+selfcheck m61: a=0x1fb5209d8fca8063 b=0x1bedc39c76c43189 (a*b) mod (2^61-1) = 0x039b1b34eb6eeb2f
+threads=8 salt=2
+Hash A: F_{2^89-1} injective recurrence (PaperMers89Smart), 30-byte messages a1=0xbe6a36374160d49b b1=0x214aaa0637a688 a2={0, 2^64-1} b2=0xf69d16de9954d3, low-64-bit output, 2^26 random keys (x,y)
+  truncated (low 64 bits) collisions: 2 / 2^26  (expected 2^26 * 2^64/p = 2.00)
+  full-residue collisions (control):  0 / 2^26
+  residues in the top window [p-(2^64-1), p): 2
+Hash B: F_{2^61-1} recurrence with 32-bit words (PaperMersenne), 32-byte messages w=(0x0c60048c4e96e033,0x8e2076aeed51c648,0x02bbcc1c1fc50f84,0x28e72a4f|{0,0xFFFFFFFF}), low-32-bit output, 2^30 random keys x
+  truncated (low 32 bits) collisions: 1 / 2^30  (expected 2^30 * 2^32/p = 2.00)
+  full-residue collisions (control):  0 / 2^30
+  residues in the top window [p-(2^32-1), p): 1
+wall 13.48 s user 76.11 s
+uptime after:  18:07:54 up 65 days, 11:44,  1 user,  load average: 20.36, 12.26, 9.87
+ALL_DONE

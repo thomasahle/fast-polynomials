@@ -1,0 +1,23 @@
+# date: 2026-09-05 20:23:56 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:23  up 3 days,  8:25, 1 user, load averages: 3.59 5.21 6.23
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./countsketch_arm   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto app_countsketch_arm.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: app_countsketch_arm.cpp md5 036e8962afe9c4a535815aaee3a31460; fast_hashing_arm.h md5 e527ea4256769667b80b4f0920fe1cba
+Reading random bytes from seed
+CountSketch update benchmark (ARM NEON, GF(2^64))
+  updates=1048576 reps=50 table=2^16
+  (hash output used for bucket+sign)
+
+Degree 9
+Carryless (Horner):
+  mean 5357.38us ± 40.1626us  (5.1092 ns/update)
+Rabin--Winograd:
+  mean 4868.08us ± 55.7357us  (4.64256 ns/update)
+Smart CL (this paper):
+  mean 4289.24us ± 52.8774us  (4.09054 ns/update)
+
+Speedups vs Horner (ns/update):
+  RW:   1.10051x
+  Ours: 1.24903x
+# uptime after: 20:23  up 3 days,  8:25, 1 user, load averages: 3.59 5.21 6.23

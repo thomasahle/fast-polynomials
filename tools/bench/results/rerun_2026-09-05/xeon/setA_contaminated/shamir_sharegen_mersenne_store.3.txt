@@ -1,0 +1,31 @@
+# 2026-09-05T18:07:47+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:07:47 up 65 days, 11:44,  1 user,  load average: 19.94, 11.91, 9.74
+# cmd: taskset -c 80-95 ./shamir_sharegen_mersenne_store   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC; repetition 3 of 3)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: c6766f9a933145a0c33a183aea946024  ../shamir_sharegen_mersenne_store.cpp
+Reading random bytes from seed
+Mersenne(2^89-1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 146.88 ns/share
+  Chain : 81.8296 ns/share
+  Speedup: 1.79495x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 172.692 ns/share
+  Chain : 83.8546 ns/share
+  Speedup: 2.05942x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 191.783 ns/share
+  Chain : 94.9152 ns/share
+  Speedup: 2.02057x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 214.514 ns/share
+  Chain : 105.54 ns/share
+  Speedup: 2.03253x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 236.811 ns/share
+  Chain : 115.949 ns/share
+  Speedup: 2.04237x
+# exit=0 wall_ms=24709
+# uptime after:  18:08:12 up 65 days, 11:44,  1 user,  load average: 20.30, 12.64, 10.04

@@ -1,0 +1,28 @@
+22:30:17 load1=7.46
+22:30:47 load1=7.20
+22:31:17 load1=6.20
+22:31:47 load1=6.98
+22:32:17 load1=6.32
+22:32:48 load1=7.56
+22:33:18 load1=6.84
+22:33:48 load1=7.66
+  PID  %CPU COMM
+92814  92.3 (node)
+26593  89.1 /opt/homebrew/Cellar/node/25.6.1/bin/node
+18028  73.2 /opt/homebrew/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex
+ 2298  44.2 tmux
+79582  25.8 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.65/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+22:34:18 load1=7.01
+22:34:48 load1=6.80
+22:35:18 load1=8.25
+22:35:48 load1=7.91
+22:36:18 load1=6.65
+22:36:48 load1=7.13
+22:37:18 load1=6.85
+22:37:48 load1=5.79
+22:38:18 load1=4.43
+22:38:48 load1=3.60
+22:39:18 load1=3.33
+22:39:48 load1=2.80
+22:39:48 harness run 2 start load1=2.80
+22:40:04 harness run 2 end load1=3.05

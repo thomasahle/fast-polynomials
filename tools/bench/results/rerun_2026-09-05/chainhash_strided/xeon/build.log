@@ -1,0 +1,5 @@
+fatal: not a git repository (or any of the parent directories): .git
+[  0%] Built target SMHasher3Version
+[ 72%] Built target SMHasher3Hashlib
+[ 98%] Built target SMHasher3Tests
+[100%] Built target SMHasher3

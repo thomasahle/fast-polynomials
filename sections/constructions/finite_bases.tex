@@ -8,7 +8,7 @@ Degrees~$27$ and~$31$ are the two bridges around the unavailable
 three-product degree-$7$ joint realization.  Their common top-down decoder is
 displayed after the circuits.
 
-\subsubsection{Degree $3$}
+\subsubsection{Degree \texorpdfstring{$3$}{3}}
 \begin{lemma}[A one-product compatible realization for $3$]
     \label{lem:base-three-compatible}
     There exists a splittable pair for $3$ that is compatible on $\rng 3$,
@@ -47,7 +47,7 @@ displayed after the circuits.
     and $H_2$ is a recorded byproduct.
 \end{proof}
 
-\subsubsection{Degree $7$: direct septic base}
+\subsubsection{Degree \texorpdfstring{$7$}{7}: direct septic base}
 The canonical construction in \Cref{rem:canonical-split} makes the septic
 algebraically splittable.  What the optimal recursion would need, but we do
 not have, is a compatible joint realization of its two components using
@@ -73,7 +73,7 @@ decodable.
   \centering
   \resizebox{0.95\textwidth}{!}{\input{figures/fig_septic_circuit}}
   \caption{The four-multiplication circuit for the septic base $P_7$ of \Cref{lem:septic-base}.
-  Every multiplication gate takes two affine combinations of $x$ and previously computed values; the seven parameters $\alpha_0,\ldots,\alpha_6$ enter only as constant terms of these affine forms.}
+  Every multiplication gate takes two affine combinations of $x$ and previously computed values.  The six parameters $\alpha_1,\ldots,\alpha_6$ enter as constant terms of these gate inputs; $\alpha_0$ is added at the output.}
   \label{fig:septic-circuit}
 \end{figure}
 
@@ -113,7 +113,7 @@ is valid under the characteristic assumption.
 \end{proof}
 
 
-\subsubsection{Degree $15$}
+\subsubsection{Degree \texorpdfstring{$15$}{15}}
 \begin{algorithm}[H]
     \caption{
         Seven-product compatible joint realization in degree $15$.
@@ -145,7 +145,7 @@ is valid under the characteristic assumption.
     \end{algorithmic}
 \end{algorithm}
 
-\subsubsection{Degree $27$}
+\subsubsection{Degree \texorpdfstring{$27$}{27}}
 \begin{algorithm}[H]
     \caption{
         Thirteen-product compatible joint realization in degree $27$.
@@ -176,7 +176,7 @@ is valid under the characteristic assumption.
     \end{algorithmic}
 \end{algorithm}
 
-\subsubsection{Degree $31$}
+\subsubsection{Degree \texorpdfstring{$31$}{31}}
 \begin{algorithm}[H]
     \caption{
         Fifteen-product compatible joint realization in degree $31$.
@@ -212,9 +212,13 @@ is valid under the characteristic assumption.
   \centering
   \resizebox{\textwidth}{!}{\input{figures/fig_special_case_decoders}}
   \caption{The three finite decoders in one visual template.  A coloured
-  block denotes a monic polynomial recovered from the indicated square
-  window; each red seam is a fixed boundary coefficient contributed by the
-  next block.  Recovering a polynomial and decoding its internal parameters
+  block denotes a recovered polynomial or terminal scalar data; square
+  windows expose the monic factors, while the terminal blocks use the
+  displayed scalar pivots or, for $C$ at degree $31$, division by $x$.
+  Red cells record boundary contributions from the next block that are
+  already known when subtracted.  For degree $15$, the two corrections
+  beside the $H_4$ block occur in rows $5$ and $4$; the value of $b$ is
+  recovered in row $7$.  Recovering a polynomial and decoding its internal parameters
   are deliberately separated: the lower annotations show when the required
   powers have finally become available and the corresponding conditional
   decoder may be discharged.}
@@ -400,10 +404,12 @@ is valid under the characteristic assumption.
         &p_{t+16},\ p_{15},\ p_{t+8},\ p_{t+4},\ p_{t+1},\ p_0
     \end{array}
     \]
-    At a shared boundary the only contribution from the next block is the
-    displayed monic coefficient $1$ or $-1$, which is subtracted before that
-    block is entered (in the $31$ case this includes the row-$4$ correction
-    for $xC$).
+    At a shared boundary, subtract the displayed known contribution from
+    the next block.  Most are monic coefficients $1$ or $-1$ (including
+    the row-$4$ correction for $xC$ in the $31$ case).  For degree $15$,
+    the $H_4$ window also includes the contributions $-1$ in row $5$ and
+    $-(2b+2)$ in row $4$ from $-(x+1)U^2-V^2$; the preceding row-$7$
+    pivot has already recovered $b$, so both corrections respect the cutoff.
 
     Maintain the descending invariant that a quantity first solved in row
     $r$ is a polynomial in the observed rows $p_s$ with $s\ge r$ and in
@@ -430,4 +436,3 @@ is valid under the characteristic assumption.
     other two cases $H_2,H_4$ are displayed intermediates.  Hence all three
     realizations record both byproducts and have exactly $(n-1)/2$ products.
 \end{proof}
-

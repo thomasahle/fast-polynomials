@@ -1,4 +1,4 @@
-\subsection{The $T$ recursion and the $4k+1$ family}
+\subsection{The \texorpdfstring{$T$}{T} recursion and the \texorpdfstring{$4k+1$}{4k+1} family}
 \label{sec:splittable-4k+1}
 This section defines the recursive pair $T_{k,2^l}$, proves its exact cost,
 and proves the coefficient-triangular remainder lemma on which all later uses
@@ -157,8 +157,9 @@ following odd $D=4$ base.
     with one product and obtains $\tilde H_4=H_4+(\tilde H_2-H_2)$ without a
     second product.  If $l\ge2$, each of the two
     $Q_{2^{l-1}-1}$ blocks costs $2^{l-2}-1$ multiplications by
-    \Cref{lem:fill-Q-count}, and the two new degree-$2^{l+1}$ powers cost one
-    product each.  Thus in both cases the even recurrence is
+    \Cref{lem:fill-Q-count}; for $l=2$ these are $Q_1=x+\alpha_0$,
+    using zero products in agreement with the formula.  The two new
+    degree-$2^{l+1}$ powers cost one product each.  Thus in both cases the even recurrence is
     \[
        \mu(k,l)=\mu(k/2,l+1)+2^{l-1}.
     \]
@@ -299,9 +300,9 @@ coefficients the two formulas use.
         given $(H_2,\ldots,H_{2^l},\tilde H_{2^l})$.
         \item If $k\ge2$, put $D=2^l$ and retain the monic
         degree-$D/2$ auxiliary polynomials $S^{(i)}_1$ from the defining
-        branch.  With $H_1=H_D$, $H_2=\widetilde H_D$,
+        branch.  With $H^{(1)}=H_D$, $H^{(2)}=\widetilde H_D$,
         $\sigma_i=[x^{D/2-1}]S^{(i)}_1$, and
-        $h_i=[x^{D-1}]H_i$, one has
+        $h_i=[x^{D-1}]H^{(i)}$, one has
         \[
           [x^d]R^{(i)}_{k,D}=-\gamma_k,
           \qquad
@@ -321,9 +322,9 @@ coefficients the two formulas use.
   interval; its label is the active parameter block and its constant pivot
   slope.  In every branch the fresh tail is decoded first.  The resulting
   powers and monic factors then expose the recursive block, after which the
-  low unitriangular $Q$-block is read.  The red markers are the
-  parameter-free boundary rows that must be subtracted before crossing into
-  the next segment.}
+  low unitriangular $Q$-block is read in the two odd branches; the even
+  branch has no low block.  Boundary corrections within and between these
+  segments are listed in the stage tables and the formulas below.}
   \label{fig:Rk2l-stages}
 \end{figure}
 \begin{proof}
@@ -332,10 +333,12 @@ coefficients the two formulas use.
     \Cref{fig:Rk2l-stages}.  Every branch follows the same four-step template:
     derive one exact remainder identity; identify its highest nonzero term;
     verify the tail pivots and their two seam rows; then transport the recursive
-    block and append the low unitriangular block.  On a first reading, one may
+    block and, in the odd branches, append the low unitriangular block.
+    On a first reading, one may
     follow the displayed identity, stage table, and final concatenation in each
-    branch.  The paragraphs headed ``seam rows'' justify precisely the red
-    boundary markers in the figure.  \Cref{alg:decode-Rk2l} restates the same
+    branch.  The paragraphs headed ``seam rows'' give the boundary
+    corrections within and between the blocks in the figure.
+    \Cref{alg:decode-Rk2l} restates the same
     argument as an executable decoder.
 
     Assertion (1) is the definition.  We prove (2--4) simultaneously by
@@ -433,8 +436,8 @@ coefficients the two formulas use.
         \widetilde V=S^{(2)}_2=\sigma.
       \]
       Here $Q_+$ and $Q_-$ have degree $r-1$, while $\delta$ and
-      $\sigma$ are scalars.  In the formulas below $H_1=H_D$ and
-      $H_2=\widetilde H_D$, and
+      $\sigma$ are scalars.  In the formulas below $H^{(1)}=H_D$ and
+      $H^{(2)}=\widetilde H_D$, and
 
       \[
       E_1=-U^2+V,\qquad E_2=-\widetilde U^2+\sigma,\qquad
@@ -453,14 +456,14 @@ coefficients the two formulas use.
       The recursive definition and the binomial theorem give the single
       identity
       \[
-        R^{(i)}_{k,D}=mE_iH_i^{k-2}+\widehat R_i+R'_i,
+        R^{(i)}_{k,D}=mE_i(H^{(i)})^{k-2}+\widehat R_i+R'_i,
         \tag{R-even-exp}
       \]
       with $\deg\widehat R_i,\deg R'_i\le b$.  Explicitly,
-      $\widehat R_i=\sum_{q=2}^{m}\binom mq E_i^qH_i^{k-2q}$;
+      $\widehat R_i=\sum_{q=2}^{m}\binom mq E_i^q(H^{(i)})^{k-2q}$;
       terms with $q\ge3$ have degree at most $b-D$.
 
-      The summand $-m(S^{(i)}_1)^2H_i^{k-2}$ has degree $d$ and
+      The summand $-m(S^{(i)}_1)^2(H^{(i)})^{k-2}$ has degree $d$ and
       leading coefficient $-m$.  The $S^{(i)}_2$ companion has degree at
       most $b+r-1$, while $\widehat R_i$ and $R'_i$ have degree at most
       $b$.  Hence the remainder has exact degree $d$, and its top two
@@ -472,7 +475,7 @@ coefficients the two formulas use.
         \tag{R-top-two-even}\label{R-top-two-even}
       \end{equation}
       where $\sigma_i=[x^{r-1}]S^{(i)}_1$ and
-      $h_i=[x^{D-1}]H_i$.  This proves assertions~(2) and~(4) for the
+      $h_i=[x^{D-1}]H^{(i)}$.  This proves assertions~(2) and~(4) for the
       even branch.
 
       \smallskip\noindent\emph{Tail pivots and support.}
@@ -482,18 +485,18 @@ coefficients the two formulas use.
       \begin{array}{c|c|c|c}
         \text{rows }j&\text{active block}&\lambda_j&\text{source}\\ \hline
         b+D-1,\ldots,b+r+1
-          &\alpha_{b+r+1},\ldots,\alpha_{b+D-1}&-2m=-k&-xU^2H_1^{k-2}\\
-        b+r&\alpha_{b+r}=\delta&-2m=-k&-\widetilde U^2H_2^{k-2}\\
+          &\alpha_{b+r+1},\ldots,\alpha_{b+D-1}&-2m=-k&-xU^2(H^{(1)})^{k-2}\\
+        b+r&\alpha_{b+r}=\delta&-2m=-k&-\widetilde U^2(H^{(2)})^{k-2}\\
         b+r-1,\ldots,b+1
-          &\alpha_{b+1},\ldots,\alpha_{b+r-1}&m&xVH_1^{k-2}\\
-        b&\alpha_b=\sigma&m&\sigma H_2^{k-2}\\
+          &\alpha_{b+1},\ldots,\alpha_{b+r-1}&m&xV(H^{(1)})^{k-2}\\
+        b&\alpha_b=\sigma&m&\sigma(H^{(2)})^{k-2}\\
         b-1,\ldots,0&\text{recursive block}&\text{inner pivot}&R'_1,R'_2
       \end{array}
       \tag{R-even-table}
       \]
       For example, the pivot parameter $\eta^+_s$ first occurs as
       $2\eta^+_s$ plus higher-row terms in $U^2$ at degree $r+s$; the $x$-shift and the monic
-      factor $H_1^{k-2}$ put it in row $b+r+s+1$, with slope $-2m$.
+      factor $(H^{(1)})^{k-2}$ put it in row $b+r+s+1$, with slope $-2m$.
       The other rows follow from the same Cauchy-product calculation.  In a
       first-branch row $j$ the displayed occurrence lies in
       $[x^{j-1}]R^{(1)}$, and replacing any monic leading term by a lower
@@ -508,15 +511,15 @@ coefficients the two formulas use.
         E^{\rm bd}=x\widehat R_1+\widehat R_2+xR'_1+R'_2.
       \]
       \smallskip\noindent\emph{Seam rows.}
-      Let $s=[x^{r-1}]U$; here $h=[x^{D-1}]H_1$ is the value in
+      Let $s=[x^{r-1}]U$; here $h=[x^{D-1}]H^{(1)}$ is the value in
       \eqref{eq:inner-boundary}.  The two seam rows $b+1$ and $b$ of
       $E^{\rm bd}$ come from two instances of \Cref{lem:seam-transport},
       both landing on these rows because $f+e=b$ in each:
       \begin{itemize}
         \item the quadratic binomial term
-        $\binom m2E_i^2H_i^{k-4}$ (for $m=1$ the sum $\widehat R_i$ is
+        $\binom m2E_i^2(H^{(i)})^{k-4}$ (for $m=1$ the sum $\widehat R_i$ is
         empty and $\binom m2=0$), with
-        $(A_i,B_i,f,e)=\bigl(H_i^{k-4},\binom m2E_i^2,(k-4)D,2D\bigr)$:
+        $(A_i,B_i,f,e)=\bigl((H^{(i)})^{k-4},\binom m2E_i^2,(k-4)D,2D\bigr)$:
         here $\varphi=(k-4)h$; $\ell=\binom m2$ because
         $E_i^2=U_i^4+\cdots$ is monic of degree $2D$; and
         $a=\binom m2\,[x^{2D-1}]U^4=4s\binom m2$, because $U^2V$ has degree
@@ -639,7 +642,8 @@ coefficients the two formulas use.
       are constant and nonzero under the stated admissibility hypothesis.
       The same four-row expansion also proves the strengthened boundary
       assertion: with $\sigma_i=[x^{1}]S^{(i)}_1$ and
-      $h_i=[x^3]H_i$,
+      $h_i=[x^3]H^{(i)}$, where $H^{(1)}=H_4$ and
+      $H^{(2)}=\widetilde H_4$,
       \[
         [x^d]R^{(i)}_{k,4}=-\frac{k(k-1)}2,\qquad
         [x^{d-1}]R^{(i)}_{k,4}
@@ -713,19 +717,19 @@ coefficients the two formulas use.
       where $R'$ is the inner remainder pair at $(m,l+1)$.  We split the
       error, since a single coarse degree bound does not prove the required
       support at the two adjacent windows.  With
-      $(H_1,U_1)=(H,U)$ and $(H_2,U_2)=(\widetilde H,\widetilde U)$, set
+      $(H^{(1)},U_1)=(H,U)$ and $(H^{(2)},U_2)=(\widetilde H,\widetilde U)$, set
       \[
       \begin{aligned}
       E_i^{U}&\coloneqq
-        L_i(H_i+U_i)^{k-1}-H_i^k+cU_i^2H_i^{k-2},\\
+        L_i(H^{(i)}+U_i)^{k-1}-(H^{(i)})^k+cU_i^2(H^{(i)})^{k-2},\\
       E_i^{G}&\coloneqq
         L_i\sum_{q=2}^{m}\binom mqG_i^q
-                       (H_i+U_i)^{k-1-2q}.
+                       (H^{(i)}+U_i)^{k-1-2q}.
       \end{aligned}
       \]
       (An empty sum is zero.)  Then $E_i=E_i^U+E_i^G$.  Put
       $\tau=2\binom{k}{3}=k(k-1)(k-2)/3$.
-      \Cref{lem:odd-T-cubic-loss}, applied to $(H_i,U_i)$, gives the first
+      \Cref{lem:odd-T-cubic-loss}, applied to $(H^{(i)},U_i)$, gives the first
       two bounds below.  The $q$th summand of $E_i^G$ has degree at most
 
       \[
@@ -756,7 +760,7 @@ coefficients the two formulas use.
 
       \smallskip\noindent\emph{Degree and top boundary.}
       In particular, the principal term
-      $-cU_i^2H_i^{k-2}$ has degree $d$ and leading coefficient $-c$;
+      $-cU_i^2(H^{(i)})^{k-2}$ has degree $d$ and leading coefficient $-c$;
       the $mG_iK_i$ and $E_i^U$ terms have degree at most $d-r$, the
       product $L_iR'^{(i)}$ has degree at most $b$, and the remaining terms
       are lower still.  Since $c$ is invertible under the admissibility
@@ -768,7 +772,7 @@ coefficients the two formulas use.
       that can reach degrees $d$ and $d-1$; its top two coefficients are
       $-1$ and $-(2\sigma_i+(k-2)h_i)$, where
       $\sigma_i=[x^{r-1}]S^{(i)}_1$ and
-      $h_i=[x^{D-1}]H_i$.  Consequently
+      $h_i=[x^{D-1}]H^{(i)}$.  Consequently
       \begin{equation}
         [x^d]R^{(i)}_{k,D}=-c,\qquad
         [x^{d-1}]R^{(i)}_{k,D}
@@ -878,7 +882,7 @@ coefficients the two formulas use.
 \begin{algorithm}[H]
   \caption{Decoder summary for $xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$}\label{alg:decode-Rk2l}
   \begin{algorithmic}
-    \Require integers $l\ge 2$, $k\ge 1$, known powers $(H_2,\ldots,H_{2^l})$ and the shifted power $\tilde H_{2^l}$, and $P=xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$; if $l=2$ and $k\ge3$ is odd, require $\tilde H_4-H_4$ to have degree zero in $x$
+    \Require integers $l\ge 2$, $k\ge 1$, known powers $(H_2,\ldots,H_{2^l})$ and the shifted power $\tilde H_{2^l}$, and $P=xR^{(1)}_{k,2^l}+R^{(2)}_{k,2^l}$; if $l=2$ and $k\ge3$ is odd, require $\tilde H_4-H_4$ to be a scalar (possibly zero)
     \Ensure the parameter block $\alpha_0,\ldots,\alpha_{(k-1)2^l-1}$ (and the derived inputs for the recursive call at $(k',l+1)$, $k'\in\{k/2,(k-1)/2\}$)
 
     \If{$k=1$}
@@ -911,9 +915,9 @@ coefficients the two formulas use.
       \begin{cases}k/2&k\text{ even},\\ k(k-1)/2&k\text{ odd},\end{cases}
       \qquad
       \sigma_i\coloneqq [x^{D/2-1}]S^{(i)}_1,\quad
-      h_i\coloneqq [x^{D-1}]H_i,
+      h_i\coloneqq [x^{D-1}]H^{(i)},
     \]
-    where $H_1=H_D$ and $H_2=\widetilde H_D$.  Then, for $i=1,2$,
+    where $H^{(1)}=H_D$ and $H^{(2)}=\widetilde H_D$.  Then, for $i=1,2$,
     \[
       [x^d]R^{(i)}_{k,D}=-\gamma_k,
       \qquad
@@ -943,7 +947,7 @@ coefficients the two formulas use.
 \end{lemma}
 \begin{proof}
     By \Cref{lem:Rk2l-leading-coeff}, these coefficients are determined by
-    the top two coefficients of $H_i$ and $S^{(i)}_1$.  In every even-$k$
+    the top two coefficients of $H^{(i)}$ and $S^{(i)}_1$.  In every even-$k$
     call (including $l=2$), and in every odd-$k$ call with $l\ge3$,
     $S^{(1)}_1=H_{2^{l-1}}+Q$ with $Q$ monic of degree
     $2^{l-1}-1$, while $S^{(2)}_1=H_{2^{l-1}}+$ a scalar.  Hence their top
@@ -1066,13 +1070,14 @@ $\widehat H=H+Q$ and $\widetilde H=\widehat H+\delta$.
     $2k$-realization and records its monic $H_2$ and $H_4$.
 \end{lemma}
 
-\Cref{fig:4k1-crown} pictures the five-pivot crown over the $T_{2k,2}$ call.
+\Cref{fig:4k1-crown} pictures the five-pivot crown over the $T_{k,4}$ core
+inside the $T_{2k,2}$ call.
 
 \begin{figure}[H]
   \centering
   \resizebox{\textwidth}{!}{\input{figures/fig_4k1_crown}}
   \caption{The $4k+1$ construction and its inverse crown.  Forward, the
-  quadratic and quartic powers are shared by the two branches of the
+  quadratic and quartic base polynomials are shared by the two branches of the
   $T_{k,4}$ call.  Backward, the top five coefficients expose
   $b,c,a,e,\rho$ with the displayed constant slopes.  These reconstruct
   $H_2,H_4,\widetilde H_4$ before the decoder subtracts their $k$th powers

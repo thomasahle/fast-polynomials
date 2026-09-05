@@ -1,0 +1,23 @@
+# 2026-09-05T18:06:03+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:06:03 up 65 days, 11:42,  1 user,  load average: 15.27, 8.63, 8.56
+# cmd: taskset -c 80-95 ./app_countsketch_x86   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC; repetition 2 of 3)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: c3273f733e56a73866ef9500908c1a7f  ../app_countsketch_x86.cpp
+Reading random bytes from seed
+CountSketch update benchmark (x86, GF(2^64))
+  updates=1048576 reps=50 table=2^16
+  (hash output used for bucket+sign)
+
+Degree 9
+Carryless (Horner):
+  mean 16965us ± 3.55528us  (16.1791 ns/update)
+Rabin--Winograd:
+  mean 10100.8us ± 2.66083us  (9.63287 ns/update)
+Smart CL (this paper):
+  mean 7696.22us ± 4.69165us  (7.33969 ns/update)
+
+Speedups vs Horner (ns/update):
+  RW:   1.67957x
+  Ours: 2.20433x
+# exit=0 wall_ms=3947
+# uptime after:  18:06:07 up 65 days, 11:42,  1 user,  load average: 15.27, 8.63, 8.56

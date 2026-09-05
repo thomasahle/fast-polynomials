@@ -51,7 +51,7 @@ The paper and Lean use the same binary known-powers construction;
     \ElsIf{$n\equiv 3\pmod 8$}
       \State Write $n=8k+3$ and extend the smaller compatible joint realization for $2k+1$ by \Cref{alg:constr-8k+3}.
     \Else
-      \State Write $n=8k+7$ with $k\ge 2$ and extend the smaller compatible joint realization for $2k+1$ by \Cref{alg:constr-8k+7} (using $\bar Q_{15}$ or $\bar Q_{8k+7}$ as needed).
+      \State Write $n=8k+7$ with $k\ge 2$ and extend the smaller compatible joint realization for $2k+1$ by \Cref{alg:constr-8k+7}, using $\mathcal Q_{2k+1}$ and $\mathcal Q_{4k+3}$ (barred when their degree is $7\pmod8$ and at least $15$).
     \EndIf
   \end{algorithmic}
 \end{algorithm}
@@ -74,7 +74,7 @@ The paper and Lean use the same binary known-powers construction;
     \ElsIf{$n\equiv 3\pmod 8$}
       \State Write $n=8k+3$ and apply the square-gadget extraction in \Cref{lem:8k+3-splittable} to recover the auxiliary polynomials and the squared smaller pair.
       \State Recover $P_{2k+1}$ by monic square roots and recurse on it; this reconstructs $H_2$.
-      \State Decode $S^{(1)}_2=Q_{4k+1}$ first via \Cref{lem:Q4k+1-from-H2}, which reconstructs $H_4$; only then decode $S^{(1)}_3=\mathcal Q_{2k-1}$ by the dispatch of \Cref{lem:odd-gadgets-H2H4}, with \Cref{alg:decode-Q-2kminus1} for nested Mersenne blocks.
+      \State Decode $S^{(1)}_2=Q_{4k+1}$ first via \Cref{lem:Q4k+1-from-H2}, which reconstructs $H_4$; for $k>1$, only then decode $S^{(1)}_3=\mathcal Q_{2k-1}$ by the dispatch of \Cref{lem:odd-gadgets-H2H4}, with \Cref{alg:decode-Q-2kminus1} for nested Mersenne blocks.  For $k=1$, read $S^{(1)}_3=\alpha_1$ directly.
     \Else
       \State Write $n=8k+7$ with $k\ge 2$ and apply the two square-gadget extractions in \Cref{lem:8k+7-splittable}; this recovers both auxiliary polynomials and isolates $P_{2k+1}$.
       \State Recurse on $P_{2k+1}$, thereby reconstructing the internal powers $H_2,H_4$.
@@ -128,8 +128,10 @@ The paper and Lean use the same binary known-powers construction;
     separate numerical recurrence.  In either odd induction step, execute the
     smaller joint circuit once, reuse its recorded $H_2,H_4$ wires as inputs
     to the auxiliary gadgets, and then form the two displayed
-    difference-of-squares outputs.  Each difference of squares uses the one
-    product $(S_3+S_2)(S_3-S_2)$ already shown in the construction algorithm.
+    difference-of-squares outputs.  Each difference of squares uses one
+    product: $(S^{(i)}_3+S^{(i)}_2)(S^{(i)}_3-S^{(i)}_2)$ in the $8k+7$
+    step, and $(S^{(i)}_2+S^{(i)}_1)(S^{(i)}_2-S^{(i)}_1)$ in the $8k+3$
+    step, for $i=1,2$, as displayed in the respective algorithms.
     Thus the two output components share the smaller circuit and the power
     byproducts literally; the sums below count the gates of this one joint
     circuit.  The $4k+1$ and finite branches are already displayed as joint

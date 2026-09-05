@@ -183,9 +183,9 @@ The rates reported here are for the worst inputs \emph{we found}, by a
 differential search restricted to word complements and additive differences on
 the fold operands, together with one-line annihilation constructions.  They are
 lower bounds on the true worst-case collision probability of each hash; inputs
-with a higher rate may exist.  Each $2^{-26}$--$2^{-27}$ entry rests on roughly
-$20$--$35$ observed collisions in $2^{31}$ trials, so its exponent carries a
-statistical uncertainty of about $\pm0.3$; the differences between lengths and
+with a higher rate may exist.  Each $2^{-26}$--$2^{-27}$ entry rests on between
+$11$ and $36$ observed collisions in $2^{31}$ trials, so its exponent carries a
+statistical uncertainty of about $\pm0.3$ ($\pm0.4$ at the smallest counts); the differences between lengths and
 between the three XOR-fold hashes are within that noise.  What the experiments
 establish is a lower bound of order $2^{-27}$ (\texttt{wyhash},
 \texttt{rapidhash}, \texttt{XXH3}) and $1$ (\texttt{MUM}) on the worst case,
@@ -198,11 +198,12 @@ keeping the low $64$ bits of the residue.  Two messages that differ only in
 the final additive word, by $2^{64}-1$, have residues that differ by exactly
 that constant; whenever the sum wraps past $p$, the wrap subtracts
 $p\equiv-1\pmod{2^{64}}$ and the low $64$ bits coincide.  This happens
-whenever the residue lies in the top $2^{64}$ values of $[0,p)$, so the pair
-so, over a random key, the pair collides with probability about $2^{64}/p=2^{-25}$, whatever the remaining words of the message (we measured
-$4$ collisions in $2^{26}$ random keys).  The same mechanism gives
+whenever the residue lies in the top $2^{64}$ values of $[0,p)$, so, over a
+random key, the pair collides with probability about $2^{64}/p=2^{-25}$,
+whatever the remaining words of the message (we measured $2$ collisions in
+$2^{26}$ random keys and $8$ in $2^{28}$).  The same mechanism gives
 $2^{32}/(2^{61}-1)=2^{-29}$ for the low $32$ bits of a residue modulo
-$2^{61}-1$ (measured $1$ in $2^{30}$).  The Mersenne rows of
+$2^{61}-1$ (measured $2$ in $2^{30}$ and $8$ in $2^{32}$).  The Mersenne rows of
 \Cref{tab:injective:adversarial} therefore output the full residue; a
 shorter output needs a universal post-hash, for instance one multiply-shift
 step or a degree-$k$ chain as in \Cref{sec:main-theorem}.

@@ -1,0 +1,12 @@
+# date: 2026-09-05 20:36:11 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:36  up 3 days,  8:37, 1 user, load averages: 3.96 4.33 5.11
+# command: cd tools/bench/adversarial && ./speed 5 0.5 run XXH3-128
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: speed binary md5 ed67bef9efb99360ab8ebc31272ff624
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+selftests passed
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":16384,"gbps":34.2541,"gbps_min":33.6055,"gbps_max":37.7808,"ns_per_call":478.31,"reps":1180059,"runs":5,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":512,"gbps":24.8756,"gbps_min":23.4177,"gbps_max":25.1115,"ns_per_call":20.58,"reps":21869463,"runs":5,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+# uptime after: 20:36  up 3 days,  8:37, 1 user, load averages: 4.21 4.37 5.12

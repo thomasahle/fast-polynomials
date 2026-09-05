@@ -1,0 +1,54 @@
+# 2026-09-05T18:06:50+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:06:50 up 65 days, 11:43,  1 user,  load average: 16.79, 9.97, 9.02
+# cmd: taskset -c 80-95 ./app_goldilocks_stark_eval   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC; repetition 2 of 3)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: 992ae100f67ca6bc037e300d5882388b  ../app_goldilocks_stark_eval.cpp
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) polynomial-evaluation benchmark
+  points=4096 iters=1024
+
+Sequential x_i=i:
+x2s/seq (degree 13)
+  Horner: 112.416 ns/eval
+  Chain : 66.6704 ns/eval
+  Speedup: 1.68614x
+x2s/seq (degree 15)
+  Horner: 130.372 ns/eval
+  Chain : 70.6526 ns/eval
+  Speedup: 1.84526x
+x2s/seq (degree 17)
+  Horner: 148.309 ns/eval
+  Chain : 79.9597 ns/eval
+  Speedup: 1.8548x
+x2s/seq (degree 19)
+  Horner: 166.274 ns/eval
+  Chain : 87.8096 ns/eval
+  Speedup: 1.89357x
+x2s/seq (degree 21)
+  Horner: 184.226 ns/eval
+  Chain : 97.288 ns/eval
+  Speedup: 1.89361x
+
+Random x_i~F_p:
+x2s/rand (degree 13)
+  Horner: 112.455 ns/eval
+  Chain : 66.6642 ns/eval
+  Speedup: 1.68689x
+x2s/rand (degree 15)
+  Horner: 130.359 ns/eval
+  Chain : 70.6429 ns/eval
+  Speedup: 1.84533x
+x2s/rand (degree 17)
+  Horner: 148.293 ns/eval
+  Chain : 79.9432 ns/eval
+  Speedup: 1.85498x
+x2s/rand (degree 19)
+  Horner: 166.321 ns/eval
+  Chain : 87.8379 ns/eval
+  Speedup: 1.89349x
+x2s/rand (degree 21)
+  Horner: 184.243 ns/eval
+  Chain : 100.423 ns/eval
+  Speedup: 1.83467x
+# exit=0 wall_ms=10055
+# uptime after:  18:07:00 up 65 days, 11:43,  1 user,  load average: 17.06, 10.25, 9.12

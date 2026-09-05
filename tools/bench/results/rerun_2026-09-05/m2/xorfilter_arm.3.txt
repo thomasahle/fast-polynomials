@@ -1,0 +1,28 @@
+# date: 2026-09-05 20:23:59 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:23  up 3 days,  8:25, 1 user, load averages: 3.59 5.21 6.23
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./xorfilter_arm   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto app_xorfilter_arm.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: app_xorfilter_arm.cpp md5 187c0464b77ad7de4e35b3c2d0a0b836; fast_hashing_arm.h md5 e527ea4256769667b80b4f0920fe1cba
+Reading random bytes from seed
+XOR-filter-style benchmark (ARM NEON, GF(2^64))
+  table=2^20 load=75% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  80.6973 ns/key (attempts 1)
+  query:  5.54658 ns/query
+  FP rate (est.): 0.00387828
+Rabin--Winograd
+  build:  84.2235 ns/key (attempts 1)
+  query:  5.4377 ns/query
+  FP rate (est.): 0.00379181
+Smart CL (this paper)
+  build:  75.5786 ns/key (attempts 1)
+  query:  5.2055 ns/query
+  FP rate (est.): 0.00378036
+
+Speedups vs Horner
+  build: RW 0.958133x  Ours 1.06773x
+  query: RW 1.02002x  Ours 1.06552x
+# uptime after: 20:23  up 3 days,  8:25, 1 user, load averages: 3.59 5.21 6.23

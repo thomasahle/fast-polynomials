@@ -1,0 +1,72 @@
+# date: 2026-09-05 21:01:40 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 21:01  up 3 days,  9:02, 1 user, load averages: 2.83 4.36 4.71
+# command: cd /Users/ahle/repos/smhasher3/build-chainhash && ./SMHasher3 --test=Speed injective-hash.mersenne   (binary of Sep  5 19:55:11 2026)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: hashes/injective_hash.cpp md5 854b88d8415674c56bf6adf249485bfd; INJECTIVE_HASH_LANES default 9
+--- Testing injective-hash.mersenne "Injective recursion hash (Mersenne mode)"
+
+[[[ Speed Tests ]]]
+
+Small key speed test - [1, 31]-byte keys
+   1-byte keys -   153.57 cycles/hash
+   2-byte keys -   153.57 cycles/hash
+   3-byte keys -   153.57 cycles/hash
+   4-byte keys -   154.24 cycles/hash
+   5-byte keys -   154.24 cycles/hash
+   6-byte keys -   154.24 cycles/hash
+   7-byte keys -   154.24 cycles/hash
+   8-byte keys -   132.39 cycles/hash
+   9-byte keys -   161.08 cycles/hash
+  10-byte keys -   161.08 cycles/hash
+  11-byte keys -   161.08 cycles/hash
+  12-byte keys -   132.61 cycles/hash
+  13-byte keys -   132.61 cycles/hash
+  14-byte keys -   132.61 cycles/hash
+  15-byte keys -   132.61 cycles/hash
+  16-byte keys -   132.61 cycles/hash
+  17-byte keys -   137.47 cycles/hash
+  18-byte keys -   137.47 cycles/hash
+  19-byte keys -   137.47 cycles/hash
+  20-byte keys -   135.04 cycles/hash
+  21-byte keys -   135.04 cycles/hash
+  22-byte keys -   135.04 cycles/hash
+  23-byte keys -   135.04 cycles/hash
+  24-byte keys -   135.04 cycles/hash
+  25-byte keys -   135.04 cycles/hash
+  26-byte keys -   135.04 cycles/hash
+  27-byte keys -   135.04 cycles/hash
+  28-byte keys -   135.04 cycles/hash
+  29-byte keys -   135.04 cycles/hash
+  30-byte keys -   135.04 cycles/hash
+  31-byte keys -   135.04 cycles/hash
+Average        -   141.59 cycles/hash
+ rnd-byte keys -   142.13 cycles/hash
+
+Bulk speed test - 262144-byte keys
+Alignment   7 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   6 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   5 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   4 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   3 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   2 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   1 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   0 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Average       -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment rnd -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+
+Bulk speed test - [262017, 262144]-byte keys
+Alignment   7 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   6 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   5 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   4 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   3 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   2 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   1 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment   0 -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Average       -  1.49 bytes/cycle -  4.87 GiB/sec @ 3.5 ghz
+Alignment rnd -  1.48 bytes/cycle -  4.81 GiB/sec @ 3.5 ghz
+
+Verification value is 0x00000001 - Testing took 321.660788 seconds
+
+# uptime after: 21:07  up 3 days,  9:08, 1 user, load averages: 2.41 3.32 4.14

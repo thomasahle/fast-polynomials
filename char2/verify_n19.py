@@ -65,8 +65,8 @@ Decoder (Lemma lem:char2-degree19-inverse; P = x^19 + sum c_j x^j):
          a15 = q7 + q10 + q12 + q13 + q8^2 + q8, a16 = q2, a17 = q15, a18 = q18
   (A.17) S = s + a16 = x^3 + q0 x^2 + q1 x + (q0 q1 + q2),  C = u + w + q + a17,  P = S C + r + a18
   (A.19) [C]_16 = 1, [C]_15 = [C]_14 = 0, [C]_13 = 1 (cubic-shell invariant)
-  (A.20) q0 = c18,  q1 = c17,  q2 = c16 + q0 q1 + 1;  then rows 19..3 of P are those of S C:
-         monic division by S recovers C
+  (A.20) q0 = c18,  q1 = c17,  q2 = c16 + q0 q1 + 1;  rows 19..4 of P are those of S C,
+         and [S C]_3 = c3 + 1; hence monic division of P + x^3 by S recovers C
   (A.22) [C]_{15-i} = q_i + B_i(q_0..q_{i-1}), 3 <= i <= 15  (pivot table (A.23): C-row 15-i carries q_i)
   (A.25) P + S C = r + a18 = x^3 + q16 x^2 + q17 x + (q16 q17 + q18): rows 2, 1, 0 give q16, q17, q18
   flattened form (certified for all nineteen rows of P): q_i = c_{18-i} + K_i(q_0..q_{i-1}), i = 0..18,

@@ -1,0 +1,28 @@
+# 2026-09-05T18:06:08+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:06:08 up 65 days, 11:42,  1 user,  load average: 15.64, 8.82, 8.63
+# cmd: taskset -c 80-95 ./app_xorfilter_x86   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC; repetition 2 of 3)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: 38d7baa1e7de13f7b73b303f2c824dd4  ../app_xorfilter_x86.cpp
+Reading random bytes from seed
+XOR-filter-style benchmark (x86, GF(2^64))
+  table=2^20 load=75% reps=5
+
+Degree 9
+Carryless (Horner)
+  build:  135.954 ns/key (attempts 1)
+  query:  20.944 ns/query
+  FP rate (est.): 0.0039444
+Rabin--Winograd
+  build:  100.716 ns/key (attempts 1)
+  query:  13.9369 ns/query
+  FP rate (est.): 0.00378164
+Smart CL (this paper)
+  build:  95.1915 ns/key (attempts 1)
+  query:  10.4701 ns/query
+  FP rate (est.): 0.00389989
+
+Speedups vs Horner
+  build: RW 1.34988x  Ours 1.42822x
+  query: RW 1.50277x  Ours 2.00036x
+# exit=0 wall_ms=1114
+# uptime after:  18:06:09 up 65 days, 11:42,  1 user,  load average: 15.64, 8.82, 8.63

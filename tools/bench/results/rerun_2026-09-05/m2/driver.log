@@ -1,0 +1,17 @@
+driver start Sat Sep  5 20:05:16 CEST 2026
+WAIT group1-app: load<3 reached after 1111 s, load=2.94
+group1 done Sat Sep  5 20:23:59 CEST 2026
+WAIT group2-speed: load<3 reached after 601 s, load=2.54
+group2 done Sat Sep  5 20:36:17 CEST 2026
+WAIT group3-prime: timed out after 1200 s, load=3.54 (running anyway)
+group3 done Sat Sep  5 20:59:40 CEST 2026
+WAIT group4-smh-mersenne: load<3 reached after 120 s, load=2.83
+WAIT group4-smh-mum: load<3 reached after 0 s, load=2.41
+group4 done Sat Sep  5 21:07:44 CEST 2026
+ALL DONE Sat Sep  5 21:07:44 CEST 2026
+driver2 start Sat Sep  5 21:08:43 CEST 2026
+WAIT run2-speed-full: load<3 reached after 0 s, load=2.06
+run2 speed done Sat Sep  5 21:10:25 CEST 2026
+WAIT run2-smh-mersenne: load<3 reached after 30 s, load=2.60
+run2 smh done Sat Sep  5 21:16:16 CEST 2026
+ALL DONE 2 Sat Sep  5 21:16:16 CEST 2026

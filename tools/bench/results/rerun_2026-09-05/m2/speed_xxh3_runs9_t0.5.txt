@@ -1,0 +1,16 @@
+# date: 2026-09-05 20:35:43 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:35  up 3 days,  8:36, 1 user, load averages: 4.32 4.42 5.16
+# command: cd tools/bench/adversarial && ./speed 9 0.5 run XXH3
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: speed binary md5 ed67bef9efb99360ab8ebc31272ff624
+Reading random bytes from seed
+info: fast_large_mult_mod_exact mismatches vs reference: 0/200000 (not used by any benchmarked hash)
+selftests passed
+{"name":"XXH3-64 withSeed (random seed)","size_bytes":16384,"gbps":38.2052,"gbps_min":30.8349,"gbps_max":38.9356,"ns_per_call":428.84,"reps":1194983,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-64 withSecret (random 192-byte secret)","size_bytes":16384,"gbps":39.0059,"gbps_min":35.4060,"gbps_max":39.4218,"ns_per_call":420.04,"reps":1177839,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":16384,"gbps":33.8091,"gbps_min":31.6106,"gbps_max":38.1878,"ns_per_call":484.60,"reps":1169835,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-64 withSeed (random seed)","size_bytes":512,"gbps":27.6448,"gbps_min":25.2778,"gbps_max":27.9990,"ns_per_call":18.52,"reps":25903638,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-64 withSecret (random 192-byte secret)","size_bytes":512,"gbps":33.8063,"gbps_min":33.5450,"gbps_max":34.2225,"ns_per_call":15.15,"reps":33343788,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+{"name":"XXH3-128 withSeed (random seed)","size_bytes":512,"gbps":24.7321,"gbps_min":21.3579,"gbps_max":25.1053,"ns_per_call":20.70,"reps":23911931,"runs":9,"impl_source":"/opt/homebrew/include/xxhash.h 0.8.3 XXH_INLINE_ALL"}
+# uptime after: 20:36  up 3 days,  8:37, 1 user, load averages: 3.96 4.33 5.11

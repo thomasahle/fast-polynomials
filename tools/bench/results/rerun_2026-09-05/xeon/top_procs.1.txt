@@ -1,0 +1,2 @@
+# 2026-09-05T18:13:19+00:00 processes above 20% CPU at the start of repetition 1 (pid %cpu affinity command)
+2291816  100 [0-95] /home/brian-hoskins/dram-computing/.venv/bin/python -u profile_oblivious.py 0 1 

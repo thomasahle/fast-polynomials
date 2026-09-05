@@ -1,0 +1,8 @@
+19:54:47 build done; uptime:  19:54:47 up 65 days, 13:31,  1 user,  load average: 2.22, 2.26, 2.27
+19:54:47 sanity+speed chainhash-256 start; uptime:  19:54:47 up 65 days, 13:31,  1 user,  load average: 2.22, 2.26, 2.27
+19:55:41 sanity+speed chainhash-256 end exit=0
+19:55:41 sanity+speed chainhash-1k start; uptime:  19:55:41 up 65 days, 13:32,  1 user,  load average: 3.21, 2.54, 2.36
+19:56:45 sanity+speed chainhash-1k end exit=0
+19:56:45 full suites start; uptime:  19:56:45 up 65 days, 13:33,  1 user,  load average: 3.97, 2.84, 2.48
+20:04:33 suite 256 end exit=0; uptime:  20:04:33 up 65 days, 13:40,  1 user,  load average: 11.66, 9.73, 6.04
+20:05:25 suite 1k end exit=0; uptime:  20:05:25 up 65 days, 13:41,  1 user,  load average: 10.51, 9.67, 6.23

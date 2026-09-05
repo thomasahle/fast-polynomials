@@ -1,0 +1,16 @@
+# laneC adversarial rerun on hardware.normalcomputing.net, Sat Sep  5 18:04:34 UTC 2026, clang clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9)
+# md5: 00873fbea51258c25bfe2fd0e8193515  adversarial.cpp 2408e6bbe65259eb837b1026d9198ee3  hashes.h c1244cf17d08bff78c1b5dad4f96d726  run_length.sh 
+# build: clang++ -O3 -std=c++17 -march=native adversarial.cpp -o adversarial ; selftest.cpp -o selftest
+BUILD_DONE Sat Sep  5 18:04:38 UTC 2026
+uptime before selftest:  18:04:38 up 65 days, 11:40,  1 user,  load average: 5.65, 5.44, 7.63
+selftest exit 0
+uptime before length:  18:04:38 up 65 days, 11:40,  1 user,  load average: 5.65, 5.44, 7.63
+cmd: taskset -c 80-95 ./run_length.sh 12 31  (threads=12 to match the paper run seeding; output results_length.md)
+LENGTH_DONE Sat Sep  5 18:06:12 UTC 2026 uptime after:  18:06:12 up 65 days, 11:42,  1 user,  load average: 15.64, 8.82, 8.63
+uptime before scan:  18:06:12 up 65 days, 11:42,  1 user,  load average: 15.64, 8.82, 8.63
+SCAN_DONE Sat Sep  5 18:09:18 UTC 2026 uptime after:  18:09:18 up 65 days, 11:45,  1 user,  load average: 23.99, 15.11, 11.07
+uptime before random:  18:09:18 up 65 days, 11:45,  1 user,  load average: 23.99, 15.11, 11.07
+RANDOM_DONE Sat Sep  5 18:12:12 UTC 2026 uptime after:  18:12:12 up 65 days, 11:48,  1 user,  load average: 22.15, 18.78, 13.23
+uptime before determ:  18:12:12 up 65 days, 11:48,  1 user,  load average: 22.15, 18.78, 13.23
+DETERM_DONE Sat Sep  5 18:12:18 UTC 2026 uptime after:  18:12:18 up 65 days, 11:48,  1 user,  load average: 21.27, 18.70, 13.27
+ALL_DONE

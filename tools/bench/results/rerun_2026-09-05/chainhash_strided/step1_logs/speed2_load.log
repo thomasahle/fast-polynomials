@@ -1,0 +1,10 @@
+20:01:02 load1=4.62
+20:01:32 load1=3.97
+20:02:02 load1=3.50
+20:02:32 load1=4.02
+20:03:02 load1=3.43
+20:03:32 load1=3.29
+20:04:02 load1=2.60
+start load1=2.60
+20:04:36 after chainhash_256 load1=6.65
+20:05:13 after chainhash_1k load1=6.62

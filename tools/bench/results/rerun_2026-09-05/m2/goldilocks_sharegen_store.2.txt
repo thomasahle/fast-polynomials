@@ -1,0 +1,31 @@
+# date: 2026-09-05 20:58:12 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:58  up 3 days,  8:59, 1 user, load averages: 6.58 5.19 4.98
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./goldilocks_sharegen_store   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto app_goldilocks_sharegen_store.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: app_goldilocks_sharegen_store.cpp md5 637e7c6c20ab334e30c38eeb33c3fb2c; x2s_mersenne_chains.h d5f5d6b57fefd0ddaca911e8d5249827; x2s_goldilocks_chains.h 12bf5dccc0dd891c185a3a53a8af91e8
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 127.232 ns/share
+  Chain : 64.1809 ns/share
+  Speedup: 1.9824x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 149.197 ns/share
+  Chain : 65.8984 ns/share
+  Speedup: 2.26405x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 170.154 ns/share
+  Chain : 72.3355 ns/share
+  Speedup: 2.35228x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 190.631 ns/share
+  Chain : 82.3283 ns/share
+  Speedup: 2.3155x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 211.142 ns/share
+  Chain : 91.3702 ns/share
+  Speedup: 2.31084x
+# uptime after: 20:58  up 3 days,  8:59, 1 user, load averages: 8.43 5.71 5.17

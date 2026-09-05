@@ -33,7 +33,7 @@ The phrase ``given $K$'' can therefore be read as ordinary side information
 for a conditional decoder: $K$ is fixed and available throughout that step.
 No probabilistic averaging or conditional expectation is intended.
 
-Throughout the appendix, a \emph{scalar} means a quantity independent of
+Throughout this and the following appendix, a \emph{scalar} means a quantity independent of
 $x$; it may still be one of the active parameters.  Such a scalar is not
 available for free unless it is explicitly included in the given data or has
 already been recovered.  Thus, for example, the shift $\delta$ in a square
@@ -48,7 +48,7 @@ ring.
     polynomial $P \in \mathbb{F}[\alpha_0,\ldots,\alpha_{n-1}][x]$ if
     \[
         \alpha_i\polyfrom
-        \bigl((\coeff{P}{j})_{\,j\in[\deg P]}\bigr)
+        \bigl((\coeff{P}{j})_{\,j\in\idx{\deg P}}\bigr)
         \qquad(i\in\rng n).
     \]
 
@@ -56,8 +56,8 @@ ring.
     parameters are extractable from $P$ \emph{given $(B_k)$} if
     \[
         \alpha_i\polyfrom
-        \Bigl((\coeff{B_k}{r})_{\,k\in[t],\,r\in[\deg B_k]}\ ;\
-              (\coeff{P}{j})_{\,j\in[\deg P]}\Bigr)
+        \Bigl((\coeff{B_k}{r})_{\,k\in[t],\,r\in\idx{\deg B_k}}\ ;\
+              (\coeff{P}{j})_{\,j\in\idx{\deg P}}\Bigr)
         \qquad(i\in\rng n).
     \]
 \end{definition}
@@ -155,6 +155,9 @@ injective and therefore is an isomorphism.  Its right inverse $D^*$ must be
 its inverse, which is exactly the identity
 $C\circ D=\operatorname{id}$.
 \end{proof}
+In every application, $D$ is the explicit decoder supplied by the coefficient
+recurrences, not an inverse inferred from a determinant.  The lemma verifies
+the other composition for that same supplied polynomial map.
 
 \begin{definition}[Polynomially recoverable polynomial]
     Let $P\in\mathbb{F}[\alpha_0,\ldots,\alpha_{m-1}][x]$ and let
@@ -175,7 +178,7 @@ $C\circ D=\operatorname{id}$.
        \Bigl((\coeff{C_\ell}{r})_{\ell\in[s],\,r\in\idx{\deg C_\ell}}\ ;\
              (\coeff{B_k}{r})_{k\in[t],\,r\in\idx{\deg B_k}}\Bigr).
     \]
-    Thus ``derivable'' in the remainder of the appendix is simply shorthand
+    Thus ``derivable'' in this and the following appendix is simply shorthand
     for this polynomial-recovery relation.
 \end{definition}
 
@@ -247,13 +250,13 @@ depending on whether we are emphasizing the component degree or the target
 degree.
 
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   \begin{minipage}[b]{0.32\textwidth}\centering\input{figures/fig_jacobian_p7}\end{minipage}\hfill
   \begin{minipage}[b]{0.62\textwidth}\centering\input{figures/fig_jacobian_p15}\end{minipage}
   \caption{Sparsity pattern of the Jacobian $\partial\,\coeff{P_n}{d}/\partial\alpha_i$ for the septic base $P_7$ (left) and the special case $P_{15}$ (right); rows are degrees $d=n-1,\ldots,0$ and columns are parameters.
-  Blue (dark) cells are nonzero field constants, orange (light) cells are non-constant polynomials in the parameters, white cells are zero.
-  Decoding proceeds top-down: each row exposes one fresh parameter with a constant slope once the parameters of the rows above are known.
+  The patterns are drawn in characteristic zero: blue (dark) cells are nonzero constants, orange (light) cells are non-constant polynomials in the parameters, and white cells are zero.  Reduction to positive characteristic can change the pattern; for example, the slope-$6$ entries in the top two rows of $P_{15}$ vanish in characteristic~$3$, although its decoder still works there.
+  Decoding proceeds top-down through fresh quantities, which may be parameters or internal values rather than individual columns of this Jacobian.
   Where a row contains two constant cells (e.g.\ $\coeff{P_7}{6}$, which involves $\alpha_4$ and $\alpha_6$), the decoder first recovers an internal quantity of the construction (here $z_2=\alpha_4+1+\alpha_6$) and separates the two parameters at a lower row; this is the composition structure that the compatible-pair lemmas make precise.}
   \label{fig:jacobian-pattern}
 \end{figure}
@@ -340,24 +343,20 @@ included in the known data $K$, or be polynomially recoverable from
 where every $\zeta_u$ has been assigned a global parameter index at least
 $h+e$.  Thus the $\zeta$'s belong to a block higher than the block being
 shifted.  Then the pair
-
 \[
        (L_1A^{(1)},L_2A^{(2)})
 \]
-
 has the triangular support conditions on the shifted block
 $h,\ldots,h+e-1$, and its combined pivot at $h+i$ is the old pivot at
 $i$.  More precisely, coefficients below $h+e$ have no active parameter
 of index smaller than their degree (with the usual one-degree offset for
 the first component), and
-
 \[
  [x^{h+i}](xL_1A^{(1)}+L_2A^{(2)})
    =\lambda_i\alpha_{h+i}+F_{h+i},
    \qquad F_{h+i}\polyfrom
       (K;\zeta_1,\ldots,\zeta_s,\alpha_{h+i+1},\ldots).
 \]
-
 The assertion remains true after adding polynomials whose coefficients are
 polynomially recoverable from $(K;\zeta_1,\ldots,\zeta_s)$, provided their
 active parameters also have global indices at least $h+e$.
@@ -469,7 +468,7 @@ draws the two moves.
   \centering
   \resizebox{\textwidth}{!}{\input{figures/fig_triangular_blocks}}
   \caption{The two structural moves behind the stage tables (styles as
-  keyed in \Cref{fig:decoder-language}).
+  keyed later in \Cref{fig:decoder-language} of \Cref{appendix:constructions}).
   Multiplication by a monic degree-$h$ factor shifts an inner triangular
   block by $h$ rows without changing its pivot slopes; lower rows may contain
   that block but are processed only after it is known.  Consecutive blocks
@@ -491,9 +490,13 @@ input block; monicity then supplies a constant pivot.
   \text{sum}&G_1\cup G_2&\text{subtract the other input row}\\
   \text{product}&(n_2+G_1)\cup(n_1+G_2)
     &\text{peel the monic Cauchy boundary}\\
-  \text{square}&n+G&\Psi_{n+i}=2\Phi_i+\text{higher terms}
+  \text{square }(\operatorname{char}\mathbb F\ne2)&n+G
+    &\coeff{\Psi}{n+i}=2\coeff{\Phi}{i}+F_i
 \end{array}
 \]
+In the square row, $\Phi=xP^{(1)}+P^{(2)}$,
+$\Psi=x(P^{(1)})^2+(P^{(2)})^2$, and $F_i$ is determined by already
+recovered higher rows (including the fixed correction $F_n=-1$).
 The proofs below establish the exact first- and second-component cutoffs; the
 table is only a map of those proofs, and \Cref{fig:causal-closures} pictures
 the closure moves.
@@ -504,7 +507,8 @@ the closure moves.
   \caption{Window geometry of the three causal closure operations.  A sum
   uses disjoint observed rows; a product translates each input window by the
   degree of the other monic factor; and a square translates the window by
-  the common degree and exposes the old row with slope~$2$.  In every case
+  the common degree and exposes the old row with slope~$2$ when
+  $\operatorname{char}\mathbb F\ne2$.  In every case
   the output descent encounters at most one unresolved input row.}
   \label{fig:causal-closures}
 \end{figure}
@@ -687,9 +691,9 @@ the closure moves.
   \resizebox{\textwidth}{!}{\input{figures/fig_top_window_calculus}}
   \caption{The top-window calculus used in the remaining constructions.
   Monicity makes division triangular; taking a monic $m$th root has constant
-  pivot~$m$; a lower-degree perturbation changes only the explicitly marked
+  pivot~$m$, required to be nonzero in the field; a lower-degree perturbation changes only the explicitly marked
   boundary row; and the square gadget is decoded as three consecutive
-  shells.  In particular, panels (a)--(c) compose into the relative shell
+  shells (in characteristic different from~$2$).  In particular, panels (a)--(c) compose into the relative shell
   $Y=MS^2+E$: divide the top window by the known monic $M$, subtract the one
   named seam of $E$, and take the monic square root.  The proofs below are
   the coefficient recurrences represented by these four glyphs.}

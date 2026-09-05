@@ -1,0 +1,16 @@
+compile Sat Sep  5 20:04:09 CEST 2026 Apple clang version 17.0.0 (clang-1700.6.4.2)
+app_countsketch_arm: real 1.02
+app_countsketch_arm.cpp md5 036e8962afe9c4a535815aaee3a31460 -> countsketch_arm
+app_linearprobe_arm: real 0.68
+app_linearprobe_arm.cpp md5 5c7d87ae92a0f89e00cd1ad022af9f3e -> linearprobe_arm
+app_xorfilter_arm: real 0.85
+app_xorfilter_arm.cpp md5 187c0464b77ad7de4e35b3c2d0a0b836 -> xorfilter_arm
+shamir_sharegen_mersenne: real 1.81
+shamir_sharegen_mersenne.cpp md5 08abd1b8fc5860bc8cf239ddf87cd8a5 -> shamir_sharegen_mersenne
+shamir_sharegen_mersenne_store: real 1.41
+shamir_sharegen_mersenne_store.cpp md5 c6766f9a933145a0c33a183aea946024 -> shamir_sharegen_mersenne_store
+app_goldilocks_stark_eval: real 1.67
+app_goldilocks_stark_eval.cpp md5 992ae100f67ca6bc037e300d5882388b -> goldilocks_stark_eval
+app_goldilocks_sharegen_store: real 1.65
+app_goldilocks_sharegen_store.cpp md5 637e7c6c20ab334e30c38eeb33c3fb2c -> goldilocks_sharegen_store
+e527ea4256769667b80b4f0920fe1cba db7c01b8e864bafcfe0414d83beb4f6f d5f5d6b57fefd0ddaca911e8d5249827 12bf5dccc0dd891c185a3a53a8af91e8 b1fda15764821af9fe839848ab61e827

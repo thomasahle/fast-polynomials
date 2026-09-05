@@ -1,0 +1,31 @@
+# 2026-09-05T18:14:16+00:00 host=hardware.normalcomputing.net cpu=Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# uptime before:  18:14:16 up 65 days, 11:50,  1 user,  load average: 6.62, 13.95, 12.16
+# cmd: taskset -c 80-95 ../app_goldilocks_sharegen_store   (default arguments; cwd=/home/thomas-ahle/fastpoly-bench/bench/laneC/setB; set B, repetition 1 of 3; binary built 2026-09-05 18:04:46 by run_laneC.sh)
+# compiler: clang version 21.1.8 (Red Hat, Inc. 21.1.8-2.el9); flags: -O3 -std=c++17 -march=native
+# source md5: 637e7c6c20ab334e30c38eeb33c3fb2c  ../../app_goldilocks_sharegen_store.cpp
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 112.349 ns/share
+  Chain : 66.8148 ns/share
+  Speedup: 1.68151x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 130.567 ns/share
+  Chain : 70.8788 ns/share
+  Speedup: 1.84211x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 148.559 ns/share
+  Chain : 79.3265 ns/share
+  Speedup: 1.87276x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 166.319 ns/share
+  Chain : 88.1536 ns/share
+  Speedup: 1.8867x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 183.566 ns/share
+  Chain : 97.2905 ns/share
+  Speedup: 1.88678x
+# exit=0 wall_ms=19637
+# uptime after:  18:14:36 up 65 days, 11:50,  1 user,  load average: 6.10, 13.36, 12.00

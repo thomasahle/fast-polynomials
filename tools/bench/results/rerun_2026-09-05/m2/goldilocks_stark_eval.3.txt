@@ -1,0 +1,54 @@
+# date: 2026-09-05 20:59:09 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:59  up 3 days, 9 hrs, 1 user, load averages: 6.23 5.47 5.10
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./goldilocks_stark_eval   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto app_goldilocks_stark_eval.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: app_goldilocks_stark_eval.cpp md5 992ae100f67ca6bc037e300d5882388b; x2s_mersenne_chains.h d5f5d6b57fefd0ddaca911e8d5249827; x2s_goldilocks_chains.h 12bf5dccc0dd891c185a3a53a8af91e8
+Reading random bytes from seed
+Goldilocks(p=2^64-2^32+1) polynomial-evaluation benchmark
+  points=4096 iters=1024
+
+Sequential x_i=i:
+x2s/seq (degree 13)
+  Horner: 127.25 ns/eval
+  Chain : 63.5646 ns/eval
+  Speedup: 2.00189x
+x2s/seq (degree 15)
+  Horner: 147.16 ns/eval
+  Chain : 65.2754 ns/eval
+  Speedup: 2.25445x
+x2s/seq (degree 17)
+  Horner: 169.008 ns/eval
+  Chain : 71.4624 ns/eval
+  Speedup: 2.365x
+x2s/seq (degree 19)
+  Horner: 191.342 ns/eval
+  Chain : 81.5778 ns/eval
+  Speedup: 2.34551x
+x2s/seq (degree 21)
+  Horner: 211.82 ns/eval
+  Chain : 90.7478 ns/eval
+  Speedup: 2.33416x
+
+Random x_i~F_p:
+x2s/rand (degree 13)
+  Horner: 126.923 ns/eval
+  Chain : 63.4081 ns/eval
+  Speedup: 2.00168x
+x2s/rand (degree 15)
+  Horner: 147.502 ns/eval
+  Chain : 65.2762 ns/eval
+  Speedup: 2.25966x
+x2s/rand (degree 17)
+  Horner: 169.502 ns/eval
+  Chain : 71.8349 ns/eval
+  Speedup: 2.3596x
+x2s/rand (degree 19)
+  Horner: 190.53 ns/eval
+  Chain : 81.3815 ns/eval
+  Speedup: 2.3412x
+x2s/rand (degree 21)
+  Horner: 211.735 ns/eval
+  Chain : 90.9871 ns/eval
+  Speedup: 2.32709x
+# uptime after: 20:59  up 3 days, 9 hrs, 1 user, load averages: 5.73 5.38 5.08

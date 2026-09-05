@@ -1,0 +1,14 @@
+--- Testing chainhash-256-lenexp "ChainHash (GF(2^64) carry-less PH with strided word pairing + three-key injective chain + degree-5 finalizer behind an additive twist), 256-byte blocks" [hwclmul]
+
+[[[ Sanity Tests ]]]
+
+Verification value LE 0x32A28E9F ...... FAIL! (Expected 0xbfc38a57)
+Running sanity check 1       .......... PASS
+Running sanity check 2       .......... PASS
+Running append zeroes test   .......... PASS
+Running prepend zeroes test  .......... PASS
+Running thread-safety test 1 .......... PASS
+Running thread-safety test 2 .......... PASS
+
+Verification value is 0x00000001 - Testing took 0.252385 seconds
+

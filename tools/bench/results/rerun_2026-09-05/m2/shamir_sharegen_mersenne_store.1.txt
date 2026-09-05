@@ -1,0 +1,31 @@
+# date: 2026-09-05 20:56:32 CEST
+# machine: Apple M2 Pro (12 cores 8P+4E), macOS 26.6.2, arm64
+# uptime before: 20:56  up 3 days,  8:57, 1 user, load averages: 3.70 4.81 4.86
+# command: cd /private/tmp/claude-501/-Users-ahle-repos-notes-fast-polyhash/671fdc97-fe99-4719-bea0-4eedf88d5744/scratchpad/final/C/run_m2 && ./shamir_sharegen_mersenne_store   (defaults; built: clang++ -O3 -std=c++17 -march=armv8-a+crypto shamir_sharegen_mersenne_store.cpp)
+# compiler: Apple clang version 17.0.0 (clang-1700.6.4.2)
+# source: shamir_sharegen_mersenne_store.cpp md5 c6766f9a933145a0c33a183aea946024; x2s_mersenne_chains.h d5f5d6b57fefd0ddaca911e8d5249827; x2s_goldilocks_chains.h 12bf5dccc0dd891c185a3a53a8af91e8
+Reading random bytes from seed
+Mersenne(2^89-1) share-generation (store) benchmark
+  points=65536 iters=256
+
+x2s/sharegen (degree 13, store-to-memory)
+  Horner: 139.22 ns/share
+  Chain : 67.2487 ns/share
+  Speedup: 2.07023x
+x2s/sharegen (degree 15, store-to-memory)
+  Horner: 160.872 ns/share
+  Chain : 67.4755 ns/share
+  Speedup: 2.38415x
+x2s/sharegen (degree 17, store-to-memory)
+  Horner: 182.562 ns/share
+  Chain : 73.1386 ns/share
+  Speedup: 2.49611x
+x2s/sharegen (degree 19, store-to-memory)
+  Horner: 205.266 ns/share
+  Chain : 82.4799 ns/share
+  Speedup: 2.48867x
+x2s/sharegen (degree 21, store-to-memory)
+  Horner: 227.092 ns/share
+  Chain : 91.9428 ns/share
+  Speedup: 2.46992x
+# uptime after: 20:56  up 3 days,  8:58, 1 user, load averages: 3.97 4.81 4.86

@@ -95,7 +95,10 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
         JSON.stringify([{ neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '3' }] }]), 'a single constant is left alone');
 }
 
-// ---- countOps: the footer counts exactly what the displayed form shows ----------
+// ---- countOps: the footer counts exactly what the displayed form shows -----------
+// (displayed-form count; integer multiples charged by double-and-add, the
+// hardware variant of the paper's accounting — the paper's A_n treats fixed
+// integer multiples as free, see tools/polychain.py add_count)
 {
   const ex = [
     'y   = x * (x + 65342529/16384)',
@@ -110,9 +113,9 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
   const f = countOps('f0 = (1/5040) * (x)\nf1 = (f0 + 1/720) * (x)\nP  = f1 + 1');
   check(f.adds === 2 && f.mults === 1 && f.scalar === 1, `countOps parenthesised scalar: ${JSON.stringify(f)}`);
   const h = countOps('── layer 1 ──\nP = x^4 + 2·x + 1');
-  check(h.adds === 3 && h.mults === 2 && h.scalar === 0, `countOps hidden powers + integer multiple as addition: ${JSON.stringify(h)}`);
+  check(h.adds === 3 && h.mults === 2 && h.scalar === 0, `countOps hidden powers + integer multiple by double-and-add (hardware variant): ${JSON.stringify(h)}`);
   const q = countOps('P = 4·y + 3·z');
-  check(q.adds === 1 + 2 + 2 && q.scalar === 0, `countOps double-and-add for 4 and 3: ${JSON.stringify(q)}`);
+  check(q.adds === 1 + 2 + 2 && q.scalar === 0, `countOps double-and-add for 4 and 3 (hardware variant, not the paper's free multiples): ${JSON.stringify(q)}`);
   const wrapped = countOps('P = y + w\n      + v + 3');
   check(wrapped.adds === 3 && wrapped.mults === 0, `countOps wrapped continuation: ${JSON.stringify(wrapped)}`);
   check(countOps('').adds === 0 && countOps(undefined).mults === 0, 'countOps empty');

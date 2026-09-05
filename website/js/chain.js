@@ -215,16 +215,26 @@ function wrapAtSums(s, maxWidth, indent) {
 // ---- operation counts of a rendered form ---------------------------------------
 const isNumTok = t => /^-?(\d+(\.\d+)?([eE][+-]?\d+)?(\/\d+)?)$/.test(t);
 /**
- * Count the operations of a rendered line list exactly as displayed:
- *   adds   — binary + / − between terms (unary minus is free),
+ * Count the operations of a rendered line list exactly as displayed (the
+ * displayed-form count, not the paper's DAG count):
+ *   adds   — binary + / − between terms (unary minus is free), counted per
+ *            statement as displayed, so a value shared by two statements is
+ *            charged in each and no let-bound intermediate is credited;
  *   mults  — `*` between two non-constant operands,
  *   scalar — `*` with a constant operand (a genuine scalar multiplication);
- *            integer multiples `k·w` are charged as additions (double-and-add:
- *            ×2 = 1, ×4 = 2, ×3 = 2), as in the paper's accounting.
+ *            integer multiples `k·w` are charged as additions by
+ *            double-and-add (×2 = 1, ×4 = 2, ×3 = 2).  This is the
+ *            hardware variant of sections/addition_accounting.tex, where
+ *            fixed integer multiples are *free* — the paper's A_n uses that
+ *            model, so for chains with `k·w` tokens (n ≥ 13) this footer is
+ *            above A_n, and tools/polychain.py `chain n --dag` gives the
+ *            paper-convention count of the emitted schedule.
  * Hidden powers `x^k` (k ≥ 2, as shown in some methods' original form) count
  * one multiplication each (one squaring per ladder step).  Continuation lines
  * of a wrapped right-hand side are joined to their statement; headings and
- * trailing comments are ignored.
+ * trailing comments are ignored.  Rows must use ` * ` between factors and a
+ * single numeric token per constant, as the site renders them; polychain's
+ * `)(` juxtaposition and unaggregated parameter sums are not parsed.
  */
 const constSum = sum => sum.length === 1 && sum[0].t.length === 1 &&
   (sum[0].t[0].tok !== undefined ? isNumTok(sum[0].t[0].tok) : constSum(sum[0].t[0].sum));
