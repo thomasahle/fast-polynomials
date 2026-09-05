@@ -1,6 +1,7 @@
 // uistate.test.js — invariants of the page's pure state (js/uistate.js): the
 // reducer and the selectors the Preact UI renders from.  No DOM, no worker.
 import {
+  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE,
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
   compileMessage, comparisonRow, selectedRow, methodTabs, comparisonTable, rowOps, stats,
@@ -682,6 +683,25 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(many.filter(t => t.type === 'var').length === 63 && many.filter(t => t.type === 'num').length >= 60, 'dense degree-63 example: 63 powers, 60+ numbers');
   check(!tokenizePoly('1/2x^2').some(t => t.type === 'text'), 'valid syntax produces no plain-text tokens');
   check(!tokenizePoly(examplesFor('gf64', 13)[0].src).some(t => t.type === 'text'), 'hex key polynomials produce no plain-text tokens');
+}
+
+// ---- boot state per layout, and what the panes render from ----------------
+{
+  check(initialStateFor() === initialState && initialStateFor({ compact: false }) === initialState, 'desktop boots on initialState');
+  const c = initialStateFor({ compact: true });
+  check(c.mode === COMPACT_MODE && c.exDegree === COMPACT_DEGREE && c.exMonic && c.exKey === 'exp' &&
+        c.src === defaultExample(COMPACT_MODE, COMPACT_DEGREE, 0, true).src && Object.isFrozen(c),
+        'phones boot on the ℚ e^x example at the compact degree, monic');
+  check(exampleHeld(c) && c.result === null && !c.busy && c.view === 'math', 'the compact boot state is a held example with the default view');
+  const q = { ...withResult(initialState), mode: 'Q' };
+  check(presentedState(q) === q && presentedState(q, { compact: true }) === q, 'exact rows are presented as they are');
+  const ke = reduce(q, { type: 'setMethod', method: 'Estrin' });     // the fixture's inexact row
+  check(presentedState(ke, { compact: true }).numfmt === 'decimal' && presentedState(ke).numfmt === 'exact',
+        'phones present an inexact row with readable constants; desktop does not');
+  const r = { ...q, mode: 'R' };
+  check(presentedState(r, { compact: true }).numfmt === 'decimal', 'phones present ℝ with readable constants');
+  const already = { ...ke, numfmt: 'decimal' };
+  check(presentedState(already, { compact: true }) === already, 'an explicit readable choice is left alone');
 }
 
 console.log(fails ? `UISTATE FAILED (${fails}/${checks})` : `UISTATE PASSES (${checks} checks)`);

@@ -50,7 +50,7 @@
 //   { type: 'setSubOption', key }    routed to the strip showing that key
 import { Rat } from './rat.js';
 import { countOps, formatConstants } from './chain.js';
-import { FIELDS, FIELD_GROUPS } from './field.js';
+import { FIELDS, FIELD_GROUPS, gfLiteral } from './field.js';
 import { MAX_DEGREE } from './char2.js';
 
 export const VIEWS = ['math', 'c', 'graph'];
@@ -201,7 +201,7 @@ function bigPolyToSrc(coeffs, { hex = false } = {}) {
     if (c === 0n) continue;
     const neg = c < 0n, m = neg ? -c : c;
     const xs = d === 0 ? '' : d === 1 ? 'x' : `x^${d}`;
-    const cs = m === 1n && d > 0 ? '' : hex && m > 1n ? '0x' + m.toString(16) : m.toString();   // hex except 0 / 1
+    const cs = m === 1n && d > 0 ? '' : hex ? gfLiteral(m) : m.toString();
     const sep = cs.startsWith('0x') && xs ? ' ' : '';    // "0xa x^5", not "0xax^5"
     parts.push(parts.length === 0 ? (neg ? '-' : '') + cs + sep + xs : ` ${neg ? '-' : '+'} ${cs}${sep}${xs}`);
   }
@@ -360,6 +360,18 @@ export const initialState = Object.freeze({
   cstyle: 'float',
   numfmt: 'exact',
 });
+
+/** Boot state per layout.  Phones (`compact`) open on ℚ with the e^x chip at
+ *  COMPACT_DEGREE, monic (the degree-4 Taylor polynomial plus x^5): a chain
+ *  with small constants that fits a narrow screen; there is no degree stepper
+ *  there.  Desktop keeps initialState. */
+export const COMPACT_MODE = 'Q';
+export const COMPACT_DEGREE = 5;
+export function initialStateFor({ compact = false } = {}) {
+  if (!compact) return initialState;
+  const ex = defaultExample(COMPACT_MODE, COMPACT_DEGREE, initialState.exSeed, true);
+  return Object.freeze({ ...initialState, mode: COMPACT_MODE, exDegree: COMPACT_DEGREE, exMonic: true, src: ex.src, exKey: ex.key });
+}
 
 // ---- reducer ---------------------------------------------------------------
 
@@ -643,6 +655,17 @@ function readableRendering(state) {
 /** Constant format actually shown in the math view ('exact' unless the readable one applies). */
 export function effectiveNumfmt(state) {
   return state.numfmt === 'decimal' && state.view === 'math' && selectedRow(state) && readableRendering(state) ? 'decimal' : 'exact';
+}
+
+/** The state the output panes render from.  On phones the constants strip is
+ *  hidden, and numeric rows — everything over ℝ, and the numerically
+ *  preprocessed methods (Knuth–Eve, Pan) over ℚ — show their constants to six
+ *  significant digits (the readable rendering); exact fractions are left alone. */
+export function presentedState(state, { compact = false } = {}) {
+  if (!compact || state.numfmt === 'decimal' || !state.result) return state;
+  const row = comparisonRow(state);
+  const numeric = state.mode === 'R' || (row ? row.exact === false : state.result.exact === false);
+  return numeric ? { ...state, numfmt: 'decimal' } : state;
 }
 
 /**

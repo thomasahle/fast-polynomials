@@ -10,9 +10,12 @@ import { readFileSync } from 'node:fs';
 import { handleMessage } from '../js/worker.js';
 import { tokenizeC, highlightC } from '../js/highlight.js';
 import { graphStats } from '../js/graph.js';
+import { installDom, settle, ShimWorker } from './dom-shim.js';
+import { initialState, initialStateFor, examplesFor, defaultExample } from '../js/uistate.js';
 
 let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
+const eq = (a, b, msg) => check(JSON.stringify(a) === JSON.stringify(b), `${msg}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`);
 
 // plain-JSON check: strings / numbers / booleans / null / arrays / plain objects only
 function isPlain(v, path = '$') {
@@ -153,23 +156,20 @@ for (const [label, msg] of MODES) {
   }
 }
 
-// ---- automatic compilation: structural checks on the UI layer --------------
-// ui.js needs a DOM to execute, so assert its wiring textually: the Compile
-// button is gone, edits are debounced in ui.js (never in the pure reducer), a
-// cancel affordance is dispatched while busy, and the first load compiles.
+// ---- the page itself, rendered under a minimal DOM ------------------------
+// ui.js is imported under test/dom-shim.js — a fresh module instance per
+// layout (query string) — and driven through the rendered elements: what a
+// browser test would click, without a browser.  The Worker stand-in records
+// the compile messages; a real compiler result is delivered back through it.
 const uiSrc = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const stateSrc = readFileSync(new URL('../js/uistate.js', import.meta.url), 'utf8');
 const githubStarsSrc = readFileSync(new URL('../js/github-stars.js', import.meta.url), 'utf8');
-check(!uiSrc.includes('id="go"') && !uiSrc.includes('goLabel'), 'no Compile button (#go) or goLabel in ui.js');
-check(!stateSrc.includes('goLabel'), 'goLabel selector removed from uistate.js');
-check(/DEBOUNCE_MS = 500\b/.test(uiSrc), 'edit debounce constant (~500 ms) present in ui.js');
-check(uiSrc.includes('setTimeout(') && uiSrc.includes('clearTimeout('), 'debounce timer is set and reset in ui.js');
 check(!/set(Timeout|Interval)\(/.test(stateSrc), 'uistate.js stays pure: no timers');
-check(uiSrc.includes("dispatch({ type: 'compile' })"), 'ui.js dispatches compile (debounce / load / Cmd+Enter)');
-check(uiSrc.includes('id="cancel"') && uiSrc.includes("dispatch({ type: 'cancel' })"), 'cancel affordance dispatches cancel while busy');
-check(/useEffect\(\(\) => \{ compileNow\(\); \}, \[\]\)/.test(uiSrc), 'initial example compiles on first load');
+check(uiSrc.includes('cBundleArchive') && uiSrc.includes('URL.createObjectURL'),
+      'Download builds and saves the C benchmark archive');
+check(uiSrc.includes('navigator.clipboard') && uiSrc.includes("execCommand('copy')"),
+      'clipboard write has an execCommand fallback');
 
-// ---- redesign layout: structural checks ------------------------------------
 const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 check(indexSrc.includes('id="paper-card"') && indexSrc.includes('title="arXiv link to follow"'),
   'header paper card exposes the intentional pre-publication placeholder');
@@ -190,25 +190,122 @@ check(indexSrc.includes('id="github-star-count"') && indexSrc.includes('viewBox=
 check(githubStarsSrc.includes('https://api.github.com/repos/thomasahle/fast-polynomials') &&
       githubStarsSrc.includes('stargazers_count'),
       'star count comes from the public GitHub repository API');
-const outputFn = uiSrc.slice(uiSrc.indexOf('function Output'), uiSrc.indexOf('function FooterBar'));
-check(outputFn.length > 0 && !outputFn.includes('id="methods"') && !outputFn.includes('setMethod'),
-      'output card (#out) no longer holds the method seg');
-check(uiSrc.includes('id="methods"') && uiSrc.indexOf('id="methods"') < uiSrc.indexOf('function Output'),
-      'method chips render in the input card');
-for (const id of ['monic', 'degree', 'deg-minus', 'deg-plus', 'share', 'copy', 'download', 'footer-stats'])
-  check(uiSrc.includes(`id="${id}"`), `#${id} present in ui.js`);
-check(uiSrc.includes('cBundleArchive') && uiSrc.includes('URL.createObjectURL'),
-      'Download builds and saves the C benchmark archive');
-check(uiSrc.includes('chainMathRows') && uiSrc.includes('function MathChain') &&
-      uiSrc.includes('class="chain math-chain"'),
-      'mathematical chains use the KaTeX display adapter');
-check(uiSrc.includes('navigator.clipboard') && uiSrc.includes("execCommand('copy')"),
-      'clipboard write has an execCommand fallback');
-check(uiSrc.includes('stateFromHash(s, location.hash)'), 'boot state seeded from the URL hash');
-check(uiSrc.includes('hashFromState'), 'Share builds its hash in the pure layer');
-check(uiSrc.includes("dispatch({ type: 'setExDegree', delta })"), 'degree stepper dispatches setExDegree');
-check(uiSrc.includes("dispatch({ type: 'example', key })"), 'example chips dispatch by key');
-check(uiSrc.includes("dispatch({ type: 'setExMonic' })"), 'monic selector dispatches setExMonic');
+
+const typeInto = async (ta, text) => { ta.value = text; ta.dispatch('input'); };
+const lastMessage = () => ShimWorker.instances.at(-1)?.messages.at(-1) ?? null;
+const messageCount = () => ShimWorker.instances.reduce((n, w) => n + w.messages.length, 0);
+/** Answer the latest compile message with the real compiler's result. */
+const replyToLatest = async () => {
+  const w = ShimWorker.instances.at(-1), m = w.messages.at(-1);
+  const result = await handleMessage(m);
+  w.onmessage({ data: { id: m.id, ok: true, result } });
+  await settle();
+  return result;
+};
+
+// desktop ------------------------------------------------------------------
+{
+  const { app } = installDom({ compact: false });
+  await import('../js/ui.js?layout=desktop');
+  await settle();
+  const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
+  check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'gf64',
+        'desktop boots on the initial example with its field pill on');
+  eq($$('#examples a.chip').map(c => c.dataset.ex), ['random', 'sparse', 'dense', 'fixed'], 'desktop shows every chip');
+  check($('#monic') && $('#degree') && $('.head-row #share') && !$('#pickers') && !$('.intro-compact'),
+        'desktop has the monic toggle, degree stepper and Share in the head row; no dropdowns or phone intro');
+  check(ShimWorker.instances.length === 1 && messageCount() === 1 &&
+        JSON.stringify(lastMessage()) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char2', fieldMode: 'gf64' }),
+        'the first load compiles the initial example through one worker');
+  check($('#busy') && $('#cancel'), 'the busy row with Cancel shows while a job runs');
+  $('#cancel').click(); await settle();
+  check(ShimWorker.instances[0].terminated && !$('#busy'), 'Cancel terminates the worker and clears the busy row');
+
+  $('a.chip[data-ex="sparse"]').click(); await settle();
+  check($('#poly-in').value === examplesFor('gf64', 10, 0, true).find(e => e.key === 'sparse').src &&
+        lastMessage()?.src === $('#poly-in').value, 'a chip fills the input and compiles it');
+  const before = messageCount();
+  $('#deg-plus').click(); await settle();
+  check($('.deg-n').textContent === 'degree 11' && messageCount() === before + 1 &&
+        lastMessage().src === examplesFor('gf64', 11, 0, true).find(e => e.key === 'sparse').src,
+        'the degree stepper regenerates the held chip and compiles');
+  $('#monic').click(); await settle();
+  check(!$('#monic').classList.contains('on') && $('#monic').getAttribute('aria-pressed') === 'false' &&
+        $('#poly-in').value === examplesFor('gf64', 11, 0, false).find(e => e.key === 'sparse').src,
+        'the monic toggle regenerates the held chip with monic off');
+  $('#monic').click(); await settle();
+
+  const n0 = messageCount();
+  await typeInto($('#poly-in'), 'x^3 + x + 1'); await settle(200);
+  check(messageCount() === n0 && !$('#degree').querySelector('.deg-n').textContent.includes('NaN'), 'typing does not compile before the debounce');
+  await settle(450);
+  check(messageCount() === n0 + 1 && lastMessage().src === 'x^3 + x + 1', 'an edit compiles after the debounce');
+  await typeInto($('#poly-in'), 'x^4 + 1');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check(lastMessage().src === 'x^4 + 1', 'Cmd/Ctrl+Enter compiles at once');
+
+  $('#mode button[data-mode="Q"]').click(); await settle();
+  check($('#mode button.on')?.dataset.mode === 'Q' && lastMessage().lane === 'char0' && lastMessage().fieldMode === 'Q' &&
+        $('#poly-in').value === 'x^4 + 1', 'a field pill switches the field and recompiles typed text as typed');
+
+  // a real result through the worker: the output, its tabs and the table appear
+  await replyToLatest();
+  check($('#out') && $$('#view button').length === 3 && $('#view button.on')?.dataset.view === 'math' && $('#chain'),
+        'a compile reply mounts the output with the math view');
+  check($$('#methods button').length >= 4 && $('#methods button.on')?.dataset.m === 'ours' && $$('#compare tbody tr').length >= 4,
+        'method chips and the comparison table follow the result');
+  check($('#copy') && $('#download') && !$('.pane-actions #share'), 'desktop pane: Copy and Download, Share stays in the head row');
+  $('#methods button[data-m="Horner"]').click(); await settle();
+  check($('#methods button.on')?.dataset.m === 'Horner' && $('#compare tr.on')?.dataset.m === 'Horner', 'a method chip selects the method and its row');
+  $('#compare tr[data-m="Estrin"]').click(); await settle();
+  check($('#methods button.on')?.dataset.m === 'Estrin', 'a table row selects its method');
+  $('#view button[data-view="c"]').click(); await settle();
+  check($('#view button.on')?.dataset.view === 'c' && $('#chain').innerHTML.includes('Code generated from'), 'the C tab shows the generated source with its header');
+  $('#view button[data-view="graph"]').click(); await settle();
+  check($('#graph') && $('#graph-legend'), 'the graph tab shows the SVG pane and legend');
+  $('#view button[data-view="math"]').click(); await settle();
+  $('#view-sub a[data-opt="original"]').click(); await settle();
+  check($('#view-sub a[data-opt="original"]').classList.contains('on'), 'a sub-option toggles');
+  $('#share').click(); await settle();
+  check(location.hash.startsWith('#src=') && location.hash.includes('mode=Q') && $('#share').textContent.includes('copied'),
+        'Share writes the state hash to the URL and flashes "copied"');
+}
+
+// phones --------------------------------------------------------------------
+{
+  const { app } = installDom({ compact: true });
+  await import('../js/ui.js?layout=compact');
+  await settle();
+  const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
+  const boot = initialStateFor({ compact: true });
+  check($('#poly-in').value === boot.src && $('#mode-select')?.value === 'Q', 'phones boot on the ℚ e^x example with the field dropdown');
+  check($$('#examples a.chip').length === 3 && !$('#degree') && !$('#monic') && !$('#share') && !$('#mode') && $('.intro-compact'),
+        'phones: three chips, no stepper / monic / Share yet, dropdowns instead of pills, the intro');
+  eq($$('.quick-links a').map(a => a.textContent.trim().replace(/\s+/g, ' ')), ['Paper', 'GitHub'], 'phone intro links');
+  check(lastMessage()?.src === boot.src && lastMessage().lane === 'char0', 'phones compile the boot example');
+  const sel = $('#mode-select'); sel.value = 'gf64'; sel.dispatch('change'); await settle();
+  check($('#poly-in').value === defaultExample('gf64', 5, 0, true).src && lastMessage().fieldMode === 'gf64',
+        'the field dropdown regenerates the held example in the new field and compiles');
+  sel.value = 'Q'; sel.dispatch('change'); await settle();
+  await replyToLatest();
+  check($('.out-card #out') && $('.pane-actions #share') && $('.pane-actions #copy') && !$('#download'),
+        'phone output card: Share floats beside Copy, no Download');
+  check($('#stats-line').textContent.startsWith('3 mul') && $('#cmp-card') && !$('#cmp-card').open && $$('#compare tbody tr').length >= 4,
+        'phone stats line and the collapsed comparison card');
+  eq($$('#view-sub .strip').map(s => s.dataset.strip), ['form'], 'phones hide the constants strip');
+  const msel = $('#method-select'); msel.value = 'Knuth–Eve'; msel.dispatch('change'); await settle();
+  check($('#compare tr.on')?.dataset.m === 'Knuth–Eve' && /\d\.\d{2,5}\b/.test($('#chain').textContent) && !/\d\.\d{7,}/.test($('#chain').textContent),
+        'the method dropdown selects a method; a numeric row shows six-digit constants on phones');
+}
+
+// a shared link boots the shared state -------------------------------------
+{
+  const { app } = installDom({ compact: true, hash: '#mode=p89&deg=7' });
+  await import('../js/ui.js?layout=hash');
+  await settle();
+  check(app.querySelector('#mode-select').value === 'p89' && app.querySelector('#poly-in').value === defaultExample('p89', 7, 0, true).src,
+        'location.hash seeds the boot state');
+}
 
 console.log(fails ? `UI SMOKE FAILED (${fails}/${checks})` : `UI SMOKE PASSES (${checks} checks)`);
 process.exit(fails ? 1 : 0);

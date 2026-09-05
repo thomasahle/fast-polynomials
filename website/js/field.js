@@ -4,6 +4,10 @@
 // its chooser from it; the worker resolves message ids through it).
 import { Rat } from './rat.js';
 
+/** How a GF(2^k) element is written everywhere (chains, printed inputs, example
+ *  chips): a hex bit pattern, except 0 and 1 — the field's identities — as digits. */
+export const gfLiteral = v => (v > 1n ? '0x' + v.toString(16) : v.toString());
+
 export const Q = {
   name: 'ℚ', char: 0,
   zero: Rat.ZERO, one: Rat.ONE,
@@ -173,7 +177,7 @@ export function GF2k(k, mod = DEFAULT_MOD[k]) {
     neg: a => a, inv,
     eq: (a, b) => a === b, isZero: a => a === 0n, isOne: a => a === 1n,
     fromInt: n => reduce(BigInt(n)),
-    toDisplay: a => (a > 1n ? '0x' + a.toString(16) : a.toString()),   // bit patterns as hex; 0 and 1 as digits
+    toDisplay: gfLiteral,
   };
 }
 

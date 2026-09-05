@@ -263,7 +263,7 @@ export function buildCBundle(state) {
     { name: 'inspect.sh', text: inspectionScript(state.mode, sources), mode: 0o755 },
   );
   const degree = /x\^(\d+)/i.exec(state.src ?? '')?.[1] ?? 'poly';
-  return { baseName: `fast-polyhash-${fieldStem(state.mode)}-degree-${degree}`, files };
+  return { baseName: `fast-polynomials-${fieldStem(state.mode)}-degree-${degree}`, files };
 }
 
 function ascii(dst, off, len, value) {
@@ -286,7 +286,7 @@ export function tarBytes(bundle) {
     octal(h, 124, 12, data.length); octal(h, 136, 12, 0);
     h.fill(0x20, 148, 156); h[156] = 0x30;
     ascii(h, 257, 6, 'ustar\0'); ascii(h, 263, 2, '00');
-    ascii(h, 265, 32, 'fast-polyhash'); ascii(h, 297, 32, 'fast-polyhash');
+    ascii(h, 265, 32, 'fast-polynomials'); ascii(h, 297, 32, 'fast-polynomials');
     let sum = 0; for (const x of h) sum += x;
     ascii(h, 148, 8, sum.toString(8).padStart(6, '0') + '\0 ');
     chunks.push(h, data, new Uint8Array((512 - data.length % 512) % 512));

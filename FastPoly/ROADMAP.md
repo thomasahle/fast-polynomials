@@ -40,6 +40,14 @@ and inspected. Removed proof files have a local recovery archive at
 
 ## Characteristic-two decoder ports (2026-09-05)
 
+Proof requirement (Thomas): every recovery or realization result must give
+the explicit decoder. A bijection must check both `decode (encode keys) = keys`
+and `encode (decode rows) = rows`; a realization/surjectivity claim must give
+the corresponding explicit right inverse. Coefficient and degree identities
+only support checking those formulas. Neither abstract bijectivity nor a
+generic solver replaces the inverse. This applies to all decoder ports,
+not just the larger degrees.
+
 - `Examples/Char2Degree5/7/9/11/13/15.lean` certify the website's literal
   shared circuits. Every file proves its exact multiplication count, an
   explicit coefficient decoder for every monic polynomial, and bijective
@@ -70,7 +78,10 @@ and inspected. Removed proof files have a local recovery archive at
 - `Examples/Char2Degree23Terminal.lean` ports the degree-23 verifier's four-row
   terminal block, in both directions, including the known row corrections.
   `Char2Degree23RowEight.lean` proves the actual circuit's row-eight unit
-  pivot: its slope is a product of monic quartics. Both keep the earlier
+  pivot: its slope is a product of monic quartics. Its `exitEquiv` combines
+  the row-eight and final constant-offset decoders and checks both inverse
+  compositions against the actual circuit rows, with other offsets fixed.
+  Both modules keep the earlier
   quantities opaque and use local rewrites/cancellation, not ring expansion.
   All three new modules have a 20,000-heartbeat limit and are in the umbrella.
   Degree 23's preceding scalar pivots and the bridge from circuit coefficients

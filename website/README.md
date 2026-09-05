@@ -61,7 +61,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   or doubles for ℚ/ℝ. Estrin rows are emitted by dependency layer so the compiler can
   schedule independent FMAs and apply SLP when profitable.
 - `js/cbundle.js` — dependency-free `.tar.gz` creation for the Download button, plus
-  the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL
+  the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL;
+  every generated file opens with `cSourceHeader` (cgen.js): provenance, license, the
+  polynomial, field, multiplication count and compile line
 - `js/chain.js` — chain rendering: index names or the paper's letter names
   (y, z, t, u, …) with gadget headings (Q_7, H_2, T-recursion, …)
 - `js/graph.js`, `js/graphview.js` — computational-graph IR (× and + nodes) and its
@@ -75,7 +77,10 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   control is rendered from (`selectedRow`, `paneContent`, `availableSubOptions`, …);
   testable under node without a DOM
 - `js/ui.js` — the page as a Preact + htm app mounted into `#app`: renders `uistate.js`
-  and owns the side effects (the Web Worker, created lazily and terminated on Cancel)
+  and owns the side effects (the Web Worker, created lazily and terminated on Cancel);
+  `App` → `DesktopLayout` | `CompactLayout` over shared pieces (`InputCard`, `FieldPills`,
+  `MethodPills`, `FieldMethodPickers`, `Output`, `FooterBar`); the phone boot state and the
+  six-digit rule for numeric rows are `initialStateFor` / `presentedState` in `uistate.js`
 - `js/worker.js` — the Web Worker that keeps unbounded exact-rational preprocessing
   off the UI thread; it posts every view (math, paper-format math, C, fraction-C,
   graph IR + SVG) for ours and each comparison method so switching views never recompiles
@@ -88,7 +93,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   provenance), `cgen.test.js` (generated C compiled and executed), `graph.test.js`,
   `methods.test.js`, `motzkin.test.js`, `belaga.test.js`, `pan1978.test.js`,
   `pan1978real.test.js`, `ui-smoke.test.js` (worker result shape per
-  mode + highlighter), `uistate.test.js` (reducer / selector invariants: mode switch,
+  mode + highlighter, then the page itself rendered under `test/dom-shim.js` — a minimal
+  DOM and Worker stand-in — at both layouts: boot, chips, stepper, debounce, field and
+  method switches, a real compile result, tabs, Share), `uistate.test.js` (reducer / selector invariants: mode switch,
   result selection, sub-option visibility, cancel and stale replies), and
   `cbundle.test.js` (archive contents plus compile/run of the shipped scripts), and
   `mathview.test.js` (plain-chain to TeX conversion plus KaTeX rendering across fields
@@ -114,7 +121,7 @@ remain available with `npm run test:stress`; CI runs them weekly and on manual r
 The website and compiler are MIT-licensed (see `../LICENSE`). The C code the page
 generates — every method file, the benchmark harness and scripts in a downloaded
 bundle — is released under the BSD Zero Clause License (0BSD), stated in the header
-of each generated file (`C_PROVENANCE` / `C_LICENSE` in `js/cgen.js`), so it can be
+of each generated file (`cSourceHeader` / `C_LICENSE` in `js/cgen.js`), so it can be
 pasted into any project without an attribution notice. Preact + htm and KaTeX are
 vendored under their own MIT licenses in `js/vendor/`.
 

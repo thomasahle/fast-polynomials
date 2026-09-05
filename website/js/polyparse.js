@@ -11,6 +11,7 @@
 // char 2 (values are field elements encoded as BigInt bit patterns).  Decimal
 // and exponent forms (0.25, 1.5e-3) are read exactly into Rat in characteristic 0.
 import { Rat } from './rat.js';
+import { gfLiteral } from './field.js';
 
 const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
 
@@ -143,7 +144,7 @@ export function polyToString(coeffs, { char2 = false } = {}) {
     const isOne = char2 ? c === 1n : c.isOne();
     const xs = d === 0 ? '' : d === 1 ? 'x' : `x^${d}`;
     let cs;
-    if (char2) cs = isOne && d > 0 ? '' : (c > 1n ? '0x' + c.toString(16) : c.toString());   // hex except 0 / 1
+    if (char2) cs = isOne && d > 0 ? '' : gfLiteral(c);
     else if (isOne && d > 0) cs = '';
     else if (!char2 && d > 0 && c.eq(new Rat(-1n))) cs = '-';
     else cs = c.toString();

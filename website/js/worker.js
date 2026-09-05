@@ -61,7 +61,7 @@ export async function handleMessage({ lane, src, fieldMode }) {
     } catch (err) {
       // our compiler unavailable/failed: still deliver the classical methods
       let comparisons = [];
-      try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, polyText)); } catch (e2) {}
+      try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, { poly: polyText })); } catch (e2) {}
       if (!comparisons.some(c => c.ok)) throw err;
       return {
         oursFailed: err?.message ?? String(err),
@@ -73,7 +73,7 @@ export async function handleMessage({ lane, src, fieldMode }) {
     }
   }
   let comparisons = [];
-  try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, polyText)); } catch (err) { /* table optional */ }
+  try { comparisons = withGraphViews(buildComparisons(cmpCoeffs, F, cmpMode, { poly: polyText })); } catch (err) { /* table optional */ }
   return {
     mathText: r.mathText ?? chainToText(r), mathTextOriginal: r.mathTextOriginal ?? null,
     cText: r.cText ?? null, cTextFraction: r.cTextFraction ?? null,

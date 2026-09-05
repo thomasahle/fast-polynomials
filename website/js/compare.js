@@ -20,7 +20,7 @@ const METHODS = [
 /** mode: a field id from js/field.js FIELDS ('Q', 'R', 'p61', 'p89', 'p127',
  *  'gf32', 'gf64', 'gf128'); the legacy 'p' (= p89) and 'gf2k' (F.k decides)
  *  are still accepted by the C emitter. */
-export function buildComparisons(coeffs, F, mode, poly = null) {
+export function buildComparisons(coeffs, F, mode, { poly = null } = {}) {
   const rows = [];
   const numericField = !!F.real;         // ℝ: preprocessing with doubles is not exact
   for (const [name, fn] of METHODS) {

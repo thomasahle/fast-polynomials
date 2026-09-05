@@ -10,6 +10,8 @@ Both factors are monic quartics, so its row-eight coefficient is exactly one.
 This proves the `a19 = q14 + h14` step of
 `char2/verify_n23_unitriangular_symbolic.py` over every characteristic-two field
 (in fact, every nontrivial characteristic-two commutative ring).
+`exitEquiv` also includes the verifier's final constant-offset inverse, with
+both compositions proved against the actual circuit's rows eight and zero.
 
 No claim about the remaining coefficient pivots is made here.
 -/
@@ -86,6 +88,14 @@ theorem finish_eq (a : ℕ → R) (a19 a22 : R) :
 theorem baseline_eq (a : ℕ → R) : baseline a = finish a 0 0 := by
   rw [finish_eq, map_zero, mul_zero, add_zero, add_zero]
 
+theorem finish_add_constant (a : ℕ → R) (a19 a22 : R) :
+    finish a a19 a22 = finish a a19 0 + C a22 := by
+  simp only [finish, map_zero, add_zero]
+
+theorem coeff_zero (a : ℕ → R) (a19 a22 : R) :
+    (finish a a19 a22).coeff 0 = (finish a a19 0).coeff 0 + a22 := by
+  rw [finish_add_constant a a19 a22, coeff_add, coeff_C_zero]
+
 section MonicSlope
 
 variable [Nontrivial R]
@@ -148,6 +158,52 @@ theorem decodeOffset_coeff (a : ℕ → R) (a19 a22 : R) :
 theorem coeff_decodeOffset (a : ℕ → R) (q14 a22 : R) :
     (finish a (decodeOffset a q14) a22).coeff 8 = q14 := by
   rw [coeff_eight, decodeOffset, add_comm q14, CharTwo.add_cancel_left]
+
+/-- The verifier's last step: subtract (equivalently, add) the known constant
+after setting the final scalar to zero. The earlier gates stay named. -/
+noncomputable def decodeConstant (a : ℕ → R) (a19 c0 : R) : R :=
+  c0 + (finish a a19 0).coeff 0
+
+omit [Nontrivial R] in
+theorem decodeConstant_coeff (a : ℕ → R) (a19 a22 : R) :
+    decodeConstant a a19 ((finish a a19 a22).coeff 0) = a22 := by
+  rw [decodeConstant, coeff_zero]
+  exact cancel_tail _ _
+
+omit [Nontrivial R] in
+theorem coeff_decodeConstant (a : ℕ → R) (a19 c0 : R) :
+    (finish a a19 (decodeConstant a a19 c0)).coeff 0 = c0 := by
+  rw [coeff_zero, decodeConstant, add_comm c0, CharTwo.add_cancel_left]
+
+/-- The actual two circuit rows, with all other offsets fixed. -/
+noncomputable def encodeExit (a : ℕ → R) (keys : R × R) : R × R :=
+  ((finish a keys.1 keys.2).coeff 8, (finish a keys.1 keys.2).coeff 0)
+
+/-- Recover `a19` from row eight, then `a22` from row zero. -/
+noncomputable def decodeExit (a : ℕ → R) (rows : R × R) : R × R :=
+  (decodeOffset a rows.1, decodeConstant a (decodeOffset a rows.1) rows.2)
+
+theorem decodeExit_encodeExit (a : ℕ → R) (keys : R × R) :
+    decodeExit a (encodeExit a keys) = keys := by
+  apply Prod.ext
+  · exact decodeOffset_coeff a keys.1 keys.2
+  · change decodeConstant a (decodeOffset a ((finish a keys.1 keys.2).coeff 8))
+      ((finish a keys.1 keys.2).coeff 0) = keys.2
+    rw [decodeOffset_coeff, decodeConstant_coeff]
+
+theorem encodeExit_decodeExit (a : ℕ → R) (rows : R × R) :
+    encodeExit a (decodeExit a rows) = rows := by
+  apply Prod.ext
+  · exact coeff_decodeOffset a rows.1 _
+  · exact coeff_decodeConstant a _ rows.2
+
+/-- The explicit inverse is part of the public result; bijectivity is a
+consequence of the two checked compositions, not a substitute for decoding. -/
+noncomputable def exitEquiv (a : ℕ → R) : (R × R) ≃ (R × R) where
+  toFun := encodeExit a
+  invFun := decodeExit a
+  left_inv := decodeExit_encodeExit a
+  right_inv := encodeExit_decodeExit a
 
 end MonicSlope
 

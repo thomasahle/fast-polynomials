@@ -21,7 +21,7 @@ const state = { mode: 'Q', method: 'ours', view: 'c', cstyle: 'fraction', src: '
 const b = buildCBundle(state), names = b.files.map(f => f.name);
 check(hasCBundle(state) && !hasCBundle({ result: { oursFailed: true, comparisons: [] } }),
       'bundle availability follows successful C rows');
-check(b.baseName === 'fast-polyhash-Q-degree-2', 'stable archive name');
+check(b.baseName === 'fast-polynomials-Q-degree-2', 'stable archive name');
 for (const n of ['README.md', 'selected.c', 'benchmark.c', 'benchmark.sh', 'inspect.sh', 'methods/this-paper.c',
                  'methods/this-paper-fractions.c', 'methods/horner.c'])
   check(names.includes(n), `bundle contains ${n}`);

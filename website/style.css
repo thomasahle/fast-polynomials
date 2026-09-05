@@ -1,3 +1,7 @@
+/* Theme tokens.  The dark palette appears twice below — once under
+   prefers-color-scheme (guarded so an explicit light choice wins) and once for
+   an explicit data-theme="dark" — because CSS cannot share one declaration
+   block between a media query and a selector: keep the two lists identical. */
 :root {
   --bg: #f7f6f2; --panel: #ffffff; --ink: #1c1b18; --muted: #6f6a5e;
   --accent: #8a4b2d; --accent-soft: #f2e4da; --border: #e2ddd2;

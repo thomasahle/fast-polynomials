@@ -42,8 +42,20 @@ export const cFileHeader = (extra = []) => docBlock(extra.length ? [...PROVENANC
 const PROVENANCE_START = C_PROVENANCE.slice(0, -'\n */'.length);
 /** True when a generated C text starts with the provenance header (with or without per-file lines). */
 export const hasCProvenance = text => String(text).startsWith(PROVENANCE_START);
-/** The polynomial as an ASCII C-comment line (polyToString uses · and −). */
-const polyLine = poly => (poly ? `P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}` : null);
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** The header of one generated source: provenance, then the polynomial (an
+ *  ASCII line; polyToString uses · and −), the field, the method with its
+ *  multiplication count (Horner's alongside when known), the number of
+ *  preprocessed constants, and the compile line(s).  Every emitter uses it. */
+export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [] }) {
+  const lines = [];
+  if (poly) lines.push(`P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}`);
+  let summary = `Field: ${field}.  ${method}`;
+  if (mults !== null) summary += `: ${plural(mults, 'multiplication')}${horner !== null ? ` (Horner: ${horner})` : ''}`;
+  if (constants > 0) summary += `, ${plural(constants, 'preprocessed constant')}`;
+  lines.push(`${summary}.`);
+  return cFileHeader([...lines, ...[].concat(compile)]);
+}
 /** Table of preprocessed constants: named after the function (eval_P -> P_a) so
  *  two generated files can share a translation unit. */
 const tableName = (fn, kind) => `${String(fn).replace(/^eval_/, '')}_${kind}`;
@@ -296,12 +308,8 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
     return parts.length > 1 ? `(${parts.join(' + ')})` : parts[0];
   };
   const usesSquare = !!G.square && spec.gates.some(g => cFactor(g.l) === cFactor(g.r));
-  const L = [cFileHeader([
-    ...(polyLine(poly) ? [polyLine(poly)] : []),
-    `Field: GF(2^${G.k}).  This paper: ${mults} multiplication${mults === 1 ? '' : 's'}` +
-      ` (Horner: ${deg - 1 + (scaleBy !== null ? 1 : 0)}), ${nkeys} preprocessed constant${nkeys === 1 ? '' : 's'}.`,
-    ...G.compile,
-  ])];
+  const L = [cSourceHeader({ poly, field: `GF(2^${G.k})`, method: 'This paper', mults,
+    horner: deg - 1 + (scaleBy !== null ? 1 : 0), constants: nkeys, compile: G.compile })];
   L.push(...G.header(usesSquare ? `${G.square}(` : 'no square').split('\n'));
   L.push('');
   L.push(`/* preprocessed constants (the paper's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
@@ -577,8 +585,8 @@ const entriesOf = t => (t instanceof Map ? [...t.entries()] : Object.entries(t).
 const isZeroConst = c => (c instanceof Rat ? c.isZero() : (typeof c === 'number' ? c === 0 : toBig(c) === 0n));
 
 const DOUBLE_NOTE = [
-  '/* Estrin layers leave independent multiply-adds visible to the compiler; optionally',
-  '   test -ffp-contract=fast (/fp:contract) for more aggressive FMA / auto-SLP. */',
+  '/* Optionally compile with -ffp-contract=fast (/fp:contract): it lets the compiler fuse',
+  '   multiply-adds (FMA), which is faster on most cores and changes the rounding slightly. */',
 ].join('\n');
 const DOUBLE_COMPILE = 'Compile: cc -O3 -march=native ...  (MSVC: /O2)';
 const PRIME_COMPILE = 'Compile: cc -O2 ...  (gcc / clang: the kernel uses __uint128_t)';
@@ -622,9 +630,8 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   const mGate = g => `${nameOf(g.out_wire)} = ${mForm(g.left, true)} * ${mForm(g.right, true)}`;
 
   const mults = chain.gates.length + (scaleBy !== null ? 1 : 0);
-  const summary = field => `Field: ${field}.  This paper: ${mults} multiplication${mults === 1 ? '' : 's'}` +
-    `${horner !== null ? ` (Horner: ${horner})` : ''}, ${consts.length} preprocessed constant${consts.length === 1 ? '' : 's'}.`;
-  const header = (field, compile) => cFileHeader([...(polyLine(poly) ? [polyLine(poly)] : []), summary(field), compile]);
+  const header = (field, compile) =>
+    cSourceHeader({ poly, field, method: 'This paper', mults, horner, constants: consts.length, compile });
   const L = [];
   const gateLabels = chain.gate_labels ?? null;
   const labelLine = i => {
@@ -887,12 +894,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   else if (header === null) header = PRIME_OPS[mode].header(fnText);
   else if (usesLdexp) header = '#include <math.h>\n' + header;
   const field = isGF ? `GF(2^${G.k})` : isPrime ? PRIME_OPS[mode].banner : `${mode === 'R' ? 'R' : 'Q'}, evaluated in double precision`;
-  const L = [cFileHeader([
-    ...(polyLine(poly) ? [polyLine(poly)] : []),
-    `Field: ${field}.  ${name}${mults !== null ? `: ${mults} multiplication${mults === 1 ? '' : 's'}` : ''}` +
-      `${useTable && table.length ? `, ${table.length} preprocessed constant${table.length === 1 ? '' : 's'}` : ''}.`,
-    ...[].concat(compile),
-  ]), header, ''];
+  const L = [cSourceHeader({ poly, field, method: name, mults, constants: useTable ? table.length : 0, compile }), header, ''];
   if (useTable && table.length) {
     L.push('/* preprocessed constants */');
     L.push(`static const ${T} ${tbl}[${table.length}] = {`);
