@@ -23,6 +23,45 @@ The revised manuscript compiles and its changed algorithm/figure pages were rend
 and inspected. Removed proof files have a local recovery archive at
 `/tmp/fastpoly-linear-depth.TrACLg/legacy-proofs.tar.gz`.
 
+## General degree-six lower-bound release integration (2026-09-05)
+
+- `LowerBound/General/Main.lean` is now imported by the umbrella, alongside
+  `LowerBoundChar2/Sharpness.lean`. The default CI build therefore covers both.
+- `no_rationalInverse_general` quantifies over the general three-gate display:
+  sixteen fixed circuit constants and any affine six-parameter/seven-slot map.
+  The first-gate gauge correction, quadratic slot map, singular/transversal
+  cases, and degenerate first gates are proved, not assumed as normalization.
+- The README and coverage appendix point to this entry point instead of only
+  the older normal-form theorem. Its axiom audit reports exactly `propext`,
+  `Classical.choice`, and `Quot.sound` (the sharpness theorem has the same list).
+- Characteristic-two decoder ports for odd degrees 5–25 are the active next
+  lane. Hashing and numerical-stability appendix results are excluded by
+  Thomas's explicit request; they must not be described as Lean-checked.
+
+## Characteristic-two decoder ports (2026-09-05)
+
+- `Examples/Char2Degree5/7/9/11/13/15.lean` certify the website's literal
+  shared circuits. Every file proves its exact multiplication count, an
+  explicit coefficient decoder for every monic polynomial, and bijective
+  evaluation of the normalized-coordinate family at distinct points.
+- `Examples/Char2Triangular.lean` proves both directions of the actual
+  recursive back-substitution algorithm. `Char2Frobenius.lean` supplies the
+  square-root pivots; only degree 7 among these completed bases needs
+  `[PerfectRing F 2]`. This is not a finite-field enumeration proof.
+- `Examples/Char2Construction.lean` connects coefficient vectors to arbitrary
+  monic polynomials and proves the one-product even lift using the same
+  `Cost.Circuit` syntax. `Examples/Char2Finite.lean` packages all degrees
+  5–16 with exactly `n/2+1` products and is imported by the umbrella.
+- These normalized-family results do not yet assert that every original raw
+  gate-offset vector is uniquely decoded. The arbitrary-polynomial realization
+  theorem is proved; a stronger raw-key-bijection claim needs its own bridge.
+  The existing `Char2SmallInverses.lean` still supplies the raw-key degree-9
+  theorem for the paper's displayed circuit.
+- `tools/gen_char2_lean.py` replays the existing explicit coordinate changes
+  and emits kernel-checked coefficient/ring proofs. Symbolic replay succeeds
+  through degree 25. The Lean degree-17/19/21/23/25 files remain development
+  work, outside the umbrella; do not advertise their proofs as complete.
+
 ## Same-polynomial paper capstone (2026-09-04)
 
 - `Cost/Additions/Decoded.lean` strengthens the odd master induction so one semantic

@@ -37,10 +37,12 @@ sampling the program parameters uniformly is equivalent to sampling a uniformly
 random monic polynomial, so the usual Vandermonde argument gives `n`-wise
 independence on distinct inputs.
 
-Characteristic two requires different constructions. The repository includes
-explicit circuits with explicit inverses at every odd degree up to 21 (Appendix A
-of the paper, symbolic certificates under `char2/`) and a formal lower bound, but
-a uniform all-degree analogue of the upper bound remains open. See the characteristic-two examples in
+Characteristic two requires different constructions. The website and symbolic
+certificates under `char2/` include explicit circuits and decoders at every odd
+degree through 25; Appendix A of the paper currently describes cases through 21.
+Lean checks the website's odd-degree constructions through 15 and their
+one-product even lifts, covering every degree 5–16. A formal lower bound is also
+included, but a uniform all-degree upper bound remains open. See the examples in
 [`sections/appendix_polynomials.tex`](sections/appendix_polynomials.tex) and the
 discussion in [`sections/open_problems.tex`](sections/open_problems.tex).
 
@@ -99,13 +101,26 @@ The resulting paper is `build/main.pdf`.
 The project pins its Lean toolchain and uses Mathlib through Lake:
 
 ```sh
-lake build FastPoly                  # umbrella: constructions, costs, height, characteristic-2 lower bound
-lake build FastPoly.LowerBound.Main  # degree-6 lower bound: a separate module tree, not imported by the umbrella
+lake build FastPoly  # constructions, costs, height, and both lower bounds
 ```
 
 `FastPoly.lean` is the umbrella import. The development formalizes the recovery
 calculus, recursive constructions, fixed straight-line programs and their costs,
-multiplicative-depth bounds, and the characteristic-two lower bound.
+multiplicative-depth bounds, the general degree-six lower bound, and the
+characteristic-two lower bound (including its one-gate sharpness example).
+The degree-six entry point is
+`FastPoly.LowerBound.General.no_rationalInverse_general`: it includes the
+seven-slot general circuit and its proved quadratic reduction to normal form,
+not just the older six-slot normal-form theorem.
+
+`FastPoly.Char2Finite.construction` supplies a fixed circuit, an explicit
+coefficient decoder, and the exact `floor(n/2)+1` multiplication count for each
+monic degree 5–16. `Char2Finite.monic_evaluation` proves that this same program
+computes any requested monic polynomial. The degree-7 base and degree-8 lift
+require a perfect characteristic-two field (in particular, any finite field);
+the other bases work over every characteristic-two field. The larger
+characteristic-two Lean certificates are still under development and are not
+imported by the umbrella.
 
 ## Verification
 
@@ -119,7 +134,7 @@ python3 tools/polychain.py selftest --max-n 30
 cd website && npm test
 
 # Machine-checked proofs
-cd .. && lake build FastPoly && lake build FastPoly.LowerBound.Main
+cd .. && lake build FastPoly
 ```
 
 The generated-C tests invoke a system C compiler. Hardware-field kernels target

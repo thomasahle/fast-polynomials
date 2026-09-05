@@ -442,17 +442,21 @@ explaining the performance gap.
     This Paper (quartic $x\,Q_3(x)+c_0$, $\F_{2^{64}}$) & 1428$\pm$17 & 4-wise & 2909$\pm$4 & 4-wise \\
     This Paper (Motzkin quartic, $\F_{2^{61}-1}$) & 2008$\pm$22 & 4-wise & 3199$\pm$8 & 4-wise \\
     This Paper ($k=5$) & 1470$\pm$17 & 5-wise & 3141$\pm$6 & 5-wise \\
-    % TODO-k7: this row times the search circuit mult7 (no displayed inverse); a certified degree-7 circuit is being timed separately.
-    This Paper ($k=7$) & 2299$\pm$20 & not certified & 4968$\pm$6 & not certified \\
+    This Paper ($k=7$) & 2311$\pm$32 & 7-wise & 4678$\pm$4 & 7-wise \\
 \end{tabular}
 \end{center}
 The three quartic rows are the implementations \texttt{quartic2\_64},
 \texttt{quartic3\_64} and \texttt{motzkin\_61} of \Cref{tab:families};
 the \texttt{mult4} of Table~\ref{tab:kwise_both} is the first of these on
-ARM and the second on x86.  The $k=7$ row times the search circuit of the
-$k=7$ row of \Cref{tab:families} (ARM \texttt{mult7}, x86
-\texttt{mult7\_alt2}), for which no inverse is displayed: it has seven keys,
-but no independence is claimed for it.
+ARM and the second on x86.  The $k=7$ row times the certified degree-$7$
+circuit $y=x(x+c_0)$, $z=(x+c_1)(y+c_2)$, $t=z(z+c_3)$,
+$u=(x+c_4)(y+t+c_5)$, $P=u+c_6$ (\texttt{septic7\_64} in both framework
+headers), whose coefficient map is a bijection onto the monic septics with an
+explicit unit-pivot decoder (two Frobenius square roots; certificate
+\texttt{char2/verify\_n7.py}), so with uniform keys it is exactly $7$-wise
+independent; the search circuit of the $k=7$ row of \Cref{tab:families},
+for which no inverse is displayed, ran at $2313\pm29$ and $4942\pm4$\,\textmu s
+in the same runs.
 
 \subsection{Comparison Across Finite Fields}
 

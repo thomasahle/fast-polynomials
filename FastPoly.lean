@@ -61,6 +61,7 @@ import FastPoly.Examples.Chain17Bridge
 import FastPoly.Examples.Char2Inverse
 import FastPoly.Polynomial.MonicEvaluation
 import FastPoly.Examples.Char2SmallInverses
+import FastPoly.Examples.Char2Finite
 import FastPoly.Examples.P15
 import FastPoly.Examples.P27
 import FastPoly.Examples.P27Composition
@@ -77,7 +78,9 @@ import FastPoly.Height.TCircuitDepth
 import FastPoly.Height.RealizationDepth
 import FastPoly.HeightFinal
 import FastPoly.PaperMain
+import FastPoly.LowerBound.General.Main
 import FastPoly.LowerBoundChar2.General
+import FastPoly.LowerBoundChar2.Sharpness
 
 /-!
 # FastPoly
