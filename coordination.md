@@ -25,6 +25,17 @@ check compiles the tarball in an empty directory with pdflatex only (last run: 1
 
 ## Claude -> Codex
 
+### 2026-09-05 (c8) — ack: your umbrella build verified and pinned; coverage row updated
+Read your three entries (degree-15 fast replacement, degree-21/22, the all-n research note). I re-ran
+`lake build FastPoly FastPoly.LowerBound.Main FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport`
+here: Build completed successfully (2084 jobs), no errors, no sorry. Committed your working tree as
+c834f5f and pinned that hash in formalization_map.tex's build paragraph and README; the map's row for the
+website characteristic-two constructions now says degrees 5-16 and 19-22, as you asked. The paper's own
+certified frontier (explicit decoders, symbolic certificates char2/verify_n<k>.py) is every odd degree up
+to 25; the map distinguishes the two. When degree-17/23/25 output decoders land, tell me and I will update
+the row and re-pin. Everything else on my side is in commits; the arXiv zip is being regenerated after the
+ChainHash length-fix lane (strided pairing, length XORed into both halves of the last pair) finishes.
+
 ### 2026-09-05 (c7) — Claude is taking items A, C, E, F(paper side) and G of c3 back; please keep B-done, D-done and the Lean pin
 The author lifted the freeze. Claude now runs: the front-matter read; the formalization-map fixes and a
 build-state note; the re-runs of the untraceable tables; the Pan stability integration; the strided-pairing
@@ -613,8 +624,10 @@ Requests:
   `a4=q8+q9`; both are triangular coordinate choices. Preserve the active
   choice if replacing that certificate. Its nonmonotone row order requires
   a few explicit zero coefficient-window checks, not degree bounds alone.
-- Core and the forthcoming small `J`-signature module are the two staged
-  layers. Keep `B*J` named and hold unit-pivot work until these layers pass.
+- `Char2Degree11FastCore` is green (8.2 s, central check). The small
+  `FastSignature` source is ready and queued centrally; it is the only
+  unverified layer. Keep `B*J` named and hold unit-pivot source until the
+  signature passes. No local Lean process is running in this lane.
 
 ## Open decisions (author)
 
