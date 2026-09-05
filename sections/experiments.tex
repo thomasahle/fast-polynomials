@@ -26,9 +26,8 @@ We benchmark on two platforms:
           for carryless multiplication via the \texttt{PMULL} instruction.
     \item \textbf{x86}: Intel Xeon Platinum 8375C (Ice Lake, x86-64) running Linux, using Intel intrinsics
           for carryless multiplication via the \texttt{PCLMULQDQ} instruction.
-          Two x86 results are from a different host: the prime-field kernels
-          of \Cref{sec:experiments:crypto} and the tabulation comparison of
-          \Cref{sec:experiments:tabulation} report the run on an AMD EPYC
+          One x86 result is from a different host: the prime-field kernels
+          of \Cref{sec:experiments:crypto} report the run on an AMD EPYC
           9R14 (Zen~4, Linux) recorded in
           \texttt{tools/\allowbreak bench/\allowbreak x86\_output.txt}.
 \end{itemize}
@@ -66,7 +65,7 @@ repetition.  The harness behind \Cref{tab:kwise_both,tab:injective,tab:injective
 and the tabulation comparison (\texttt{test\_speed\_function64} in
 \texttt{tools/\allowbreak bench/\allowbreak carryless\_arm.cpp} and
 \texttt{tools/\allowbreak bench/\allowbreak carryless.cpp};
-\texttt{tools/\allowbreak bench/\allowbreak bench\_nonpoly\_arm.cpp} for the non-polynomial hashes)
+\texttt{tools/\allowbreak bench/\allowbreak bench\_tabrows.cpp} times every row of the tabulation comparison, the non-polynomial hashes included, under the same wrapper)
 runs $200$ repetitions, sorts them, keeps the fastest $100$ and reports their
 mean and population standard deviation.  Every ``mean$\pm$std'' in those
 tables, and every error bar in the figures, is of that selected half: the
@@ -82,8 +81,7 @@ We measure evaluation time only; key setup and preprocessing (when applicable) a
 
 \paragraph{Platform scope.}
 We report results for both ARM (Apple M2 Pro) and x86 (Intel Xeon Platinum
-8375C; AMD EPYC 9R14 for the prime-field kernels and the tabulation
-comparison, as noted above).
+8375C; AMD EPYC 9R14 for the prime-field kernels, as noted above).
 The qualitative trade-offs (critical-path structure and the cost of modular reduction)
 are consistent across platforms, though quantitative speedups vary with microarchitecture.
 
@@ -131,10 +129,10 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \raggedright \texttt{smartcl\_64::\allowbreak mult3} in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h} &
 \raggedright the cubic $Q_3$ of \Cref{sec:main-theorem:outline} with $H_2=x^2$ &
 \raggedright triangular decoder given there, every characteristic; $10^6$ uniform inputs, uniform keys \tabularnewline
-\raggedright $\F_{2^{64}}$, $k=4$ (\Cref{sec:experiments:tabulation}) &
-\raggedright ARM: \texttt{mult4}, Motzkin's two-multiplication quartic; x86: \texttt{mult4} is the three-multiplication lift $x\,Q_3(x)+c_0$ &
-\raggedright footnote in \Cref{sec:experiments:kwise} &
-\raggedright ARM: $3$-wise only (footnote); x86: bijective, hence $4$-wise \tabularnewline
+\raggedright $\F_{2^{64}}$ and $\F_{2^{61}-1}$, $k=4$ (\Cref{sec:experiments:tabulation}) &
+\raggedright \texttt{quartic2\_64} (Motzkin's two-multiplication quartic), \texttt{quartic3\_64} (the three-multiplication lift $x\,Q_3(x)+c_0$) and \texttt{motzkin\_61} (Motzkin's quartic over $2^{61}-1$) in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h}; \texttt{mult4} is the first on ARM and the second on x86 &
+\raggedright footnote in \Cref{sec:experiments:kwise}; \Cref{sec:experiments:tabulation} &
+\raggedright Motzkin over $\F_{2^{64}}$: $3$-wise only (footnote); lift: bijective, hence $4$-wise; Motzkin over $\F_{2^{61}-1}$: bijective onto the monic quartics, hence $4$-wise on $[p]$ \tabularnewline
 \raggedright $\F_{2^{64}}$, $k=5$ &
 \raggedright \texttt{mult5} &
 \raggedright the finalizer circuit \eqref{eq:ph:chain5} &
@@ -383,31 +381,40 @@ Tabulation hashing~\cite{patracscu2012power} achieves 3-wise independence using
 table lookups, providing excellent performance for applications that only require
 low independence.
 On ARM, simple tabulation (8 tables of 256 entries) achieves
-1660$\pm$12\,\textmu s per $10^6$ hashes; on x86, it achieves 6952$\pm$5\,\textmu s.
-The absolute timings in this subsection are separate runs from those of
-Table~\ref{tab:kwise_both}: the non-polynomial hashes are timed by
-\texttt{tools/bench/bench\_nonpoly\_arm.cpp}, and the polynomial rows are the
-implementations of Table~\ref{tab:kwise_both} timed again under that
-comparison's wrapper and batching (fastest $100$ of $200$ repetitions).  The
-x86 entries of the Tabulation and This-Paper rows below are the run recorded
-in \texttt{tools/bench/x86\_output.txt}, whose host is an AMD EPYC 9R14
-rather than the Xeon 8375C of the other x86 tables (the same host as the
-prime-field kernels of \Cref{sec:experiments:crypto}), and the $k=4$ entry
-of that run is the three-multiplication lift $x\,Q_3(x)+c_0$
-(\Cref{tab:families}); the x86 entries of the MurmurHash3, xxHash64 and
-Dietzfelbinger rows are not in that file and come from an x86 run whose raw
-output was not kept (\texttt{tools/bench/bench\_tabrows.cpp} times every row
-of the table under one wrapper on either platform).  The two tables
-therefore differ for the same implementation (x86, $k=3$: $1750$ against
-$2285$\,\textmu s) and should not be compared with each other.
+1668$\pm$11\,\textmu s per $10^6$ hashes; on x86, it achieves 2244$\pm$4\,\textmu s.
+Every row of the table below is timed by one driver,
+\texttt{tools/bench/bench\_tabrows.cpp}, under the wrapper and batching of the
+$k$-wise comparison ($10^6$ inputs, fastest $100$ of $200$ repetitions with
+fresh keys, mean $\pm$ standard deviation in \textmu s per $10^6$ hashes), on the
+same two machines as the other tables: the Apple M2 Pro (Apple clang~17,
+\texttt{-O3 -march=armv8-a+crypto}) and the Intel Xeon Platinum 8375C
+(clang~21.1.8, \texttt{-O3 -march=native}, pinned to eight cores).
+MurmurHash3 and xxHash64 are the single-word variants (the 64-bit finalizer and
+the 8-byte xxHash64 path), Dietzfelbinger is the $W=192$ Horner evaluation
+described below, and the polynomial rows are the implementations of
+Table~\ref{tab:kwise_both}; because the wrapper differs, they remain separate
+runs from that table (x86, $k=3$: $1750$ there against $1779$\,\textmu s here).
 
-Notably, our 3-wise independent hash function runs in 914$\pm$4\,\textmu s on ARM---nearly $2\times$ faster than
-tabulation with the same independence guarantee.
-On x86, our method (2285\,\textmu s) is $3\times$ faster than tabulation.
-Our $k=4$ rows---Motzkin's two-multiplication quartic on ARM ($3$-wise over
-$\F_{2^{64}}$, see the footnote above) and the three-multiplication lift
-$x\,Q_3(x)+c_0$ on x86 (bijective, $4$-wise)---are still faster than 3-wise
-tabulation on both platforms.
+Notably, our 3-wise independent hash function runs in 886$\pm$13\,\textmu s on
+ARM---nearly $2\times$ faster than tabulation with the same independence
+guarantee; on x86 (1779\,\textmu s) it is $1.26\times$ faster than tabulation.
+The table lists three quartics.  Motzkin's two-multiplication quartic
+$y = x(x+a)$, $P=(y+b)(y+x+c)+d$ over $\F_{2^{64}}$ is only $3$-wise (see the
+footnote above) and costs 992 / 1903\,\textmu s, still below tabulation on both
+platforms.  A $4$-wise quartic over $\F_{2^{64}}$ needs a third multiplication:
+the lift $x\,Q_3(x)+c_0$ (\Cref{tab:families}) uses three carryless
+multiplications and runs in 1428 / 2909\,\textmu s, between our $k=3$ and $k=5$
+rows on both platforms.  Alternatively, the same two-multiplication Motzkin
+circuit can be evaluated over the Mersenne prime $p=2^{61}-1$, where the odd
+characteristic makes the key map a bijection onto the monic quartics
+($b_0=(a_3-1)/2$, then $b_1,b_2,b_3$ by back-substitution), so with uniform keys
+the hash is exactly $4$-wise independent on the $61$-bit universe ($64$-bit
+inputs are folded modulo $p$).  Its cost, 2008 / 3199\,\textmu s, exceeds even
+our $5$-wise carryless quintic ($1470$ / $3141$\,\textmu s): each of its two
+multiplications is a $64\times 64\to 128$-bit integer product followed by a
+fold rather than a single carryless multiply, so in the presence of
+\texttt{PMULL}/\texttt{PCLMULQDQ} the third carryless multiplication is cheaper
+than the odd characteristic.
 
 We also compare against Dietzfelbinger's polynomial hashing over integers~\cite{dietzfelbinger1996universal},
 which evaluates $g(x) = \sum_{i=0}^{k-1} a_i x^i \bmod 2^W$ using standard integer arithmetic
@@ -418,27 +425,32 @@ The 192-bit arithmetic requires 3 multiplications per Horner step versus 1 carry
 explaining the performance gap.
 
 \begin{center}
+\small\setlength{\tabcolsep}{4pt}
 \begin{tabular}{l|rr|rr}
-    & \multicolumn{2}{c|}{ARM} & \multicolumn{2}{c}{x86} \\
+    & \multicolumn{2}{c|}{ARM (Apple M2 Pro)} & \multicolumn{2}{c}{x86 (Intel Xeon 8375C)} \\
     Method & Time (\textmu s) & Indep. & Time (\textmu s) & Indep. \\
     \hline
-    MurmurHash3 & 593$\pm$8 & none & 1042$\pm$2 & none \\
-    xxHash64 & 1174$\pm$5 & none & 1862$\pm$4 & none \\
-    Tabulation & 1660$\pm$12 & 3-wise & 6952$\pm$5 & 3-wise \\
-    Dietzfelbinger ($k=3$) & 1569$\pm$36 & 3-wise & 3498$\pm$2 & 3-wise \\
-    Dietzfelbinger ($k=5$) & 3205$\pm$39 & 5-wise & 8219$\pm$4 & 5-wise \\
-    Dietzfelbinger ($k=7$) & 4993$\pm$58 & 7-wise & 13633$\pm$9 & 7-wise \\
-    This Paper ($k=3$) & 914$\pm$4 & 3-wise & 2285$\pm$3 & 3-wise \\
-    This Paper ($k=4$) & 1036$\pm$13 & 3-wise (Motzkin) & 3930$\pm$4 & 4-wise (lift) \\
-    This Paper ($k=5$) & 1521$\pm$8 & 5-wise & 4214$\pm$3 & 5-wise \\
-    This Paper ($k=7$) & 2346$\pm$9 & not certified & 6077$\pm$4 & not certified \\
+    MurmurHash3 & 589$\pm$13 & none & 854$\pm$5 & none \\
+    xxHash64 & 1160$\pm$14 & none & 1888$\pm$8 & none \\
+    Tabulation & 1668$\pm$11 & 3-wise & 2244$\pm$4 & 3-wise \\
+    Dietzfelbinger ($k=3$) & 1563$\pm$29 & 3-wise & 2280$\pm$5 & 3-wise \\
+    Dietzfelbinger ($k=5$) & 3085$\pm$24 & 5-wise & 4986$\pm$19 & 5-wise \\
+    Dietzfelbinger ($k=7$) & 4893$\pm$44 & 7-wise & 7905$\pm$5 & 7-wise \\
+    This Paper ($k=3$) & 886$\pm$13 & 3-wise & 1779$\pm$5 & 3-wise \\
+    This Paper (Motzkin quartic, $\F_{2^{64}}$) & 992$\pm$10 & 3-wise & 1903$\pm$5 & 3-wise \\
+    This Paper (quartic $x\,Q_3(x)+c_0$, $\F_{2^{64}}$) & 1428$\pm$17 & 4-wise & 2909$\pm$4 & 4-wise \\
+    This Paper (Motzkin quartic, $\F_{2^{61}-1}$) & 2008$\pm$22 & 4-wise & 3199$\pm$8 & 4-wise \\
+    This Paper ($k=5$) & 1470$\pm$17 & 5-wise & 3141$\pm$6 & 5-wise \\
+    % TODO-k7: this row times the search circuit mult7 (no displayed inverse); a certified degree-7 circuit is being timed separately.
+    This Paper ($k=7$) & 2299$\pm$20 & not certified & 4968$\pm$6 & not certified \\
 \end{tabular}
 \end{center}
-In the $k=4$ row the ARM entry is Motzkin's quartic and the x86 entry the
-three-multiplication lift, as recorded in \Cref{tab:families}.  The $k=7$
-row times the search circuit \texttt{mult7} of \Cref{tab:families}, for
-which no inverse is displayed: it has seven keys, but no independence is
-claimed for it.
+The three quartic rows are the implementations \texttt{quartic2\_64},
+\texttt{quartic3\_64} and \texttt{motzkin\_61} of \Cref{tab:families};
+the \texttt{mult4} of Table~\ref{tab:kwise_both} is the first of these on
+ARM and the second on x86.  The $k=7$ row times the search circuit
+\texttt{mult7} of \Cref{tab:families}, for which no inverse is displayed: it
+has seven keys, but no independence is claimed for it.
 
 \subsection{Comparison Across Finite Fields}
 
@@ -467,8 +479,8 @@ which computes a 64-bit carryless product directly,
 whereas Mersenne arithmetic requires multiple standard multiplications
 and careful handling of the 89-bit modulus.
 
-For $k=9$, our method over $\mathbb{F}_{2^{64}}$ (2833\,\textmu s mean) is
-$4.2\times$ faster than the best Mersenne method in our benchmark (11864\,\textmu s mean).
+For $k=9$, our method over $\mathbb{F}_{2^{64}}$ (2641\,\textmu s mean) is
+$4.3\times$ faster than the best Mersenne method in our benchmark (11361\,\textmu s mean).
 
 \subsection{Injective Polynomial Hashing}
 \label{sec:experiments:injective}
@@ -610,7 +622,7 @@ is unconstrained.
 \subsubsection{BRW (Bernstein-Rabin-Winograd)}
 
 The BRW construction~\cite{rabin1972number} uses divide-and-conquer to build a polynomial
-with optimal $O(\log N)$ depth.
+with $O(\log N)$ depth.
 For a message $(m_1, \ldots, m_n)$, the BRW polynomial is defined recursively:
 \begin{align}
 \text{BRW}(m_1) &= m_1 \\
@@ -661,7 +673,7 @@ refer to its ARM block.
               Horner at $2N=256$, and there within $1.6\times$ of CLNH.
         \item Horner-Unrolled is a good middle ground: simple to implement, $4.3\times$ faster than Horner.
     \end{itemize}
-    \item \textbf{BRW underperforms} despite optimal $O(\log N)$ depth.
+    \item \textbf{BRW underperforms} despite its $O(\log N)$ depth.
           The recursive structure prevents effective compiler optimization.
           c-decimated BRW variants are similarly slow.
     \item \textbf{Horner-Parallel} shows non-monotonic behavior: $2N = 256$ is slightly faster than
@@ -712,7 +724,7 @@ In contrast, recursive algorithms like BRW (Bernstein-Rabin-Winograd) suffer fro
 function call overhead and irregular control flow that inhibit optimization.
 
 At $2N = 256$, Injective-Parallel ($22144$\,\textmu s per $10^5$ hashes, \Cref{tab:injective:universal}) outperforms BRW ($34879$\,\textmu s)
-by $1.6\times$ despite BRW having theoretically optimal $O(\log N)$ depth,
+by $1.6\times$ despite BRW's $O(\log N)$ depth,
 because the iterative structure admits better code generation.
 (The depth advantage is also no longer unique: the schedules of
 \Cref{thm:construction-height} achieve $O(\log N)$ multiplicative

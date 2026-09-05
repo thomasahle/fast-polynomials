@@ -398,8 +398,11 @@ retaining the exact $\lfloor n/2\rfloor+1$ multiplication count would
 therefore require a genuinely more addition-efficient fill (or a different
 known-powers gadget), rather than a sharper analysis of the current DAG.
 Rabin and Winograd obtain $n+o(n)$ additions when an additional
-$O(\log n)$ multiplications are allowed~\cite{rabin1972number}; eliminating
-both overheads simultaneously remains open here.
+$O(\log n)$ multiplications are allowed~\cite{rabin1972number}, and the
+constant $\frac54$ is exactly that of Winograd's monic form of their
+construction (Knuth's exercise~44, \Cref{sec:related}): it survived the
+change of construction while the logarithmic multiplication term did not.
+Eliminating both overheads simultaneously remains open here.
 \end{remark}
 
 \subsection*{Multiplicative height}
@@ -411,6 +414,13 @@ $L=\lceil\log_2 n\rceil$, the complete circuit has height at most $2L+4$
 for odd $n\ge3$ and $2L+5$ for even $n\ge4$, with the multiplication
 counts recorded above.  This is the maximum number of nonscalar
 products on an input-to-output path, not the total gate count.
+Knuth's treatment of parallel evaluation~\cite[\S4.6.4]{knuth1997seminumerical}
+covers only Estrin's method and the $k$th-order Horner rule, without depth
+bounds for preconditioned schemes; \Cref{thm:construction-height} shows that
+the minimum multiplication count is compatible with height
+$2\lceil\log_2 n\rceil+O(1)$.  We claim no optimality for this height: the
+only lower bound is the trivial $\lceil\log_2 n\rceil$, so a factor of two
+remains.
 
 \begin{corollary}[All odd degrees have a decodable construction]
 \label{cor:all-odd-decodable}

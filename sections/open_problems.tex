@@ -11,9 +11,17 @@ to~$21$ (\Cref{appendix:polynomials}; \Cref{sec:ph} for degree~$5$).
 \paragraph{Exceptional inputs at even degree.}
 Pan's sextic scheme (\Cref{sec:lower}) reaches Motzkin's bound of $n/2$
 multiplications at $n=6$ with rational preprocessing that is undefined on a
-hypersurface, and \Cref{sec:lower} shows that this hypersurface cannot be removed.
+hypersurface, and \Cref{sec:lower} shows that no single-valued rational
+preprocessing removes this hypersurface.
 Does a generically rational scheme with $n/2$ multiplications exist for every even
-$n\ge8$?  And is its exceptional set always unavoidable, as we conjecture?
+$n\ge8$?  Pan~\cite{pan1978complex} credits Pan (1961)~\cite{pan1961schemes} with a
+real scheme for $n=8$ at the same counts for almost all polynomials; we could not
+determine whether its preprocessing is rational, as it is at $n=6$.  And is the
+exceptional set always unavoidable for rational (single-valued) preprocessing, as we
+conjecture?  For algebraic preprocessing Pan conjectures the opposite, that the
+exceptional sets of his schemes can be removed at every degree, and proves it over
+$\mathbb C$ for even $n\equiv2\pmod4$ at $n/2$ monic multiplications and $n$
+additions~\cite{pan1978complex}.
 
 \paragraph{Lower bounds for characteristic 2.}
 The proof in \Cref{sec:lower} uses properties specific to fields of characteristic
@@ -69,8 +77,23 @@ and halves them to $(k-1)/2$ otherwise at the same multiplication and
 addition counts; we verified this by exact decoding for $n\le45$ in the
 $4k+1$ family, where it changes the boundary constants of \Cref{lem:Rk2l}
 and adds the prime $3$ to the exceptional set at some steps, but have not
-carried it through the $8k+3$ and $8k+7$ families.  An exhaustive search at
-$n\le7$ also finds unit-coefficient chains with fewer additions than ours
-($3,4,6,9$ for $n=3,4,5,7$ against $4,5,6,11$).  Is there a uniform
+carried it through the $8k+3$ and $8k+7$ families.  Is there a uniform
 construction with $\lfloor n/2\rfloor+1$ multiplications, everywhere-defined
 rational preprocessing, and all wire coefficients in $\{0,\pm1\}$?
+
+\paragraph{Additions and height at small degrees.}
+Our general construction is not optimised for additions or depth at small
+degrees.  For instance, the everywhere-defined quintic
+\[
+ P_5=(x+\alpha_2)\bigl((x^2+\alpha_4)(x^2+x+\alpha_3)+\alpha_1\bigr)+\alpha_0,
+\]
+with the polynomial preprocessing $\alpha_2=a_4-1$,
+$\alpha_4=a_2-\alpha_2a_3+\alpha_2^2$, $\alpha_3=a_3-\alpha_2-\alpha_4$,
+$\alpha_1=a_1-\alpha_4a_3+\alpha_4^2$,
+$\alpha_0=a_0-\alpha_2a_1+\alpha_2^2\alpha_4$, uses three multiplications and
+six additions, where the general schedule of \Cref{sec:addition-count} uses
+$A_5=8$.  An exhaustive search at $n\le7$ finds unit-coefficient chains with
+$3,4,6,9$ additions for $n=3,4,5,7$ against our $3,4,8,10$, so it matches the
+general construction at $n=3,4$ and saves additions at $n=5,7$.  Is there a
+uniform construction with $n+O(1)$ additions at $\lfloor n/2\rfloor+1$
+multiplications, and what is the minimal height?

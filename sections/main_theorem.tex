@@ -76,7 +76,10 @@ The decoder divides only by explicitly displayed integer pivots, and every
 prime divisor of those pivots is at most~$n$.  Thus the same construction works in any
 characteristic in which the pivots occurring in the degree-$n$ recursion are
 nonzero; $p>n$ guarantees this uniformly.  In small positive characteristic
-some pivots may vanish.  The characteristic-$2$ circuits of
+some pivots may vanish.  This is the general form of Knuth's remark that
+Motzkin's quartic needs $2u_4$ invertible and Pan's sextic
+$6u_6$~\cite[p.~494]{knuth1997seminumerical}; Belaga's normalisation
+likewise divides by $n+1$~\cite{belaga1958some}.  The characteristic-$2$ circuits of
 \Cref{appendix:polynomials} and \Cref{sec:ph} are decoded by field operations
 and inverse Frobenius, $r\mapsto r^{1/2}$; on a fixed finite field $\F_{2^m}$
 this is the polynomial function $r\mapsto r^{2^{m-1}}$, so those decoders are

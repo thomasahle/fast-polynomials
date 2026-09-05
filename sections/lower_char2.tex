@@ -7,7 +7,10 @@ and much stronger: it rules out $n$ multiplications for bijective evaluation at 
 points at \emph{every} $n>1$, with no assumption on the degree or the leading coefficient
 of the computed polynomial, and---unlike \Cref{sec:lower}---with no restriction on the
 preprocessing: no map from $2n$ parameters to the slots of the chain, whether affine,
-rational or arbitrary, makes the evaluation bijective.  The mechanism is a symmetry of
+rational or arbitrary, makes the evaluation bijective.  The transcendence-degree argument
+behind Knuth's Theorems~M and~A is specific to infinite fields (Knuth, answer to
+exercise~27~\cite[\S4.6.4]{knuth1997seminumerical}); the counting argument below gives a
+lower bound over finite fields of characteristic two instead.  The mechanism is a symmetry of
 slot space rather than a Jacobian: in characteristic~$2$ a chain admits a one-parameter
 group of slot changes that leaves the computed polynomial \emph{exactly} fixed, and a
 second family that translates the argument.  If the evaluation map were onto, its fibres
@@ -193,7 +196,10 @@ model, so the hypothesis $n>1$ is necessary and the model is not vacuous.
 \label{rem:char2-scope}
 \Cref{thm:char2-lower} concerns an even number of evaluation points and bijective
 evaluation over a finite field, and it constrains the chain alone: no preprocessing of
-any kind circumvents it.  \Cref{sec:lower} concerns rational decoding over an infinite
+any kind circumvents it.  Here ``preprocessing'' means the map from the parameters to the
+$2n+1$ additive slots of \eqref{eq:char2-gate}--\eqref{eq:char2-output}; the constants of
+the chain are fixed, and a chain that multiplies by a parameter, as $\theta x$ in
+\Cref{sec:model}, lies outside the model and is not covered.  \Cref{sec:lower} concerns rational decoding over an infinite
 field of characteristic $\neq2$.  Neither implies the other, and the fixed-degree
 constructions of \Cref{appendix:polynomials} are unaffected: they use
 $\lfloor n/2\rfloor+1$ multiplications, one more than \Cref{thm:char2-lower} forbids.

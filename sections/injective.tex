@@ -88,6 +88,7 @@ injectivity.
 The ``Bernstein Rabin--Winograd'' scheme is simple to describe and prove, but
 the recursive nature is a bit inconvenient for fast hashing.
 Some authors~\cite{chakrabortyefficient} have proposed non-recursive variants that are more efficient to compute, but they still need to precompute $x^k$ for all powers of 2 up to $n$, which is extra accounting that our method does not require.
+Bernstein himself observes that the $\lceil\log_2 m\rceil$ key squarings can be traded for $\lceil\log_2 m\rceil$ cached key powers~\cite[\S5.8]{Bernstein:2011:RW}; the three-key recurrence of \Cref{def:injective:recurrence} needs no key powers at all, and its single-key specialization \eqref{eq:injective-single-key} needs only the two cached powers $x^2,x^3$, for every message length.
 
 \vspace{.5em}
 
