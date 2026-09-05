@@ -138,7 +138,7 @@ lake build FastPoly  # constructions, costs, height, and both lower bounds
 ```
 
 `FastPoly.lean` is the umbrella import. The build described here was verified at
-The build described here was verified at commit c834f5f (lake build FastPoly FastPoly.LowerBound.Main FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport, 2084 jobs, 2026-09-05). The development formalizes the recovery
+The build described here was verified at commit 1aeab99 (lake build FastPoly FastPoly.LowerBound.Main FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport, 2156 jobs, 2026-09-06). The development formalizes the recovery
 calculus, recursive constructions, fixed straight-line programs and their costs,
 multiplicative-depth bounds, the general degree-six lower bound, and the
 characteristic-two lower bound (including its one-gate sharpness example).
