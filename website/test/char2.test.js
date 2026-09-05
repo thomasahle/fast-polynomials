@@ -333,7 +333,8 @@ for (const n of SUPPORTED_DEGREES) {
     else {
       if (r.cText.includes('even-degree lift') !== even || r.cText.includes(`P_${n - 1}`) !== even) err('C lift row');
       if (/leading coefficient/.test(r.cText) !== !monic) err('C scale');
-      if (!r.cText.includes(`${want} multiplications (Horner: ${n - 1}), ${n} key`)) err('C header counts');
+      const horner = n - 1 + (monic ? 0 : 1);   // Horner on a monic input skips the leading multiplication
+      if (!r.cText.includes(`This paper: ${want} multiplication${want === 1 ? '' : 's'} (Horner: ${horner}), ${n} preprocessed constant${n === 1 ? '' : 's'}.`)) err('C header counts');
       const body = r.cText.slice(r.cText.indexOf('eval_P('));                       // the header defines gf64_mul (per ISA)
       if ((body.match(/gf64_mul\(/g) || []).length !== want) err(`${(body.match(/gf64_mul\(/g) || []).length} gf64_mul calls, want ${want}`);
     }

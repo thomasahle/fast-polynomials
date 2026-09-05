@@ -143,6 +143,20 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const err = reduce(reduce(initialState, { type: 'compile' }), { type: 'reply', id: 1, ok: false, message: 'bad input' });
   check(err.error === 'bad input' && !err.busy && err.result === null, 'error reply shows the message');
   check(reduce(err, { type: 'setMode', mode: 'gf32' }).error === null, 'mode switch clears the error');
+  // a held example follows the field; typed text does not
+  const heldQ = reduce(initialState, { type: 'setMode', mode: 'Q' });
+  check(heldQ.src === defaultExample('Q', 10, 0, true).src && heldQ.exKey === 'exp' && heldQ.busy,
+        'mode switch regenerates a held example in the new field (gf64 dense → ℚ e^x)');
+  const heldBack = reduce(heldQ, { type: 'setMode', mode: 'gf64' });
+  check(heldBack.src === defaultExample('gf64', 10, 0, true).src && heldBack.exKey === 'dense', 'and back (ℚ e^x → gf64 dense)');
+  const sparse = reduce(initialState, { type: 'example', key: 'sparse' });
+  check(reduce(sparse, { type: 'setMode', mode: 'p89' }).exKey === 'sparse', 'the same chip is kept when the new field has it');
+  check(reduce(typed, { type: 'setMode', mode: 'gf32' }).src === 'x^3 + 1', 'typed text survives a mode switch unchanged');
+  check(reduce(initialState, { type: 'setMode', mode: 'gf64' }) === initialState, 'switching to the current mode is a no-op');
+  check(reduce(err, { type: 'setSrc', src: '  ' }).error === null && reduce(err, { type: 'setSrc', src: 'x' }).error === 'bad input',
+        'emptying the input clears a stale error; other edits keep it until the next compile');
+  check(/0x[0-9a-f]+ x\^/.test(defaultExample('gf64', 10).src) && !/0x[0-9a-f]+x/.test(defaultExample('gf64', 10).src),
+        'hex example coefficients are separated from x by a space');
   // setMode while busy supersedes cleanly: busy stays true under a NEW job id,
   // the superseded job's reply is ignored, the new job's reply lands
   const busy = reduce(initialState, { type: 'compile' });
@@ -453,7 +467,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         check(p.coeffs.filter(c => c > (1n << BigInt(f.bits - 8))).length >= n / 2 && p.coeffs[n] !== 1n, `${m} ${k} key degree ${n}: full-width, non-monic`);
       }
     }
-    check(/^0x[0-9a-f]+x\^13 \+ 0x/.test(examplesFor(m, 13)[0].src), `${m} keys are written in hex`);
+    check(/^0x[0-9a-f]+ x\^13 \+ 0x/.test(examplesFor(m, 13)[0].src), `${m} keys are written in hex (a space before x)`);
     check(examplesFor(m, 14)[2].src.startsWith('x^14') && examplesFor(m, 27)[2].src.startsWith('x^26'), `${m} even degrees are their own; 27 clamps to 26`);
   }
   // the random key reseeds; the fixed key does not
@@ -512,11 +526,15 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(back.src === defaultExample('gf64', 11).src && back.exKey === 'dense' && back.busy,
         'chip click regenerates at the current degree');
   check(reduce(t2, { type: 'example', key: 'nope' }) === t2, 'unknown example key ignored');
-  // after a mode switch the textarea holds foreign text: stepping must not overwrite it
-  const sw = inMode('p89');
+  // after a mode switch with typed text the textarea holds foreign text: stepping must not overwrite it
+  const sw = reduce(reduce(initialState, { type: 'setSrc', src: 'x^3 + 1' }), { type: 'setMode', mode: 'p89' });
   const st = reduce(sw, { type: 'setExDegree', delta: 1 });
   check(st.exDegree === 11 && st.src === sw.src && st.jobId === sw.jobId,
-        "stepping after a mode switch doesn't overwrite the textarea");
+        "stepping after a mode switch doesn't overwrite typed text");
+  // ... whereas a held example was regenerated in the new field, so stepping regenerates it again
+  const swHeld = inMode('p89');
+  const stHeld = reduce(swHeld, { type: 'setExDegree', delta: 1 });
+  check(stHeld.src === defaultExample('p89', 11, 0, true).src && stHeld.busy, 'stepping after a held mode switch regenerates in the new field');
 
   // monic is an example-generation setting: held examples regenerate, custom text does not
   const q = reduce(reduce(initialState, { type: 'setMode', mode: 'Q' }), { type: 'example', key: 'exp' });

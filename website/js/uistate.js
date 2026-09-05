@@ -202,7 +202,8 @@ function bigPolyToSrc(coeffs, { hex = false } = {}) {
     const neg = c < 0n, m = neg ? -c : c;
     const xs = d === 0 ? '' : d === 1 ? 'x' : `x^${d}`;
     const cs = m === 1n && d > 0 ? '' : hex && m > 1n ? '0x' + m.toString(16) : m.toString();   // hex except 0 / 1
-    parts.push(parts.length === 0 ? (neg ? '-' : '') + cs + xs : ` ${neg ? '-' : '+'} ${cs}${xs}`);
+    const sep = cs.startsWith('0x') && xs ? ' ' : '';    // "0xa x^5", not "0xax^5"
+    parts.push(parts.length === 0 ? (neg ? '-' : '') + cs + sep + xs : ` ${neg ? '-' : '+'} ${cs}${sep}${xs}`);
   }
   return parts.join('') || '0';
 }
@@ -386,15 +387,26 @@ export function reduce(state, action) {
   switch (action.type) {
     case 'setMode': {
       if (!MODE_MSG[action.mode]) return state;
+      if (action.mode === state.mode) return state;
       // the method tab and view choices are sticky across mode switches; the reply
       // falls back only if the new result lacks the chosen method
-      const s = { ...state, mode: action.mode, busy: false, error: null };
+      let s = { ...state, mode: action.mode, busy: false, error: null };
+      // a held example follows the field: the same chip in the new field when it
+      // has one, else the field's default example (custom text is kept as typed,
+      // e.g. an integer polynomial moved between fields)
+      if (exampleHeld(state)) {
+        const exs = examplesFor(s.mode, s.exDegree, s.exSeed, s.exMonic);
+        const ex = exs.find(e => e.key === state.exKey) ?? defaultExample(s.mode, s.exDegree, s.exSeed, s.exMonic);
+        if (ex) s = { ...s, src: ex.src, exKey: ex.key, exDegree: clampDegree(s.mode, s.exDegree) };
+      }
       // recompile in the new mode, keeping the old output visible meanwhile;
       // with nothing to compile there is nothing to show either
       return s.src.trim() ? startJob(s) : { ...s, result: null };
     }
     case 'setSrc':
-      return state.src === action.src ? state : { ...state, src: action.src, exKey: null };
+      if (state.src === action.src) return state;
+      // an emptied input has nothing to be wrong about: drop a stale parse error
+      return { ...state, src: action.src, exKey: null, ...(action.src.trim() ? {} : { error: null }) };
     case 'compile':
       return state.src.trim() ? startJob(state) : state;
     case 'example': {
