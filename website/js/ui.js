@@ -3,9 +3,12 @@
 // Every control is rendered from the single state object in uistate.js
 // (pure reducer + selectors), so the field chooser, method chips, comparison
 // table, view tabs, sub-options and the pane can never disagree.  This file
-// owns only the markup and the side effects: the Web Worker that keeps
-// unbounded exact-rational preprocessing off the UI thread (created lazily,
-// terminated on Cancel and whenever a newer job supersedes a running one), the
+// owns only the markup and the side effects: the Web Workers that keep
+// unbounded exact-rational preprocessing off the UI thread — a main worker
+// for our chain and the classical methods, and over ℚ / ℝ a second one for
+// the numeric methods (Knuth–Eve, Pan), whose rows arrive later and show as
+// spinners meanwhile (created lazily, terminated on Cancel and whenever a
+// newer job supersedes a running one) — the
 // timers that make compilation automatic — the initial example compiles on
 // load, a mode switch recompiles immediately (the reducer starts that job
 // itself), and edits recompile after DEBOUNCE_MS of no typing — plus the
@@ -34,7 +37,7 @@ import { toggleTheme, label as labelThemeToggle } from './theme.js';
 import { chainMathRows, renderLatex } from './mathview.js';
 import {
   reduce, initialStateFor, presentedState, stateFromHash, hashFromState, VIEWS, examplesFor,
-  exampleHeld, exampleDegree, showOutput, compileMessage, methodTabs, comparisonTable,
+  exampleHeld, exampleDegree, showOutput, compileMessages, methodTabs, comparisonTable,
   subOptionStrips, paneContent, fieldChooser, tokenizePoly, stats,
 } from './uistate.js';
 
@@ -157,35 +160,40 @@ function App() {
   // state (pure helper; junk falls back to the defaults)
   const [state, dispatch] = useReducer(reduce, initialStateFor({ compact: isCompact() }),
     s => stateFromHash(s, location.hash));
-  const workerRef = useRef(null);
+  const workersRef = useRef({});          // part ('main' | 'numeric') -> Worker
+  const runningRef = useRef({});          // part -> true while a job is in flight there
   const stateRef = useRef(state);          // latest state, for timer callbacks
   stateRef.current = state;
   const postedSrcRef = useRef(null);       // src of the most recently posted job
 
-  const dropWorker = () => { workerRef.current?.terminate(); workerRef.current = null; };
-  const ensureWorker = () => {
-    if (!workerRef.current) {
+  const dropWorker = part => { workersRef.current[part]?.terminate(); delete workersRef.current[part]; runningRef.current[part] = false; };
+  const ensureWorker = part => {
+    if (!workersRef.current[part]) {
       const w = new Worker(new URL('worker.js', import.meta.url), { type: 'module' });
-      w.onmessage = e => dispatch({ type: 'reply', ...e.data });   // stale ids are dropped by the reducer
+      w.onmessage = e => { runningRef.current[part] = false; dispatch({ type: 'reply', ...e.data }); };   // stale ids are dropped by the reducer
       w.onerror = e => {
-        dropWorker();
-        dispatch({ type: 'workerError', message: `worker failed to load: ${e.message ?? e}` });
+        dropWorker(part);
+        if (part === 'main') dispatch({ type: 'workerError', message: `worker failed to load: ${e.message ?? e}` });
+        else dispatch({ type: 'reply', id: stateRef.current.jobId, part, ok: false, message: `worker failed to load: ${e.message ?? e}` });
       };
-      workerRef.current = w;
+      workersRef.current[part] = w;
     }
-    return workerRef.current;
+    return workersRef.current[part];
   };
 
-  const abandonJob = () => { if (stateRef.current.busy) dropWorker(); };
+  // a superseded job's workers are terminated (a computation cannot be interrupted otherwise)
+  const abandonJob = () => { for (const part of Object.keys(runningRef.current)) if (runningRef.current[part]) dropWorker(part); };
   const compileNow = () => {               // immediate compile, superseding any running job
     if (!stateRef.current.src.trim()) return;
     abandonJob();
     dispatch({ type: 'compile' });
   };
 
-  // A new job id means a job was started: post it (the reducer already set busy).
+  // A new job id means a job was started: post each part to its worker (the reducer already set busy).
   useEffect(() => {
-    if (state.busy) { postedSrcRef.current = state.src; ensureWorker().postMessage(compileMessage(state)); }
+    if (!state.busy) return;
+    postedSrcRef.current = state.src;
+    for (const m of compileMessages(state)) { ensureWorker(m.part).postMessage(m); runningRef.current[m.part] = true; }
   }, [state.jobId]);
 
   // Auto-compile edits after DEBOUNCE_MS of no typing (the cleanup resets the
@@ -205,7 +213,7 @@ function App() {
   // Everything the controls can do; a running job is abandoned only when the
   // action will start a new one (the reducer's conditions, mirrored here).
   const actions = {
-    cancel: () => { dropWorker(); dispatch({ type: 'cancel' }); },
+    cancel: () => { abandonJob(); dispatch({ type: 'cancel' }); },
     runExample: key => { abandonJob(); dispatch({ type: 'example', key }); },
     setMode: mode => { abandonJob(); dispatch({ type: 'setMode', mode }); },
     toggleMonic: () => { if (exampleHeld(stateRef.current)) abandonJob(); dispatch({ type: 'setExMonic' }); },
@@ -307,8 +315,9 @@ function MethodPills({ tabs, dispatch }) {
   return html`<div class="controls" id="method-row">
     <div class="seg methods" id="methods">
       ${tabs.map(t => t.enabled
-    ? html`<button key=${t.key} data-m=${t.key} data-label=${t.label} class=${t.on ? 'on' : null}
-            onClick=${() => dispatch({ type: 'setMethod', method: t.key })}><span>${t.label}</span></button>`
+    ? html`<button key=${t.key} data-m=${t.key} data-label=${t.label} class=${[t.on && 'on', t.pending && 'pending'].filter(Boolean).join(' ') || null}
+            title=${t.pending ? t.title || 'computing\u2026' : null}
+            onClick=${() => dispatch({ type: 'setMethod', method: t.key })}><span>${t.label}${t.pending && html`<${Spinner} />`}</span></button>`
     : html`<button key=${t.key} data-label=${t.label} disabled title=${t.title || null}><span>${t.label}</span></button>`)}
     </div>
     <span class="lbl">Method</span>
@@ -327,7 +336,7 @@ function FieldMethodPickers({ state, tabs, setMode, dispatch }) {
     ${tabs.length > 0 && html`<label class="picker"><span class="lbl">Method</span>
       <select id="method-select" value=${state.method}
         onChange=${e => dispatch({ type: 'setMethod', method: e.currentTarget.value })}>
-        ${tabs.map(t => html`<option key=${t.key} value=${t.key} disabled=${!t.enabled}>${t.label}</option>`)}
+        ${tabs.map(t => html`<option key=${t.key} value=${t.key} disabled=${!t.enabled}>${t.label}${t.pending ? ' (computing\u2026)' : ''}</option>`)}
       </select></label>`}
   </div>`;
 }
@@ -454,10 +463,13 @@ function Output({ state, dispatch, compact = false }) {
 }
 
 /** The comparison table: one row per method; the selected method's row is
- *  bold and clicking a row selects it, like its chip. */
+ *  bold and clicking a row selects it, like its chip.  Each method name links
+ *  to its reference (numbered as in the list under the table). */
 function FooterBar({ state, dispatch }) {
   const rows = comparisonTable(state);
   const mults = r => (r.scalar ? `${r.mults} (${r.scalar} scalar)` : r.mults);
+  const refs = rows.filter(r => r.ref).map(r => r.ref);
+  const refNo = r => refs.indexOf(r.ref) + 1;
   return html`<div class="foot" id="footer-stats">
     <div class="cmp-wrap"><table class="cmp" id="compare">
       <thead><tr>
@@ -470,14 +482,24 @@ function FooterBar({ state, dispatch }) {
       <tbody>${rows.map(r => html`<tr key=${r.key} data-m=${r.key}
           class=${r.on ? 'on' : r.ok ? null : 'off'} title=${r.ok ? null : r.note}
           onClick=${r.ok ? () => dispatch({ type: 'setMethod', method: r.key }) : null}>
-        <td class="m">${r.name}</td>
+        <td class="m">${r.ref
+      ? html`<a class="ref" href=${r.ref.url ?? `#ref-${refNo(r)}`} title=${r.ref.cite}
+            target=${r.ref.url ? '_blank' : null} rel=${r.ref.url ? 'noopener noreferrer' : null}
+            onClick=${e => e.stopPropagation()}>${r.name}</a><sup class="ref-no">${refNo(r)}</sup>`
+      : r.name}</td>
         ${r.ok
       ? [html`<td key="mu">${mults(r)}</td>`, html`<td key="ad">${r.adds}</td>`,
       html`<td key="de">${r.height ?? '—'}</td>`,
       html`<td key="ex" title=${r.exactNote || null}>${r.exact ? 'yes' : '≈ numeric'}</td>`]
+      : r.pending ? html`<td colspan="4" class="na pending"><${Spinner} /> computing the numerical preprocessing\u2026</td>`
       : html`<td colspan="4" class="na">— <span class="why">${r.note}</span></td>`}
       </tr>`)}</tbody>
-    </table></div>
+    </table>
+    <ol class="refs" id="references">
+      ${refs.map((ref, i) => html`<li key=${i} id=${`ref-${i + 1}`}>${ref.url
+        ? html`<a href=${ref.url} target="_blank" rel="noopener noreferrer">${ref.cite}</a>`
+        : ref.cite}</li>`)}
+    </ol></div>
   </div>`;
 }
 
@@ -526,6 +548,8 @@ function Pane({ content, state, compact }) {
 
 function paneBody(content) {
   switch (content?.kind) {
+    case 'pending':
+      return html`<div class="chain pending-pane" id="chain" key="pending" role="status"><${Spinner} /> ${content.note}</div>`;
     case 'math':
       return html`<${MathChain} text=${content.text} />`;
     case 'c':
@@ -577,6 +601,9 @@ function MathChain({ text }) {
     </tbody></table>
   </div>`;
 }
+
+/** A small ring: a numeric method still computing in its worker. */
+const Spinner = () => html`<span class="spinner" aria-label="computing" />`;
 
 // only the edge decorations that actually occur in the shown graph are listed
 const Legend = ({ dash, kx }) => html`<div class="graph-legend" id="graph-legend">

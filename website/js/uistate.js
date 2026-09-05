@@ -51,6 +51,8 @@
 import { Rat } from './rat.js';
 import { countOps, formatConstants } from './chain.js';
 import { FIELDS, FIELD_GROUPS, gfLiteral } from './field.js';
+import { referenceFor } from './references.js';
+import { NUMERIC_METHODS, needsNumericWorker } from './compare.js';
 import { MAX_DEGREE } from './char2.js';
 
 export const VIEWS = ['math', 'c', 'graph'];
@@ -375,6 +377,7 @@ export const initialState = Object.freeze({
   jobId: 0,
   error: null,
   result: null,
+  lateNumeric: null,   // numeric-method rows that arrived before their job's main reply (one reply per method)
   method: 'ours',
   view: 'math',
   form: 'factor',
@@ -404,12 +407,19 @@ const startJob = s => ({ ...s, busy: true, jobId: s.jobId + 1, error: null });
 export const defaultMethod = result =>
   result?.oursFailed ? (result.comparisons?.find(r => r.ok)?.name ?? 'ours') : 'ours';
 
-/** Does `result` carry a displayable chain for `method`? */
+/** Does `result` carry a displayable chain for `method` — or one still
+ *  computing in the numeric worker (selectable: the pane then shows a spinner)? */
 export function methodAvailable(result, method) {
   if (!result) return false;
   if (method === 'ours') return !result.oursFailed;
-  return !!result.comparisons?.some(r => r.name === method && r.ok);
+  return !!result.comparisons?.some(r => r.name === method && (r.ok || r.pending));
 }
+
+/** `result` with the numeric methods' rows filled in from their worker. */
+const withNumeric = (result, rows) => ({
+  ...result,
+  comparisons: (result.comparisons ?? []).map(c => rows.find(r => r.name === c.name) ?? c),
+});
 
 /** Does the textarea still hold the generated example named by exKey (at the
  *  current degree and seed)?  Only then does the degree stepper regenerate it. */
@@ -474,13 +484,23 @@ export function reduce(state, action) {
       return ex ? startJob({ ...s, src: ex.src }) : s;
     }
     case 'cancel':
-      return state.busy ? { ...state, busy: false } : state;
+      return state.busy ? { ...state, busy: false, lateNumeric: null } : state;
     case 'reply': {
-      if (!state.busy || action.id !== state.jobId) return state;   // cancelled or stale
+      if (action.id !== state.jobId) return state;                  // stale
+      if (action.part === 'numeric') {
+        // the numeric methods' rows from their own worker fill the placeholders
+        // of this job's result; arriving first, they wait for the main reply
+        const rows = action.ok ? action.result.comparisons
+          : NUMERIC_METHODS.map(name => ({ name, ok: false, note: action.message ?? 'numerical preprocessing failed' }));
+        if (state.busy) return { ...state, lateNumeric: [...(state.lateNumeric ?? []), ...rows] };
+        return state.result ? { ...state, result: withNumeric(state.result, rows) } : state;
+      }
+      if (!state.busy) return state;                                // cancelled
       if (!action.ok)
-        return { ...state, busy: false, result: null, error: action.message ?? 'compilation failed' };
-      return { ...state, busy: false, error: null, result: action.result,
-        method: methodAvailable(action.result, state.method) ? state.method : defaultMethod(action.result) };
+        return { ...state, busy: false, result: null, lateNumeric: null, error: action.message ?? 'compilation failed' };
+      const result = state.lateNumeric ? withNumeric(action.result, state.lateNumeric) : action.result;
+      return { ...state, busy: false, error: null, result, lateNumeric: null,
+        method: methodAvailable(result, state.method) ? state.method : defaultMethod(result) };
     }
     case 'workerError':
       return { ...state, busy: false, result: null, error: action.message ?? 'worker failed' };
@@ -520,6 +540,11 @@ export const exampleDegree = state => clampDegree(state.mode, state.exDegree);
 
 /** The worker message for the current job (posted by ui.js when a job starts). */
 export const compileMessage = state => ({ id: state.jobId, src: state.src, ...MODE_MSG[state.mode] });
+/** One message per worker: the main part always; the numeric part over ℚ / ℝ. */
+export const compileMessages = state => [
+  { ...compileMessage(state), part: 'main' },
+  ...(needsNumericWorker(state.mode) ? [{ ...compileMessage(state), part: 'numeric' }] : []),
+];
 
 /** The selected comparison row (null when 'ours' is selected or there is no result). */
 export function comparisonRow(state) {
@@ -527,10 +552,17 @@ export function comparisonRow(state) {
   return state.result.comparisons?.find(r => r.name === state.method && r.ok) ?? null;
 }
 
-/** The object whose chain the output shows: a comparison row or the result itself. */
+/** The selected method's row while its numeric worker is still computing. */
+export function pendingRow(state) {
+  if (!state.result || state.method === 'ours') return null;
+  return state.result.comparisons?.find(r => r.name === state.method && r.pending) ?? null;
+}
+
+/** The object whose chain the output shows: a comparison row or the result
+ *  itself (null while the selected method is still computing). */
 export function selectedRow(state) {
   if (!state.result) return null;
-  return comparisonRow(state) ?? state.result;
+  return comparisonRow(state) ?? (pendingRow(state) ? null : state.result);
 }
 
 /**
@@ -565,10 +597,11 @@ export function methodTabs(state) {
   if (!r) return [];
   const tabs = [{
     key: 'ours', label: r.oursFailed ? 'This paper' : withCount('This paper', r),
-    enabled: !r.oursFailed, title: r.oursFailed ? String(r.oursFailed) : '',
+    enabled: !r.oursFailed, pending: false, title: r.oursFailed ? String(r.oursFailed) : '',
   }];
   for (const c of r.comparisons ?? [])
-    tabs.push({ key: c.name, label: c.ok ? withCount(c.name, c) : c.name, enabled: !!c.ok, title: c.ok ? '' : String(c.note ?? '') });
+    tabs.push({ key: c.name, label: c.ok ? withCount(c.name, c) : c.name, enabled: !!c.ok || !!c.pending,
+      pending: !!c.pending, title: c.ok ? '' : String(c.note ?? '') });
   return tabs.map(t => ({ ...t, on: t.key === state.method }));
 }
 
@@ -589,10 +622,10 @@ export function comparisonTable(state) {
   const entries = [{ key: 'ours', name: 'This paper', ok: !r.oursFailed, exact: r.exact ?? true,
                      note: r.oursFailed ? String(r.oursFailed) : '', row: r }];
   for (const c of r.comparisons ?? [])
-    entries.push({ key: c.name, name: c.name, ok: !!c.ok, exact: !!c.exact, note: c.ok ? '' : String(c.note ?? ''), row: c });
+    entries.push({ key: c.name, name: c.name, ok: !!c.ok, pending: !!c.pending, exact: !!c.exact, note: c.ok ? '' : String(c.note ?? ''), row: c });
   return entries.map(({ row, ...e }) => {
     const o = e.ok ? rowOps(row) : null;
-    return { ...e, on: e.key === state.method,
+    return { ...e, pending: !!e.pending, on: e.key === state.method, ref: referenceFor(e.name),
       mults: o ? o.mults + o.scalar : null, scalar: o ? o.scalar : 0,
       adds: o ? o.adds : null, height: e.ok ? row.height ?? null : null, exact: e.ok ? e.exact : null,
       exactNote: e.ok && !e.exact ? numericNote(row) : null };
@@ -754,6 +787,8 @@ export const availableSubOptions = state => subOptionStrips(state)[0] ?? null;
  *   { kind: 'graph-missing', note }
  */
 export function paneContent(state) {
+  const waiting = pendingRow(state);
+  if (waiting) return { kind: 'pending', note: `${waiting.name} is still computing its numerical preprocessing\u2026` };
   const src = selectedRow(state);
   if (!src) return null;
   if (state.view === 'math') {

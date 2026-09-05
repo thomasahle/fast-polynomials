@@ -20,14 +20,28 @@ const METHODS = [
 /** mode: a field id from js/field.js FIELDS ('Q', 'R', 'p61', 'p89', 'p127',
  *  'gf32', 'gf64', 'gf128'); the legacy 'p' (= p89) and 'gf2k' (F.k decides)
  *  are still accepted by the C emitter. */
-export function buildComparisons(coeffs, F, mode, { poly = null } = {}) {
+export function buildComparisons(coeffs, F, mode, opts = {}) {
+  return [...buildClassical(coeffs, F, mode, opts), ...buildNumeric(coeffs, F, mode, opts)];
+}
+
+/** The numeric methods run in their own worker (they can take seconds at high
+ *  degree — Pan's real-root preprocessing above all); over the other fields
+ *  they are rejected at once, so no second worker is needed there. */
+export const NUMERIC_METHODS = ['Knuth\u2013Eve', 'Pan'];
+export const needsNumericWorker = mode => mode === 'Q' || mode === 'R';
+/** Rows standing in for the numeric methods until their worker replies. */
+export const pendingNumericRows = () =>
+  NUMERIC_METHODS.map(name => ({ name, ok: false, pending: true, note: 'computing the numerical preprocessing\u2026' }));
+
+/** Horner, Estrin and Rabin–Winograd: exact, instant. */
+export function buildClassical(coeffs, F, mode, { poly = null } = {}) {
   const rows = [];
   const numericField = !!F.real;         // ℝ: preprocessing with doubles is not exact
   for (const [name, fn] of METHODS) {
     try {
       const r = fn(coeffs, F);
       let cText = null, cTextFraction = null;
-      const copts = { name, mults: r.mults, preprocessing: r.preprocessing, poly };
+      const copts = { name, mults: r.mults, preprocessing: r.preprocessing, poly };   // the emitter cites the method's reference
       try { cText = methodChainC(r.lines, mode, F, { ...copts, cstyle: 'float' }); }
       catch (e) { /* math view still available */ }
       if (mode === 'Q' && cText) {
@@ -45,6 +59,12 @@ export function buildComparisons(coeffs, F, mode, { poly = null } = {}) {
       rows.push({ name, ok: false, note: e.message });
     }
   }
+  return rows;
+}
+
+/** Knuth–Eve and Pan: numerical preprocessing, characteristic 0 only. */
+export function buildNumeric(coeffs, F, mode, { poly = null, only = null } = {}) {
+  const rows = [];
   // Every field lists the same methods, so the comparison table keeps
   // its shape.  These algebraic/numeric preprocessors run in characteristic
   // zero only and are reported (not silently dropped) elsewhere.  Unlike the
@@ -55,7 +75,8 @@ export function buildComparisons(coeffs, F, mode, { poly = null } = {}) {
     { name: 'Pan', fn: compilePan1978Real, preserveLeading: true, need: 'needs numerical real-algebraic preprocessing' },
   ];
   for (const { name, fn, preserveLeading = false, need = 'needs real or complex roots' } of numeric) {
-    if (mode === 'Q' || mode === 'R') rows.push(numericRow(name, fn, coeffs, F, mode, { preserveLeading, poly }));
+    if (only !== null && name !== only) continue;
+    if (needsNumericWorker(mode)) rows.push(numericRow(name, fn, coeffs, F, mode, { preserveLeading, poly }));
     else rows.push({ name, ok: false, note: `${need}: characteristic 0 (\u211a, \u211d) only, not ${F.name}` });
   }
   return rows;

@@ -3,6 +3,7 @@
 // gzip stream when available.
 
 import { C_PROVENANCE, C_LICENSE, cFileHeader, hasCProvenance } from './cgen.js';
+import { referenceFor } from './references.js';
 import { selectedCSource } from './uistate.js';
 
 const UTF8 = new TextEncoder();
@@ -65,7 +66,8 @@ export function benchmarkHarness(mode) {
       : t.bits === 64
         ? '    printf("%.3f ns/eval  checksum %016llx\\n", ns_per_eval, (unsigned long long)checksum);'
         : '    printf("%.3f ns/eval  checksum %08x\\n", ns_per_eval, (unsigned)checksum);';
-  return `${cFileHeader(['Shared timing harness: compile with -DMETHOD_FILE="methods/<name>.c" (benchmark.sh does).'])}
+  return `${cFileHeader(['Shared timing harness: compile with -DMETHOD_FILE="methods/<name>.c" (benchmark.sh does).',
+    `Reference: ${referenceFor('This paper').cite} ${referenceFor('This paper').url}`])}
 #define _POSIX_C_SOURCE 200809L
 #include <stdint.h>
 #include <stdio.h>

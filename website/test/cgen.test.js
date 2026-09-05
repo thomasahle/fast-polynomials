@@ -229,6 +229,8 @@ for (const [n, lead] of [[14, Rat.ONE], [15, new Rat(3n)], [31, Rat.ONE]]) {
     for (const style of ['float', 'fraction']) {
       const c = methodChainC(m.lines, 'Q', Q, { name: nm, mults: m.mults, preprocessing: m.preprocessing, cstyle: style });
       if (nm === 'RW') check(c.includes('static const double P_c['), 'RW Q: constants table');
+      check(c.includes(' * Reference: ') && /Horner|Estrin|Rabin/.test(c.split('Reference: ')[1] ?? '') && /doi\.org/.test(c.split('Reference: ')[1] ?? ''),
+            `${nm} Q: the header cites the method's reference with its link`);
       if (nm === 'Horner') check(!c.includes('static const'), 'Horner Q: inline coefficients');
       const o = buildAndRun(c, 'Q', xs, `${nm}Q_${style}`);
       compare(o, want, `${nm} Q ${style}`, (a, b) => relClose(Number(a), b));

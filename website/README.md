@@ -25,7 +25,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   factor/original form and exact/decimal (hex) constants — a display-only rewrite ·
   C code with float/fraction constants over ℚ · graph) → the comparison table (one row
   per method: multiplications with the scalar count, additions, multiplicative depth,
-  exact or ≈ numeric; clicking a row selects the method) + Share. Copy is paired with
+  exact or ≈ numeric; clicking a row selects the method; each method name links to its
+  reference, listed under the table from `js/references.js`, which the generated C of a
+  comparison method also cites) + Share. Copy is paired with
   Download, which packages every available C method with benchmark and assembly-audit
   scripts. On phones (≤ 640px, `COMPACT_QUERY` in `ui.js` and the matching media query in
   `style.css`) the same state renders as a short intro with Paper / GitHub (star count) /
@@ -66,7 +68,8 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 - `js/cbundle.js` — dependency-free `.tar.gz` creation for the Download button, plus
   the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL;
   every generated file opens with `cSourceHeader` (cgen.js): provenance, license, the
-  polynomial, field, multiplication count and compile line
+  polynomial, field, multiplication count, the reference (the paper for ours, the
+  literature for each comparison method, with links) and compile line
 - `js/chain.js` — chain rendering: index names or the paper's letter names
   (y, z, t, u, …) with gadget headings (Q_7, H_2, T-recursion, …)
 - `js/graph.js`, `js/graphview.js` — computational-graph IR (× and + nodes) and its
@@ -89,7 +92,11 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   six-digit rule for numeric rows are `initialStateFor` / `presentedState` in `uistate.js`
 - `js/worker.js` — the Web Worker that keeps unbounded exact-rational preprocessing
   off the UI thread; it posts every view (math, paper-format math, C, fraction-C,
-  graph IR + SVG) for ours and each comparison method so switching views never recompiles
+  graph IR + SVG) for ours and each comparison method so switching views never recompiles.
+  Over ℚ / ℝ the page runs two instances: `part: 'main'` (our chain, Horner, Estrin,
+  Rabin–Winograd, with placeholder rows for the numeric methods) and `part: 'numeric'`
+  (Knuth–Eve and Pan, whose real-root preprocessing can take seconds at high degree);
+  the placeholders show as spinners until the second reply fills them in
 - `js/vendor/preact-htm.module.js` — Preact + htm standalone ES-module bundle (vendored,
   MIT; see `js/vendor/LICENSE-preact.txt`)
 - `js/vendor/katex/` — pinned KaTeX runtime, stylesheet and WOFF2 fonts (vendored,

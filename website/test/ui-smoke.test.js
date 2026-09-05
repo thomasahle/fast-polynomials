@@ -192,16 +192,24 @@ check(githubStarsSrc.includes('https://api.github.com/repos/thomasahle/fast-poly
       'star count comes from the public GitHub repository API');
 
 const typeInto = async (ta, text) => { ta.value = text; ta.dispatch('input'); };
-const lastMessage = () => ShimWorker.instances.at(-1)?.messages.at(-1) ?? null;
-const messageCount = () => ShimWorker.instances.reduce((n, w) => n + w.messages.length, 0);
-/** Answer the latest compile message with the real compiler's result. */
-const replyToLatest = async () => {
-  const w = ShimWorker.instances.at(-1), m = w.messages.at(-1);
+// the messages of the most recent job (highest id), its main part first
+const allMessages = () => ShimWorker.instances.flatMap(w => w.messages);
+const latestJob = () => { const id = Math.max(0, ...allMessages().map(m => m.id)); return allMessages().filter(m => m.id === id); };
+const lastMessage = () => latestJob().find(m => m.part === 'main') ?? null;
+const messageCount = () => allMessages().filter(m => m.part === 'main').length;   // jobs posted
+/** Answer the latest compile message of one worker part (main by default —
+ *  over ℚ / ℝ the numeric methods come from a second worker) with the real
+ *  compiler's result; `replyToLatest` answers every part. */
+const replyPart = async part => {
+  const w = ShimWorker.instances.find(x => x.messages.at(-1)?.part === part && !x.terminated);
+  if (!w) return null;
+  const m = w.messages.at(-1);
   const result = await handleMessage(m);
-  w.onmessage({ data: { id: m.id, ok: true, result } });
+  w.onmessage({ data: { id: m.id, part, ok: true, result } });
   await settle();
   return result;
 };
+const replyToLatest = async () => { const r = await replyPart('main'); await replyPart('numeric'); return r; };
 
 // desktop ------------------------------------------------------------------
 {
@@ -214,12 +222,13 @@ const replyToLatest = async () => {
   eq($$('#examples a.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'hermite'], 'desktop shows every chip');
   check($('#monic') && $('#degree') && $('.head-row #share') && !$('#pickers') && !$('.intro-compact'),
         'desktop has the monic toggle, degree stepper and Share in the head row; no dropdowns or phone intro');
-  check(ShimWorker.instances.length === 1 && messageCount() === 1 &&
-        JSON.stringify(lastMessage()) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q' }),
-        'the first load compiles the initial example through one worker');
+  check(ShimWorker.instances.length === 2 && messageCount() === 1 && allMessages().length === 2 &&
+        ShimWorker.instances.map(w => w.messages[0].part).join(',') === 'main,numeric' &&
+        JSON.stringify(ShimWorker.instances[0].messages[0]) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q', part: 'main' }),
+        'the first load over ℚ compiles the initial example through a main and a numeric worker');
   check($('#busy') && $('#cancel'), 'the busy row with Cancel shows while a job runs');
   $('#cancel').click(); await settle();
-  check(ShimWorker.instances[0].terminated && !$('#busy'), 'Cancel terminates the worker and clears the busy row');
+  check(ShimWorker.instances.every(w => w.terminated) && !$('#busy'), 'Cancel terminates both workers and clears the busy row');
 
   $('a.chip[data-ex="ln"]').click(); await settle();
   check($('#poly-in').value === examplesFor('Q', 7, 0, true).find(e => e.key === 'ln').src &&
@@ -244,9 +253,20 @@ const replyToLatest = async () => {
   $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
   check(lastMessage().src === 'x^4 + 1', 'Cmd/Ctrl+Enter compiles at once');
 
+  // over ℚ the numeric methods arrive from their own worker: spinners meanwhile
+  await replyPart('main');
+  check($('#out') && $$('#methods button.pending').length === 2 && $$('#methods button.pending .spinner').length === 2 &&
+        $$('#compare td.pending').length === 2, 'after the main reply the two numeric methods show spinners on their chips and rows');
+  $('#methods button[data-m="Pan"]').click(); await settle();
+  check($('#methods button.on')?.dataset.m === 'Pan' && $('#chain.pending-pane') && !$('#copy'), 'a pending method can be selected: the pane spins, nothing to copy');
+  await replyPart('numeric');
+  check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'), 'the numeric reply removes every spinner');
+  $('#methods button[data-m="ours"]').click(); await settle();
+
   $('#mode button[data-mode="gf64"]').click(); await settle();
   check($('#mode button.on')?.dataset.mode === 'gf64' && lastMessage().lane === 'char2' && lastMessage().fieldMode === 'gf64' &&
         $('#poly-in').value === 'x^4 + 1', 'a field pill switches the field and recompiles typed text as typed');
+  eq(latestJob().map(m => m.part), ['main'], 'a GF(2^k) job posts no numeric part');
 
   // a real result through the worker: the output, its tabs and the table appear
   await replyToLatest();
@@ -254,6 +274,9 @@ const replyToLatest = async () => {
         'a compile reply mounts the output with the math view');
   check($$('#methods button').length >= 4 && $('#methods button.on')?.dataset.m === 'ours' && $$('#compare tbody tr').length >= 4,
         'method chips and the comparison table follow the result');
+  check($$('#compare a.ref').length >= 4 && $('#compare tr[data-m="Horner"] a.ref')?.getAttribute('href')?.includes('doi.org') &&
+        $$('#references li').length === $$('#compare a.ref').length && $('#references li').textContent.includes('Ahle'),
+        'method names link to their references and the list under the table numbers them');
   check($('#copy') && $('#download') && !$('.pane-actions #share'), 'desktop pane: Copy and Download, Share stays in the head row');
   $('#methods button[data-m="Horner"]').click(); await settle();
   check($('#methods button.on')?.dataset.m === 'Horner' && $('#compare tr.on')?.dataset.m === 'Horner', 'a method chip selects the method and its row');

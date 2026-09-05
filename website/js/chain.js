@@ -326,6 +326,7 @@ export function formatConstants(text, style) {
 // products become their own rows, additive remainders are folded (flattened)
 // into every consumer's affine form, and the final row P is an affine combination.
 import { parseRhs } from './cgen.js';
+import { Rat } from './rat.js';
 const negTerm = ({ neg, t }) => ({ neg: !neg, t });
 /** Expand a sum AST: references to eliminated wires are spliced in (sign-aware). */
 function expandSum(sum, subst) {
@@ -381,7 +382,8 @@ export function layerLines(lines) {
 const paren = s => (s.startsWith('(') && s.endsWith(')') ? s : `(${s})`);
 /** Flatten nested sums: a term whose only factor is a parenthesized sum is
  * spliced into its parent (sign-aware), recursively — so factors and affine
- * rows never carry redundant inner brackets like (w2 + (x − 61)). */
+ * rows never carry redundant inner brackets like (w2 + (x − 61)) — and fold
+ * the constant terms a splice brings together into one (x + 3/2 − 1/2 → x + 1). */
 function flattenSum(sum) {
   const out = [];
   for (const term of sum) {
@@ -390,7 +392,38 @@ function flattenSum(sum) {
       for (const inner of t[0].sum) out.push(term.neg ? negTerm(inner) : inner);
     } else out.push({ neg: term.neg, t });
   }
-  return out;
+  return foldConstants(out);
+}
+/** One constant term per sum: exact literals (integers, fractions) add as
+ *  rationals; once a decimal is involved the sum is a double printed to 13
+ *  significant digits, as the numeric methods print theirs.  The folded
+ *  constant goes last, where the rows keep their constants. */
+export function foldConstants(sum) {
+  const isConst = term => term.t.length === 1 && term.t[0].tok !== undefined && isNumTok(term.t[0].tok);
+  const consts = sum.filter(isConst), rest = sum.filter(t => !isConst(t));
+  if (consts.length < 2) return sum;
+  const exact = consts.every(({ t }) => !/[.eE]/.test(t[0].tok));
+  let tok;
+  if (exact) {
+    let acc = new Rat(0n);
+    for (const { neg, t } of consts) {
+      const [a, b] = t[0].tok.split('/');
+      const r = new Rat(BigInt(a), b ? BigInt(b) : 1n);
+      acc = acc.add(neg ? r.neg() : r);
+    }
+    tok = acc.toString();
+  } else {
+    let v = 0;
+    for (const { neg, t } of consts) {
+      const [a, b] = t[0].tok.split('/');
+      const x = b ? Number(a) / Number(b) : Number(a);
+      v += neg ? -x : x;
+    }
+    tok = String(Number(v.toPrecision(13)));
+  }
+  if (/^-?0$/.test(tok)) return rest.length ? rest : [{ neg: false, t: [{ tok: '0' }] }];
+  const neg = tok.startsWith('-');
+  return [...rest, { neg, t: [{ tok: neg ? tok.slice(1) : tok }] }];
 }
 export function factorize(lines) {
   const subst = new Map();                       // eliminated wire -> sum AST (unexpanded)

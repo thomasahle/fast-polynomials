@@ -1,7 +1,7 @@
 // uistate.test.js — invariants of the page's pure state (js/uistate.js): the
 // reducer and the selectors the Preact UI renders from.  No DOM, no worker.
 import {
-  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE,
+  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE, compileMessages, pendingRow,
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
   compileMessage, comparisonRow, selectedRow, methodTabs, comparisonTable, rowOps, stats,
@@ -74,7 +74,7 @@ const inMode = mode => reduce(BASE, { type: 'setMode', mode });
 
 // ---- initial state ---------------------------------------------------------
 eq(Object.keys(initialState).sort(),
-   ['busy', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'method', 'mode', 'numfmt', 'result', 'src', 'view'], 'state keys');
+   ['busy', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'result', 'src', 'view'], 'state keys');
 eq([initialState.mode, initialState.view, initialState.form, initialState.cstyle, initialState.numfmt, initialState.method,
     initialState.exDegree, initialState.exKey, initialState.exSeed, initialState.exMonic],
    ['Q', 'math', 'factor', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
@@ -178,6 +178,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const bsw = reduce(blank, { type: 'setMode', mode: 'Q' });
   check(!bsw.busy && bsw.jobId === blank.jobId && bsw.mode === 'Q' && bsw.result === null, 'setMode with blank source starts no job');
   check(reduce(blank, { type: 'compile' }) === blank, 'compile with blank source is a no-op');
+  const refs = comparisonTable(withResult(BASE)).map(r => [r.name, r.ref?.short ?? null]);
+  eq(refs.slice(0, 3), [['This paper', 'Ahle & Knudsen 2026'], ['Horner', 'Horner 1819'], ['Estrin', 'Estrin 1960']],
+     'comparison rows carry their references');
+  check(comparisonTable(withResult(BASE)).every(r => !r.ref || (typeof r.ref.cite === 'string' && r.ref.cite.length > 20)), 'every reference has a citation line');
   const bres = reduce(reduce(withResult(BASE), { type: 'setSrc', src: ' ' }), { type: 'setMode', mode: 'Q' });
   check(!bres.busy && bres.result === null && !showOutput(bres), 'blank-source mode switch still clears the output');
 }
@@ -695,6 +699,48 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(many.filter(t => t.type === 'var').length === 63 && many.filter(t => t.type === 'num').length >= 60, 'dense degree-63 example: 63 powers, 60+ numbers');
   check(!tokenizePoly('1/2x^2').some(t => t.type === 'text'), 'valid syntax produces no plain-text tokens');
   check(!tokenizePoly(examplesFor('gf64', 13)[0].src).some(t => t.type === 'text'), 'hex key polynomials produce no plain-text tokens');
+}
+
+// ---- the numeric methods in their own worker --------------------------------
+{
+  eq(compileMessages(inMode('Q')).map(m => m.part), ['main', 'numeric'], 'ℚ compiles in two workers');
+  eq(compileMessages(inMode('R')).map(m => m.part), ['main', 'numeric'], 'ℝ compiles in two workers');
+  eq(compileMessages(inMode('gf64')).map(m => m.part), ['main'], 'GF(2^k) needs only the main worker');
+  eq(compileMessages(inMode('p89')).map(m => m.part), ['main'], 'Mersenne needs only the main worker');
+  const pend = name => ({ name, ok: false, pending: true, note: 'computing…' });
+  const MAIN = deepFreeze({ ...RESULT, comparisons: [row('Horner'), row('Estrin'), pend('Knuth–Eve'), pend('Pan')] });
+  const NUMERIC = deepFreeze({ comparisons: [row('Knuth–Eve', { exact: false }), { name: 'Pan', ok: false, note: 'degree too low' }] });
+  const started = reduce(inMode('Q'), { type: 'compile' });          // job 2
+  const main = reduce(started, { type: 'reply', id: started.jobId, part: 'main', ok: true, result: MAIN });
+  check(!main.busy && main.result === MAIN && methodTabs(main).find(t => t.key === 'Pan').pending && methodTabs(main).find(t => t.key === 'Pan').enabled,
+        'the main reply lands with the numeric rows pending (and selectable)');
+  eq(comparisonTable(main).filter(r => r.pending).map(r => r.name), ['Knuth–Eve', 'Pan'], 'pending rows in the table');
+  const onPan = reduce(main, { type: 'setMethod', method: 'Pan' });
+  check(onPan.method === 'Pan' && pendingRow(onPan)?.name === 'Pan' && selectedRow(onPan) === null && paneContent(onPan).kind === 'pending' &&
+        stats(onPan).length === 0, 'a pending method can be selected: the pane shows it is computing, no stats');
+  const filled = reduce(onPan, { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: NUMERIC });
+  check(!filled.result.comparisons.some(r => r.pending) && comparisonRow({ ...filled, method: 'Knuth–Eve' })?.exact === false &&
+        filled.result.comparisons.find(r => r.name === 'Pan').note === 'degree too low' && filled.result.comparisons[0] === MAIN.comparisons[0],
+        'the numeric reply fills the placeholders and keeps the other rows');
+  check(filled.method === 'Pan' && paneContent(filled) !== null && paneContent(filled).kind !== 'pending' && selectedRow(filled) === filled.result,
+        'a selected method that turned out unavailable falls through to ours in the pane');
+  check(reduce(main, { type: 'reply', id: started.jobId - 1, part: 'numeric', ok: true, result: NUMERIC }) === main, 'a stale numeric reply is ignored');
+  const failedNum = reduce(main, { type: 'reply', id: started.jobId, part: 'numeric', ok: false, message: 'boom' });
+  eq(failedNum.result.comparisons.slice(2).map(r => [r.ok, r.note]), [[false, 'boom'], [false, 'boom']], 'a failed numeric worker leaves explained rows');
+  // numeric first, main second: the rows wait in lateNumeric
+  const early = reduce(started, { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: NUMERIC });
+  check(early.busy && JSON.stringify(early.lateNumeric) === JSON.stringify(NUMERIC.comparisons) && early.result === started.result, 'an early numeric reply waits for the main one');
+  const early2 = reduce(reduce(started, { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: { comparisons: [NUMERIC.comparisons[0]] } }),
+                        { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: { comparisons: [NUMERIC.comparisons[1]] } });
+  check(early2.lateNumeric.length === 2 && !reduce(early2, { type: 'reply', id: started.jobId, part: 'main', ok: true, result: MAIN }).result.comparisons.some(r => r.pending),
+        'per-method numeric replies accumulate while waiting');
+  const one = reduce(main, { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: { comparisons: [NUMERIC.comparisons[0]] } });
+  check(one.result.comparisons[2].ok && one.result.comparisons[3].pending, 'a per-method numeric reply fills only its row');
+  const both = reduce(early, { type: 'reply', id: started.jobId, part: 'main', ok: true, result: MAIN });
+  check(!both.busy && both.lateNumeric === null && !both.result.comparisons.some(r => r.pending) && both.result.comparisons[2].exact === false,
+        'the main reply merges the waiting numeric rows');
+  check(reduce(early, { type: 'cancel' }).lateNumeric === null, 'cancel drops waiting numeric rows');
+  check(methodAvailable(MAIN, 'Pan') && !methodAvailable(NUMERIC.comparisons && { comparisons: NUMERIC.comparisons }, 'Pan'), 'pending counts as available; a failed row does not');
 }
 
 // ---- boot state per layout, and what the panes render from ----------------

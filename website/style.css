@@ -206,6 +206,21 @@ button.cancel {
 
 #error { color: #b03030; margin-top: .8rem; white-space: pre-wrap; }
 
+/* a numeric method (Knuth–Eve, Pan) still computing in its own worker: a
+   small ring on its chip, its table row and — if selected — the pane */
+.spinner {
+  display: inline-block; width: .75em; height: .75em; margin-left: .4em; vertical-align: -.05em;
+  border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-top-color: var(--muted); } }
+.seg.methods button.pending { color: var(--muted); }
+table.cmp td.pending { color: var(--muted); font-style: italic; }
+table.cmp td.pending .spinner { margin-left: 0; margin-right: .3em; }
+.pending-pane { padding: 1.2rem 1.1rem; color: var(--muted); font-style: italic; }
+.pending-pane .spinner { margin: 0 .5em 0 0; }
+
 /* method chips */
 .seg.methods { flex-wrap: wrap; display: inline-flex; }
 .seg.methods button { display: inline-grid; }
@@ -374,6 +389,17 @@ table.cmp tbody tr.off { cursor: default; color: var(--muted); }
 table.cmp tbody tr.off:hover td { background: none; }
 table.cmp td.na { text-align: left; }
 table.cmp .why { font-size: .78rem; white-space: normal; }
+table.cmp a.ref { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--muted); }
+table.cmp a.ref:hover { color: var(--accent); border-bottom-color: var(--accent); }
+table.cmp .ref-no { color: var(--muted); font-size: .62rem; margin-left: .15rem; font-weight: 400; }
+/* the references behind the methods, numbered as in the method cells */
+.refs {
+  max-width: 40rem; margin: .7rem auto 0; padding-left: 1.4rem;
+  color: var(--muted); font-size: .74rem; line-height: 1.4;
+}
+.refs li { padding-left: .15rem; margin-bottom: .12rem; }
+.refs a { color: inherit; text-decoration: none; }
+.refs a:hover { color: var(--accent); text-decoration: underline; }
 table.cmp th .abbr { display: none; }
 @media (max-width: 480px) {                 /* phones: compact headers + padding, the wrapper still scrolls if needed */
   table.cmp { font-size: .82rem; }
@@ -486,5 +512,6 @@ button.share:hover { border-color: var(--accent); }
   .cmp-card[open] summary { border-bottom: 1px solid var(--border); }
   .cmp-card[open] summary::after { transform: rotate(-135deg); margin-top: .25rem; }
   .cmp-card .foot { margin: 0; padding: .5rem .5rem .8rem; }
+  .cmp-card .refs { padding-left: 1.2rem; font-size: .72rem; }
   .cmp-card table.cmp { max-width: none; }
 }

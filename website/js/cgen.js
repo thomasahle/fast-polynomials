@@ -24,19 +24,20 @@
 // means 'p89'.
 import { Rat } from './rat.js';
 import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
+import { referenceFor } from './references.js';
 
 export { ratToDouble, MERSENNE89 };
 /** License of the generated C (one line; the bundle's README repeats it). */
 export const C_LICENSE = 'License: 0BSD. Use freely; no attribution required.';
+// (the paper itself is cited by every file's Reference line, see cSourceHeader)
 const PROVENANCE_LINES = [
   'Code generated from https://thomasahle.com/fast-polynomials/',
-  'For details, see "Fast Evaluation of Polynomials with Rational Preprocessing"',
-  'by Thomas Ahle and Jakob Knudsen.',
   C_LICENSE,
 ];
 const docBlock = lines => ['/**', ...lines.map(l => (l ? ` * ${l}` : ' *')), ' */'].join('\n');
 /** Header of every generated C file: provenance and license, then (per file)
- *  the polynomial, the field, the multiplication count and how to compile. */
+ *  the polynomial, the field, the multiplication count, the reference and how
+ *  to compile. */
 export const C_PROVENANCE = docBlock(PROVENANCE_LINES);
 export const cFileHeader = (extra = []) => docBlock(extra.length ? [...PROVENANCE_LINES, '', ...extra] : PROVENANCE_LINES);
 const PROVENANCE_START = C_PROVENANCE.slice(0, -'\n */'.length);
@@ -47,15 +48,17 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
  *  ASCII line; polyToString uses · and −), the field, the method with its
  *  multiplication count (Horner's alongside when known), the number of
  *  preprocessed constants, and the compile line(s).  Every emitter uses it. */
-export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [] }) {
+export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [], reference = null }) {
   const lines = [];
   if (poly) lines.push(`P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}`);
   let summary = `Field: ${field}.  ${method}`;
   if (mults !== null) summary += `: ${plural(mults, 'multiplication')}${horner !== null ? ` (Horner: ${horner})` : ''}`;
   if (constants > 0) summary += `, ${plural(constants, 'preprocessed constant')}`;
   lines.push(`${summary}.`);
+  if (reference) lines.push(`Reference: ${reference.cite ?? reference}${reference.url ? ` ${reference.url}` : ''}`);
   return cFileHeader([...lines, ...[].concat(compile)]);
 }
+const OURS = referenceFor('This paper');
 /** Table of preprocessed constants: named after the function (eval_P -> P_a) so
  *  two generated files can share a translation unit. */
 const tableName = (fn, kind) => `${String(fn).replace(/^eval_/, '')}_${kind}`;
@@ -309,7 +312,7 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   };
   const usesSquare = !!G.square && spec.gates.some(g => cFactor(g.l) === cFactor(g.r));
   const L = [cSourceHeader({ poly, field: `GF(2^${G.k})`, method: 'This paper', mults,
-    horner: deg - 1 + (scaleBy !== null ? 1 : 0), constants: nkeys, compile: G.compile })];
+    horner: deg - 1 + (scaleBy !== null ? 1 : 0), constants: nkeys, compile: G.compile, reference: OURS })];
   L.push(...G.header(usesSquare ? `${G.square}(` : 'no square').split('\n'));
   L.push('');
   L.push(`/* preprocessed constants (the paper's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
@@ -631,7 +634,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
 
   const mults = chain.gates.length + (scaleBy !== null ? 1 : 0);
   const header = (field, compile) =>
-    cSourceHeader({ poly, field, method: 'This paper', mults, horner, constants: consts.length, compile });
+    cSourceHeader({ poly, field, method: 'This paper', mults, horner, constants: consts.length, compile, reference: OURS });
   const L = [];
   const gateLabels = chain.gate_labels ?? null;
   const labelLine = i => {
@@ -801,7 +804,8 @@ function chainMode(mode, F) {
  *  (the method's preprocessing label; a constants table is emitted when it is
  *  not 'none' — always in the prime-field modes), constants ('auto'|'table'|'inline'). */
 export function methodChainC(lines, mode, F, { name = 'method', mults = null, cstyle = 'float',
-                                               preprocessing = null, constants = 'auto', fn = 'eval_P', poly = null } = {}) {
+                                               preprocessing = null, constants = 'auto', fn = 'eval_P', poly = null,
+                                               reference = referenceFor(name) } = {}) {
   mode = chainMode(mode, F);
   const isPrime = mode in PRIME_OPS;
   const isGF = /^gf\d+$/.test(mode);
@@ -894,7 +898,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   else if (header === null) header = PRIME_OPS[mode].header(fnText);
   else if (usesLdexp) header = '#include <math.h>\n' + header;
   const field = isGF ? `GF(2^${G.k})` : isPrime ? PRIME_OPS[mode].banner : `${mode === 'R' ? 'R' : 'Q'}, evaluated in double precision`;
-  const L = [cSourceHeader({ poly, field, method: name, mults, constants: useTable ? table.length : 0, compile }), header, ''];
+  const L = [cSourceHeader({ poly, field, method: name, mults, constants: useTable ? table.length : 0, compile, reference }), header, ''];
   if (useTable && table.length) {
     L.push('/* preprocessed constants */');
     L.push(`static const ${T} ${tbl}[${table.length}] = {`);

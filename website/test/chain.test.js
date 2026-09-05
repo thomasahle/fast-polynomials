@@ -2,7 +2,7 @@
 // and gate-label provenance invariants of the char-0 chain builder.
 import { decode, rationals, GF, compile_paper_params_chain } from '../js/char0/core.js';
 import { renderAffineChain, renderGateChain, chainToText, paperWireNames, gateGroups, wireLetter, countOps,
-         formatConstants, toSigDigits } from '../js/chain.js';
+         formatConstants, toSigDigits, foldConstants, factorize } from '../js/chain.js';
 import { CIRCUITS } from '../js/char2.js';
 import { GF2k } from '../js/field.js';
 import { Rat } from '../js/rat.js';
@@ -75,6 +75,25 @@ const c = renderGateChain(F2, spec, keys, { names: 'letters', group: true });
 check(a[0].lhs === 'y' && b[0].lhs === 'y0' && b[1].rhs.includes('y0') && !b[1].rhs.includes('(y +'), 'char2 index renaming');
 check(JSON.stringify(a) === JSON.stringify(c), 'char2 group without labels is a no-op');
 check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 output line');
+
+// ---- factorize folds the constants an inlined affine wire brings along ---------
+{
+  const ke = factorize([
+    { lhs: 'y', rhs: 'x + 0.6277364', mul: false },
+    { lhs: 'w', rhs: 'y * y', mul: true },
+    { lhs: 'f0', rhs: '(y - 4.392765911111) * (w + 7.564986624894)', mul: true },
+    { lhs: 'P', rhs: 'f0 + 0.2256435388577', mul: false },
+  ]);
+  check(ke[1].rhs === '(x − 3.765029511111) * (w + 7.564986624894)', `decimal constants fold after inlining: ${ke[1].rhs}`);
+  const ex = factorize([
+    { lhs: 'y', rhs: 'x + 3/2', mul: false },
+    { lhs: 'z', rhs: '(y - 1/2) * (y + 1)', mul: true },
+    { lhs: 'P', rhs: 'z + 2 - 2', mul: false },
+  ]);
+  check(ex[0].rhs === '(x + 1) * (x + 5/2)' && ex[1].rhs === 'z', `exact constants fold as rationals; a zero sum vanishes: ${ex.map(l => l.rhs).join(' | ')}`);
+  check(JSON.stringify(foldConstants([{ neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '3' }] }])) ===
+        JSON.stringify([{ neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '3' }] }]), 'a single constant is left alone');
+}
 
 // ---- countOps: the footer counts exactly what the displayed form shows ----------
 {
