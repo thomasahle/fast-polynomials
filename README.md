@@ -1,16 +1,39 @@
 # Fast Polynomials
 
-Code, proofs, and experiments for the paper
+Evaluate a polynomial of degree *n* with about *n*/2 multiplications instead of
+Horner's *n*, after a one-time, exact preprocessing of its coefficients.
+
+This repository holds the code, proofs and experiments behind the paper
 *Fast Evaluation of Polynomials with Rational Preprocessing* by Thomas D. Ahle
-and Jakob B. T. Knudsen.
+and Jakob B. T. Knudsen (2026): the manuscript, its Lean 4 formalization, a
+reference compiler with explicit decoders, a browser-based compiler that emits
+C, and the benchmark programs used in the experiments.
 
-**[Try the interactive polynomial compiler](https://thomasahle.com/fast-polynomials/)**
+**Try it in the browser: <https://thomasahle.com/fast-polynomials/>** — type a
+polynomial, pick a field, and read off the evaluation chain as mathematics, as
+C code, or as a circuit graph, next to Horner, Estrin, Rabin–Winograd,
+Knuth–Eve and Pan on the same input.
 
-Given a polynomial, this project preprocesses its coefficients into a
-straight-line evaluation program with substantially fewer field multiplications
-than Horner's rule. The repository contains the paper, its Lean formalization, a
-reference compiler with explicit decoders, generated C kernels, and the benchmark
-programs used in the experiments.
+## An example
+
+The probabilists' Hermite polynomial `He_7 = x^7 − 21x^5 + 105x^3 − 105x` takes
+six multiplications by Horner's rule. The compiler turns it into
+
+```text
+y0 = x · (x − 154)
+y1 = (x + y0 + 23398) · (x + 153)
+y2 = (y1 − 3579895) · x
+y3 = (x + y1 − 3579894) · (y2 − 5)
+P  = y0 + y2 + y3
+```
+
+four multiplications and ten additions. The five constants come from the
+coefficients through an explicit decoder — a few divisions and a small
+triangular solve, no root finding — and are exact rationals (here integers).
+The same chain works over ℚ, over the reals in double precision, over Mersenne
+prime fields, and over the binary fields GF(2^32), GF(2^64) and GF(2^128) that
+carry-less hashing uses; the website emits ready-to-compile C for each, with
+PCLMULQDQ / PMULL and Mersenne kernels included.
 
 ## Main result
 
@@ -45,6 +68,16 @@ one-product even lifts, covering every degree 5–16. A formal lower bound is al
 included, but a uniform all-degree upper bound remains open. See the examples in
 [`sections/appendix_polynomials.tex`](sections/appendix_polynomials.tex) and the
 discussion in [`sections/open_problems.tex`](sections/open_problems.tex).
+
+## What is where
+
+| You want to… | Start at |
+| --- | --- |
+| compile a polynomial and get C | the [website](https://thomasahle.com/fast-polynomials/), or `website/` locally (no build step) |
+| read the constructions and proofs | `main.tex` + `sections/`; build with `latexmk` (below) |
+| check the proofs mechanically | `FastPoly/` (Lean 4 + Mathlib; `lake build FastPoly`) |
+| script the compiler | `tools/poly_schedule.py`, `tools/polychain.py` |
+| reproduce the benchmarks | `tools/bench/` |
 
 ## Quick start
 
@@ -104,7 +137,9 @@ The project pins its Lean toolchain and uses Mathlib through Lake:
 lake build FastPoly  # constructions, costs, height, and both lower bounds
 ```
 
-`FastPoly.lean` is the umbrella import. The development formalizes the recovery
+`FastPoly.lean` is the umbrella import. The build described here was verified at
+commit `4be4943`; the umbrella is being refactored and a tagged commit will be
+named in the final version. The development formalizes the recovery
 calculus, recursive constructions, fixed straight-line programs and their costs,
 multiplicative-depth bounds, the general degree-six lower bound, and the
 characteristic-two lower bound (including its one-gate sharpness example).
@@ -150,7 +185,8 @@ contains the appropriate compile flags and an assembly-inspection script.
   parameterized families.
 - `tools/bench/` — architecture-specific experiments and application benchmarks.
 - `tools/gen_x2s_*.py` — regenerate the benchmark chain headers.
-- `website/` — dependency-free browser compiler and C-code generator.
+- `website/` — dependency-free browser compiler and C-code generator (its
+  generated C is 0BSD-licensed; see [`website/README.md`](website/README.md)).
 
 ## Proof and experiment policy
 
@@ -163,9 +199,11 @@ bundle on the target machine before drawing performance conclusions.
 
 ## Citation
 
-Please cite *Fast Evaluation of Polynomials with Rational Preprocessing* when
-using these constructions or the accompanying software. A stable arXiv citation
-will be added here when available.
+Please cite *Fast Evaluation of Polynomials with Rational Preprocessing*
+(Thomas D. Ahle and Jakob B. T. Knudsen, 2026) when using these constructions or
+the accompanying software. The manuscript is arXiv submission
+[submit/8036575](https://arxiv.org/abs/submit/8036575); the permanent arXiv
+identifier and a BibTeX entry will replace this line once it is announced.
 
 ## License
 

@@ -30,6 +30,7 @@ import { html, render, useReducer, useState, useEffect, useMemo, useRef } from '
 import { highlightC } from './highlight.js';
 import { cBundleArchive, hasCBundle } from './cbundle.js';
 import { fetchStars } from './github-stars.js';
+import { toggleTheme, label as labelThemeToggle } from './theme.js';
 import { chainMathRows, renderLatex } from './mathview.js';
 import {
   reduce, initialStateFor, presentedState, stateFromHash, hashFromState, VIEWS, examplesFor,
@@ -348,7 +349,8 @@ function CompactIntro() {
       functions like exp, sin and cos, or for the polynomials of hashing, cryptography and
       coding theory. Type a polynomial, pick a field, and read off the evaluation chain.</p>
     <nav class="quick-links" aria-label="paper and source">
-      <a href="#" title="arXiv link to follow">
+      <a href="https://arxiv.org/abs/submit/8036575" target="_blank" rel="noopener noreferrer"
+        title="arXiv submission 8036575 (the permanent identifier follows on announcement)">
         <svg class="doc-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
           stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
           <path d="M5.5 2.5h9l4 4v15h-13z" /><path d="M14.5 2.5v4h4" />
@@ -362,8 +364,19 @@ function CompactIntro() {
         ${stars !== null && html`<span class="stars">
           <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="currentColor"><path d=${STAR_MARK} /></svg>
           ${new Intl.NumberFormat().format(stars)}</span>`}</a>
+      <${ThemeToggle} />
     </nav>
   </div>`;
+}
+
+/** Day / night button (phones); the desktop header has the static twin in index.html. */
+function ThemeToggle() {
+  const ref = useRef(null);
+  useEffect(() => { if (ref.current) labelThemeToggle(ref.current); }, []);
+  return html`<button class="theme-toggle" type="button" ref=${ref} data-theme-toggle onClick=${toggleTheme}>
+    <svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+    <svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" /></svg>
+  </button>`;
 }
 
 // the GitHub mark and star, as in the desktop header (index.html)

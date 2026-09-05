@@ -318,6 +318,9 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
     { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: seriesTitle('eˣ'), src: seriesSrc('exp') },
     { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: seriesTitle('ln(1+x)'), src: seriesSrc('ln') },
     { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: seriesTitle('√(1+x)'), src: seriesSrc('sqrt') },
+    { key: 'hermite', label: `He_${n}`, labelTex: `\\mathrm{He}_{${n}}`,
+      title: `the probabilists' Hermite polynomial He_${n} (monic with integer coefficients at every degree)`,
+      src: ratPolyToSrc(hermiteCoeffs(n)) },
   ];
   const k = n + 1;
   return [
@@ -337,17 +340,35 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   ];
 }
 
+/** Probabilists' Hermite polynomial He_n: He_0 = 1, He_1 = x, He_{n+1} = x·He_n − n·He_{n−1}
+ *  (monic, integer coefficients; the desktop's opening example at degree 7). */
+function hermiteCoeffs(n) {
+  let prev = [1n], cur = [0n, 1n];
+  if (n === 0) return prev.map(c => new Rat(c));
+  for (let k = 1; k < n; k++) {
+    const next = Array(k + 2).fill(0n);
+    cur.forEach((c, i) => { next[i + 1] += c; });
+    prev.forEach((c, i) => { next[i] -= BigInt(k) * c; });
+    [prev, cur] = [cur, next];
+  }
+  return cur.map(c => new Rat(c));
+}
+
 /** The example a mode opens with (the dense polynomial; the first chip in char 0). */
 export function defaultExample(mode, degree, seed = 0, monic = false) {
   const exs = examplesFor(mode, degree, seed, monic);
   return exs.find(e => e.key === 'dense') ?? exs[0] ?? null;
 }
 
+// The desktop opens on ℚ with He_7: four multiplications against Horner's six,
+// and preprocessed constants of at most seven digits (the Taylor chips at
+// degree 7 have constants of a hundred digits).  Phones: initialStateFor.
+const OPENING = examplesFor('Q', 7, 0, true).find(e => e.key === 'hermite');
 export const initialState = Object.freeze({
-  mode: 'gf64',
-  src: defaultExample('gf64', 10).src,   // every degree 1..26 compiles over GF(2^k), so degree 10 as is
-  exDegree: 10,
-  exKey: 'dense',
+  mode: 'Q',
+  src: OPENING.src,
+  exDegree: 7,
+  exKey: OPENING.key,
   exSeed: 0,
   exMonic: true,
   busy: false,

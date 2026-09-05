@@ -10,8 +10,11 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 ## Structure
 
 - `index.html`, `style.css` — the page (no build step; Preact + htm and KaTeX vendored). One card:
-  example chips (Taylor polynomials over ℚ/ℝ — with monic on, the degree-(n−1) Taylor
-  polynomial plus xⁿ, so the series' coefficients stay recognisable; over the hashing fields a random key —
+  example chips (over ℚ/ℝ: Taylor polynomials — with monic on, the degree-(n−1) Taylor
+  polynomial plus xⁿ, so the series' coefficients stay recognisable — and the probabilists'
+  Hermite polynomial Heₙ, monic with integer coefficients at every degree; the desktop opens
+  on He₇, whose chain has four multiplications and constants of at most seven digits;
+  over the hashing fields a random key —
   a fresh draw per click —, sparse, dense and a fixed reproducible key, all regenerated
   at the chosen degree) → the polynomial input (highlighted through a transparent
   textarea over a painted backdrop) → the field chooser, rendered from the `FIELDS`
@@ -69,6 +72,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 - `js/graph.js`, `js/graphview.js` — computational-graph IR (× and + nodes) and its
   layered SVG layout / text listing
 - `js/highlight.js` — dependency-free C tokenizer / syntax highlighter for the code pane
+- `js/theme.js` — the day / night choice: remembered in localStorage (index.html applies it
+  before first paint), toggled by the header button and the phone intro's twin, painted through
+  `<html data-theme>` (style.css follows the system preference otherwise)
 - `js/mathview.js` — display-only conversion of the generated chain grammar to
   aligned TeX rows; KaTeX renders them with MathML while Copy preserves the exact
   canonical plain text

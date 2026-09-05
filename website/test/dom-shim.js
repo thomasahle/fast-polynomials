@@ -57,10 +57,16 @@ class ShimElement extends ShimNode {
     const list = () => this.className.split(/\s+/).filter(Boolean);
     return { contains: c => list().includes(c), toString: () => this.className };
   }
+  /** A live view of the data-* attributes (reads, writes and deletes). */
   get dataset() {
-    const d = {};
-    for (const [k, v] of this.attributes) if (k.startsWith('data-')) d[k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v;
-    return d;
+    const attr = k => 'data-' + k.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+    const attrs = this.attributes;
+    return new Proxy({}, {
+      get: (_, k) => (typeof k === 'string' ? attrs.get(attr(k)) : undefined),
+      set: (_, k, v) => { attrs.set(attr(k), String(v)); return true; },
+      deleteProperty: (_, k) => { attrs.delete(attr(k)); return true; },
+      has: (_, k) => attrs.has(attr(k)),
+    });
   }
   get firstChild() { return this.childNodes[0] ?? null; }
   get lastChild() { return this.childNodes[this.childNodes.length - 1] ?? null; }
@@ -154,6 +160,9 @@ class ShimDocument {
   querySelector(s) { return this.documentElement.querySelector(s); }
   querySelectorAll(s) { return this.documentElement.querySelectorAll(s); }
   execCommand() { return true; }
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() { return true; }
 }
 
 /** The Web Worker stand-in: records posted messages, never replies. */
@@ -172,9 +181,10 @@ export function installDom({ compact = false, hash = '' } = {}) {
   document.body.appendChild(app);
   const mql = { matches: compact, media: '(max-width: 640px)', listeners: [],
     addEventListener(_, fn) { this.listeners.push(fn); }, removeEventListener(_, fn) { this.listeners = this.listeners.filter(f => f !== fn); } };
+  const dark = { matches: false, media: '(prefers-color-scheme: dark)', addEventListener() {}, removeEventListener() {} };
   Object.assign(globalThis, {
     document, window: globalThis, location: { hash, href: `http://localhost/${hash}` },
-    matchMedia: () => mql, Worker: ShimWorker, innerHeight: 800,
+    matchMedia: q => (q.includes('max-width') ? mql : dark), Worker: ShimWorker, innerHeight: 800,
     fetch: () => Promise.reject(new Error('offline in the test shim')),
     // preact flushes effects on the next frame; without rAF it waits 100 ms
     requestAnimationFrame: cb => setTimeout(cb, 0), cancelAnimationFrame: id => clearTimeout(id),

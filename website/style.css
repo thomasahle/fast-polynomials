@@ -42,6 +42,23 @@ body {
   font: 16px/1.55 Charter, Georgia, 'Times New Roman', serif;
 }
 .wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+/* day / night: one button shows the theme it would switch TO — the moon while
+   the page is light, the sun while it is dark (system preference or explicit) */
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.1rem; height: 2.1rem; padding: 0; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--ink);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: inline; }
+:root[data-theme="dark"] .theme-toggle .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .sun { display: inline; }
+  :root:not([data-theme="light"]) .theme-toggle .moon { display: none; }
+}
+
 /* two-column header: title + intro left, "Read the paper" card right; stacks when narrow */
 header {
   display: flex; flex-wrap: wrap; gap: 1.25rem 2.5rem; align-items: flex-start;
@@ -51,6 +68,9 @@ header .head-main { flex: 1 1 24rem; min-width: 0; }
 header h1 { font-size: 1.9rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
 header .sub { color: var(--muted); margin: 0; max-width: 44rem; }
 header .sub a { color: var(--accent); }
+/* the header's right column: paper card above, GitHub + the day / night toggle
+   on one line below */
+.header-links .row { display: flex; gap: .45rem; justify-content: flex-end; align-items: center; }
 header .sub .ours { color: var(--ink); font-style: normal; font-weight: 700; }
 .header-links {
   flex: 0 1 21rem; display: flex; flex-direction: column; gap: .55rem;
@@ -66,7 +86,7 @@ header .sub .ours { color: var(--ink); font-style: normal; font-weight: 700; }
 .paper-card b { display: block; margin-bottom: .1rem; }
 .paper-card .paper-txt > span { color: var(--muted); }
 .github-link {
-  align-self: flex-end; display: inline-flex; align-items: center; gap: .4rem;
+  display: inline-flex; align-items: center; gap: .4rem;
   color: var(--ink); text-decoration: none; font: 700 .82rem/1.2
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   padding: .38rem .58rem; border: 1px solid var(--border); border-radius: 7px;
@@ -394,6 +414,7 @@ button.share:hover { border-color: var(--accent); }
   .intro-compact .sub { display: block; font-size: .98rem; line-height: 1.45; }
   .quick-links { display: flex; align-items: center; gap: 1.4rem; margin-top: .6rem; font-size: 1.05rem; }
   .quick-links a { display: inline-flex; align-items: center; gap: .4rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .quick-links .theme-toggle { margin-left: auto; width: 2rem; height: 2rem; }
   .quick-links .stars {
     display: inline-flex; align-items: center; gap: .25rem; margin-left: .2rem; padding-left: .5rem;
     border-left: 1px solid var(--border); color: var(--muted); font-weight: 400; font-size: .92rem;

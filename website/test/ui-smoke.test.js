@@ -171,8 +171,8 @@ check(uiSrc.includes('navigator.clipboard') && uiSrc.includes("execCommand('copy
       'clipboard write has an execCommand fallback');
 
 const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-check(indexSrc.includes('id="paper-card"') && indexSrc.includes('title="arXiv link to follow"'),
-  'header paper card exposes the intentional pre-publication placeholder');
+check(indexSrc.includes('id="paper-card"') && indexSrc.includes('href="https://arxiv.org/abs/submit/8036575"') && uiSrc.includes('href="https://arxiv.org/abs/submit/8036575"'),
+  'the paper card and the phone Paper link point at the arXiv submission');
 check(indexSrc.includes('<b>Fast Evaluation of Polynomials with Rational Preprocessing</b>'),
       'paper card heading');
 check(indexSrc.includes('js/vendor/katex/katex.min.css') &&
@@ -209,29 +209,29 @@ const replyToLatest = async () => {
   await import('../js/ui.js?layout=desktop');
   await settle();
   const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
-  check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'gf64',
-        'desktop boots on the initial example with its field pill on');
-  eq($$('#examples a.chip').map(c => c.dataset.ex), ['random', 'sparse', 'dense', 'fixed'], 'desktop shows every chip');
+  check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'Q',
+        'desktop boots on the initial example (He_7 over ℚ) with its field pill on');
+  eq($$('#examples a.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'hermite'], 'desktop shows every chip');
   check($('#monic') && $('#degree') && $('.head-row #share') && !$('#pickers') && !$('.intro-compact'),
         'desktop has the monic toggle, degree stepper and Share in the head row; no dropdowns or phone intro');
   check(ShimWorker.instances.length === 1 && messageCount() === 1 &&
-        JSON.stringify(lastMessage()) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char2', fieldMode: 'gf64' }),
+        JSON.stringify(lastMessage()) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q' }),
         'the first load compiles the initial example through one worker');
   check($('#busy') && $('#cancel'), 'the busy row with Cancel shows while a job runs');
   $('#cancel').click(); await settle();
   check(ShimWorker.instances[0].terminated && !$('#busy'), 'Cancel terminates the worker and clears the busy row');
 
-  $('a.chip[data-ex="sparse"]').click(); await settle();
-  check($('#poly-in').value === examplesFor('gf64', 10, 0, true).find(e => e.key === 'sparse').src &&
+  $('a.chip[data-ex="ln"]').click(); await settle();
+  check($('#poly-in').value === examplesFor('Q', 7, 0, true).find(e => e.key === 'ln').src &&
         lastMessage()?.src === $('#poly-in').value, 'a chip fills the input and compiles it');
   const before = messageCount();
   $('#deg-plus').click(); await settle();
-  check($('.deg-n').textContent === 'degree 11' && messageCount() === before + 1 &&
-        lastMessage().src === examplesFor('gf64', 11, 0, true).find(e => e.key === 'sparse').src,
+  check($('.deg-n').textContent === 'degree 8' && messageCount() === before + 1 &&
+        lastMessage().src === examplesFor('Q', 8, 0, true).find(e => e.key === 'ln').src,
         'the degree stepper regenerates the held chip and compiles');
   $('#monic').click(); await settle();
   check(!$('#monic').classList.contains('on') && $('#monic').getAttribute('aria-pressed') === 'false' &&
-        $('#poly-in').value === examplesFor('gf64', 11, 0, false).find(e => e.key === 'sparse').src,
+        $('#poly-in').value === examplesFor('Q', 8, 0, false).find(e => e.key === 'ln').src,
         'the monic toggle regenerates the held chip with monic off');
   $('#monic').click(); await settle();
 
@@ -244,8 +244,8 @@ const replyToLatest = async () => {
   $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
   check(lastMessage().src === 'x^4 + 1', 'Cmd/Ctrl+Enter compiles at once');
 
-  $('#mode button[data-mode="Q"]').click(); await settle();
-  check($('#mode button.on')?.dataset.mode === 'Q' && lastMessage().lane === 'char0' && lastMessage().fieldMode === 'Q' &&
+  $('#mode button[data-mode="gf64"]').click(); await settle();
+  check($('#mode button.on')?.dataset.mode === 'gf64' && lastMessage().lane === 'char2' && lastMessage().fieldMode === 'gf64' &&
         $('#poly-in').value === 'x^4 + 1', 'a field pill switches the field and recompiles typed text as typed');
 
   // a real result through the worker: the output, its tabs and the table appear
@@ -267,7 +267,7 @@ const replyToLatest = async () => {
   $('#view-sub a[data-opt="original"]').click(); await settle();
   check($('#view-sub a[data-opt="original"]').classList.contains('on'), 'a sub-option toggles');
   $('#share').click(); await settle();
-  check(location.hash.startsWith('#src=') && location.hash.includes('mode=Q') && $('#share').textContent.includes('copied'),
+  check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied'),
         'Share writes the state hash to the URL and flashes "copied"');
 }
 
@@ -282,6 +282,14 @@ const replyToLatest = async () => {
   check($$('#examples a.chip').length === 3 && !$('#degree') && !$('#monic') && !$('#share') && !$('#mode') && $('.intro-compact'),
         'phones: three chips, no stepper / monic / Share yet, dropdowns instead of pills, the intro');
   eq($$('.quick-links a').map(a => a.textContent.trim().replace(/\s+/g, ' ')), ['Paper', 'GitHub'], 'phone intro links');
+  const toggle = $('.quick-links .theme-toggle');
+  check(toggle && /switch to the dark theme/.test(toggle.getAttribute('aria-label') ?? ''), 'the phone intro has the day / night toggle, offering dark while light');
+  toggle.click(); await settle();
+  check(document.documentElement.dataset.theme === 'dark' && /light theme/.test(toggle.getAttribute('aria-label')), 'the toggle switches to dark and offers light');
+  toggle.click(); await settle();
+  check(document.documentElement.dataset.theme === 'light', 'and back to an explicit light');
+  check(indexSrc.includes('data-theme-toggle') && indexSrc.includes('js/theme.js') && indexSrc.includes("localStorage.getItem('theme')"),
+        'the desktop header has the static toggle, loads theme.js, and applies a remembered theme before first paint');
   check(lastMessage()?.src === boot.src && lastMessage().lane === 'char0', 'phones compile the boot example');
   const sel = $('#mode-select'); sel.value = 'gf64'; sel.dispatch('change'); await settle();
   check($('#poly-in').value === defaultExample('gf64', 5, 0, true).src && lastMessage().fieldMode === 'gf64',
