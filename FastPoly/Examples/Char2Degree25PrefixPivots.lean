@@ -15,11 +15,22 @@ open Polynomial Char2Degree19InnerTail Char2Degree25PrefixCoordinates
 set_option maxHeartbeats 20000
 variable {R : Type*} [CommRing R] [CharP R 2] [Nontrivial R]
 
+private theorem pair_left (a b d : R) : (a + d) + b = (a + b) + d :=
+  add_right_comm a d b
+private theorem pair_right (a b d : R) : a + (b + d) = (a + b) + d :=
+  (add_assoc a b d).symm
+private theorem four_first (a b c e d : R) :
+    (a + d) + b + c + e = (a + b + c + e) + d := by ac_rfl
+private theorem four_second (a b c e d : R) :
+    a + (b + d) + c + e = (a + b + c + e) + d := by ac_rfl
+private theorem four_third (a b c e d : R) :
+    a + b + (c + d) + e = (a + b + c + e) + d := by ac_rfl
+
 theorem keys_increment0 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     keys (increment q 0 delta) = Char2Degree25HighPivots.shift0 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25HighPivots.shift0, Function.update] <;> ac_rfl
+    rfl
 
 theorem increment0_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -31,7 +42,7 @@ theorem keys_increment1 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 1 delta) = Char2Degree25HighPivots.shift1 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25HighPivots.shift1, Function.update] <;> ac_rfl
+    first | rfl | exact pair_left (q 1) (q 2) delta
 
 theorem increment1_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -43,7 +54,7 @@ theorem keys_increment2 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 2 delta) = Char2Degree25HighPivots.shift2 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25HighPivots.shift2, Function.update] <;> ac_rfl
+    first | rfl | exact pair_right (q 1) (q 2) delta
 
 theorem increment2_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -55,7 +66,7 @@ theorem keys_increment3 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 3 delta) = Char2Degree25HighPivots.shift3 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25HighPivots.shift3, Function.update] <;> ac_rfl
+    rfl
 
 theorem increment3_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -67,7 +78,7 @@ theorem keys_increment4 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 4 delta) = Char2Degree25HighPivots.shift4 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25HighPivots.shift4, Function.update] <;> ac_rfl
+    first | rfl | exact four_first (q 4) (q 5) (q 7) (q 20) delta
 
 theorem increment4_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -79,7 +90,10 @@ theorem keys_increment5 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 5 delta) = Char2Degree25SeamFrame.shift5 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25SeamFrame.shift5, Function.update] <;> ac_rfl
+    first
+      | rfl
+      | exact four_second (q 4) (q 5) (q 7) (q 20) delta
+      | exact pair_left (q 5) (q 8) delta
 
 theorem increment5_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -91,7 +105,7 @@ theorem keys_increment6 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 6 delta) = Char2Degree25RowEighteen.shift6 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25RowEighteen.shift6, Function.update] <;> ac_rfl
+    rfl
 
 theorem increment6_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -103,7 +117,7 @@ theorem keys_increment7 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 7 delta) = Char2Degree25RowSeventeen.shift7 (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25RowSeventeen.shift7, Function.update] <;> ac_rfl
+    first | rfl | exact four_third (q 4) (q 5) (q 7) (q 20) delta
 
 theorem increment7_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -115,7 +129,7 @@ theorem keys_increment8 (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
     keys (increment q 8 delta) = Char2Degree25RowSixteen.shift (keys q) delta := by
   funext j
   rcases j with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | j <;>
-    dsimp only [keys, increment, Char2Degree25RowSixteen.shift, Function.update] <;> ac_rfl
+    first | rfl | exact pair_right (q 5) (q 8) delta
 
 theorem increment8_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R) :
     UnitDifference (Char2Degree25Frame.output (keys q))
@@ -124,4 +138,3 @@ theorem increment8_unit (q : Char2Degree25PrefixCoordinates.Vector R) (delta : R
   exact Char2Degree25RowSixteen.shift_unit (keys q) delta
 
 end FastPoly.Char2Degree25PrefixPivots
-

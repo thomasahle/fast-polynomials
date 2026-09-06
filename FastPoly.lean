@@ -61,6 +61,8 @@ import FastPoly.Examples.Chain17Bridge
 import FastPoly.Examples.Char2Inverse
 import FastPoly.Polynomial.MonicEvaluation
 import FastPoly.Examples.Char2SmallInverses
+import FastPoly.Examples.Char2PaperDegree11Realization
+import FastPoly.Examples.Char2PaperDegree13Inverse
 import FastPoly.Examples.Char2Finite
 import FastPoly.Examples.ExplicitEvaluationInverse
 import FastPoly.Examples.Char2UpdateTriangular
@@ -98,6 +100,10 @@ import FastPoly.Examples.Char2Degree25RowEighteen
 import FastPoly.Examples.Char2Degree25RowSeventeen
 import FastPoly.Examples.Char2Degree25RowSixteen
 import FastPoly.Examples.Char2Degree25Program
+import FastPoly.Examples.Char2Degree25HighKeys
+import FastPoly.Examples.Char2Degree25MiddleKeys
+import FastPoly.Examples.Char2Degree25TailCoordinates
+import FastPoly.Examples.Char2Degree25Realization
 import FastPoly.Examples.P15
 import FastPoly.Examples.P27
 import FastPoly.Examples.P27Composition

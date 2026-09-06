@@ -34,8 +34,10 @@ and inspected. Removed proof files have a local recovery archive at
 - The README and coverage appendix point to this entry point instead of only
   the older normal-form theorem. Its axiom audit reports exactly `propext`,
   `Classical.choice`, and `Quot.sound` (the sharpness theorem has the same list).
-- Characteristic-two decoder ports for odd degrees 5–25 are the active next
-  lane. Hashing and numerical-stability appendix results are excluded by
+- Characteristic-two website decoder ports for odd degrees 5–25 are complete.
+  The distinct worked appendix degree11 circuit now has its own completed
+  inverse; website coverage is not used as evidence for that circuit.
+  Hashing and numerical-stability appendix results are excluded by
   Thomas's explicit request; they must not be described as Lean-checked.
 
 ## Characteristic-two decoder ports (2026-09-05)
@@ -64,15 +66,16 @@ not just the larger degrees.
 - `Examples/Char2Construction.lean` connects coefficient vectors to arbitrary
   monic polynomials and proves the one-product even lift using the same
   `Cost.Circuit` syntax. `Examples/Char2Finite.lean` packages all degrees
-  5–24 with exactly `n/2+1` products and is imported by the umbrella.
+  5–25 with exactly `n/2+1` products and is imported by the umbrella.
   It also exposes `degree19/degree20` (10/11 products) and
   `degree21/degree22` (11/12 products) and `degree23/degree24` (12/13 products).
-  The even bases use the one-product lift. The perfect-field assumption is
-  needed for degrees7/17 and their even lifts; degree25 remains pending.
+  `degree25` uses 13 products and its explicit raw-key inverse. The even
+  bases use the one-product lift. The perfect-field assumption is needed
+  for degrees7/17 and their even lifts, not degree25.
 - The older degree-5–15 normalized-family certificates do not by themselves
   assert that every original raw gate-offset vector is uniquely decoded.
   Their arbitrary-polynomial realization theorem is proved; a stronger
-  raw-key-bijection claim needs its own bridge. Degrees17,19,21 and23 now have
+  raw-key-bijection claim needs its own bridge. Degrees17,19,21,23 and25 now have
   those bridges as well, as detailed below.
   The existing `Char2SmallInverses.lean` still supplies the raw-key degree-9
   theorem for the paper's displayed circuit.
@@ -80,12 +83,21 @@ not just the larger degrees.
   and emits kernel-checked coefficient/ring proofs for the completed small
   degrees. Symbolic replay (`--stats`) succeeds through degree 25, but expanded
   Lean source generation is disabled above degree 15: those drafts were too
-  slow and have been archived outside the source tree. The remaining ports
-  must follow the supplied verifiers' named inverse steps.
+  slow and have been archived outside the source tree. The completed larger
+  ports follow the supplied verifiers' named inverse steps instead.
 - `Examples/Char2DecoderSteps.lean` supplies a unit pivot, a dependent block,
   and an explicit self-inverse coordinate update with compositional
   independence lemmas. This is the primitive used by degree 25's supplied
   24-step shear certificate, not a proof of those 24 circuit-specific rows.
+- `Examples/Char2CoefficientShear/Char2CoefficientShearTransport` express
+  a correction as two coefficient reads of the named circuit (pivot zeroed,
+  then future coordinates zeroed), with both inverse compositions and
+  preservation of supplied higher, lower, and same-row unit columns.
+  `Char2CoefficientAction/Char2PivotAction` transport an explicitly supplied
+  coupled update through these shears. Its earlier-coordinate corrections
+  disappear by the normalized coefficient equations; a singleton-support
+  action is proved to be the literal coordinate translation. No expanded
+  correction polynomial, generic solver, or circuit search is used.
 - `Examples/Char2Degree23Terminal.lean` ports the degree-23 verifier's four-row
   terminal block, in both directions, including the known row corrections.
   `Char2Degree23RowEight.lean` proves the actual circuit's row-eight unit
@@ -97,7 +109,7 @@ not just the larger degrees.
   All three new modules have a 20,000-heartbeat limit and are in the umbrella.
   Degree23's preceding scalar pivots and the bridge from circuit coefficients
   to these terminal equations are now checked, as detailed below. Full construction coverage is
-  now 5–24, not yet 5–25.
+  now 5–25.
 - `Examples/Char2UpdateTriangular.lean` constructs the explicit recursive inverse
   from single-coordinate update identities. It proves independence from future
   coordinates by finite resets, then checks both back-substitution compositions.
@@ -134,10 +146,9 @@ not just the larger degrees.
   checked in 1.0s under the same heartbeat cap.
 - `Examples/Char2Degree23Coordinates/Keys.lean` check both directions of the
   complete supplied key-coordinate change, including the circuit-dependent
-  row-eight shear. The row-eight and constant-offset circuit bridge remains
-  separate from the other pending coefficient pivots. These new components
-  are individually checked and imported by the umbrella; degree 23 is not yet
-  a completed construction.
+  row-eight shear. The row-eight and constant-offset circuit bridge is an
+  ingredient of the completed full degree23 inverse and counted realization
+  described below; these components are checked and imported by the umbrella.
 - `Examples/Char2Degree21Coordinates/Frame/Pivots/Leading/KeyUpdates/Inverse`
   check all twenty-one single-coordinate differences and the actual prefix
   decoder, including both compositions on the original raw offsets.
@@ -181,7 +192,7 @@ not just the larger degrees.
   check the shared-wire cancellations (degrees9→7 and15→14) and split the
   output into its five-factor degree-23 part and a monic degree-15 remainder
   (8.1s/2.2s module builds). Both auxiliary modules are now imported. This is
-  structural support, not the still-pending full degree-23 inverse.
+  structural support for the completed full degree23 inverse below.
   `HighDifference/HighPivots`, `SeamDifference/SeamPivots`, and `HighKeys`
   check and transport the first eight pivots to the supplied normalized keys
   (rows22–15). `MiddleFrame/MiddlePivots/MiddleCoordinates/MiddleKeys`
@@ -206,11 +217,41 @@ not just the larger degrees.
 - `Examples/Char2Degree25Frame/HighFrame` check the existing thirteen-product
   circuit's named wires, monicity, and five-quintic high frame, with a monic
   degree20 remainder. `HighDifference/HighPivots`, `SeamFrame`, and
-  `RowEighteen/RowSeventeen/RowSixteen` check the nine supplied raw shifts
-  at rows24 through16, with explicit monic slopes and no whole-output
-  expansion. `Program` checks the literal13-product gate/bind ledger.
-  These helpers are imported; the complete normalized-coordinate transport
-  and coefficient inverse remain pending. The existing exact symbolic verifier
+  `RowEighteen/RowSeventeen/RowSixteen/RowFifteen/RowFourteen/RowThirteen/RowTwelve`
+  check the first thirteen supplied raw shifts, at rows24 through12, with
+  explicit monic slopes and no whole-output expansion. `Program` checks the
+  literal13-product gate/bind ledger. `PrefixCoordinates/PrefixPivots` check
+  the first nine partial coordinate substitutions and their unit columns.
+  `MiddleCoordinates` composes the next four explicit shears, with both
+  raw-key inverse compositions. `MiddleFrame/HighKeys/MiddleKeys` transport
+  all thirteen unit columns through that exact partial map: the first nine
+  use a named degree15 correction bound; the other four use exact raw-key
+  identities. `RowEleven/RowsTenNine/RowEight/RowsSevenSixFive` check the next
+  seven raw directions (rows11–5), including their exact coupled changes,
+  and the constant row. `LowerRawKeys/CoupledLowerKeys` transport them to the
+  partial middle map. `LowerCoordinates/LowerActions/TailCoordinates` then
+  normalize coordinates13–19 by explicit coefficient shears and conjugate
+  the supplied coupled updates through them. The final partial map has
+  **twenty nonconstant unit columns (rows24–5), plus the constant column**,
+  both raw-key inverse compositions, and the actual output/key bridge.
+  `TwentyWires/Bounds`, `TwentyOneWires/Bounds`, `TwentyTwoWires/Bounds`
+  supply exact final-direction differences bounded by degree11.
+  `LateScalars/LateKeys/LatePeel` transport these through the seven existing
+  coefficient shears, reducing their differences to degree4. The generic
+  `Char2CoefficientDegreePeel` proves each single-row reduction; named
+  branch equations and locally opaque circuit families keep elaboration bounded.
+  `TerminalHead/HeadChange/RemainderUnit/TerminalUnits` identify the explicit
+  degree4/3/2 head remainders modulo the fixed monic quintic. `TailRowEleven`
+  preserves the recovered row11; `RowElevenRead/TerminalOne` use it to read
+  the final raw a17 correction and certify the linear remainder for row1.
+  `Coordinates` applies the final row4 shear and supplies **all25 unit
+  columns**. `Char2CoefficientInverse` assembles explicit descending-prefix
+  decoding with both compositions. `Inverse` connects it to ordinary
+  coefficients of the actual raw circuit; `Realization` supplies arbitrary
+  monic targets, the literal13-product program, and explicit evaluation
+  inversion via interpolation. All these helpers are checked and imported
+  at the unchanged20k heartbeat cap. No perfect-field assumption is used
+  by degree25. The existing exact symbolic verifier
   `char2/verify_n25_unitriangular_symbolic.py` was rerun: all24 supplied
   nonconstant pivots and the final scalar passed over GF(2)[keys]. This run
   did not include the wrapper's numerical round-trip tests.
@@ -242,12 +283,53 @@ not just the larger degrees.
   unimported. This retains the previous normalized-coordinate scope; it
   does not assert an additional original-raw-key bijection for degree13.
 
+### Retained appendix circuits: exact raw-key inverses (2026-09-06)
+
+- The degree11 circuit of display (A.0) is **not** the square-first website
+  circuit. `Char2PaperDegree11Core/Top` prove its six named products,
+  monicity and exact rows10–5 using the cancellation of the two final
+  branches and small coefficient windows. `HeadInverse` supplies the two
+  inverse-Frobenius operations of (11.2), with both compositions.
+  `Tail/TailInverse` prove the displayed butterfly identity (11.3), the
+  a6 baseline pivot, and the four explicit inverse formulas (11.4).
+  `Coordinates/CoefficientFrame/Inverse` connect those exact formulas to
+  the original eleven raw keys and ordinary circuit coefficients, in both
+  directions. `Program/Realization` connect them to the literal six-product
+  circuit, arbitrary monic targets and explicit interpolation/evaluation
+  inversion. This completes the degree11 half of
+  `lem:char2-small-staircase-butterfly` over perfect characteristic-two fields.
+  No full circuit expansion or increased20k heartbeat limit is used.
+- `Char2PaperDegree13Inverse` supplies the missing raw-key bridge for
+  `lem:char2-degree13-inverse`. The printed coordinates and Fast13's
+  coordinates differ only by the explicitly displayed earlier-coordinate
+  shear `q9 += q8`. Both linear key-map compositions are checked; each
+  named raw gate is identified with the existing Fast13 circuit. The
+  resulting coefficient inverse and interpolation/evaluation inverse
+  check both compositions on the original thirteen raw keys, over every
+  characteristic-two field. Both completed modules are umbrella imports.
+
 Latest integration check: `nice -n 10 lake build FastPoly FastPoly.LowerBound.Main
 FastPoly.LowerBound.General.Main FastPoly.LowerBound.General.Transport` passed
-with **2156 jobs** after integrating the complete degree17/18 constructions,
-extending the contiguous dispatcher through degree24, and batching the
-checked degree25 raw-pivot/program helpers (14.59s wall, 2.85s user CPU,
-3.53s system CPU; dependencies already built).
+with **2215 jobs** after integrating the retained appendix degree11 and
+degree13 raw-key inverses (12.85s wall, 1.78s user CPU, 2.81s system CPU;
+dependencies already built). Their additional26-declaration axiom audit
+passes with only `propext`, `Classical.choice`, and `Quot.sound`, and no
+`sorryAx`; the final theorem signatures have no undischarged pivot hypotheses.
+The preceding degree25/dispatcher integration passed at2204jobs
+(5.98s wall, 1.70s user CPU, 2.04s system CPU; dependencies prebuilt).
+Full website construction coverage is **5–25**. Its additional23-declaration complete-inverse axiom audit
+passes with only `propext`, `Classical.choice`, and `Quot.sound`, and no
+`sorryAx`. The checked degree25 construction requires only a field of
+characteristic two; the uniform dispatcher retains the perfect-field
+assumption required by degrees7/17.
+The preceding twenty-column integration passed at2179jobs (16.07s wall).
+Its additional24-declaration axiom audit passes with only
+`propext`, `Classical.choice`, and `Quot.sound`, and no `sorryAx`.
+The preceding thirteen-column integration passed at2166jobs (11.47s wall);
+its additional ten-declaration axiom audit passed with only the same three
+standard axioms and no `sorryAx`.
+The preceding degree17 integration passed at2156jobs (14.59s wall) and
+extended the contiguous dispatcher through degree24.
 The preceding fast13/degree23 integration passed at2144jobs (13.94s wall).
 The degree17 integration's additional20-declaration axiom audit passes with
 only `propext`, `Classical.choice`, and `Quot.sound`, and no `sorryAx`.
@@ -258,7 +340,8 @@ the degree21/22 integration passed at2075jobs
 Rebuilding the older generated degree-15
 coefficient certificate previously took123s of an integration critical path;
 it has now been removed from the active import path in favor of the checked
-named-wire inverse. The working tree is checked; no new commit pin is asserted here.
+named-wire inverse. The integrated import graph is checked; unimported drafts
+may remain in flight. No new commit pin is asserted here.
 The twenty-one audited new inverse/constructor/evaluation declarations report
 only `propext`, `Classical.choice`, and `Quot.sound`, with no `sorryAx`.
 An additional nineteen-declaration audit after the degree21 integration
@@ -504,15 +587,15 @@ The addition analysis is now split along its mathematical dependency chain:
   bijective monic degree-7 interpolation (Lagrange), and the composed bijection
   `circuit_eval_bijective : F⁷ → F⁷`.  This is a certified finite appendix
   example, not the future all-degree `F_{2^k}` construction family.
-- **Characteristic-two small-base boundary:** the appendix and
+- **Historical characteristic-two small-base boundary (2026-08-28):** the appendix and
   `better_bounds/CHAR2_SMALL_BASES.md` now give explicit inverses for the worked
   degree-`7`, `9`, `11`, and `13` circuits.  The inverse for degree `7` is the only
-  one of these presently formalized in Lean.  The degree-`9`, `11`, and `13`
+  one of these formalized at that snapshot.  The degree-`9`, `11`, and `13`
   definitions in `Examples/OptimizedCircuits.lean` are the older search candidates,
   not the worked circuits now displayed in the appendix; their monicity/degree
-  theorems remain valid but are not recovery theorems.  Formalizing the three worked
-  inverses in a fresh `Examples/Char2SmallBases.lean` is pending; use filtered
-  scalar/block certificates, not the expanded GF(4) decoder.
+  theorems remain valid but are not recovery theorems. The three worked
+  inverses are now completed in `Char2SmallInverses`, `Char2PaperDegree11*`,
+  and `Char2PaperDegree13Inverse`, respectively; see the current status above.
 - `sections/appendix_polynomials.tex` — the `(17, 9)` block added to `A.2` with the
   provenance note.  Umbrella: 1916 jobs, zero sorries.
 

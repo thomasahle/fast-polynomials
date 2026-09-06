@@ -117,8 +117,8 @@ private theorem quadratic_cancel (x b c : R[X]) :
 theorem quadratic_eq (a : ℕ → R) : y + L a * (X + C (a 7 + a 8)) =
     X * C (a 6 + (a 7 + a 8)) + C (a 6 * (a 7 + a 8)) := by
   change X * X + (X + C (a 6)) * (X + C (a 7 + a 8)) = _
-  rw [map_add, map_mul]
-  exact quadratic_cancel _ _ _
+  conv_rhs => rw [map_add, map_mul]
+  exact quadratic_cancel (R := R) X (C (a 6)) (C (a 7 + a 8))
 
 private theorem regroup_w (y v c p l d : R[X]) :
     y + v + c + p * l + d * l = (y + (v + p * l)) + c + d * l := by ring
@@ -165,4 +165,3 @@ theorem shift_unit (a : ℕ → R) (delta : R) :
   simpa only [map_zero, add_zero] using output_shift a delta
 
 end FastPoly.Char2Degree25RowTwelve
-
