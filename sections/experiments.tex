@@ -36,7 +36,7 @@ We compare the following evaluation methods, all operating over $\mathbb{F}_{2^{
           and full polynomial reduction after each step.
           For a monic degree-$n$ polynomial (with $n$ coefficient keys), this requires $n-1$ multiplications
           executed sequentially.
-    \item \textbf{Lemire}: Horner's rule using Lemire's fast modular reduction~\cite{lemire2019fast},
+    \item \textbf{Lemire}: Horner's rule using Lemire's fast modular reduction~\cite[\S4.4]{lemire2015clhash},
           which replaces one of the three \texttt{PMULL} operations in the Barrett reduction
           with a 256-byte table lookup.
     \item \textbf{Estrin}: Estrin's parallel evaluation scheme~\cite{estrin1960organization},

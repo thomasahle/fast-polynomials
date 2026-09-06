@@ -15,7 +15,7 @@ leading coefficient costs exactly one extra multiplication in every scheme
 displayed here, so all counts in this paper are for monic polynomials and
 increase by one for general ones.
 Horner's method evaluates $P$ using just $n-1$ multiplications:
-$P = a_0 + x(a_1 + x(a_2 + \dots + x(a_{n-1} + x)\dots))$ and has been known for centuries.\footnote{Although named after William George Horner, this method is much older, as it has been attributed to Joseph-Louis Lagrange by Horner himself, and can be traced back many hundreds of years to Chinese and Persian mathematicians; see, e.g., Knuth~\cite{knuth1962evaluation}.}
+$P = a_0 + x(a_1 + x(a_2 + \dots + x(a_{n-1} + x)\dots))$ and has been known for centuries.\footnote{Although named after William George Horner, this method is much older, as it has been attributed to Joseph-Louis Lagrange by Horner himself, and can be traced back many hundreds of years to Chinese and Persian mathematicians; see, e.g., Knuth~\cite[\S4.6.4]{knuth1997seminumerical}.}
 Thus it is surprising to many that this is not optimal.
 
 The trick is to allow some preprocessing of the coefficients $a_0, \dots, a_{n-1}$.
