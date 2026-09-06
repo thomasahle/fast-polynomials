@@ -126,8 +126,10 @@ The paper and Lean use the same binary known-powers construction;
 
     The realizability assertion is carried by those same branches, not by a
     separate numerical recurrence.  In either odd induction step, execute the
-    smaller joint circuit once, reuse its recorded $H_2,H_4$ wires as inputs
-    to the auxiliary gadgets, and then form the two displayed
+    smaller joint circuit once and reuse its recorded $H_2$ wire.  In the
+    $8k+3$ step, obtain $H_4$ from the $Q_{4k+1}(x,H_2)$ call; in the
+    $8k+7$ step, reuse the smaller pair's recorded $H_4$ wire.  Use these
+    byproducts in the auxiliary gadgets, and then form the two displayed
     difference-of-squares outputs.  Each difference of squares uses one
     product: $(S^{(i)}_3+S^{(i)}_2)(S^{(i)}_3-S^{(i)}_2)$ in the $8k+7$
     step, and $(S^{(i)}_2+S^{(i)}_1)(S^{(i)}_2-S^{(i)}_1)$ in the $8k+3$

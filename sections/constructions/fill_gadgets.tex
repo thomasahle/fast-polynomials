@@ -688,8 +688,9 @@ $1+(\lambda+s)\le2\lambda\le2L$.  The $8k+3$ and $8k+7$ steps add one
 square-difference on top of odd-degree or good-polynomial blocks of degree
 $m\le(n-1)/2$---since odd $n\ge3$ is not a power of two,
 $\lceil\log_2(m+1)\rceil\le L-1$, so these blocks have height at most
-$2(L-1)+4=2L+2$---and of a recursive pair of degree at most $(n-1)/4$
-(height $\le B(L-2)=2L-1$); hence the new pair has height at most
+$2(L-1)+4=2L+2$---and of a recursive pair of degree at most $(n+1)/4$.
+Since odd $n\ge3$ satisfies $n+1\le2^L$, this recursive pair has height
+at most $B(L-2)=2L-1$; hence the new pair has height at most
 $2L+3=B(L)$.  The special cases $15,27,31$ are finite, use the same peeled
 blocks, and satisfy the bound by direct inspection of their displayed
 circuits.  The final combination
