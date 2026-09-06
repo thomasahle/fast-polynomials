@@ -5,7 +5,7 @@
 //
 //   state = { mode, src, exDegree, exKey, exSeed, exMonic, busy, jobId, error, result,
 //             method, view, form, cstyle, numfmt }
-//     mode      a field id from the js/field.js registry ('Q', 'R', 'p61', 'p89',
+//     mode      a field id from the js/field.js registry ('Q', 'R', 'C', 'p61', 'p89',
 //               'p127', 'gf32', 'gf64', 'gf128'): which field the input is read in
 //     src       textarea contents
 //     exDegree  degree the example chips generate at (clamped per field when used)
@@ -24,7 +24,7 @@
 //     form      'factor' | 'original'  math view: factored gate list or the method's own form
 //     cstyle    'float' | 'fraction'   C view over ℚ: constant rendering
 //     numfmt    'exact' | 'decimal'    math view: constants as produced, or readable
-//                                      (≈6 significant digits over ℚ/ℝ, hex over GF(2^k));
+//                                      (≈6 significant digits over ℚ/ℝ/ℂ, hex over GF(2^k));
 //                                      display only — counts stay on the exact text
 //
 // Actions (reduce(state, action) → state; unknown/no-op actions return `state` itself):
@@ -41,7 +41,9 @@
 //                                    example, regenerates it at the new degree + compiles
 //   { type: 'setExMonic', value? }   sets/toggles monic example generation; regenerates
 //                                    only when the textarea still holds an example
-//   { type: 'cancel' }               busy → false; the abandoned job's reply is then ignored
+//   { type: 'cancel' }               busy → false and the job id is retired (jobId + 1); the
+//                                    abandoned job's replies (main and per-method numeric) are
+//                                    then stale by id
 //   { type: 'reply', id, ok, result | message }   worker reply (ignored unless id === jobId and busy)
 //   { type: 'workerError', message }
 //   { type: 'setMethod', method }    ignored unless that method has an ok chain in `result`
@@ -49,10 +51,11 @@
 //   { type: 'setForm', form } / { type: 'setCstyle', cstyle } / { type: 'setNumfmt', numfmt }
 //   { type: 'setSubOption', key }    routed to the strip showing that key
 import { Rat } from './rat.js';
+import { GaussRat } from './gauss.js';
 import { countOps, formatConstants } from './chain.js';
 import { FIELDS, FIELD_GROUPS, gfLiteral } from './field.js';
 import { referenceFor } from './references.js';
-import { NUMERIC_METHODS, needsNumericWorker } from './compare.js';
+import { numericMethodsFor, needsNumericWorker } from './compare.js';
 import { MAX_DEGREE } from './char2.js';
 
 export const VIEWS = ['math', 'c', 'graph'];
@@ -78,12 +81,16 @@ export const MODES = FIELDS.filter(f => f.worker).map(f => f.id);
 export const LEGACY_MODES = { char0: 'Q', mersenne: 'p89', char2: 'gf64' };
 
 const fieldOf = mode => FIELDS.find(f => f.id === mode) ?? null;
+/** The char-0 fields whose chain constants are doubles (ℝ) or complex doubles (ℂ):
+ *  exact preprocessing, ≈ numeric rendering. */
+const inexactChar0 = f => !!f && f.char === 0 && f.exact === false;
 const PAPER_FIELDS = ['p89', 'gf64'];
 
 /** Tooltip of a registry field in the chooser. */
 export function fieldTitle(f) {
   const kind = f.id === 'Q' ? 'exact rationals (BigInt arithmetic)'
     : f.id === 'R' ? 'the same exact rational preprocessing as ℚ, with the chain constants shown and emitted as doubles (reported as ≈ numeric)'
+    : f.complex ? 'the same exact preprocessing over the Gaussian rationals ℚ(i), with the chain constants shown as complex doubles (reported as ≈ numeric)'
     : f.char === 'p' ? `Mersenne prime field, ${f.bits}-bit residues`
     : `carry-less binary field, ${f.bits}-bit`;
   return `${f.name}: ${kind}${PAPER_FIELDS.includes(f.id) ? ", as in the paper's experiments" : ''}`;
@@ -109,11 +116,20 @@ export function fieldChooser(state) {
 
 // ---- input highlighting ----------------------------------------------------
 // tokenizePoly(src) → [{ type, text }] with type 'num' (integers, fractions,
-// hex), 'var' (x, x^k), 'op', 'space' or 'text' (anything else, left plain);
-// the texts concatenate back to src.  Pure: ui.js paints the tokens behind the
+// decimals, hex, and the ℂ literals i / 2i / 1/2i / (a+bi) of js/polyparse.js),
+// 'var' (x, x^k), 'op', 'space' or 'text' (anything else, left plain); the
+// texts concatenate back to src.  Pure: ui.js paints the tokens behind the
 // transparent textarea.
-const POLY_NUM_RE = /^(?:0[xX][0-9a-fA-F]+|\d+(?:\/\d+)?)/;
-const POLY_VAR_RE = /^[xX](?:\^\d+)?/;
+// Sticky regexes matched at the current position (no lookahead window: a
+// complex literal with two 17-digit parts is longer than 40 characters).
+const POLY_REAL = String.raw`(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?(?:\/\d+)?)`;
+const POLY_NUM_RE = new RegExp(
+  `(?:\\(-?(?:${POLY_REAL}[+-])?${POLY_REAL}?i\\)` +    // (1+2i), (1/2-3/4i), (2-i), (-i)
+  `|\\(-?${POLY_REAL}\\)\\*?i` +                         // (1/2)i, (-1/2)*i
+  `|0[xX][0-9a-fA-F]+|${POLY_REAL}?i|${POLY_REAL})`, 'y'); // 0x1f, 2i, i, 3, 1/2, 0.25e-3
+const POLY_VAR_RE = /[xX](?:\^\d+)?/y;
+const POLY_OP_RE = /[+\-*/^]/y;
+const POLY_SPACE_RE = /\s+/y;
 
 export function tokenizePoly(src) {
   const toks = [];
@@ -124,13 +140,13 @@ export function tokenizePoly(src) {
     else toks.push({ type, text });
     i += text.length;
   };
+  const at = re => { re.lastIndex = i; return re.exec(src); };
   while (i < src.length) {
-    const rest = src.slice(i, i + 40);
     let m;
-    if ((m = POLY_NUM_RE.exec(rest))) push('num', m[0]);
-    else if ((m = POLY_VAR_RE.exec(rest))) push('var', m[0]);
-    else if ((m = /^[+\-*/^]/.exec(rest))) push('op', m[0]);
-    else if ((m = /^\s+/.exec(rest))) push('space', m[0]);
+    if ((m = at(POLY_NUM_RE))) push('num', m[0]);
+    else if ((m = at(POLY_VAR_RE))) push('var', m[0]);
+    else if ((m = at(POLY_OP_RE))) push('op', m[0]);
+    else if ((m = at(POLY_SPACE_RE))) push('space', m[0]);
     else push('text', src[i]);
   }
   return toks;
@@ -140,7 +156,8 @@ export function tokenizePoly(src) {
 // The example chips are pure generators: examplesFor(mode, degree, seed) returns
 // [{ key, label, labelTex?, title, src, reseed? }] with the polynomial regenerated
 // at the chosen degree (clamped per field). Characteristic 0 (ℚ, ℝ): Taylor
-// polynomials whose labels are typeset by KaTeX. Hashing fields
+// polynomials whose labels are typeset by KaTeX; ℂ: the e^{ix} series with
+// Gaussian coefficients i^k/k!, x^n − 1, e^x and He_n. Hashing fields
 // (Mersenne primes, GF(2^k)): a uniformly random key polynomial (a fresh draw per
 // click: `reseed`), a sparse and a dense small-coefficient polynomial, and one
 // fixed full-width key that is the same on every visit.
@@ -151,7 +168,7 @@ export function tokenizePoly(src) {
 export const CHAR2_EXAMPLE_DEGREES = Array.from({ length: MAX_DEGREE }, (_, i) => i + 1);
 
 /** Per-field degree limits for the example generators (ℚ's exact preprocessing
- *  slows beyond ~24 and ℝ loses accuracy there; Mersenne fields are instant at
+ *  slows beyond ~24 and ℝ / ℂ lose accuracy there; Mersenne fields are instant at
  *  any size; char 2 compiles every degree up to 26). */
 export function degreeRange(mode) {
   const f = fieldOf(mode);
@@ -180,18 +197,42 @@ export function stepDegree(mode, d, dir) {
   return clampDegree(mode, cur + (dir > 0 ? 1 : -1));
 }
 
+/** Terms, highest degree first, → the textarea's source syntax:
+ *  [{ d, neg, coef }] with coef the unsigned coefficient text ('' for an elided 1). */
+function termsToSrc(terms) {
+  const parts = [];
+  for (const { d, neg, coef } of terms) {
+    const t = coef + (d === 0 ? '' : d === 1 ? 'x' : `x^${d}`);
+    parts.push(parts.length === 0 ? (neg ? '-' : '') + t : ` ${neg ? '-' : '+'} ${t}`);
+  }
+  return parts.join('') || '0';
+}
+
 /** Rat coefficient array (index = degree) → the textarea's source syntax. */
 function ratPolyToSrc(coeffs) {
-  const parts = [];
+  const terms = [];
   for (let d = coeffs.length - 1; d >= 0; d--) {
     const c = coeffs[d];
     if (c.isZero()) continue;
     const neg = c.isNeg(), m = neg ? c.neg() : c;
-    const xs = d === 0 ? '' : d === 1 ? 'x' : `x^${d}`;
-    const t = (m.isOne() && d > 0 ? '' : m.toString()) + xs;
-    parts.push(parts.length === 0 ? (neg ? '-' : '') + t : ` ${neg ? '-' : '+'} ${t}`);
+    terms.push({ d, neg, coef: m.isOne() && d > 0 ? '' : m.toString() });
   }
-  return parts.join('') || '0';
+  return termsToSrc(terms);
+}
+
+/** Gaussian-rational (or Rat) coefficient array → source syntax: real
+ *  coefficients as over ℚ, non-real ones as (a+bi) — js/polyparse.js's complex
+ *  literal, which GaussRat.toString prints (the sign of the leading part is
+ *  hoisted: '- (0+1/6i)x^3', '+ (1-2i)x'). */
+function gaussPolyToSrc(coeffs) {
+  const terms = [];
+  for (let d = coeffs.length - 1; d >= 0; d--) {
+    const c = GaussRat.of(coeffs[d]);
+    if (c.isZero()) continue;
+    const neg = c.re.isNeg() || (c.re.isZero() && c.im.isNeg()), m = neg ? c.neg() : c;
+    terms.push({ d, neg, coef: m.isOne() && d > 0 ? '' : m.toString() });
+  }
+  return termsToSrc(terms);
 }
 
 /** BigInt coefficient array (index = degree; negatives allowed in char 0) → source
@@ -226,7 +267,41 @@ function seriesCoeffs(key, n) {
   return c;
 }
 
-/** Scale a nonzero rational polynomial so its leading coefficient is one. */
+/** Taylor coefficients 0..n of e^{ix}: i^k/k! as Gaussian rationals (the ℂ chip). */
+function expISeriesCoeffs(n) { return expZSeriesCoeffs(GaussRat.I, n); }
+
+/** Taylor coefficients of e^{zx}: z^k / k! (Gaussian rationals for a Gaussian z). */
+function expZSeriesCoeffs(z, n) {
+  const c = [];
+  let f = GaussRat.ONE;
+  for (let k = 0; k <= n; k++) { if (k > 0) f = f.mul(z).div(new Rat(BigInt(k))); c.push(f); }
+  return c;
+}
+
+/** (x + i)^n expanded: binomial(n, k) · i^(n−k) — Gaussian integers, monic, one root at −i. */
+function binomialICoeffs(n) {
+  const c = [];
+  let binom = 1n;
+  for (let k = 0; k <= n; k++) {
+    if (k > 0) binom = binom * BigInt(n - k + 1) / BigInt(k);
+    let p = GaussRat.ONE;
+    for (let j = 0; j < n - k; j++) p = p.mul(GaussRat.I);
+    c.push(p.mul(new Rat(binom)));
+  }
+  return c;
+}
+
+/** A random polynomial with small Gaussian-integer coefficients (parts in −9..9,
+ *  never both zero), reseeded per click; monic when asked. */
+function gaussianKeyCoeffs(n, seed, monic) {
+  const next = rng('C', 'gauss', n, seed);
+  const part = () => (next() % 19) - 9;
+  const draw = () => { let a = part(), b = part(); while (a === 0 && b === 0) { a = part(); b = part(); } return new GaussRat(new Rat(BigInt(a)), new Rat(BigInt(b))); };
+  const c = Array.from({ length: n + 1 }, draw);
+  if (monic) c[n] = GaussRat.ONE;
+  return c;
+}
+
 /** coeffs (degree < n) with a leading xⁿ added: monic without rescaling. */
 function monicSeries(coeffs, n) {
   const out = coeffs.slice(0, n);
@@ -316,13 +391,31 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   const seriesTitle = fn => monic
     ? `degree-${n - 1} Taylor polynomial of ${fn} plus x^${n} (monic)`
     : `Taylor polynomial of ${fn}, degree ${n}`;
+  const hermite = { key: 'hermite', label: `He_${n}`, labelTex: `\\mathrm{He}_{${n}}`,
+    title: `the probabilists' Hermite polynomial He_${n} (monic with integer coefficients at every degree)`,
+    src: ratPolyToSrc(hermiteCoeffs(n)) };
+  // ℂ: every chip has genuinely complex coefficients — the Taylor series of
+  // e^{ix} (i^k/k!) and e^{(1+i)x} ((1+i)^k/k!), the expanded binomial (x+i)^n,
+  // and a reseeding random polynomial over the Gaussian integers
+  if (f.complex) {
+    const gaussSeries = z => gaussPolyToSrc(monic ? monicSeries(expZSeriesCoeffs(z, n - 1), n) : expZSeriesCoeffs(z, n));
+    return [
+      { key: 'expi', label: 'e^{ix}', labelTex: 'e^{ix}', title: `${seriesTitle('eⁱˣ')} — coefficients iᵏ/k!`, src: gaussSeries(GaussRat.I) },
+      { key: 'binomi', label: `(x+i)^${n}`, labelTex: `(x+i)^{${n}}`,
+        title: `(x + i)^${n} expanded — Gaussian-integer coefficients binomial(${n}, k)·i^(${n}−k), monic, a single root at −i`,
+        src: gaussPolyToSrc(binomialICoeffs(n)) },
+      { key: 'exp1i', label: 'e^{(1+i)x}', labelTex: 'e^{(1+i)x}', title: `${seriesTitle('e^{(1+i)x}')} — coefficients (1+i)ᵏ/k!`,
+        src: gaussSeries(new GaussRat(Rat.ONE, Rat.ONE)) },
+      { key: 'gauss', label: 'random ℤ[i]', labelTex: '\\text{random }\\mathbb{Z}[i]', reseed: true,
+        title: `${monic ? 'monic ' : ''}random degree-${n} polynomial with small Gaussian-integer coefficients — click again for a fresh one`,
+        src: gaussPolyToSrc(gaussianKeyCoeffs(n, seed, monic)) },
+    ];
+  }
   if (f.char === 0) return [
     { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: seriesTitle('eˣ'), src: seriesSrc('exp') },
     { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: seriesTitle('ln(1+x)'), src: seriesSrc('ln') },
     { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: seriesTitle('√(1+x)'), src: seriesSrc('sqrt') },
-    { key: 'hermite', label: `He_${n}`, labelTex: `\\mathrm{He}_{${n}}`,
-      title: `the probabilists' Hermite polynomial He_${n} (monic with integer coefficients at every degree)`,
-      src: ratPolyToSrc(hermiteCoeffs(n)) },
+    hermite,
   ];
   const k = n + 1;
   return [
@@ -484,14 +577,16 @@ export function reduce(state, action) {
       return ex ? startJob({ ...s, src: ex.src }) : s;
     }
     case 'cancel':
-      return state.busy ? { ...state, busy: false, lateNumeric: null } : state;
+      // retiring the id makes every late reply of the cancelled job stale, so a
+      // per-method numeric reply cannot be merged into the previous job's result
+      return state.busy ? { ...state, busy: false, lateNumeric: null, jobId: state.jobId + 1 } : state;
     case 'reply': {
       if (action.id !== state.jobId) return state;                  // stale
       if (action.part === 'numeric') {
         // the numeric methods' rows from their own worker fill the placeholders
         // of this job's result; arriving first, they wait for the main reply
         const rows = action.ok ? action.result.comparisons
-          : NUMERIC_METHODS.map(name => ({ name, ok: false, note: action.message ?? 'numerical preprocessing failed' }));
+          : numericMethodsFor(state.mode).map(name => ({ name, ok: false, note: action.message ?? 'numerical preprocessing failed' }));
         if (state.busy) return { ...state, lateNumeric: [...(state.lateNumeric ?? []), ...rows] };
         return state.result ? { ...state, result: withNumeric(state.result, rows) } : state;
       }
@@ -607,13 +702,13 @@ export function methodTabs(state) {
 
 /**
  * The comparison table under the output pane, one row per method in worker
- * order (This paper, Horner, Estrin, Rabin–Winograd, Knuth–Eve, Pan):
+ * order (This paper, Horner, Estrin, Rabin–Winograd, Knuth–Eve, Pan; Belaga over ℂ):
  *   [{ key, name, ok, on, mults, scalar, adds, height, exact, exactNote, note }]
  * Counts come from rowOps on each method's factored rendering (mults = the
  * total, scalar = how many of them are by a constant); a method that did not
  * run has ok: false, null counts and its reason in `note`.  A row that is not
- * exact (≈ numeric) says why in `exactNote` — over ℝ the preprocessing itself
- * is exact and only the chain constants are rounded to doubles; the
+ * exact (≈ numeric) says why in `exactNote` — over ℝ / ℂ the preprocessing itself
+ * is exact and only the chain constants are rounded to (complex) doubles; the
  * root-finding methods name what they solved numerically — null otherwise.
  */
 export function comparisonTable(state) {
@@ -628,18 +723,19 @@ export function comparisonTable(state) {
     return { ...e, pending: !!e.pending, on: e.key === state.method, ref: referenceFor(e.name),
       mults: o ? o.mults + o.scalar : null, scalar: o ? o.scalar : 0,
       adds: o ? o.adds : null, height: e.ok ? row.height ?? null : null, exact: e.ok ? e.exact : null,
-      exactNote: e.ok && !e.exact ? numericNote(row) : null };
+      exactNote: e.ok && !e.exact ? numericNote(row, fieldOf(r.fieldId ?? state.mode)) : null };
   });
 }
 
-/** Why a row is ≈ numeric: the ℝ rendering of an exact chain (ours, and the
+/** Why a row is ≈ numeric: the ℝ / ℂ rendering of an exact chain (ours, and the
  *  classical methods whose preprocessing is exact or absent) rounds the constants
- *  to doubles; Knuth–Eve and Pan carry their own preprocessing
- *  kind + note. */
-function numericNote(row) {
+ *  to doubles / complex doubles; Knuth–Eve, Pan and Belaga carry their own
+ *  preprocessing kind + note. */
+function numericNote(row, f = null) {
   const pre = row.preprocessing;
   if (!pre || pre === 'none' || pre === 'rational' || pre === 'numeric')
-    return 'exact rational preprocessing; the chain constants are rounded to doubles';
+    return f?.complex ? 'exact Gaussian-rational preprocessing; the chain constants are rounded to complex doubles'
+                      : 'exact rational preprocessing; the chain constants are rounded to doubles';
   const err = /max rel\. error \S+/.exec(row.note ?? '');   // the rest of the note is the method's description
   return err ? `${pre}, ${err[0]}` : pre;
 }
@@ -712,13 +808,13 @@ export function effectiveNumfmt(state) {
 }
 
 /** The state the output panes render from.  On phones the constants strip is
- *  hidden, and numeric rows — everything over ℝ, and the numerically
+ *  hidden, and numeric rows — everything over ℝ / ℂ, and the numerically
  *  preprocessed methods (Knuth–Eve, Pan) over ℚ — show their constants to six
  *  significant digits (the readable rendering); exact fractions are left alone. */
 export function presentedState(state, { compact = false } = {}) {
   if (!compact || state.numfmt === 'decimal' || !state.result) return state;
   const row = comparisonRow(state);
-  const numeric = state.mode === 'R' || (row ? row.exact === false : state.result.exact === false);
+  const numeric = inexactChar0(fieldOf(state.mode)) || (row ? row.exact === false : state.result.exact === false);
   return numeric ? { ...state, numfmt: 'decimal' } : state;
 }
 
@@ -737,6 +833,7 @@ export function subOptionStrips(state) {
     const f = fieldOf(state.mode), style = readableStyle(f);
     const readable = readableRendering(state);
     const effN = effectiveNumfmt(state);
+    const dbl = inexactChar0(f);          // ℝ / ℂ: the constants are (complex) doubles already
     return [
       { kind: 'form', label: 'form:',
         options: [
@@ -747,9 +844,9 @@ export function subOptionStrips(state) {
         ] },
       { kind: 'numfmt', label: 'constants:',
         options: [
-          { key: 'exact', label: f?.id === 'R' ? 'full' : 'exact', on: effN === 'exact', enabled: true,
-            title: f?.id === 'R' ? 'the double-precision constants in full (shortest round-trip decimals)'
-                                 : 'the constants exactly as the preprocessing produced them' },
+          { key: 'exact', label: dbl ? 'full' : 'exact', on: effN === 'exact', enabled: true,
+            title: dbl ? `the ${f.complex ? 'complex-double' : 'double-precision'} constants in full (shortest round-trip decimals)`
+                       : 'the constants exactly as the preprocessing produced them' },
           { key: 'decimal', label: style === 'hex' ? 'hex' : 'decimal', on: effN === 'decimal', enabled: !!readable,
             title: !style ? 'Mersenne-field constants are decimal residues already'
               : !readable ? 'nothing to reformat in this rendering'

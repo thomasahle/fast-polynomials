@@ -72,5 +72,37 @@ check(/method\s+FMA\s+SIMD-FP\s+CLMUL/.test(inspect.stdout) &&
       /this-paper\s+\d+\s+\d+\s+\d+/.test(inspect.stdout),
       `inspection reports compiler instruction families: ${inspect.stdout}`);
 
+// ---- a state over ℂ: C99 double complex sources, the complex harness (creal/cimag, |checksum|), -lm ----
+{
+  const CC = `${C_PROVENANCE}\n#include <complex.h>\ndouble complex eval_P(double complex x) { return x * x + (0.0 + 1.0*I); }\n`;
+  const stateC = { mode: 'C', method: 'ours', view: 'c', cstyle: 'float', src: 'x^2 + i', result: {
+    fieldName: 'ℂ', cText: CC, cTextFraction: null,
+    comparisons: [{ name: 'Horner', ok: true, cText: CC, cTextFraction: null }, { name: 'Pan', ok: false, cText: null }],
+  } };
+  const bc = buildCBundle(stateC), namesC = bc.files.map(f => f.name);
+  check(hasCBundle(stateC) && bc.baseName === 'fast-polynomials-C-degree-2', 'ℂ bundle available, stable name');
+  for (const n of ['README.md', 'selected.c', 'benchmark.c', 'benchmark.sh', 'inspect.sh', 'methods/this-paper.c', 'methods/horner.c'])
+    check(namesC.includes(n), `ℂ bundle contains ${n}`);
+  check(!namesC.some(n => n.includes('fractions')), 'ℂ bundle: no fraction variants');
+  const harness = bc.files.find(f => f.name === 'benchmark.c').text;
+  check(harness.includes('#include <complex.h>') && /typedef double complex bench_input_t;/.test(harness) && /creal\(checksum\), cimag\(checksum\), cabs\(checksum\)/.test(harness) && /\* I;/.test(harness),
+        'ℂ harness: complex inputs, creal/cimag/cabs checksum');
+  const script = bc.files.find(f => f.name === 'benchmark.sh').text;
+  check(/-fcx-limited-range/.test(script) && /-lm/.test(script) && /-fcx-limited-range/.test(bc.files.find(f => f.name === 'inspect.sh').text), 'ℂ scripts: -lm, -fcx-limited-range where accepted');
+  check(/<complex.h>/.test(bc.files.find(f => f.name === 'README.md').text), 'ℂ README explains the complex sources');
+  const dirC = mkdtempSync(join(tmpdir(), 'fastpoly-bundle-C-'));
+  for (const f of bc.files) {
+    const path = join(dirC, f.name);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, f.text);
+    chmodSync(path, f.mode);
+  }
+  const runC = spawnSync('sh', ['benchmark.sh', '100'], { cwd: dirC, encoding: 'utf8' });
+  check(runC.status === 0, `ℂ benchmark.sh exits successfully: ${runC.stderr}`);
+  check(/this-paper.*ns\/eval.*\*I\s+\|checksum\| \d/.test(runC.stdout) && /horner.*ns\/eval/.test(runC.stdout), `ℂ benchmark reports complex checksums: ${runC.stdout}`);
+  const inspectC = spawnSync('sh', ['inspect.sh'], { cwd: dirC, encoding: 'utf8' });
+  check(inspectC.status === 0 && /this-paper\s+\d+\s+\d+\s+\d+/.test(inspectC.stdout), `ℂ inspect.sh runs: ${inspectC.stderr}`);
+}
+
 console.log(fails ? `C BUNDLE FAILED (${fails}/${checks})` : `C BUNDLE PASSES (${checks} checks)`);
 process.exit(fails ? 1 : 0);

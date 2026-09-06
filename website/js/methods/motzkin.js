@@ -405,9 +405,16 @@ export function rootBound(pReal) {
   return R > 0 ? 2 * R : 1;
 }
 
-// Newton polish of a complex root of the real polynomial p (ascending).
-function polishComplexRoot(p, z0) {
-  const pc = p.map(v => C(v));
+export function rootBoundComplex(pc) {          // Fujiwara over complex coefficients
+  const d = pc.length - 1;
+  let R = 0;
+  for (let i = 1; i <= d; i++) R = Math.max(R, Math.pow(cAbs(pc[d - i]) / cAbs(pc[d]), 1 / i));
+  return R > 0 ? 2 * R : 1;
+}
+
+// Newton polish of a root of the complex polynomial pc (ascending); no real
+// snap, so a root that is real up to rounding keeps its tiny imaginary part.
+function polishRootC(pc, z0) {
   let z = z0;
   for (let it = 0; it < 30; it++) {
     let dv = C(0), v = C(0);
@@ -422,32 +429,20 @@ function polishComplexRoot(p, z0) {
     z = nz;
     if (sa <= 1e-16 * (1 + cAbs(z))) break;
   }
+  return z;
+}
+
+// Newton polish of a complex root of the real polynomial p (ascending).
+function polishComplexRoot(p, z0) {
+  const z = polishRootC(p.map(v => C(v)), z0);
   // a root with a negligible imaginary part is a real root
   return Math.abs(z.im) <= 1e-12 * (1 + Math.abs(z.re)) ? C(z.re) : z;
 }
 
-// All roots of a real polynomial, or null when the iteration does not
-// converge.  Aberth-Ehrlich simultaneous iteration (cubically convergent,
-// robust to the wide coefficient ranges of Taylor polynomials) from points on
-// a circle inside Fujiwara's bound, Newton polish, then a residual check
-// |p(z)| <= 1e-8 sum |a_i| |z|^i on every root.  Exact roots at 0 (missing
-// constant term) are split off first.
-export function polyRoots(pReal) {
-  let d = pReal.length - 1;
-  if (d <= 0) return [];
-  const a = pReal.map(c => c / pReal[d]);          // monic
-  let zeros = 0;
-  while (zeros < d && a[zeros] === 0) zeros++;
-  const out = [];
-  for (let i = 0; i < zeros; i++) out.push(C(0));
-  const b = a.slice(zeros);                        // b[0] != 0
-  d = b.length - 1;
-  if (d === 0) return out;
-  if (d === 1) return out.concat([C(-b[0])]);
-  const R = rootBound(b);
-  const bc = b.map(v => C(v));
-  let r0 = Math.pow(Math.abs(b[0]), 1 / d);
-  r0 = Math.min(Math.max(r0, 1e-3 * R), R);
+// Aberth-Ehrlich simultaneous iteration on the monic complex polynomial bc
+// (ascending, degree d >= 2, bc[0] != 0) from d points on the circle of
+// radius r0 inside the root bound R.  Returns the unpolished roots.
+function aberthRoots(bc, d, R, r0) {
   const z = [];
   for (let k = 0; k < d; k++) {
     const ang = (2 * Math.PI * k) / d + 0.4;       // offset avoids the axes
@@ -481,14 +476,69 @@ export function polyRoots(pReal) {
     }
     if (maxRel < 1e-15) converged = true;
   }
-  const roots = z.map(zk => polishComplexRoot(b, zk));
+  return z;
+}
+
+// |bc(r)| <= 1e-8 sum |b_i| |r|^i for every root r, else null.
+function checkedRoots(bc, d, roots) {
   for (const r of roots) {
     let scale = 0, rp = 1;
     const ar = cAbs(r);
-    for (let i = 0; i <= d; i++) { scale += Math.abs(b[i]) * rp; rp *= ar; }
+    for (let i = 0; i <= d; i++) { scale += cAbs(bc[i]) * rp; rp *= ar; }
     if (!(cAbs(hornerComplex(bc, r)) <= 1e-8 * scale)) return null;
   }
-  return out.concat(roots);
+  return roots;
+}
+
+// All roots of a real polynomial, or null when the iteration does not
+// converge.  Aberth-Ehrlich simultaneous iteration (cubically convergent,
+// robust to the wide coefficient ranges of Taylor polynomials) from points on
+// a circle inside Fujiwara's bound, Newton polish, then a residual check
+// |p(z)| <= 1e-8 sum |a_i| |z|^i on every root.  Exact roots at 0 (missing
+// constant term) are split off first.
+export function polyRoots(pReal) {
+  let d = pReal.length - 1;
+  if (d <= 0) return [];
+  const a = pReal.map(c => c / pReal[d]);          // monic
+  let zeros = 0;
+  while (zeros < d && a[zeros] === 0) zeros++;
+  const out = [];
+  for (let i = 0; i < zeros; i++) out.push(C(0));
+  const b = a.slice(zeros);                        // b[0] != 0
+  d = b.length - 1;
+  if (d === 0) return out;
+  if (d === 1) return out.concat([C(-b[0])]);
+  const R = rootBound(b);
+  const bc = b.map(v => C(v));
+  let r0 = Math.pow(Math.abs(b[0]), 1 / d);
+  r0 = Math.min(Math.max(r0, 1e-3 * R), R);
+  const z = aberthRoots(bc, d, R, r0);
+  const roots = checkedRoots(bc, d, z.map(zk => polishComplexRoot(b, zk)));
+  return roots && out.concat(roots);
+}
+
+// All roots of a polynomial with complex coefficients ({re, im} ascending),
+// or null: the same Aberth iteration and residual check as polyRoots, but
+// the roots are kept complex (no conjugate pairing, no real snap - a
+// polynomial with complex coefficients has neither).
+export function polyRootsComplex(pc) {
+  let d = pc.length - 1;
+  if (d <= 0) return [];
+  const a = pc.map(c => cDiv(c, pc[d]));           // monic
+  let zeros = 0;
+  while (zeros < d && isZeroC(a[zeros])) zeros++;
+  const out = [];
+  for (let i = 0; i < zeros; i++) out.push(C(0));
+  const b = a.slice(zeros);                        // b[0] != 0
+  d = b.length - 1;
+  if (d === 0) return out;
+  if (d === 1) return out.concat([cNeg(b[0])]);
+  const R = rootBoundComplex(b);
+  let r0 = Math.pow(cAbs(b[0]), 1 / d);
+  r0 = Math.min(Math.max(r0, 1e-3 * R), R);
+  const z = aberthRoots(b, d, R, r0);
+  const roots = checkedRoots(b, d, z.map(zk => polishRootC(b, zk)));
+  return roots && out.concat(roots);
 }
 
 // ---------- constant formatting ----------
@@ -550,7 +600,7 @@ function evalRhs(src, env) {
         i += num[0].length;
         v = num[0].endsWith('i') ? C(0, parseFloat(num[0].slice(0, -1))) : C(parseFloat(num[0]));
       } else {
-        const id = /^[A-Za-z_]\w*/.exec(rest);
+        const id = /^[\p{L}_][\p{L}\p{M}\w]*/u.exec(rest);   // wires: x, y3, P, P̃ (combining tilde)
         if (!id || !(id[0] in env)) throw new Error(`bad rhs (unknown atom) in: ${src}`);
         i += id[0].length;
         v = env[id[0]];
@@ -601,6 +651,52 @@ export function verifyLines(lines, p) {
     env.x = C(x);
     for (const ln of lines) env[ln.lhs] = evalRhs(ln.rhs, env);
     const err = relErrorAt(p, x, env.P.re, env.P.im);
+    if (err > maxRel) maxRel = err;
+  }
+  return maxRel;
+}
+
+// ---------- verification over C ----------
+// The same check for a polynomial with complex coefficients ({re, im} or
+// plain numbers, ascending): the real grid above plus points off the real
+// axis (three circles, 16 directions each, and the unit-box corners), the
+// reference computed by complex Horner and the error measured in |.| with the
+// same floor 1e-3 S(z), S(z) = sum_i |p_i| max(1,|z|)^i.  A chain over C is
+// a polynomial identity in z, so the real grid alone would pin it down, but
+// its rounding error is largest where |z| is largest in every direction.
+export const SAMPLE_ZS = (() => {
+  const zs = SAMPLE_XS.map(x => C(x));
+  for (const r of [0.5, 1.5, 3]) {
+    for (let k = 0; k < 16; k++) {
+      const ang = (2 * Math.PI * k) / 16 + Math.PI / 16;   // never on the axes
+      zs.push(C(r * Math.cos(ang), r * Math.sin(ang)));
+    }
+  }
+  zs.push(C(0, 1), C(0, -1), C(1, 1), C(-1, 1), C(1, -1), C(-1, -1), C(0, 5), C(0, -5));
+  return zs;
+})();
+
+export const toComplex = v => (typeof v === 'object' && v !== null && 're' in v
+  ? C(Number(v.re), Number(v.im ?? 0)) : C(Number(v)));
+
+export function relErrorAtComplex(pc, z, got) {
+  const want = hornerComplex(pc, z);
+  let scale = 0, zp = 1;
+  const az = Math.max(1, cAbs(z));
+  for (let i = 0; i < pc.length; i++) { scale += cAbs(pc[i]) * zp; zp *= az; }
+  const denom = Math.max(cAbs(want), 1e-3 * scale, 1e-300);
+  const err = cAbs(cSub(got, want)) / denom;
+  return Number.isFinite(err) ? err : Infinity;
+}
+
+export function verifyLinesComplex(lines, coeffs) {
+  const pc = coeffs.map(toComplex);
+  let maxRel = 0;
+  for (const z of SAMPLE_ZS) {
+    const env = Object.create(null);
+    env.x = z;
+    for (const ln of lines) env[ln.lhs] = evalRhs(ln.rhs, env);
+    const err = relErrorAtComplex(pc, z, env.P);
     if (err > maxRel) maxRel = err;
   }
   return maxRel;
@@ -671,7 +767,7 @@ function emitChain(n, c, sArr, cs, eBase, bLead, digits) {
   let mults = 0, adds = 0;
   const push = (lhs, rhs, mul, deps) => {
     lines.push({ lhs, rhs, mul });
-    depth[lhs] = 1 + Math.max(0, ...deps.map(dp => depth[dp]));
+    depth[lhs] = Math.max(0, ...deps.map(dp => depth[dp])) + (mul ? 1 : 0);   // multiplicative depth: the shift y = x + c adds none
     if (mul) mults++;
   };
   let yName = 'x';

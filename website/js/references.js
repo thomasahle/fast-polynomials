@@ -35,7 +35,13 @@ export const REFERENCES = {
   'Pan': {
     short: 'Pan 1978',
     cite: 'V. Ya. Pan, "Computational complexity of computing polynomials over the fields of real and complex numbers", 10th ACM Symposium on Theory of Computing (STOC), pp. 162–172, 1978.',
-    url: 'https://doi.org/10.1145/800133.804343',
+    url: 'https://doi.org/10.1145/800133.804344',
+  },
+  'Belaga': {
+    short: 'Belaga 1958',
+    cite: 'E. G. Belaga, "Some problems involved in the computation of polynomials", Dokl. Akad. Nauk SSSR 123, pp. 775–777, 1958; ' +
+      'displayed as scheme (0.5) in V. Ya. Pan, "Methods of computing values of polynomials", Russian Math. Surveys 21(1), pp. 105–136, 1966.',
+    url: 'https://doi.org/10.1070/RM1966v021n01ABEH004147',
   },
 };
 

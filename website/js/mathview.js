@@ -7,6 +7,7 @@
 // operators parsed below are translated.
 
 import { parseRhs } from './cgen.js';
+import { COMPLEX_PARTS } from './tokens.js';
 
 const SUPERSCRIPT_DIGIT = new Map([
   ['⁰', '0'], ['¹', '1'], ['²', '2'], ['³', '3'], ['⁴', '4'],
@@ -88,10 +89,25 @@ const NUMBER = /^-?\d+(?:\.\d+)?$/;
 // aware colours as the polynomial editor.
 const highlighted = (kind, tex, on) => on ? `\\htmlClass{math-${kind}}{${tex}}` : tex;
 
-/** One non-parenthesized token from the chain grammar -> TeX. */
+/** A real constant token (fraction, hex, scientific, decimal) -> TeX, or null. */
+function realConstToTex(t) {
+  let m = /^(-?)(\d+)\/(\d+)$/.exec(t);
+  if (m) return `${m[1]}\\frac{${m[2]}}{${m[3]}}`;
+  m = /^(-?)(0x[0-9a-fA-F]+)$/.exec(t);
+  if (m) return `${m[1]}\\mathtt{${m[2]}}`;
+  m = /^(-?\d+(?:\.\d+)?)[eE]([+-]?\d+)$/.exec(t);
+  if (m) return `${m[1]}\\mathbin{\\times}10^{${Number(m[2])}}`;
+  return NUMBER.test(t) ? t : null;
+}
+
+/** One non-parenthesized token from the chain grammar -> TeX.  The complex
+ *  literal (re±imi) is one constant: its parentheses are kept, so it reads as
+ *  the same atom the text shows (\left(1.5-0.25\,i\right)). */
 export function tokenToTex(token, { highlight = false } = {}) {
   const t = String(token);
-  let m = /^(-?)(\d+)\/(\d+)$/.exec(t);
+  let m = COMPLEX_PARTS.exec(t);
+  if (m) return highlighted('const', `\\left(${realConstToTex(m[1])}${m[2]}${realConstToTex(m[3])}\\,i\\right)`, highlight);
+  m = /^(-?)(\d+)\/(\d+)$/.exec(t);
   if (m) return highlighted('const', `${m[1]}\\frac{${m[2]}}{${m[3]}}`, highlight);
   m = /^(-?)(0x[0-9a-fA-F]+)$/.exec(t);
   if (m) return highlighted('const', `${m[1]}\\mathtt{${m[2]}}`, highlight);

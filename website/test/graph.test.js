@@ -271,6 +271,18 @@ function checkLayout(graph, tag) {
   check(svg.includes('stroke-dasharray'), 'handwritten svg: dashed neg edges');
   check(svg.includes('>2×<'), 'handwritten svg: 2× label');
   check((svg.match(/class="gv-node gv-mul"/g) ?? []).length === 4, 'handwritten svg: 4 mul nodes drawn');
+  // a complex literal (re±imi) is one constant node labelled with the token
+  const gc = buildGraphFromLines([{ lhs: 'y', rhs: '(1+2i) * x', mul: true }, { lhs: 'P', rhs: 'y + (0-1i)' }]);
+  checkIR(gc, 'complex constants', { mults: 1 });
+  check(gc.nodes.some(n => n.kind === 'const' && n.label === '(1+2i)') && gc.nodes.some(n => n.kind === 'const' && n.label === '(0-1i)'),
+        'complex constants: one const node per literal, labelled with the token');
+  check(gc.nodes.filter(n => n.kind === 'add').length === 1 && gc.nodes.filter(n => n.kind === 'const').length === 2, 'complex constants: no add node inside the literal');
+  // a full-precision complex constant is never truncated to a real-looking prefix:
+  // the box shows it rounded to six digits, the tooltip keeps the full token
+  const gl = buildGraphFromLines([{ lhs: 'y', rhs: 'x * (x + (-0.764739836839141+0.1298313887661727i))', mul: true }, { lhs: 'P', rhs: 'y + 1' }]);
+  const svgl = renderGraphSVG(gl);
+  check(svgl.includes('>(-0.76474+0.129831i)</text>') && !svgl.includes('…') && svgl.includes('(-0.764739836839141+0.1298313887661727i)'),
+        'complex constants: the node label is the six-digit token, the title the full one');
   // labels are escaped
   const g2 = buildGraphFromLines([{ lhs: 'P', rhs: 'x + <b>' }]);
   check(renderGraphSVG(g2).includes('&lt;b&gt;'), 'svg escapes labels');

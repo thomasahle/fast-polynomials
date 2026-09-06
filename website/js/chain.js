@@ -213,7 +213,10 @@ function wrapAtSums(s, maxWidth, indent) {
 }
 
 // ---- operation counts of a rendered form ---------------------------------------
-const isNumTok = t => /^-?(\d+(\.\d+)?([eE][+-]?\d+)?(\/\d+)?)$/.test(t);
+// Constant tokens follow the shared grammar of js/tokens.js: real numbers and
+// the atomic complex literal (re±imi).  Hex constants are not counted here.
+import { REAL_TOKEN, COMPLEX_TOKEN, COMPLEX_SRC, COMPLEX_PARTS, numTokenValue, complexToken } from './tokens.js';
+const isNumTok = t => REAL_TOKEN.test(t) || COMPLEX_TOKEN.test(t);
 /**
  * Count the operations of a rendered line list exactly as displayed (the
  * displayed-form count, not the paper's DAG count):
@@ -292,7 +295,10 @@ export function countOps(text) {
 //              scientific notation (1.59e7, 2.5e-7) when the exponent is far out
 //   'hex'      every field constant as a 0x… bit pattern (binary fields)
 import { ratToDouble } from './field.js';
-const CONST_TOKEN_RE = /(?<![A-Za-z0-9_^\/.·⁻⁽])(-?)(0x[0-9a-fA-F]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?(?:\/\d+)?)(?![A-Za-z0-9_·.\/^])/g;
+// A complex literal (re±imi) is one token: both parts are rounded together
+// and the literal is re-printed in its canonical form (never split apart).
+const CONST_TOKEN_RE = new RegExp(
+  String.raw`(?<![A-Za-z0-9_^\/.·⁻⁽])(-?)(${COMPLEX_SRC}|0x[0-9a-fA-F]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?(?:\/\d+)?)(?![A-Za-z0-9_·.\/^])`, 'g');
 
 /** x to about `digits` significant digits: fixed notation when the decimal
  *  exponent is in [-4, digits), otherwise mantissa e exponent; trailing zeros
@@ -310,6 +316,11 @@ export function toSigDigits(x, digits = 6) {
 
 function formatConstToken(tok, style) {
   try {
+    const cx = COMPLEX_PARTS.exec(tok);
+    if (cx) {                                                       // (re±imi): round both parts, keep the form
+      if (style === 'hex') return tok;
+      return `(${toSigDigits(Number(cx[1]))}${cx[2]}${toSigDigits(Number(cx[3]))}i)`;
+    }
     if (style === 'hex') {
       if (/[\/.eE]/.test(tok) && !/^0x/.test(tok)) return tok;   // not a field element pattern
       return '0x' + BigInt(tok).toString(16);
@@ -406,13 +417,16 @@ function flattenSum(sum) {
 }
 /** One constant term per sum: exact literals (integers, fractions) add as
  *  rationals; once a decimal is involved the sum is a double printed to 13
- *  significant digits, as the numeric methods print theirs.  The folded
- *  constant goes last, where the rows keep their constants. */
+ *  significant digits, as the numeric methods print theirs; once a complex
+ *  literal is involved both parts are summed as doubles and the result is
+ *  re-printed as one canonical (re±imi) token (a real result becomes a plain
+ *  real token).  The folded constant goes last, where the rows keep their
+ *  constants. */
 export function foldConstants(sum) {
   const isConst = term => term.t.length === 1 && term.t[0].tok !== undefined && isNumTok(term.t[0].tok);
   const consts = sum.filter(isConst), rest = sum.filter(t => !isConst(t));
   if (consts.length < 2) return sum;
-  const exact = consts.every(({ t }) => !/[.eE]/.test(t[0].tok));
+  const exact = consts.every(({ t }) => !/[.eEi]/.test(t[0].tok));
   let tok;
   if (exact) {
     let acc = new Rat(0n);
@@ -423,16 +437,16 @@ export function foldConstants(sum) {
     }
     tok = acc.toString();
   } else {
-    let v = 0;
+    let re = 0, im = 0;
     for (const { neg, t } of consts) {
-      const [a, b] = t[0].tok.split('/');
-      const x = b ? Number(a) / Number(b) : Number(a);
-      v += neg ? -x : x;
+      const v = numTokenValue(t[0].tok);
+      re += neg ? -v.re : v.re;
+      im += neg ? -v.im : v.im;
     }
-    tok = String(Number(v.toPrecision(13)));
+    tok = complexToken(re, im, 13);
   }
   if (/^-?0$/.test(tok)) return rest.length ? rest : [{ neg: false, t: [{ tok: '0' }] }];
-  const neg = tok.startsWith('-');
+  const neg = tok.startsWith('-');                 // a complex token keeps its sign inside the literal
   return [...rest, { neg, t: [{ tok: neg ? tok.slice(1) : tok }] }];
 }
 export function factorize(lines) {
@@ -533,7 +547,7 @@ export function renderConstructionsForm(F, chain, extraRow = null) {
       }
       else if (isEven && ast.length === 1 && ast[0].t.length === 2 && ast[0].t.some(f => f.tok === 'x')) {
         // even lift  P_n = x·P_{n-1} + α_0: the non-x factor is the odd polynomial P_{n-1}
-        const inner = ast[0].t.find(f => f.tok !== 'x');
+        const inner = ast[0].t.find(f => f.tok !== 'x') ?? ast[0].t[1];   // x·x + α₀ (degree 2, no linear term): P_1 = x
         const prev = `P_${Number(gname.slice(2)) - 1}`;
         out.push({ lhs: prev, rhs: renameWires(sumStr(presentP(inner.sum ?? [{ neg: false, t: [inner] }])), name) });
         ast = [{ neg: ast[0].neg, t: [{ tok: prev }, { tok: 'x' }] }];

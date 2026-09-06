@@ -175,6 +175,7 @@ textarea#poly-in::selection { background: rgba(138, 75, 45, .28); }
   font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
 }
 .controls > .lbl { margin-left: .15rem; }
+.controls > .lbl.tight { display: none; }   /* no room on the pills' line (measured in ui.js) */
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg button {
   border: 0; background: transparent; color: var(--muted);

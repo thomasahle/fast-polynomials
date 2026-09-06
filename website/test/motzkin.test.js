@@ -13,9 +13,10 @@
 // degrees 21..24, where the best achievable chains for random coefficients in
 // [-10, 10] reach a few 1e-6 (the compiler picks the smallest admissible
 // shift, decided exactly by Sturm sequences, and searches the peel order).
-import { compileMotzkin } from '../js/methods/motzkin.js';
+import { compileMotzkin, verifyLines, verifyLinesComplex, SAMPLE_ZS } from '../js/methods/motzkin.js';
 import { examplesFor } from '../js/uistate.js';
 import { parsePoly } from '../js/polyparse.js';
+import { hasComplexToken } from '../js/tokens.js';
 
 let hardFails = 0;
 const bad = msg => { console.log('FAIL: ' + msg); hardFails++; };
@@ -106,7 +107,7 @@ function checkWellFormed(r, n, label) {
     const stars = (ln.rhs.match(/\*/g) || []).length;
     if (ln.mul !== (stars > 0) || stars > 1)
       return bad(label + ': mul flag/star mismatch on ' + ln.lhs + ': ' + ln.rhs);
-    if (/\di\)/.test(ln.rhs)) return bad(label + ': complex constant in a Motzkin-Eve chain: ' + ln.rhs);
+    if (hasComplexToken(ln.rhs)) return bad(label + ': complex constant in a Motzkin-Eve chain: ' + ln.rhs);
   }
   if (r.lines[r.lines.length - 1].lhs !== 'P') return bad(label + ': last lhs is not P');
   if (mulLines !== r.mults) return bad(label + ': mults field != number of mul lines');
@@ -247,6 +248,32 @@ for (const [nm, badInput] of [
   let threw = false;
   try { compileMotzkin(badInput); } catch (e) { threw = e instanceof Error && e.message.length > 5; }
   if (!threw) bad('expected a clear Error for ' + nm + ' input');
+}
+
+// ---- verifyLinesComplex: the verifier the complex-coefficient rows use ----
+// Sample points off the real axis, complex Horner reference, |.|-relative
+// error with the same 1e-3 S(z) floor as verifyLines.
+{
+  if (!SAMPLE_ZS.some(z => z.im !== 0)) bad('SAMPLE_ZS has no point with Im != 0');
+  if (!SAMPLE_ZS.some(z => z.im === 0)) bad('SAMPLE_ZS has no real point');
+  // x^2 + 1 = (x + i)(x - i): exact over C, and the roots +-i are sample points
+  const good = [{ lhs: 'y', rhs: 'x + (0+1i)', mul: false }, { lhs: 'P', rhs: 'y * (x + (0-1i))', mul: true }];
+  const e1 = verifyLinesComplex(good, [1, 0, 1]);
+  if (!(e1 <= 1e-15)) bad(`verifyLinesComplex: (x+i)(x-i) vs x^2+1 gave ${e1}`);
+  const e1r = verifyLines(good, [1, 0, 1]);
+  if (!(e1r <= 1e-15)) bad(`verifyLines still accepts the complex chain for x^2+1: ${e1r}`);
+  // the same chain is not x^2 - 1
+  if (!(verifyLinesComplex(good, [-1, 0, 1]) > 0.1)) bad('verifyLinesComplex accepted a wrong chain');
+  // complex coefficients: x^2 + (1+2i) x + i, coefficient arrays of {re, im}
+  const cc = [{ re: 0, im: 1 }, { re: 1, im: 2 }, { re: 1, im: 0 }];
+  const chain = [{ lhs: 'P', rhs: '(x + (1+2i)) * x + (0+1i)', mul: true }];
+  const e2 = verifyLinesComplex(chain, cc);
+  if (!(e2 <= 1e-15)) bad(`verifyLinesComplex: complex-coefficient chain gave ${e2}`);
+  const wrong = [{ lhs: 'P', rhs: '(x + (1-2i)) * x + (0+1i)', mul: true }];
+  if (!(verifyLinesComplex(wrong, cc) > 0.1)) bad('verifyLinesComplex accepted a conjugated constant');
+  // plain numbers and {re, im: 0} are the same coefficients
+  const e3 = verifyLinesComplex(good, [{ re: 1, im: 0 }, 0, { re: 1 }]);
+  if (e3 !== e1) bad('verifyLinesComplex: {re, im} and plain-number coefficients disagree');
 }
 
 // ---- report ----

@@ -12,19 +12,22 @@
 // moduli (GF(2^128) has a two-partial-product square kernel); 2^61-1 in
 // 64-bit words with 128-bit products and lazy folds;
 // 2^127-1 with 128-bit values (four 64x64 partial products, values kept in
-// [0, p]); ℚ and ℝ as doubles (exact chain constants rounded).
+// [0, p]); ℚ and ℝ as doubles (exact chain constants rounded); ℂ as C99
+// double complex (<complex.h>, literals re + im*I, CX_LIMITED_RANGE products).
 // Conventions: a constants table at the top (a[] for GF(2^k) keys, alpha[]
 // for characteristic 0), wires named with the appendix letters y, z, t, u, ...
 // (tools/polychain.py _WIRE_LETTERS) and a trailing "// y = (x + a0) * (...)"
 // comment per gate, aligned as in repr_cpp.
 //
-// Modes (= field ids of js/field.js FIELDS): 'Q' | 'R' | 'p61' | 'p89' | 'p127'
+// Modes (= field ids of js/field.js FIELDS): 'Q' | 'R' | 'C' | 'p61' | 'p89' | 'p127'
 // for char0C / methodChainC; 'gf32' | 'gf64' | 'gf128' (or 'gf2k': F.k
 // decides) for methodChainC; char2C takes the field object. The legacy 'p'
 // means 'p89'.
 import { Rat } from './rat.js';
+import { GaussRat } from './gauss.js';
 import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 import { referenceFor } from './references.js';
+import { NUM_TOKEN, complexTokenAt, parseComplexToken } from './tokens.js';
 
 export { ratToDouble, MERSENNE89 };
 /** License of the generated C (one line; the bundle's README repeats it). */
@@ -48,7 +51,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
  *  ASCII line; polyToString uses · and −), the field, the method with its
  *  multiplication count (Horner's alongside when known), the number of
  *  preprocessed constants, and the compile line(s).  Every emitter uses it. */
-export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [], reference = null }) {
+export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [], reference = null, notes = [] }) {
   const lines = [];
   if (poly) lines.push(`P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}`);
   let summary = `Field: ${field}.  ${method}`;
@@ -56,8 +59,13 @@ export function cSourceHeader({ poly = null, field, method, mults = null, horner
   if (constants > 0) summary += `, ${plural(constants, 'preprocessed constant')}`;
   lines.push(`${summary}.`);
   if (reference) lines.push(`Reference: ${reference.cite ?? reference}${reference.url ? ` ${reference.url}` : ''}`);
-  return cFileHeader([...lines, ...[].concat(compile)]);
+  // the file's remarks (how the constants were rounded, FMA advice, the kernel's
+  // conventions) live in this one block too, after a blank line
+  return cFileHeader([...lines, ...[].concat(compile), ...(notes.length ? ['', ...notes] : [])]);
 }
+/** The lines of a block comment (slash-star … star-slash) as plain note lines for cSourceHeader. */
+const uncomment = lines => [].concat(lines).flatMap(l => l.split('\n'))
+  .map(l => l.replace(/^\s*\/\*\s?/, '').replace(/\s*\*\/\s*$/, '').replace(/^\s{3}(?=\S)/, '')).filter((l, i, a) => l !== '' || (i > 0 && i < a.length - 1));
 const OURS = referenceFor('This paper');
 /** Table of preprocessed constants: named after the function (eval_P -> P_a) so
  *  two generated files can share a translation unit. */
@@ -89,6 +97,22 @@ export function doubleLiteral(x) {
 
 const toRat = c => Rat.of(typeof c === 'number' ? BigInt(c) : c);
 const toBig = c => (typeof c === 'bigint' ? c : c instanceof Rat ? c.n : BigInt(c));
+const toGauss = c => (c instanceof GaussRat ? c : GaussRat.of(typeof c === 'number' ? BigInt(c) : c));
+
+/** C99 literal of a complex double (<complex.h>): a plain double when the
+ *  imaginary part is zero, otherwise "re + im*I" / "re - |im|*I". */
+export function complexLiteral(re, im) {
+  if (im === 0 || Object.is(im, -0)) return doubleLiteral(re);
+  return `${doubleLiteral(re)} ${im < 0 ? '-' : '+'} ${doubleLiteral(Math.abs(im))}*I`;
+}
+/** ℂ constant (GaussRat, Rat, bigint or integer) as a double complex initializer,
+ *  each part correctly rounded; throws (as doubleLiteral) beyond the double range. */
+export function cxConst(c) {
+  const g = toGauss(c);
+  return complexLiteral(ratToDouble(g.re.n, g.re.d), ratToDouble(g.im.n, g.im.d));
+}
+/** A literal that must be parenthesised inside a product or sum. */
+const compound = expr => /[ \/]/.test(expr) || (expr.startsWith('-') && expr.length > 1);
 
 /** Q constant as C source: cstyle 'float' | 'fraction'. Returns {expr, note}. */
 export function qConst(r0, cstyle = 'float') {
@@ -585,17 +609,27 @@ export function mersenneMode(p) {
 // ---------- affine-form chains (char 0) ----------
 const entriesOf = t => (t instanceof Map ? [...t.entries()] : Object.entries(t).map(([a, b]) => [Number(a), b]))
   .filter(([, k]) => k !== 0).sort((a, b) => a[0] - b[0]);
-const isZeroConst = c => (c instanceof Rat ? c.isZero() : (typeof c === 'number' ? c === 0 : toBig(c) === 0n));
+const isZeroConst = c => (c instanceof Rat || c instanceof GaussRat ? c.isZero() : (typeof c === 'number' ? c === 0 : toBig(c) === 0n));
 
-const DOUBLE_NOTE = [
-  '/* Optionally compile with -ffp-contract=fast (/fp:contract): it lets the compiler fuse',
-  '   multiply-adds (FMA), which is faster on most cores and changes the rounding slightly. */',
-].join('\n');
+const FMA_NOTE = [
+  'Optionally compile with -ffp-contract=fast (/fp:contract): it lets the compiler fuse',
+  'multiply-adds (FMA), which is faster on most cores and changes the rounding slightly.',
+];
 const DOUBLE_COMPILE = 'Compile: cc -O3 -march=native ...  (MSVC: /O2)';
+const COMPLEX_COMPILE = 'Compile: cc -std=c11 -O3 -march=native ... -lm  (C99 <complex.h>: gcc / clang; -fcx-limited-range where accepted)';
+const COMPLEX_INCLUDE = [
+  '#include <complex.h>',
+  '/* textbook (a+bi)(c+di) products, without the infinity/NaN recovery of __muldc3',
+  '   (clang honours the pragma; gcc only knows -fcx-limited-range, which benchmark.sh adds) */',
+  '#if !defined(__GNUC__) || defined(__clang__)',
+  '#pragma STDC CX_LIMITED_RANGE ON',
+  '#endif',
+].join('\n');
 const PRIME_COMPILE = 'Compile: cc -O2 ...  (gcc / clang: the kernel uses __uint128_t)';
 
 /** C for a char-0 PolynomialChain. mode: 'Q' | 'R' (doubles: the exact chain
- *  constants rounded — the same code, ℝ differs only in its banner),
+ *  constants rounded — the same code, ℝ differs only in its banner), 'C'
+ *  (C99 double complex: the exact Gaussian-rational constants rounded),
  *  'p61' | 'p89' | 'p127' (Mersenne primes; 'p' = 'p89').
  *  cstyle (Q only): 'float' | 'fraction'. */
 export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = 'eval_P', poly = null, horner = null } = {}) {
@@ -633,8 +667,8 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   const mGate = g => `${nameOf(g.out_wire)} = ${mForm(g.left, true)} * ${mForm(g.right, true)}`;
 
   const mults = chain.gates.length + (scaleBy !== null ? 1 : 0);
-  const header = (field, compile) =>
-    cSourceHeader({ poly, field, method: 'This paper', mults, horner, constants: consts.length, compile, reference: OURS });
+  const header = (field, compile, notes = []) =>
+    cSourceHeader({ poly, field, method: 'This paper', mults, horner, constants: consts.length, compile, reference: OURS, notes });
   const L = [];
   const gateLabels = chain.gate_labels ?? null;
   const labelLine = i => {
@@ -646,8 +680,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const ops = PRIME_OPS[mode];
     const M = chain.field?.modulus ?? null;
     if (M !== null && M !== ops.prime) throw new Error(`Mersenne C generation for ${mode}: chain is over another prime`);
-    L.push(header(ops.banner, PRIME_COMPILE));
-    L.push(...ops.intro);
+    L.push(header(ops.banner, PRIME_COMPILE, uncomment(ops.intro)));
     const fnL = [`${ops.T} ${name}(${ops.xT} x) {`, ...ops.entry];
     const cForm = f => {
       const ents = entriesOf(f.terms);
@@ -684,26 +717,32 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     return L.join('\n');
   }
 
-  // ----- Q / R: doubles -----
-  const real = mode === 'R';
-  if (real) {
-    L.push(header('R, evaluated in double precision', DOUBLE_COMPILE));
-    L.push('/* The chain was preprocessed exactly (rational arithmetic, as over Q); its constants');
-    L.push('   are rounded to the nearest double (shortest decimal that round-trips), so P is');
-    L.push('   reproduced approximately. */');
+  // ----- Q / R: doubles; C: double complex -----
+  const real = mode === 'R', cplx = mode === 'C';
+  const T = cplx ? 'double complex' : 'double';
+  if (cplx) {
+    L.push(header('C, evaluated in complex double precision', COMPLEX_COMPILE, [
+      'The chain was preprocessed exactly (Gaussian-rational arithmetic, as over Q); its',
+      'constants are rounded to the nearest complex double (each part the shortest decimal',
+      'that round-trips), so P is reproduced approximately.', ...FMA_NOTE]));
+    L.push(COMPLEX_INCLUDE);
+  } else if (real) {
+    L.push(header('R, evaluated in double precision', DOUBLE_COMPILE, [
+      'The chain was preprocessed exactly (rational arithmetic, as over Q); its constants',
+      'are rounded to the nearest double (shortest decimal that round-trips), so P is',
+      'reproduced approximately.', ...FMA_NOTE]));
   } else {
-    L.push(header('Q, evaluated in double precision', DOUBLE_COMPILE));
-    L.push('/* The chain is exact over Q; here the constants are rounded to the nearest double');
-    if (cstyle === 'fraction')
-      L.push('   ((double)NUM/DEN is correctly rounded whenever NUM and DEN fit in 53 bits). */');
-    else
-      L.push('   (shortest decimal that round-trips to the correctly rounded double). */');
+    L.push(header('Q, evaluated in double precision', DOUBLE_COMPILE, [
+      'The chain is exact over Q; here the constants are rounded to the nearest double',
+      cstyle === 'fraction'
+        ? '((double)NUM/DEN is correctly rounded whenever NUM and DEN fit in 53 bits).'
+        : '(shortest decimal that round-trips to the correctly rounded double).', ...FMA_NOTE]));
   }
-  L.push(DOUBLE_NOTE);
   L.push('');
   L.push(`/* preprocessed constants (the paper's alpha_i) */`);
-  L.push(`static const double ${tbl}[${consts.length}] = {`);
+  L.push(`static const ${T} ${tbl}[${consts.length}] = {`);
   L.push(...withComments(consts.map((c, i) => {
+    if (cplx) return [`    ${cxConst(c)},`, `alpha${i}`];
     if (real) return [`    ${qConst(c, 'float').expr},`, `alpha${i}`];
     const { expr, note } = qConst(c, cstyle);
     const r = toRat(c);
@@ -712,7 +751,7 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   })));
   L.push('};');
   L.push('');
-  L.push(`double ${name}(double x) {`);
+  L.push(`${T} ${name}(${T} x) {`);
   const cForm = (f, paren) => {
     const parts = [];
     for (const [w, k] of entriesOf(f.terms)) {
@@ -728,11 +767,14 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
   for (let i = 0; i < chain.gates.length; i++) {
     const g = chain.gates[i];
     const lab = labelLine(i); if (lab) body.push([lab, null]);
-    body.push([`    double ${nameOf(g.out_wire)} = ${cForm(g.left, true)} * ${cForm(g.right, true)};`, mGate(g)]);
+    body.push([`    ${T} ${nameOf(g.out_wire)} = ${cForm(g.left, true)} * ${cForm(g.right, true)};`, mGate(g)]);
   }
-  body.push([`    double P = ${cForm(chain.output, false)};`, `P = ${mForm(chain.output, false)}`]);
+  body.push([`    ${T} P = ${cForm(chain.output, false)};`, `P = ${mForm(chain.output, false)}`]);
   L.push(...withComments(body));
-  if (scaleBy !== null) {
+  if (scaleBy !== null && cplx) {
+    const lit = cxConst(scaleBy);
+    L.push(`    return P * ${compound(lit) ? `(${lit})` : lit};  // leading coefficient`);
+  } else if (scaleBy !== null) {
     const { expr, note } = qConst(scaleBy, real ? 'float' : cstyle);
     L.push(`    return P * ${expr};  // leading coefficient${note ? ' (' + note + ')' : ''}`);
   } else L.push('    return P;');
@@ -762,6 +804,8 @@ export function parseRhs(s) {
     return fs;
   };
   const factor = () => {
+    const cx = complexTokenAt(s, i);               // a complex literal (re±imi) is ONE atomic token
+    if (cx !== null) { i += cx.length; return { tok: cx }; }
     if (s[i] === '(') { i++; const e = expr(); i++; return e; }
     let j = i;
     while (j < s.length && !' ()'.includes(s[j])) j++;
@@ -771,7 +815,7 @@ export function parseRhs(s) {
   return expr();
 }
 
-const isNum = t => /^-?(0x[0-9a-fA-F]+|\d+(\.\d+)?([eE][+-]?\d+)?(\/\d+)?)$/.test(t);
+const isNum = t => NUM_TOKEN.test(t);
 const SCALED_WIRE = /^(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)·([A-Za-z_][A-Za-z0-9_]*)$/;
 
 // Evaluate an rhs AST into C with a mode-specific op set. Every value is a
@@ -809,6 +853,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   mode = chainMode(mode, F);
   const isPrime = mode in PRIME_OPS;
   const isGF = /^gf\d+$/.test(mode);
+  const isCx = mode === 'C';                     // C99 double complex; constants may be (re±imi) tokens
   const G = isGF ? gfSpec(F) : null;
   if (isGF && `gf${F?.k}` !== mode) throw new Error(`mode ${mode} does not match ${F?.name}`);
   const useTable = constants === 'table' ||
@@ -819,22 +864,31 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   const litValue = t => {         // literal token -> C initializer + comment
     if (isGF) return { expr: useTable ? G.lit(BigInt(t)) : G.inline(BigInt(t)), comment: t };
     if (isPrime) return { expr: PRIME_OPS[mode].lit(BigInt(t)), comment: t };
+    if (isCx) {
+      const z = parseComplexToken(t);
+      if (z) return { expr: complexLiteral(z.re, z.im), comment: '' };
+    }
     const neg = t.startsWith('-'); const u = neg ? t.slice(1) : t;
-    if (u.includes('.') || /[eE]/.test(u)) return { expr: t, comment: '' };   // numeric (Motzkin, ℝ)
+    if (u.includes('.') || /[eE]/.test(u)) {                                   // numeric (Motzkin, ℝ, ℂ)
+      // a token beyond the double range (1e+400, from ratToDoubleString) is refused
+      // like the char0C and complex-token paths, instead of becoming an inf literal
+      if (!Number.isFinite(Number(t))) throw new Error(`constant ${t} is not representable as a double`);
+      return { expr: t, comment: '' };
+    }
     const [a, b] = u.split('/');
     const r = new Rat(BigInt(neg ? '-' + a : a), b ? BigInt(b) : 1n);
-    const { expr, note } = qConst(r, mode === 'R' ? 'float' : cstyle);
+    const { expr, note } = qConst(r, mode === 'R' || isCx ? 'float' : cstyle);
     return { expr, comment: cstyle === 'fraction' ? note : r.toString() };
   };
   const lit = t => {
     const { expr, comment } = litValue(t);
-    if (!useTable) return [!isGF && !isPrime && /[-\/]/.test(expr) ? `(${expr})` : expr, 1, false];
+    if (!useTable) return [!isGF && !isPrime && compound(expr) ? `(${expr})` : expr, 1, false];
     if (!tableIdx.has(t)) { tableIdx.set(t, table.length); table.push({ expr, comment }); }
     return [`${tbl}[${tableIdx.get(t)}]`, 1, false];
   };
   const tbl = tableName(fn, 'c');
 
-  let T, xT, header, ops, entry = [], finish = () => [], compile;
+  let T, xT, header, ops, entry = [], finish = () => [], compile, notes = [];
   if (isGF) {
     T = xT = G.T; header = null; compile = G.compile;
     ops = { lit, wire: w => [cIdent(w), 2, w === 'x'],
@@ -854,13 +908,15 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
       mul: P.mul,
       fold: ps => P.fold(ps) };
   } else {
-    T = xT = 'double';
-    // ℝ: the field's constants already print as doubles (shortest round-trip decimals)
-    header = (mode !== 'R' && cstyle === 'fraction'
-      ? '/* Constants are rounded to double: (double)NUM/DEN is correctly rounded when both fit in 53 bits. */'
-      : '/* Constants are rounded to the nearest double (shortest round-trip decimal). */') +
-      '\n' + DOUBLE_NOTE;
-    compile = DOUBLE_COMPILE;
+    T = xT = isCx ? 'double complex' : 'double';
+    // ℝ / ℂ: the field's constants already print as (complex) doubles (shortest round-trip decimals)
+    notes = [isCx
+      ? 'Constants are rounded to the nearest complex double (each part a shortest round-trip decimal).'
+      : mode !== 'R' && cstyle === 'fraction'
+      ? 'Constants are rounded to double: (double)NUM/DEN is correctly rounded when both fit in 53 bits.'
+      : 'Constants are rounded to the nearest double (shortest round-trip decimal).', ...FMA_NOTE];
+    header = isCx ? COMPLEX_INCLUDE : '';          // ('' = nothing before the table; null would mean a prime kernel)
+    compile = isCx ? COMPLEX_COMPILE : DOUBLE_COMPILE;
     ops = { lit, wire: w => [cIdent(w), 1, w === 'x'],
       neg: v => [`(-${v[0]})`, 1, false],
       mul: (a, b) => [`${a[0]} * ${b[0]}`, 1, false],
@@ -878,7 +934,9 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
       prevLayer = l.layer;
     }
     let v;
-    const radixInput = !isGF && !isPrime && l.radixShift !== undefined &&
+    // ℂ is excluded: ldexp(double complex, n) would silently drop the imaginary
+    // part, so a complex radix line falls through to a plain (exact) product
+    const radixInput = !isGF && !isPrime && !isCx && l.radixShift !== undefined &&
       /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?·([A-Za-z_][A-Za-z0-9_]*)$/.exec(l.rhs);
     if (radixInput) {
       usesLdexp = true;
@@ -897,8 +955,9 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   if (isGF) header = G.header(fnText);
   else if (header === null) header = PRIME_OPS[mode].header(fnText);
   else if (usesLdexp) header = '#include <math.h>\n' + header;
-  const field = isGF ? `GF(2^${G.k})` : isPrime ? PRIME_OPS[mode].banner : `${mode === 'R' ? 'R' : 'Q'}, evaluated in double precision`;
-  const L = [cSourceHeader({ poly, field, method: name, mults, constants: useTable ? table.length : 0, compile, reference }), header, ''];
+  const field = isGF ? `GF(2^${G.k})` : isPrime ? PRIME_OPS[mode].banner
+    : isCx ? 'C, evaluated in complex double precision' : `${mode === 'R' ? 'R' : 'Q'}, evaluated in double precision`;
+  const L = [cSourceHeader({ poly, field, method: name, mults, constants: useTable ? table.length : 0, compile, reference, notes }), ...(header ? [header] : []), ''];
   if (useTable && table.length) {
     L.push('/* preprocessed constants */');
     L.push(`static const ${T} ${tbl}[${table.length}] = {`);

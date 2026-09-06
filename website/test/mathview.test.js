@@ -24,6 +24,9 @@ eq(tokenToTex('-7/3'), '-\\frac{7}{3}', 'rational constant');
 eq(tokenToTex('0x1f'), '\\mathtt{0x1f}', 'binary-field constant');
 eq(tokenToTex('1e-7'), '1\\mathbin{\\times}10^{-7}', 'scientific notation');
 eq(tokenToTex('2·y'), '2\\,y', 'integer multiple');
+eq(tokenToTex('(1.5-2i)'), '\\left(1.5-2\\,i\\right)', 'complex constant token');
+eq(tokenToTex('(0+1e-7i)', { highlight: true }), '\\htmlClass{math-const}{\\left(0+1\\mathbin{\\times}10^{-7}\\,i\\right)}', 'complex constant highlighted as one constant');
+eq(expressionToTex('(x + (1+2i)) * y'), '\\left(x + \\left(1+2\\,i\\right)\\right) \\mathbin{\\cdot} y', 'complex constant inside a factor');
 eq(expressionToTex('(x + 1/2) * (P̃ − 0x1f)'),
   '\\left(x + \\frac{1}{2}\\right) \\mathbin{\\cdot} ' +
   '\\left(\\widetilde{P} - \\mathtt{0x1f}\\right)', 'factored expression');
@@ -69,13 +72,16 @@ const CASES = [
     src: 'x^7 - 2x^6 - 8x^5 - 6x^4 - 11x^3 + 10/3x^2 + 2x - 7/3' },
   { lane: 'char0', fieldMode: 'R',
     src: '1/6x^6 + 1/5x^5 + 1/4x^4 + 1/3x^3 + 1/2x^2 + x + 1' },
+  { lane: 'char0', fieldMode: 'C',
+    src: '(1+2i)x^7 - ix^5 + 3x^4 - (1/2-3/4i)x^2 + x + i' },
   { lane: 'char0', fieldMode: 'p89',
     src: 'x^15 - 5x^14 - 17x^13 + 18x^12 - 12x^11 + 19x^10 - 12x^9 + 17x^8 + 17x^7 - 18x^6 + 3x^5 + 14x^4 + 8x^3 + 7x^2 + 11x + 9' },
 ];
 
-let equations = 0;
+let equations = 0, complexRows = 0;
 for (const request of CASES) {
   const result = await handleMessage(request);
+  if (request.fieldMode === 'C') check(!result.oursFailed && /\(1\+2i\)/.test(result.mathText), `ℂ compiles with complex tokens (${result.oursFailed ?? 'ok'})`);
   const texts = [result.mathText, result.mathTextOriginal,
     ...result.comparisons.flatMap(row => row.ok ? [row.mathText, row.mathTextOriginal] : [])]
     .filter(Boolean);
@@ -83,12 +89,18 @@ for (const request of CASES) {
     if (row.kind === 'heading') check(!!renderLatex(row.tex), `heading renders: ${row.text}`);
     if (row.kind !== 'equation') continue;
     equations++;
+    if (/\d[+-]\d[^ ]*i\)/.test(row.expression)) {
+      complexRows++;
+      check(/\\,i\\right\)/.test(row.rhsTex) && !/[^\\]i\)/.test(row.rhsTex.replace(/\\,i\\right\)/g, '')),
+        `complex constants typeset as (re±im\\,i): ${row.expression} -> ${row.rhsTex}`);
+    }
     check(!!row.rhsTex, `equation parses: ${row.lhs} = ${row.expression}`);
     check(!!renderLatex(row.lhsTex), `lhs renders: ${row.lhs}`);
     check(!!renderLatex(row.rhsTex), `rhs renders: ${row.expression}`);
   }
 }
 check(equations > 300, `broad generated-chain coverage (${equations} equations)`);
+check(complexRows >= 4, `ℂ equations with complex constants rendered (${complexRows})`);
 
 delete globalThis.katex;
 console.log(fails ? `MATH VIEW FAILED (${fails}/${checks})` : `MATH VIEW PASSES (${checks} checks, ${equations} generated equations)`);

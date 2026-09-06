@@ -12,6 +12,7 @@ import { FIELDS as REGISTRY, FIELD_IDS } from '../js/field.js';
 import { parsePoly } from '../js/polyparse.js';
 import { countOps, formatConstants } from '../js/chain.js';
 import { Rat } from '../js/rat.js';
+import { GaussRat } from '../js/gauss.js';
 
 let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
@@ -142,6 +143,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(shf.method === 'ours', 'reply falls back when the chosen method is unavailable');
   eq(examplesFor('Q', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'hermite'], 'ℚ example chips');
   eq(examplesFor('R', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'hermite'], 'ℝ example chips (the same polynomials)');
+  eq(examplesFor('C', 10).map(e => e.key), ['expi', 'binomi', 'exp1i', 'gauss'], 'ℂ example chips: e^{ix}, (x+i)^n, e^{(1+i)x}, random ℤ[i] — all with complex coefficients');
+  eq(examplesFor('C', 10).map(e => e.labelTex), ['e^{ix}', '(x+i)^{10}', 'e^{(1+i)x}', '\\text{random }\\mathbb{Z}[i]'], 'ℂ example chips carry TeX labels');
+  check(defaultExample('C', 10).key === 'expi', 'ℂ opens on the e^{ix} chip');
+  check(reduce(initialState, { type: 'setMode', mode: 'C' }).exKey === 'expi' && reduce(inMode('Q'), { type: 'setMode', mode: 'C' }).exKey === 'expi',
+        'a held ℚ chip falls to the ℂ default (e^{ix}), which has no real-coefficient chips');
+  for (const e of examplesFor('C', 9)) check(parsePoly(e.src, { complex: true }).coeffs.some(c => !c.isReal()), `ℂ chip ${e.key} has complex coefficients`);
+  check(examplesFor('C', 9)[3].reseed && examplesFor('C', 9, 1)[3].src !== examplesFor('C', 9, 2)[3].src, 'the Gaussian random chip reseeds');
+  check(parsePoly(examplesFor('C', 9, 0, true)[3].src, { complex: true }).coeffs[9].isOne(), 'monic Gaussian random chip');
+  const heldI = reduce(inMode('C'), { type: 'example', key: 'expi' });
+  check(heldI.exKey === 'expi' && reduce(heldI, { type: 'setMode', mode: 'Q' }).exKey === 'exp' && reduce(heldI, { type: 'setMode', mode: 'R' }).src === defaultExample('R', 10, 0, true).src,
+        'a held e^{ix} chip falls to the ℚ / ℝ default (e^x) where ℂ\'s chip does not exist');
   eq(examplesFor('Q', 10).map(e => e.labelTex), ['e^x', '\\ln(1+x)', '\\sqrt{1+x}', '\\mathrm{He}_{10}'],
     'ℚ example chips carry TeX labels');
   for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128'])
@@ -202,18 +214,21 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(s3.jobId === 3 && s3.busy && showOutput(s3) === (s3.result !== null), 'compile keeps any previous output while running (stale)');
   check(reduce(s3, { type: 'reply', id: 2, ok: true, result: RESULT }) === s3, 'reply from the superseded job ignored');
   const s4 = reduce(s3, { type: 'cancel' });
-  check(!s4.busy && s4.jobId === 3 && s4.result === RESULT, 'cancel keeps the stale output (idle, last result shown)');
+  check(!s4.busy && s4.jobId === 4 && s4.result === RESULT, 'cancel keeps the stale output (idle, last result shown) and retires the job id');
   check(reduce(s4, { type: 'reply', id: 3, ok: true, result: RESULT }) === s4, 'reply after cancel ignored');
   check(reduce(s4, { type: 'reply', id: 3, ok: false, message: 'x' }) === s4, 'error reply after cancel ignored');
+  check(reduce(s4, { type: 'reply', id: 3, part: 'numeric', ok: true, result: { comparisons: [{ name: 'Pan', ok: true, mathText: 'late' }] } }) === s4,
+        'numeric reply after cancel ignored (not merged into the previous result)');
+  check(reduce(s4, { type: 'reply', id: 4, ok: true, result: RESULT }) === s4, 'a reply for the retired id is ignored while idle');
   const s5 = reduce(s4, { type: 'compile' });
-  check(s5.jobId === 4 && s5.busy, 'compile after cancel uses a fresh id');
+  check(s5.jobId === 5 && s5.busy, 'compile after cancel uses a fresh id');
   eq(compileMessage(reduce(inMode('p89'), { type: 'compile' })).lane, 'char0', 'Mersenne lane');
   eq(compileMessage(reduce(inMode('p127'), { type: 'compile' })).fieldMode, 'p127', 'Mersenne fieldMode is the registry id');
   eq(compileMessage(reduce(initialState, { type: 'compile' })), { id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q' }, 'ℚ message');
   eq(compileMessage(reduce(inMode('gf64'), { type: 'compile' })), { id: 2, src: defaultExample('gf64', 10, 0, true).src, lane: 'char2', fieldMode: 'gf64' }, 'GF(2^64) message');
   const we = reduce(s5, { type: 'workerError', message: 'worker failed to load: boom' });
   check(!we.busy && we.error === 'worker failed to load: boom' && we.result === null, 'worker error surfaces and returns to idle');
-  check(reduce(we, { type: 'reply', id: 4, ok: true, result: RESULT }) === we, 'reply after worker error ignored');
+  check(reduce(we, { type: 'reply', id: s5.jobId, ok: true, result: RESULT }) === we, 'reply after worker error ignored');
 }
 
 // ---- result → method selection --------------------------------------------
@@ -302,6 +317,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(comparisonTable(withResult(inMode('R'), deepFreeze({ ...rres, comparisons: [long] })))[1].exactNote === 'complex roots, max rel. error 3.2e-11',
         'a method description in the note is left out of the hover text');
   check(stats(withResult(inMode('R'), rres))[4].value === '≈ numeric', 'ℝ stats agree with the table');
+  // ℂ: the same shape, the rounding note names complex doubles
+  const cres = deepFreeze({ ...rres, fieldId: 'C', fieldName: 'ℂ', comparisons: [
+    row('Horner', { preprocessing: 'none', exact: true }),
+    row('Knuth–Eve', { preprocessing: 'complex', exact: false, note: 'complex roots, max rel. error 2.5e-16' }),
+    row('Belaga', { preprocessing: 'complex roots', exact: false, note: 'Belaga 1958 (Pan 1966) max rel. error 3.2e-11' }),
+  ] });
+  const cxt = comparisonTable(withResult(inMode('C'), cres));
+  eq(cxt.map(r => [r.key, r.exact]), [['ours', false], ['Horner', true], ['Knuth–Eve', false], ['Belaga', false]], 'ℂ: ours is ≈ numeric; Horner stays exact');
+  check(/Gaussian-rational preprocessing/.test(cxt[0].exactNote) && /rounded to complex doubles/.test(cxt[0].exactNote), `ℂ: ours' note (${cxt[0].exactNote})`);
+  check(cxt[2].exactNote === 'complex, max rel. error 2.5e-16' && cxt[3].exactNote === 'complex roots, max rel. error 3.2e-11', 'ℂ numeric rows carry their own notes');
+  check(stats(withResult(inMode('C'), cres))[4].value === '≈ numeric' && stats(withResult(inMode('C'), cres))[3].value === 'ℂ', 'ℂ stats agree with the table');
   check(comparisonTable(withResult(inMode('Q'), COUNTED)).every(r => (r.exactNote === null) === (r.exact !== false)), 'ℚ: notes only on inexact rows');
   // failed ours: its row is off with the reason, the rest still count
   const ft = comparisonTable(withResult(initialState, FAILED));
@@ -322,7 +348,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   eq(subOptionStrips(c).map(st => st.kind), ['constants'], 'C view over ℚ: only the constants strip');
   eq(csub.options.map(o => [o.key, o.on, o.enabled]), [['float', true, true], ['fraction', false, true]], 'constants options for ours');
   check(availableSubOptions(reduce(q, { type: 'setView', view: 'graph' })) === null, 'graph view has no sub-options');
-  for (const m of ['R', 'p89', 'gf64']) {
+  for (const m of ['R', 'C', 'p89', 'gf64']) {
     const s = reduce(withResult(inMode(m)), { type: 'setView', view: 'c' });
     check(availableSubOptions(s) === null, `C constants strip hidden in ${m}`);
     eq(subOptionStrips(reduce(s, { type: 'setView', view: 'math' })).map(st => st.kind), ['form', 'numfmt'], `form + numfmt strips shown in ${m}`);
@@ -389,6 +415,11 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const r = withResult(inMode('R'), deepFreeze({ ...RESULT, mathText: 'y = (x + 0.3333333333333333) * x\nP = y + 1', exact: false, fieldId: 'R' }));
   eq(subOptionStrips(r)[1].options.map(o => o.label), ['full', 'decimal'], 'ℝ labels');
   check(paneContent(reduce(r, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + 0.333333) * x\nP = y + 1', 'ℝ decimal rendering');
+  // ℂ: complex doubles; 'full' / 'decimal', the complex token rounded as one
+  const cx = withResult(inMode('C'), deepFreeze({ ...RESULT, mathText: 'y = (x + (0.3333333333333333-0.25i)) * x\nP = y + 1', exact: false, fieldId: 'C' }));
+  eq(subOptionStrips(cx)[1].options.map(o => o.label), ['full', 'decimal'], 'ℂ labels');
+  check(/complex-double constants in full/.test(subOptionStrips(cx)[1].options[0].title), 'ℂ full-constants title names complex doubles');
+  check(paneContent(reduce(cx, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + (0.333333-0.25i)) * x\nP = y + 1', 'ℂ decimal rendering');
   // a rendering without constants offers nothing to reformat
   const none = withResult(inMode('Q'), deepFreeze({ ...RESULT, mathText: 'y = x * x\nP = y + x' }));
   check(subOptionStrips(none)[1].options[1].enabled === false && effectiveNumfmt(reduce(none, { type: 'setNumfmt', numfmt: 'decimal' })) === 'exact',
@@ -412,7 +443,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   // a field without C rendering says so (registry cCode / the reply's cCode)
   const nofield = withResult(initialState, deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cCode: false }));
   check(paneContent(reduce(nofield, { type: 'setView', view: 'c' })).note === '/* no C rendering for this field yet */', 'field-level C note');
-  check(REGISTRY.every(f => f.cCode), 'every registry field renders C today');
+  eq(REGISTRY.filter(f => !f.cCode).map(f => f.id), [], 'every registry field renders C (ℂ: C99 double complex)');
   const e = run(s, { type: 'setMethod', method: 'Estrin' });
   check(selectedRow(e).name === 'Estrin' && paneContent(e).text === 'Estrin math' && stats(e)[4].value === '≈ numeric'
         && methodTabs(e).find(t => t.on).key === 'Estrin' && comparisonTable(e).find(r => r.on).key === 'Estrin', 'one source of truth for the selected method');
@@ -441,6 +472,24 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(examplesFor('Q', 12)[2].src === '-29393/4194304x^12 + 4199/524288x^11 - 2431/262144x^10 + 715/65536x^9 - 429/32768x^8 + 33/2048x^7 - 21/1024x^6 + 7/256x^5 - 5/128x^4 + 1/16x^3 - 1/8x^2 + 1/2x + 1',
         '√(1+x) at degree 12 matches the old example');
   eq(examplesFor('Q', 12).map(e => e.src), examplesFor('R', 12).map(e => e.src), 'ℝ shares the ℚ examples');
+  // ℂ: Gaussian coefficients printed as (a+bi), real ones as over ℚ
+  check(examplesFor('C', 4)[0].src === '1/24x^4 - (0+1/6i)x^3 - 1/2x^2 + (0+1i)x + 1', `e^{ix} at degree 4: ${examplesFor('C', 4)[0].src}`);
+  check(examplesFor('C', 5, 0, true)[0].src === 'x^5 + 1/24x^4 - (0+1/6i)x^3 - 1/2x^2 + (0+1i)x + 1', 'monic e^{ix}: the degree-4 series plus x^5');
+  check(examplesFor('C', 5)[1].src === 'x^5 + (0+5i)x^4 - 10x^3 - (0+10i)x^2 + 5x + (0+1i)' && examplesFor('C', 5, 0, true)[1].src === examplesFor('C', 5)[1].src,
+        `(x+i)^5 expanded, monic either way: ${examplesFor('C', 5)[1].src}`);
+  check(examplesFor('C', 3)[2].src === '-(1/3-1/3i)x^3 + (0+1i)x^2 + (1+1i)x + 1', `e^{(1+i)x} at degree 3: ${examplesFor('C', 3)[2].src}`);
+  for (const n of [3, 9, 24]) {
+    const ex = Object.fromEntries(examplesFor('C', n).map(e => [e.key, parsePoly(e.src, { complex: true })]));
+    let f = GaussRat.ONE;
+    const want = Array.from({ length: n + 1 }, (_, k) => { if (k > 0) f = f.mul(GaussRat.I).div(new Rat(BigInt(k))); return f; });
+    check(ex.expi.degree === n && ex.expi.coeffs.every((c, k) => c.eq(want[k])), `ℂ e^{ix} degree ${n}: coefficients i^k/k!`);
+    check(ex.binomi.degree === n && ex.binomi.coeffs[n].isOne() && ex.binomi.coeffs[0].eq(n % 4 === 1 ? GaussRat.I : n % 4 === 3 ? GaussRat.I.neg() : n % 4 === 0 ? GaussRat.ONE : GaussRat.ONE.neg()),
+          `ℂ (x+i)^${n}: monic with constant term i^${n}`);
+    const monicEx = parsePoly(examplesFor('C', n, 0, true)[0].src, { complex: true });
+    check(monicEx.degree === n && monicEx.coeffs[n].isOne() && monicEx.coeffs.slice(0, n).every((c, k) => c.eq(want[k])), `ℂ monic e^{ix} degree ${n}`);
+  }
+  check(tokenizePoly(examplesFor('C', 9)[0].src).filter(t => t.type === 'num').some(t => t.text === '(0+1/6i)')
+        && !tokenizePoly(examplesFor('C', 9)[0].src).some(t => t.type === 'text'), 'the highlighter reads the ℂ chip literals as numbers');
   // hashing fields: the same four presets over every Mersenne prime / binary field
   const abs = c => (c.n < 0n ? -c.n : c.n);
   for (const m of ['p61', 'p89', 'p127']) {
@@ -491,6 +540,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(/independent hashing/.test(examplesFor('gf64', 13)[0].title) && /21-independent/.test(examplesFor('p89', 20)[0].title), 'random key chip explains k-independence');
   // stepping
   eq([stepDegree('Q', 10, 1), stepDegree('Q', 24, 1), stepDegree('Q', 3, -1), stepDegree('R', 24, 1)], [11, 24, 3, 24], 'ℚ/ℝ stepping clamps at [3,24]');
+  eq([stepDegree('C', 10, 1), stepDegree('C', 24, 1), stepDegree('C', 3, -1), clampDegree('C', 99), clampDegree('C', 1)], [11, 24, 3, 24, 3], 'ℂ stepping clamps at [3,24]');
   eq([stepDegree('p89', 62, 1), stepDegree('p89', 63, 1)], [63, 63], 'Mersenne stepping clamps at 63');
   eq([stepDegree('gf64', 13, 1), stepDegree('gf64', 15, -1), stepDegree('gf64', 26, 1), stepDegree('gf64', 1, -1)],
      [14, 14, 26, 1], 'GF(2^k) stepping walks every degree 1..26 and clamps at the ends');
@@ -631,12 +681,12 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(all.every(f => f.title !== 'coming soon'), 'enabled fields keep their own title');
   for (const f of all) check(reduce(initialState, { type: 'setMode', mode: f.id }).mode === f.id, `setMode(${f.id}) selects the field`);
   const byGroup = Object.fromEntries(ch.map(g => [g.id, g.fields.map(f => f.label)]));
-  eq(byGroup.exact, ['ℚ', 'ℝ'], 'exact group: ℚ and ℝ together (ℝ is the same exact preprocessing shown in doubles)');
+  eq(byGroup.exact, ['ℚ', 'ℝ', 'ℂ'], 'exact group: ℚ, ℝ and ℂ together (ℝ / ℂ are the same exact preprocessing shown in doubles / complex doubles)');
   eq(byGroup.mersenne, ['2⁶¹−1', '2⁸⁹−1', '2¹²⁷−1'], 'Mersenne group: short labels, the caption supplies the GF(…) context');
   eq(byGroup.binary, ['GF(2³²)', 'GF(2⁶⁴)', 'GF(2¹²⁸)'], 'binary group');
-  eq(ch.map(g => [g.label, g.fields.length]), [['exact', 2], ['Mersenne primes', 3], ['binary fields', 3]], 'group captions + sizes');
+  eq(ch.map(g => [g.label, g.fields.length]), [['exact', 3], ['Mersenne primes', 3], ['binary fields', 3]], 'group captions + sizes');
   check(ch.every(g => typeof g.title === 'string' && g.title.length > 0), 'each group caption carries a hover title');
-  check(/rational/.test(ch[0].title) && /doubles/.test(ch[0].title), 'the exact group\'s title explains ℝ');
+  check(/rational/.test(ch[0].title) && /doubles/.test(ch[0].title) && /ℂ/.test(ch[0].title), 'the exact group\'s title explains ℝ and ℂ');
   check(all.every(f => f.label.length <= 8), `chooser labels are short: ${all.map(f => f.label).join(' ')}`);
   check(REGISTRY.filter(f => f.char === 'p').every(f => f.name === `GF(2^${f.bits}−1)` && f.labelHtml === `2<sup>${f.bits}</sup>−1`),
         'Mersenne fields keep their GF(2^k−1) name for results');
@@ -645,6 +695,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         && !/paper's experiments/.test(fieldTitle(REGISTRY.find(f => f.id === 'p61'))), 'the paper\'s fields are marked in their titles');
   check(/≈ numeric/.test(fieldTitle(REGISTRY.find(f => f.id === 'R'))) && /exact rational preprocessing/.test(fieldTitle(REGISTRY.find(f => f.id === 'R'))),
         'ℝ title: exact preprocessing, reported as ≈ numeric');
+  check(/≈ numeric/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))) && /Gaussian rationals/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))) && /complex doubles/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))),
+        'ℂ title: exact preprocessing over ℚ(i), complex doubles, reported as ≈ numeric');
+  eq(fieldChooser(inMode('C')).flatMap(g => g.fields).filter(f => f.on).map(f => f.id), ['C'], 'ℂ is selectable inside the exact group');
+  eq(compileMessage(reduce(initialState, { type: 'setMode', mode: 'C' })), { id: 1, src: defaultExample('C', 7, 0, true).src, lane: 'char0', fieldMode: 'C' }, 'ℂ compile message (the held ℚ chip falls to the ℂ default e^{ix})');
   check((() => { try { fieldChooser(deepFreeze({ ...initialState })); return true; } catch { return false; } })(), 'fieldChooser is pure');
 }
 
@@ -699,12 +753,33 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(many.filter(t => t.type === 'var').length === 63 && many.filter(t => t.type === 'num').length >= 60, 'dense degree-63 example: 63 powers, 60+ numbers');
   check(!tokenizePoly('1/2x^2').some(t => t.type === 'text'), 'valid syntax produces no plain-text tokens');
   check(!tokenizePoly(examplesFor('gf64', 13)[0].src).some(t => t.type === 'text'), 'hex key polynomials produce no plain-text tokens');
+  // ℂ input: i, 2i, 1/2i, 2.5i and (a+bi) are number tokens
+  const csrcs = ['(1+2i)x^2 - 1/2i x + i', 'x + (1/2-3/4i)', '(2-i)x', '(-i)x^3 + 2.5i', '2e-3i x', 'i x^3 + x', '(1.5+0.25i)'];
+  for (const s of csrcs) check(join(tokenizePoly(s)) === s, `complex tokens concatenate back: ${JSON.stringify(s)}`);
+  for (const s of csrcs) check(!tokenizePoly(s).some(t => t.type === 'text'), `complex syntax produces no plain-text tokens: ${JSON.stringify(s)}`);
+  eq(types(tokenizePoly('(1+2i)x^2 - 1/2i x + i')),
+     ['num:(1+2i)', 'var:x^2', 'space: ', 'op:-', 'space: ', 'num:1/2i', 'space: ', 'var:x', 'space: ', 'op:+', 'space: ', 'num:i'],
+     'complex literals are single number tokens');
+  eq(types(tokenizePoly('(1/2-3/4i)x + (2-i) + 2.5i')),
+     ['num:(1/2-3/4i)', 'var:x', 'space: ', 'op:+', 'space: ', 'num:(2-i)', 'space: ', 'op:+', 'space: ', 'num:2.5i'],
+     'fractional and bare-i parts, decimal imaginary coefficient');
+  eq(types(tokenizePoly('0.25x + 1e-3')), ['num:0.25', 'var:x', 'space: ', 'op:+', 'space: ', 'num:1e-3'], 'decimals and exponents are one number');
+  eq(types(tokenizePoly('(x+i)')), ['text:(', 'var:x', 'op:+', 'num:i', 'text:)'], 'a parenthesized non-literal is not a number');
+  // no lookahead window: a complex literal longer than 40 characters is one number
+  eq(types(tokenizePoly('(0.30000000000000004+0.30000000000000004i)x')), ['num:(0.30000000000000004+0.30000000000000004i)', 'var:x'],
+     'a >40-char complex literal is one number');
+  check(!tokenizePoly('(1/620448401733239439360000+1/620448401733239439360000i)x + 1').some(t => t.type === 'text') &&
+        tokenizePoly('(1/620448401733239439360000+1/620448401733239439360000i)x + 1')[0].text === '(1/620448401733239439360000+1/620448401733239439360000i)',
+        'a long exact Gaussian literal is one number token');
+  eq(types(tokenizePoly('(1/2)i x + (-1/2)*i')), ['num:(1/2)i', 'space: ', 'var:x', 'space: ', 'op:+', 'space: ', 'num:(-1/2)*i'],
+     'a parenthesized real part before i is one number');
 }
 
 // ---- the numeric methods in their own worker --------------------------------
 {
   eq(compileMessages(inMode('Q')).map(m => m.part), ['main', 'numeric'], 'ℚ compiles in two workers');
   eq(compileMessages(inMode('R')).map(m => m.part), ['main', 'numeric'], 'ℝ compiles in two workers');
+  eq(compileMessages(inMode('C')).map(m => m.part), ['main', 'numeric'], 'ℂ compiles in two workers');
   eq(compileMessages(inMode('gf64')).map(m => m.part), ['main'], 'GF(2^k) needs only the main worker');
   eq(compileMessages(inMode('p89')).map(m => m.part), ['main'], 'Mersenne needs only the main worker');
   const pend = name => ({ name, ok: false, pending: true, note: 'computing…' });
@@ -741,6 +816,23 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         'the main reply merges the waiting numeric rows');
   check(reduce(early, { type: 'cancel' }).lateNumeric === null, 'cancel drops waiting numeric rows');
   check(methodAvailable(MAIN, 'Pan') && !methodAvailable(NUMERIC.comparisons && { comparisons: NUMERIC.comparisons }, 'Pan'), 'pending counts as available; a failed row does not');
+  // ℂ: three numeric methods (Knuth–Eve, Pan, Belaga), one reply each
+  const startedC = reduce(inMode('C'), { type: 'compile' });
+  const MAIN_C = deepFreeze({ ...RESULT, comparisons: [row('Horner'), row('Estrin'), pend('Knuth–Eve'), pend('Pan'), pend('Belaga')] });
+  const mainC = reduce(startedC, { type: 'reply', id: startedC.jobId, part: 'main', ok: true, result: MAIN_C });
+  eq(comparisonTable(mainC).filter(r => r.pending).map(r => r.name), ['Knuth–Eve', 'Pan', 'Belaga'], 'over ℂ three rows are pending after the main reply');
+  eq(reduce(mainC, { type: 'reply', id: startedC.jobId, part: 'numeric', ok: false, message: 'boom' }).result.comparisons.slice(2).map(r => [r.name, r.ok, r.note]),
+     [['Knuth–Eve', false, 'boom'], ['Pan', false, 'boom'], ['Belaga', false, 'boom']], 'a failed numeric worker over ℂ explains all three rows');
+  const perMethod = [{ comparisons: [row('Knuth–Eve', { exact: false })] }, { comparisons: [{ name: 'Pan', ok: false, note: 'degree too low' }] }, { comparisons: [row('Belaga', { exact: false })] }];
+  const reply = (s, r) => reduce(s, { type: 'reply', id: startedC.jobId, part: 'numeric', ok: true, result: r });
+  const afterMain = perMethod.reduce(reply, mainC);
+  check(!afterMain.result.comparisons.some(r => r.pending) && methodAvailable(afterMain.result, 'Belaga') && !methodAvailable(afterMain.result, 'Pan') &&
+        afterMain.result.comparisons.map(r => r.name).join(',') === 'Horner,Estrin,Knuth–Eve,Pan,Belaga',
+        'three per-method replies after the main reply fill every ℂ row; Belaga is selectable');
+  const beforeMain = reduce(reply(reply(startedC, perMethod[0]), perMethod[2]), { type: 'reply', id: startedC.jobId, part: 'main', ok: true, result: MAIN_C });
+  check(beforeMain.result.comparisons.filter(r => r.pending).map(r => r.name).join(',') === 'Pan' && methodAvailable(beforeMain.result, 'Belaga'),
+        'per-method replies before the main reply are merged into it; the missing one stays pending');
+  check(!reply(beforeMain, perMethod[1]).result.comparisons.some(r => r.pending), 'the last per-method reply clears the last spinner');
 }
 
 // ---- boot state per layout, and what the panes render from ----------------
@@ -758,6 +850,8 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         'phones present an inexact row with readable constants; desktop does not');
   const r = { ...q, mode: 'R' };
   check(presentedState(r, { compact: true }).numfmt === 'decimal', 'phones present ℝ with readable constants');
+  const cx = { ...q, mode: 'C' };
+  check(presentedState(cx, { compact: true }).numfmt === 'decimal' && presentedState(cx).numfmt === 'exact', 'phones present ℂ with readable constants; desktop does not');
   const already = { ...ke, numfmt: 'decimal' };
   check(presentedState(already, { compact: true }) === already, 'an explicit readable choice is left alone');
 }

@@ -4,8 +4,9 @@ Companion website for *Fast Evaluation of Polynomials with Rational Preprocessin
 Type a polynomial, get back a straight-line evaluation chain using
 ⌊n/2⌋+1 multiplications instead of Horner's n−1.
 
-Everything runs client-side: exact BigInt rational arithmetic (char 0) and
-GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
+Everything runs client-side: exact BigInt rational arithmetic (char 0; over ℂ the
+Gaussian rationals ℚ(i)), Mersenne-prime arithmetic (GF(2^61−1), GF(2^89−1),
+GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
 
 ## Structure
 
@@ -14,16 +15,24 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   polynomial plus xⁿ, so the series' coefficients stay recognisable — and the probabilists'
   Hermite polynomial Heₙ, monic with integer coefficients at every degree; the desktop opens
   on He₇, whose chain has four multiplications and constants of at most seven digits;
+  over ℂ four chips with genuinely complex coefficients — the e^{ix} series (iᵏ/k!,
+  written `(0+1/6i)x^3`), the expanded binomial (x+i)ⁿ (Gaussian integers, monic), the
+  e^{(1+i)x} series ((1+i)ᵏ/k!) and a reseeding random polynomial over the Gaussian
+  integers ℤ[i] — with the same monic rule for the series;
   over the hashing fields a random key —
   a fresh draw per click —, sparse, dense and a fixed reproducible key, all regenerated
   at the chosen degree) → the polynomial input (highlighted through a transparent
   textarea over a painted backdrop) → the field chooser, rendered from the `FIELDS`
-  registry in `field.js` (three groups: exact ℚ, ℝ · Mersenne primes
+  registry in `field.js` (three groups: exact ℚ, ℝ, ℂ · Mersenne primes
   2^61−1, 2^89−1, 2^127−1 · binary fields GF(2^32), GF(2^64), GF(2^128); ℝ is ℚ's exact
-  preprocessing with the constants shown as doubles, reported as ≈ numeric)
+  preprocessing with the constants shown as doubles, reported as ≈ numeric, and ℂ the same
+  exact preprocessing over the Gaussian rationals ℚ(i) — coefficients `i`, `2i`, `(1+2i)`,
+  `(1/2-3/4i)x` — with the chain constants shown as complex doubles in the canonical token
+  `(re±imi)` of `js/tokens.js`: `(0+2i)`, `(-2+1i)`, `(1.5-0.25i)`, real constants as plain
+  doubles)
   → method chips → view tabs attached to the output pane (mathematical with
   factor/original form and exact/decimal (hex) constants — a display-only rewrite ·
-  C code with float/fraction constants over ℚ · graph) → the comparison table (one row
+  C code with float/fraction constants over ℚ, C99 `double complex` over ℂ · graph) → the comparison table (one row
   per method: multiplications with the scalar count, additions, multiplicative depth,
   exact or ≈ numeric; clicking a row selects the method; each method name links to its
   reference, listed under the table from `js/references.js`, which the generated C of a
@@ -34,17 +43,22 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   Share links and three cards: the input (three example chips beside the label, no degree
   stepper or monic toggle — the page opens on the ℚ e^x example at degree 5, monic, whose
   chain has small constants) with Field / Method dropdowns; the output with underline tabs
-  and the form strip beside them, a floating Copy (no Download), ℝ constants to six
+  and the form strip beside them, a floating Copy (no Download), ℝ / ℂ constants to six
   significant digits, and a stats line (long rows scroll sideways, as in every pane);
   and a collapsed "Compare methods" disclosure.
 - `js/rat.js` — exact rationals over BigInt
-- `js/field.js` — field interface: ℚ, GF(p) and GF(2^k) (carryless mul, Frobenius roots)
+- `js/gauss.js` — the Gaussian rationals ℚ(i) (`GaussRat`, Rat-compatible surface) and the
+  ℂ field object `Cx`; `js/tokens.js` — the shared constant-token grammar of chain text
+  (real, hex and complex tokens, `complexToken(re, im)`)
+- `js/field.js` — field interface: ℚ, ℝ, ℂ, GF(p) and GF(2^k) (carryless mul, Frobenius roots),
+  plus the `FIELDS` registry the chooser, worker and C emitter are driven by
 - `js/poly.js` — dense polynomial arithmetic over any field
 - `js/polyparse.js` — input parsing / pretty-printing. The grammar accepts the spellings
   people type for the same polynomial: `x^3/6`, `1/6x^3`, `(1/6)x^3`, `x**3`, `x³`, `2*x`,
   `x·2`, decimals and exponents (`0.5x`, `1.5e-3`), a Unicode minus, hex bit patterns over
-  GF(2^k); rejections say what was wrong (division by zero, a variable other than x, a
-  fraction in a binary field, …). Tested in `test/polyparse.test.js`.
+  GF(2^k), and over ℂ (`parsePoly(src, { complex: true })`) the Gaussian literals `i`, `2i`,
+  `(1+2i)`, `(1/2-3/4i)`; rejections say what was wrong (division by zero, a variable other
+  than x, a fraction in a binary field, …). Tested in `test/polyparse.test.js`.
 - `js/char2.js`, `js/n13decode.js`, `js/compile2.js` — the char-2 circuits and
   decoders (odd degrees 3 to 21; all but 7 and 17 have polynomial decoders valid over
   every characteristic-2 field, 7 and 17 take Frobenius roots and need a finite field),
@@ -56,19 +70,32 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 - `js/methods/` — the comparison methods. The UI shows Horner, Estrin,
   Rabin–Winograd, Knuth–Eve with numeric real-root preprocessing, and Pan's
   real degree-8 / general degree-≥9 schemes solved numerically from their
-  explicit coefficient maps. Pan's search (radix/sign specs × Eve candidates × node
+  explicit coefficient maps. Over ℂ the numeric rows are Knuth–Eve with complex roots
+  (`knutheve-complex.js`), Pan's complex scheme of 1978 (`pan1978.js`, odd degree ≥ 11;
+  an input whose coefficients are all real first tries the real schemes of `pan1978real.js`,
+  since the complex homotopy cannot track a branch for Taylor-type inputs — when both fail
+  the note says so) and Belaga's
+  scheme (`belaga.js`, monic — non-monic inputs are scaled and a `P = lc * P̃` line
+  restores the leading coefficient). Pan's search (radix/sign specs × Eve candidates × node
   subsets, each a multi-start Newton solve) is budgeted: node subsets are tried
   best-fitting first under every spec, the search stops shortly after a chain verifies
   at 1e-6, and at most ~4000 cells (10–15 s) are spent, shared across the conditioning
   rescales; inputs whose chains the solver cannot reach (the e^x Taylor polynomial at
-  degree 20) fail in seconds with a note instead of running for minutes. Belaga and Pan's complex schemes remain as
-  reference implementations but are not shown in the comparison table;
-  `js/compare.js` runs the displayed methods on the same input
+  degree 20) fail in seconds with a note instead of running for minutes.
+  `js/compare.js` runs the displayed methods on the same input (`numericMethodsFor(mode)`:
+  Knuth–Eve and Pan over ℚ / ℝ, plus Belaga over ℂ; every complex-coefficient row is
+  verified by `verifyLinesComplex` in `motzkin.js`, the one complex verifier, at real and
+  non-real sample points); `js/references.js` holds each method's citation (Belaga 1958 /
+  Pan 1966 for the Belaga row)
 - `js/cgen.js` — descriptor-driven C emission matching the paper's benchmark code
   (`tools/bench/framework/multiplication*.h`). All methods share the
   emitter; measured width-specific kernels supply PCLMULQDQ / PMULL for GF(2^32),
   GF(2^64), and GF(2^128), Mersenne arithmetic for 2^61−1, 2^89−1, and 2^127−1,
-  or doubles for ℚ/ℝ. Estrin rows are emitted by dependency layer so the compiler can
+  or doubles for ℚ/ℝ; over ℂ the output is C99 `<complex.h>` (`double complex`, literals
+  `re + im*I`, `#pragma STDC CX_LIMITED_RANGE ON` for clang — gcc does not implement the
+  pragma, so it is guarded and the bundle's scripts pass `-fcx-limited-range` instead —
+  compiled with `-lm`). Estrin rows are
+  emitted by dependency layer so the compiler can
   schedule independent FMAs and apply SLP when profitable.
 - `js/cbundle.js` — dependency-free `.tar.gz` creation for the Download button, plus
   the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL;
@@ -99,9 +126,9 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
 - `js/worker.js` — the Web Worker that keeps unbounded exact-rational preprocessing
   off the UI thread; it posts every view (math, paper-format math, C, fraction-C,
   graph IR + SVG) for ours and each comparison method so switching views never recompiles.
-  Over ℚ / ℝ the page runs two instances: `part: 'main'` (our chain, Horner, Estrin,
+  Over ℚ / ℝ / ℂ the page runs two instances: `part: 'main'` (our chain, Horner, Estrin,
   Rabin–Winograd, with placeholder rows for the numeric methods) and `part: 'numeric'`
-  (Knuth–Eve and Pan, whose real-root preprocessing can take seconds at high degree);
+  (Knuth–Eve and Pan — and Belaga over ℂ — whose root-finding preprocessing can take seconds at high degree);
   the placeholders show as spinners until the second reply fills them in
 - `js/vendor/preact-htm.module.js` — Preact + htm standalone ES-module bundle (vendored,
   MIT; see `js/vendor/LICENSE-preact.txt`)
@@ -111,7 +138,8 @@ GF(2^89−1) Mersenne arithmetic, and carryless GF(2^64) arithmetic (char 2).
   Python-generated goldens), `chain.test.js` (paper-format naming + gadget
   provenance), `cgen.test.js` (generated C compiled and executed), `graph.test.js`,
   `methods.test.js`, `motzkin.test.js`, `belaga.test.js`, `pan1978.test.js`,
-  `pan1978real.test.js`, `ui-smoke.test.js` (worker result shape per
+  `pan1978real.test.js`, `knutheve-complex.test.js`, `gauss.test.js`, `fields.test.js`
+  (every registry field through the worker, C rendered for each), `ui-smoke.test.js` (worker result shape per
   mode + highlighter, then the page itself rendered under `test/dom-shim.js` — a minimal
   DOM and Worker stand-in — at both layouts: boot, chips, stepper, debounce, field and
   method switches, a real compile result, tabs, Share), `uistate.test.js` (reducer / selector invariants: mode switch,

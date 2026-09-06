@@ -236,8 +236,9 @@ function testChainQ() {
 // =====================================================================
 // (e) Registry fields of the char-0 lane: GF(2^127-1) round trips through
 //     core.GF (same decoder, larger prime), and the compileChar0 pipeline
-//     end to end for 'p61', 'p127' (exact), 'Q' and 'R' (the same exact
-//     rational chain; R displays and emits its constants as doubles):
+//     end to end for 'p61', 'p127' (exact), 'Q', 'R' and 'C' (the same exact
+//     rational chain; R displays and emits its constants as doubles, C — over
+//     the Gaussian rationals — displays them as complex doubles, no C yet):
 //     decode -> chain -> chain.eval == Horner exactly, for n = 3..20 and a
 //     few larger degrees; R's C body must be identical to Q's float style.
 // =====================================================================
@@ -274,25 +275,31 @@ const intSrc = ints => ints.map((c, i) => `${c < 0 ? '-' : '+'}${Math.abs(c)}${i
 
 async function testCompilePipeline() {
   const { compileChar0 } = await import('../js/compile0.js');
+  const { fieldById } = await import('../js/field.js');
+  const { GaussRat } = await import('../js/gauss.js');
+  const { Rat } = await import('../js/rat.js');
+  const { COMPLEX_TOKEN, COMPLEX_SRC } = await import('../js/tokens.js');
   const rng = makeRng(4242);
   const ns = Array.from({ length: 18 }, (_, i) => i + 3).concat([23, 31]);
   for (const n of ns) {
     const ints = Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : rng.randrange(-9, 10) || 3));
     const src = intSrc(ints);
     const results = {};
-    for (const mode of ['p61', 'p127', 'Q', 'R']) {
+    for (const mode of ['p61', 'p127', 'Q', 'R', 'C']) {
       let r;
       try { r = await compileChar0(src, mode); }
       catch (e) { failures += 1; console.error(`FAIL: compileChar0 ${mode} n=${n}: threw: ${e.message}`); continue; }
       results[mode] = r;
       check(r.mults === expectedMulCount(n), `compileChar0 ${mode} n=${n}: mults ${r.mults} != ${expectedMulCount(n)}`);
-      const exact = mode !== 'R';
+      const fd = fieldById(mode), exact = fd.exact;
       check(r.fieldId === mode && r.exact === exact && r.status === (exact ? 'exact' : '≈ numeric') &&
-            r.field.name === { p61: 'GF(2^61−1)', p127: 'GF(2^127−1)', Q: 'ℚ', R: 'ℝ' }[mode],
+            r.field.name === { p61: 'GF(2^61−1)', p127: 'GF(2^127−1)', Q: 'ℚ', R: 'ℝ', C: 'ℂ' }[mode],
         `compileChar0 ${mode} n=${n}: field info`);
-      // C is rendered unless a constant exceeds the double range (Q / R only)
+      // C is rendered unless a constant exceeds the double range (Q / R only);
+      // a field without an emitter yet (registry cCode false) renders none, silently
       const cOk = typeof r.cText === 'string' && r.cText.includes('eval_P');
-      check(cOk || (!exact || mode === 'Q') && /no C rendering: constant -?Infinity/.test(r.note), `compileChar0 ${mode} n=${n}: C rendering`);
+      check(fd.cCode ? cOk || (!exact || mode === 'Q') && /no C rendering: constant -?Infinity/.test(r.note)
+                     : r.cText === null && r.cTextFraction === null && !/no C rendering/.test(r.note), `compileChar0 ${mode} n=${n}: C rendering`);
       // independent exact evaluation check against Horner in the field of the chain
       const field = r.chain.field;
       const dense = ints.map(c => field.coerce(BigInt(c)));
@@ -300,10 +307,19 @@ async function testCompilePipeline() {
         const x0 = field.coerce(field.modulus === null ? rng.randrange(-50, 51) : rng.randrange(-1000000, 1000000));
         check(eqEl(field, r.chain.eval(x0), horner(dense, x0, field)), `compileChar0 ${mode} n=${n}: eval mismatch at point ${t}`);
       }
-      if (mode === 'R') {
-        check(typeof r.maxRelError === 'number' && r.maxRelError >= 0 && (r.cText === null) === (r.maxRelError === Infinity),
-          `compileChar0 R n=${n}: maxRelError ${r.maxRelError}`);
-        check(!/\d\/\d/.test(r.mathText) && /≈ numeric/.test(r.note), `compileChar0 R n=${n}: constants shown as doubles`);
+      if (!exact) {
+        // no C (constants beyond the double range) ⇒ an infinite error; the converse can fail:
+        // representable constants whose evaluation overflows at the sample points still get C
+        check(typeof r.maxRelError === 'number' && r.maxRelError >= 0 && (!fd.cCode || r.cText !== null || r.maxRelError === Infinity),
+          `compileChar0 ${mode} n=${n}: maxRelError ${r.maxRelError}`);
+        check(!/\d\/\d/.test(r.mathText) && /≈ numeric/.test(r.note), `compileChar0 ${mode} n=${n}: constants shown as doubles`);
+      }
+      if (mode === 'C') {
+        // real input: every constant a real double, never a complex token, and a
+        // Gaussian point with Im x ≠ 0 evaluates as Horner does
+        check(!/[\d+\-−(]\s*i\b/.test(r.mathText) && r.chain.field.modulus === null, `compileChar0 C n=${n}: real input shows real doubles`);
+        const x = new GaussRat(new Rat(-3n, 7n), new Rat(2n, 5n));
+        check(eqEl(r.chain.field, r.chain.eval(x), horner(dense, x, r.chain.field)), `compileChar0 C n=${n}: eval mismatch at a complex point`);
       }
     }
     // R is Q's chain with the constants printed as doubles: same structure, and
@@ -318,6 +334,15 @@ async function testCompilePipeline() {
       const body = t => (t === null ? null : t.slice(t.indexOf('/* chain constants')).replace(/[ \t]*\/\/.*$/gm, ''));
       check(body(q.cText) === body(r.cText), `compileChar0 R n=${n}: C code identical to Q (float constants)`);
     }
+    // C on a real input is Q's chain over ℚ(i): same shape, the same exact constants, R's display
+    const c = results.C;
+    if (q && r && c) {
+      check(q.mathText.split('\n').length === c.mathText.split('\n').length && q.mults === c.mults && q.adds === c.adds && q.height === c.height,
+        `compileChar0 C n=${n}: same chain shape as Q`);
+      check(q.chain.gates.every((g, i) => c.chain.field.eq(g.left.const, c.chain.gates[i].left.const) && c.chain.field.eq(g.right.const, c.chain.gates[i].right.const)),
+        `compileChar0 C n=${n}: same exact constants as Q`);
+      check(c.mathText === r.mathText && c.maxRelError === r.maxRelError, `compileChar0 C n=${n}: a real input displays exactly as R`);
+    }
   }
   // R: decimal inputs are parsed exactly (0.5 = 1/2, 1.5e-1 = 3/20) and rendered
   // back as doubles; the leading-coefficient scale shows the double
@@ -331,7 +356,30 @@ async function testCompilePipeline() {
   check(/1e-7 \* P̃/.test(tiny.mathText) && /return P \* 1e-7;/.test(tiny.cText) && /10000001/.test(tiny.mathText), 'compileChar0 R: 1e-7 rendering');
   const tiny2 = await compileChar0('x^5 + 0.0000001x + 3', 'R');
   check(/1\.0000001/.test(tiny2.mathText) && /1\.0000001/.test(tiny2.cText) && !/\d\/\d/.test(tiny2.mathText), 'compileChar0 R: 1.0000001 rendering');
-  console.log('compileChar0 pipeline checks done (p61, p127, Q, R; n = 3..20, 23, 31)');
+  // C: complex coefficients parse (i, 2i, (1+2i), (1/2-3/4i)), every non-real
+  // constant is the canonical (re±imi) token, the leading-coefficient scale
+  // shows the complex double, and the chain agrees with Horner at complex points
+  {
+    const src = '(1+2i)x^5 + ix^3 - 2x + (1/2-3/4i)';
+    const c = await compileChar0(src, 'C');
+    check(c.mults === expectedMulCount(5) + 1 && /\(1\+2i\) \* P̃/.test(c.mathText) && c.maxRelError < 1e-12, `compileChar0 C: complex non-monic input (${c.mults}, ${c.maxRelError})`);
+    const toks = c.mathText.match(new RegExp(COMPLEX_SRC, 'g')) ?? [];
+    check(toks.length >= 2 && toks.every(t => COMPLEX_TOKEN.test(t)) && !/[\d+\-−(]\s*i\b/.test(c.mathText.replace(new RegExp(COMPLEX_SRC, 'g'), '')),
+      `compileChar0 C: canonical complex tokens only (${toks.join(' ')})`);
+    const { parsePoly } = await import('../js/polyparse.js');
+    const cs = parsePoly(src, { complex: true }).coeffs;
+    for (const x of [new GaussRat(new Rat(1n, 3n), new Rat(-2n, 7n)), GaussRat.I, new GaussRat(new Rat(5n), new Rat(0n))])
+      check(c.chain.eval(x).mul(cs[5]).eq(horner(cs, x, c.chain.field)), `compileChar0 C: eval at ${x}`);
+    // degree 2 (the smallest even lift): with and without a linear term, in every char-0 display
+    for (const [src2, mode2] of [['x^2 + 1', 'Q'], ['x^2 + 3x + 1', 'Q'], ['x^2 + 1', 'R'], ['x^2 + i', 'C'], ['x^2 + (1+2i)x + 1', 'C']]) {
+      const d2 = await compileChar0(src2, mode2);
+      check(d2.mults === 1 && /P_1|P/.test(d2.mathTextOriginal ?? '') && typeof d2.mathText === 'string', `compileChar0 ${mode2} degree 2 (${src2}): ${d2.mults} mults, original form renders`);
+    }
+    const c2 = await compileChar0('2ix^4 + x + 1', 'C');
+    check(/\(0\+2i\) \* P̃/.test(c2.mathText) && /\(0-0\.5i\)/.test(c2.mathText) && /double complex/.test(c2.cText ?? ''),
+      'compileChar0 C: purely imaginary constants print as (0±bi), and the C99 rendering exists');
+  }
+  console.log('compileChar0 pipeline checks done (p61, p127, Q, R, C; n = 3..20, 23, 31)');
 }
 
 testGolden();

@@ -6,6 +6,7 @@ import { Rat } from '../js/rat.js';
 import * as core from '../js/char0/core.js';
 import { renderConstructionsForm } from '../js/chain.js';
 import { parseRhs } from '../js/cgen.js';
+import { COMPLEX_TOKEN } from '../js/tokens.js';
 const R = c => Rat.of(typeof c === 'number' ? BigInt(c) : c);
 const QD = { name: 'ℚ', isZero: c => R(c).isZero(), isOne: c => R(c).isOne(), eq: (a, b) => R(a).eq(R(b)), toDisplay: c => R(c).toString() };
 const plain = s => s.replace(/H̃/g, 'Ht').replace(/⁽¹⁾/g, '_1').replace(/⁽²⁾/g, '_2');
@@ -15,6 +16,7 @@ function evalRows(text, x) {
   const ev = n => {
     if (n.tok !== undefined) {
       const neg = n.tok.startsWith('-'); const b = neg ? n.tok.slice(1) : n.tok;
+      if (COMPLEX_TOKEN.test(b)) throw new Error('complex constant in an exact constructions-form row: ' + b);
       const [k, nmw] = b.includes('·') ? b.split('·') : [null, b];
       const v = k !== null ? lit(k).mul(env[nmw]) : /^\d/.test(b) ? lit(b) : env[b];
       if (v === undefined) throw new Error('undefined name ' + b);

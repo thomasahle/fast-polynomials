@@ -38,6 +38,7 @@ function uniqueStem(wanted, used) {
 function benchTypes(mode) {
   switch (mode) {
     case 'Q': case 'R': return { input: 'double', output: 'double', floating: true };
+    case 'C': return { input: 'double complex', output: 'double complex', floating: true, complex: true };
     case 'gf32': return { input: 'uint32_t', output: 'uint32_t', bits: 32 };
     case 'gf64': case 'p61': return { input: 'uint64_t', output: 'uint64_t', bits: 64 };
     case 'gf128': case 'p127': return { input: '__uint128_t', output: '__uint128_t', bits: 128 };
@@ -49,7 +50,10 @@ function benchTypes(mode) {
 /** One timing harness, compiled once per METHOD_FILE by benchmark.sh. */
 export function benchmarkHarness(mode) {
   const t = benchTypes(mode);
-  const init = t.floating
+  const init = t.complex
+    ? '        inputs[i] = (((double)(next64() & 0xffffu) / 32768.0) - 1.0)\n' +
+      '                  + (((double)(next64() & 0xffffu) / 32768.0) - 1.0) * I;'
+    : t.floating
     ? '        inputs[i] = ((double)(next64() & 0xffffu) / 32768.0) - 1.0;'
     : t.input === '__uint128_t'
       ? '        inputs[i] = ((__uint128_t)next64() << 64) | next64();'
@@ -58,7 +62,10 @@ export function benchmarkHarness(mode) {
   // of rounds, giving an optimizer an avoidable shortcut.  Unsigned addition
   // is only a checksum here (not a field operation), and cannot self-cancel.
   const zero = t.floating ? '0.0' : '0', assign = '+=', op = '+';
-  const print = t.floating
+  const print = t.complex
+    ? '    printf("%.3f ns/eval  checksum %.17g%+.17g*I  |checksum| %.17g\\n", ns_per_eval,\n' +
+      '           creal(checksum), cimag(checksum), cabs(checksum));'
+    : t.floating
     ? '    printf("%.3f ns/eval  checksum %.17g\\n", ns_per_eval, (double)checksum);'
     : t.bits === 128
       ? '    printf("%.3f ns/eval  checksum %016llx:%016llx\\n", ns_per_eval,\n' +
@@ -73,7 +80,7 @@ export function benchmarkHarness(mode) {
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
+${t.complex ? '#include <complex.h>   /* C99 double complex; the checksum is printed as creal/cimag and |.| (cabs, -lm) */\n' : ''}
 #ifndef METHOD_FILE
 #error "compile with -DMETHOD_FILE=\\\"methods/name.c\\\""
 #endif
@@ -125,13 +132,18 @@ ${print}
 
 function archSetup(mode) {
   const binary = /^gf(?:32|64|128)$/.test(mode);
+  // ℂ: -fcx-limited-range (plain complex products) where the compiler accepts it —
+  // clang honours the sources' CX_LIMITED_RANGE pragma, gcc only knows the flag
+  const complex = mode === 'C';
   return `ARCH=\$(uname -m)
 ARCH_FLAGS="-march=native"
 ${binary ? `case "$ARCH" in
   x86_64|amd64) ARCH_FLAGS="-march=native -mpclmul -mssse3" ;;
   arm64|aarch64) ARCH_FLAGS="-march=armv8-a+crypto" ;;
   *) echo "binary-field kernels require x86 CLMUL or ARM PMULL (got $ARCH)" >&2; exit 1 ;;
-esac` : ''}
+esac` : ''}${complex ? `if "$CC" -fcx-limited-range -x c -c /dev/null -o /dev/null 2>/dev/null; then
+  ARCH_FLAGS="$ARCH_FLAGS -fcx-limited-range"
+fi` : ''}
 `;
 }
 
@@ -222,7 +234,14 @@ Pass a repetition count as the first argument, or override the compiler flags:
 For floating-point code, also try \`CFLAGS="-O3 -ffp-contract=fast"\`.  It can
 enable more aggressive FMA/SLP packing, but whether that is faster is
 microarchitecture- and degree-dependent; compare both and use \`inspect.sh\`.
-
+${state.mode === 'C' ? `
+Over C the sources are C99 \`<complex.h>\` code (\`double complex\`, constants
+\`re + im*I\`); the harness feeds complex inputs, prints the checksum as
+\`creal\`/\`cimag\` and its modulus (\`cabs\`, hence \`-lm\`), and the scripts add
+\`-fcx-limited-range\` where the compiler accepts it: clang honours the sources'
+\`#pragma STDC CX_LIMITED_RANGE ON\` (guarded so gcc, which does not implement
+the pragma, never sees it), and the flag covers gcc.
+` : ''}
 The harness evaluates eight independent inputs per loop. It is a convenient
 comparison, not a substitute for benchmarking in the calling application:
 latency-heavy dependency chains and batched throughput can favor different

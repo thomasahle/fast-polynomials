@@ -9,9 +9,13 @@
 // 3..20, and random polynomials up to degree 24), report complex parameters
 // precisely, and its chains - complex or not - must evaluate the polynomial.
 // Costs: ceil(n/2) multiplications and n + 1 additions for a monic input.
+// Complex coefficients ({re, im} arrays) take the scheme's complex path:
+// the same costs, every constant a complex double, verified over C.
 import { compileBelaga } from '../js/methods/belaga.js';
+import { verifyLinesComplex } from '../js/methods/motzkin.js';
 import { examplesFor } from '../js/uistate.js';
 import { parsePoly } from '../js/polyparse.js';
+import { hasComplexToken, COMPLEX_SRC } from '../js/tokens.js';
 
 let hardFails = 0;
 const bad = msg => { console.log('FAIL: ' + msg); hardFails++; };
@@ -32,14 +36,15 @@ function hornerReal(p, x) {
 }
 
 // independent complex-arithmetic evaluator for the emitted lines
-// (constants are real literals or "(a+bi)" / "(a-bi)" literals)
+// (constants are real literals or the canonical "(a+bi)" / "(a-bi)" token)
+const COMPLEX_TOKEN = /^\((-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)([+-]\d+(?:\.\d+)?(?:e[+-]?\d+)?)i\)/;
 const Cx = (re, im = 0) => ({ re, im });
 const add = (a, b) => Cx(a.re + b.re, a.im + b.im);
 const sub = (a, b) => Cx(a.re - b.re, a.im - b.im);
 const mul = (a, b) => Cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
-function evalChain(lines, x) {
+function evalChain(lines, x) {                   // x: real, or a complex {re, im}
   const env = Object.create(null);
-  env.x = Cx(x);
+  env.x = typeof x === 'number' ? Cx(x) : x;
   for (const ln of lines) env[ln.lhs] = evalRhs(ln.rhs, env);
   return env.P;
 }
@@ -64,7 +69,11 @@ function evalRhs(src, env) {
     let neg = false;
     if (src[i] === '-') { neg = true; i++; ws(); }
     let v;
-    if (src[i] === '(') {
+    const ctok = COMPLEX_TOKEN.exec(src.slice(i));
+    if (ctok) {                                    // the atomic "(re+imi)" token
+      i += ctok[0].length;
+      v = Cx(parseFloat(ctok[1]), parseFloat(ctok[2]));
+    } else if (src[i] === '(') {
       i++; v = expr(); ws();
       if (src[i] !== ')') throw new Error('missing ) in: ' + src);
       i++;
@@ -102,7 +111,7 @@ function checkWellFormed(r, n, label) {
     if (seen.has(ln.lhs)) return bad(label + ': duplicate lhs ' + ln.lhs);
     seen.add(ln.lhs);
     if (ln.mul) mulLines++;
-    if (/\di\)/.test(ln.rhs)) complex = true;
+    if (hasComplexToken(ln.rhs)) complex = true;
     const stars = (ln.rhs.match(/\*/g) || []).length;
     if (ln.mul !== (stars > 0) || stars > 1)
       return bad(label + ': mul flag/star mismatch on ' + ln.lhs + ': ' + ln.rhs);
@@ -234,11 +243,95 @@ for (const [nm, badInput] of [
   ['non-monic', [1, 2, 3, 2]],
   ['too small', [1, 1, 1]],
   ['non-finite', [NaN, 0, 0, 1]],
+  ['complex non-monic', [{ re: 1, im: 1 }, 2, 3, { re: 1, im: 1e-3 }]],
+  ['complex non-finite', [{ re: 1, im: Infinity }, 0, 0, 1]],
 ]) {
   let threw = false;
   try { compileBelaga(badInput); } catch (e) { threw = e instanceof Error && e.message.length > 5; }
   if (!threw) bad('expected a clear Error for ' + nm + ' input');
 }
+
+// ---- complex coefficients ----
+// hornerComplex reference for the independent evaluator at real and
+// non-real points; the scale floor is S(z) = sum |p_i| max(1,|z|)^i.
+const hornerC = (p, z) => p.reduceRight((v, c) => add(mul(v, z), c), Cx(0));
+const cabs = z => Math.hypot(z.re, z.im);
+function checkNumericComplex(r, coeffs, label, zs) {
+  for (const z of zs) {
+    let got;
+    try { got = evalChain(r.lines, z); }
+    catch (e) { return bad(label + ': chain evaluation error: ' + e.message); }
+    const want = hornerC(coeffs, z);
+    let scale = 0, zp = 1;
+    const az = Math.max(1, cabs(z));
+    for (let i = 0; i < coeffs.length; i++) { scale += cabs(coeffs[i]) * zp; zp *= az; }
+    const denom = Math.max(cabs(want), 1e-3 * scale, 1e-300);
+    if (!(cabs(sub(got, want)) / denom <= 1e-5))
+      return bad(label + ` at z=${z.re}+${z.im}i: got ${got.re}+${got.im}i want ${want.re}+${want.im}i`);
+  }
+  return true;
+}
+const COMPLEX_TOKEN_G = new RegExp(COMPLEX_SRC, 'g');   // the canonical token of js/tokens.js
+function checkComplexRow(r, coeffs, n, label) {
+  if (r.mults !== Math.ceil(n / 2)) bad(label + `: mults ${r.mults} != ceil(n/2) = ${Math.ceil(n / 2)}`);
+  if (r.adds > n + 1) bad(label + `: adds ${r.adds} > n+1`);
+  if (r.lines[r.lines.length - 1].lhs !== 'P') bad(label + ': last lhs is not P');
+  if (r.lines.filter(ln => ln.mul).length !== r.mults) bad(label + ': mults field != number of mul lines');
+  if (r.preprocessing !== 'complex') bad(label + `: preprocessing '${r.preprocessing}', expected 'complex'`);
+  if (!/complex coefficients/.test(r.note)) bad(label + ': note must say the coefficients are complex');
+  if (!/^(Gaussian rational preprocessing|complex roots \(numeric\))$/.test(r.preprocessingLabel))
+    bad(label + ': preprocessingLabel ' + r.preprocessingLabel);
+  if (!(r.maxRelError <= 1e-6)) bad(label + ': maxRelError ' + r.maxRelError + ' > 1e-6');
+  const err = verifyLinesComplex(r.lines, coeffs);
+  if (!(err <= 1e-6)) bad(label + ': verifyLinesComplex ' + err + ' > 1e-6');
+  const text = r.lines.map(ln => ln.rhs).join('\n');
+  if (!COMPLEX_TOKEN_G.test(text)) bad(label + ': no canonical complex constant token');
+  if (/i/.test(text.replace(COMPLEX_TOKEN_G, ''))) bad(label + ': a bare i outside the canonical token');
+  const zs = FIXED_XS.map(x => Cx(x)).concat([Cx(0, 1), Cx(1, -1), Cx(-0.7, 0.4), Cx(2, 1.5), Cx(rnd() * 4 - 2, rnd() * 4 - 2)]);
+  checkNumericComplex(r, coeffs, label, zs);
+}
+let complexAttempts = 0, complexOk = 0;
+for (let n = 3; n <= 24; n++) {
+  const per = n <= 16 ? 2 : 1;
+  for (let t = 0; t < per; t++) {
+    const coeffs = Array.from({ length: n }, () => ({ re: rnd() * 20 - 10, im: rnd() * 20 - 10 }));
+    coeffs.push({ re: 1, im: 0 });
+    complexAttempts++;
+    const label = `complex random n=${n} #${t}`;
+    let r;
+    try { r = compileBelaga(coeffs); }
+    catch (e) { bad(label + ': ' + e.message.slice(0, 100)); continue; }
+    complexOk++;
+    checkComplexRow(r, coeffs, n, label);
+  }
+}
+// e^{ix} Taylor polynomials (coefficients i^k / k!, made monic) at the
+// degrees the site's chips offer
+for (const n of [6, 9, 12, 17]) {
+  const c = [];
+  let f = 1;
+  for (let k = 0; k <= n; k++) {
+    if (k) f *= k;
+    const ik = [[1, 0], [0, 1], [-1, 0], [0, -1]][k % 4];
+    c.push(Cx(ik[0] / f, ik[1] / f));
+  }
+  const lead = c[n], d2 = lead.re * lead.re + lead.im * lead.im;
+  const coeffs = c.map(z => Cx((z.re * lead.re + z.im * lead.im) / d2, (z.im * lead.re - z.re * lead.im) / d2));
+  coeffs[n] = Cx(1, 0);
+  complexAttempts++;
+  const label = `e^{ix} n=${n}`;
+  let r;
+  try { r = compileBelaga(coeffs); }
+  catch (e) { bad(label + ': ' + e.message.slice(0, 100)); continue; }
+  complexOk++;
+  checkComplexRow(r, coeffs, n, label);
+}
+// {re, im: 0} coefficients take the real path: byte-identical to plain numbers
+for (const coeffs of [[1, 1, 0, 0, 0, 0, 0, 1], [3, -2, 0.5, 1, -4, 2, 1, 0, 1]]) {
+  const a = compileBelaga(coeffs), b = compileBelaga(coeffs.map(re => ({ re, im: 0 })));
+  if (JSON.stringify(a) !== JSON.stringify(b)) bad('real {re, im: 0} input differs from the plain-number input');
+}
+console.log(`complex coefficients: ${complexOk}/${complexAttempts} compiled`);
 
 // ---- report ----
 console.log('--- Belaga scheme test ---');

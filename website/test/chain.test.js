@@ -93,6 +93,18 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
   check(ex[0].rhs === '(x + 1) * (x + 5/2)' && ex[1].rhs === 'z', `exact constants fold as rationals; a zero sum vanishes: ${ex.map(l => l.rhs).join(' | ')}`);
   check(JSON.stringify(foldConstants([{ neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '3' }] }])) ===
         JSON.stringify([{ neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '3' }] }]), 'a single constant is left alone');
+  // complex doubles fold into one canonical (re±imi) token, kept parenthesised and last
+  const cx = foldConstants([{ neg: false, t: [{ tok: '(1.5+2i)' }] }, { neg: false, t: [{ tok: 'x' }] }, { neg: true, t: [{ tok: '(0.25-0.5i)' }] }]);
+  check(JSON.stringify(cx) === JSON.stringify([{ neg: false, t: [{ tok: 'x' }] }, { neg: false, t: [{ tok: '(1.25+2.5i)' }] }]), `foldConstants complex: ${JSON.stringify(cx)}`);
+  const cr = foldConstants([{ neg: false, t: [{ tok: '(1+2i)' }] }, { neg: false, t: [{ tok: '1/2' }] }, { neg: true, t: [{ tok: '(0+2i)' }] }]);
+  check(JSON.stringify(cr) === JSON.stringify([{ neg: false, t: [{ tok: '1.5' }] }]), `foldConstants complex parts cancelling to a real token: ${JSON.stringify(cr)}`);
+  const cn = foldConstants([{ neg: false, t: [{ tok: '(0+1i)' }] }, { neg: true, t: [{ tok: '(2+3i)' }] }]);
+  check(JSON.stringify(cn) === JSON.stringify([{ neg: false, t: [{ tok: '(-2-2i)' }] }]), `foldConstants negative real part stays inside the literal: ${JSON.stringify(cn)}`);
+  const cf = factorize([
+    { lhs: 'y', rhs: 'x + (0.5+1.25i)', mul: false },
+    { lhs: 'P', rhs: '(y − (1+0.25i)) * (x + (0-1i))', mul: true },
+  ]);
+  check(cf[0].rhs === '(x + (-0.5+1i)) * (x + (0-1i))', `factorize keeps complex literals atomic: ${cf[0].rhs}`);
 }
 
 // ---- countOps: the footer counts exactly what the displayed form shows -----------
@@ -119,6 +131,12 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
   const wrapped = countOps('P = y + w\n      + v + 3');
   check(wrapped.adds === 3 && wrapped.mults === 0, `countOps wrapped continuation: ${JSON.stringify(wrapped)}`);
   check(countOps('').adds === 0 && countOps(undefined).mults === 0, 'countOps empty');
+  const c1 = countOps('P = (1+2i) * y');
+  check(c1.scalar === 1 && c1.mults === 0 && c1.adds === 0, `countOps complex literal is one scalar: ${JSON.stringify(c1)}`);
+  const c2 = countOps('P = x + (0+1i)');
+  check(c2.adds === 1 && c2.mults === 0 && c2.scalar === 0, `countOps complex literal is one summand: ${JSON.stringify(c2)}`);
+  const c3 = countOps('y = (x + (1.5-0.25i)) * (x − (1e-7+3.2e+5i))\nP = y * (0-1i)');
+  check(c3.adds === 2 && c3.mults === 1 && c3.scalar === 1, `countOps complex factors: ${JSON.stringify(c3)}`);
 }
 
 // ---- formatConstants: readable constants are a display-only rewrite ------------
@@ -152,6 +170,12 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
   check(formatConstants('P = 0.3333333333333333 * x + 1234567', 'decimal') === 'P = 0.333333 * x + 1.23457e6', `formatConstants doubles + long integers: ${formatConstants('P = 0.3333333333333333 * x + 1234567', 'decimal')}`);
   const huge = `P = ${'9'.repeat(400)}/7 * x`;
   check(formatConstants(huge, 'decimal') === huge, 'out-of-double-range constants keep their exact token');
+  const cx = formatConstants('P = y + (1.234567890123+2.345678901234i)', 'decimal');
+  check(cx === 'P = y + (1.23457+2.34568i)', `formatConstants rounds both parts of a complex literal: ${cx}`);
+  const cx2 = formatConstants('y = (x − (0-1i)) * (x + (-2.000000001+1e-7i))', 'decimal');
+  check(cx2 === 'y = (x − (0-1i)) * (x + (-2+1e-7i))', `formatConstants keeps the complex form: ${cx2}`);
+  check(formatConstants('P = y + (1.5+2i)', 'hex') === 'P = y + (1.5+2i)', 'hex style leaves complex literals alone');
+  check(countOps('P = y + (1.234567890123+2.345678901234i)').adds === countOps(cx).adds, 'the complex rewrite preserves the counts');
 }
 
 if (fails) { console.error(`${fails} failure(s) out of ${checks} checks`); process.exit(1); }

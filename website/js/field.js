@@ -92,6 +92,13 @@ export const R = {
   toDisplay: a => { const r = Rat.of(a); return ratToDoubleString(r.n, r.d); },
 };
 
+/** ℂ: the exact arithmetic of the Gaussian rationals ℚ(i), displayed (and
+ *  emitted) as complex doubles — defined in js/gauss.js (which needs
+ *  ratToDoubleString from here; the cycle is harmless: neither module touches
+ *  the other's bindings at top level — the registry reaches Cx lazily via make()). */
+import { Cx } from './gauss.js';
+export { Cx };
+
 // Default irreducible moduli over F_2 (bit patterns incl. top bit), low weight.
 const DEFAULT_MOD = {
   1: 0b11n, 2: 0b111n, 3: 0b1011n, 4: 0b10011n, 5: 0b100101n,
@@ -187,11 +194,12 @@ const sup = n => String(n).split('').map(d => SUP[d]).join('');
 
 /** Groups offered by the field chooser, in display order: exact preprocessing
  *  (ℚ, and ℝ — the same exact chain with its constants rounded to doubles), the
- *  Mersenne-prime fields of polynomial hashing, and the carry-less binary fields.
+ *  Mersenne-prime fields of polynomial hashing, and the carry-less binary fields;
+ *  ℂ — the same exact preprocessing over ℚ(i) — joins the exact group.
  *  `title` is the caption's hover text. */
 export const FIELD_GROUPS = [
   { id: 'exact',    label: 'exact',
-    title: 'exact rational preprocessing: ℚ keeps the constants as fractions, ℝ shows and emits them as doubles' },
+    title: 'exact rational preprocessing: ℚ keeps the constants as fractions, ℝ shows and emits them as doubles, ℂ (Gaussian rationals) as complex doubles' },
   { id: 'mersenne', label: 'Mersenne primes',
     title: 'prime fields GF(2^k − 1) with fast modular reduction, as in polynomial hashing' },
   { id: 'binary',   label: 'binary fields',
@@ -218,7 +226,8 @@ const binary = k => ({
  *   label     chooser text (short; Unicode superscripts — the Mersenne group's caption
  *             supplies the GF(…) context: '2⁶¹−1'), labelHtml (with <sup>), name (as in results)
  *   group     key into FIELD_GROUPS;  lane 'char0' | 'char2' (which parser/compiler)
- *   char      0 (ℚ, ℝ), 2 (binary), or 'p' (prime field; see .prime and .bits)
+ *   char      0 (ℚ, ℝ, ℂ), 2 (binary), or 'p' (prime field; see .prime and .bits)
+ *   complex   true for ℂ (coefficients and constants are Gaussian rationals)
  *   status    'exact' | '≈ numeric';  exact  boolean;  cCode  whether C is rendered
  *   worker    the message fields the UI sends;  make()  the js/field.js field object
  */
@@ -228,6 +237,10 @@ export const FIELDS = [
   // ℝ: preprocessing is exact (as ℚ); the constants are shown and emitted as doubles
   { id: 'R', group: 'exact', lane: 'char0', char: 0, bits: 53, prime: null,
     label: 'ℝ', labelHtml: 'ℝ', name: 'ℝ', status: '≈ numeric', exact: false, cCode: true, make: () => R },
+  // ℂ: exact preprocessing over the Gaussian rationals ℚ(i); the constants are
+  // shown as complex doubles and emitted as C99 double complex
+  { id: 'C', group: 'exact', lane: 'char0', char: 0, bits: 53, prime: null,
+    label: 'ℂ', labelHtml: 'ℂ', name: 'ℂ', status: '≈ numeric', exact: false, complex: true, cCode: true, make: () => Cx },
   mersenne(61), mersenne(89), mersenne(127),
   binary(32), binary(64), binary(128),
 ].map(f => Object.freeze({ ...f, worker: Object.freeze({ lane: f.lane, fieldMode: f.id }) }));

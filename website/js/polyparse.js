@@ -4,13 +4,18 @@
 //   term  := coef | coef mul? var | var (mul coef)? | term '/' int   (a term divided by an integer)
 //   coef  := int ('/' int)? | decimal ('e' int)?   (char 0)  |  int | hex     (char 2)
 //            optionally in parentheses: (1/6)x^3, (-1/2)x
+//            over ℂ ({ complex: true }) also  real? 'i',  '(' real ')' '*'? 'i'  and
+//            '(' real ('+'|'-') real? 'i' ')':  i, 2i, 2.5i, 1/2i, (1/2)i, (-1/2)i, (1/2)*i,
+//            (1+2i), (2-i), (1/2-3/4i), (1+2i)x^2, 2i*x, i x^3
 //   var   := x | x '^' int | x '**' int | x with Unicode superscripts (x², x¹²)
 //   mul   := '*' | '·' | '×'
 // so x^3/6, 3x^2/2, x/2, 2*x, x*2, 1/6 x^3, (1/6)x^3, x**3, x³ and a Unicode
-// minus all read.  Returns { coeffs: (Rat|bigint)[], degree } — bigint lane for
-// char 2 (values are field elements encoded as BigInt bit patterns).  Decimal
-// and exponent forms (0.25, 1.5e-3) are read exactly into Rat in characteristic 0.
+// minus all read.  Returns { coeffs: (Rat|GaussRat|bigint)[], degree } — bigint
+// lane for char 2 (values are field elements encoded as BigInt bit patterns),
+// GaussRat for EVERY coefficient over ℂ.  Decimal and exponent forms (0.25,
+// 1.5e-3) are read exactly into Rat in characteristic 0.
 import { Rat } from './rat.js';
+import { GaussRat } from './gauss.js';
 import { gfLiteral } from './field.js';
 
 const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
@@ -22,7 +27,7 @@ function normalize(src) {
     .replace(/\*\*/g, '^').replace(/[·×⋅]/g, '*').replace(/[−–]/g, '-').replace(/⁄/g, '/');
 }
 
-export function parsePoly(src, { char2 = false } = {}) {
+export function parsePoly(src, { char2 = false, complex = false } = {}) {
   const s = normalize(src);
   if (!s) throw new Error('empty input');
   // split into signed terms at top level (signs inside parentheses or right
@@ -48,9 +53,9 @@ export function parsePoly(src, { char2 = false } = {}) {
     }
   }
   if (depth !== 0) throw new Error('unbalanced parentheses');
-  const monos = terms.map(t => parseTerm(t.text, t.sign, char2));
+  const monos = terms.map(t => parseTerm(t.text, t.sign, char2, complex));
   const degree = Math.max(...monos.map(m => m.deg), 0);
-  const zero = char2 ? 0n : Rat.ZERO;
+  const zero = char2 ? 0n : complex ? GaussRat.ZERO : Rat.ZERO;
   const coeffs = Array.from({ length: degree + 1 }, () => zero);
   for (const m of monos) {
     coeffs[m.deg] = char2 ? (coeffs[m.deg] ^ m.coef) : coeffs[m.deg].add(m.coef);
@@ -63,8 +68,14 @@ export function parsePoly(src, { char2 = false } = {}) {
   return { coeffs, degree: d };
 }
 
-// a coefficient literal, optionally parenthesized: 3, 1/6, (1/6), (-0.5), 2e-3, 0x1f
-const NUM = String.raw`\(?-?(?:0x[0-9a-fA-F]+|\d+(?:\/\d+)?|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\)?`;
+// a real coefficient literal: 3, 1/6, -0.5, 2e-3, 0x1f
+const REAL = String.raw`(?:0x[0-9a-fA-F]+|\d+(?:\/\d+)?|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)`;
+// a complex one (the imaginary unit is i; a bare i is 1i): i, 2i, 1/2i, 1+2i, 2-i, 1/2-3/4i
+const CPX = String.raw`(?:${REAL}[+-])?${REAL}?i`;
+// a coefficient literal, optionally parenthesized: 3, 1/6, (1/6), (-0.5), 2e-3, 0x1f, 2i, (1+2i),
+// and a parenthesized real part before the unit: (1/2)i, (-1/2)i, (1/2)*i  (no capture groups)
+const NUM = String.raw`(?:\(-?${REAL}\)\*?i|\(?-?(?:${CPX}|${REAL})\)?)`;
+const COMPLEX_LIT_RE = new RegExp(`^(?:(-?${REAL})([+-]))?(-?)(${REAL})?i$`);   // 1: re, 2: sign of im, 3: sign of a lone im, 4: |im|
 const TERM_RE = new RegExp(
   `^(?:(${NUM}))?` +                       // 1: leading coefficient
   String.raw`\*?` +
@@ -72,16 +83,19 @@ const TERM_RE = new RegExp(
   `(?:\\*(${NUM}))?` +                     // 4: trailing coefficient (x*2)
   String.raw`(?:\/(\d+))?$`);              // 5: divisor of the whole term (x^3/6)
 
-function parseTerm(text, sign, char2) {
+function parseTerm(text, sign, char2, complex) {
   const m = TERM_RE.exec(text);
   if (!m || (!m[1] && !m[2]) || (m[4] && !m[2])) throw new Error(termError(text));
   const [, c1, varStr, expStr, c2, divStr] = m;
   const deg = varStr ? (expStr ? parseInt(expStr, 10) : 1) : 0;
-  const lits = [c1, c2].filter(Boolean).map(t => t.replace(/[()]/g, ''));
+  const lits = [c1, c2].filter(Boolean).map(t => t.replace(/[()*]/g, ''));   // (1/2)*i -> 1/2i
   if (char2) {
     // a fraction / decimal / exponent literal is a characteristic-0 coefficient
     // (BigInt would reject it with an unreadable "Cannot convert … to a BigInt")
     for (const lit of lits) {
+      if (lit.endsWith('i'))
+        throw new Error(`binary-field coefficients are bit patterns (integers or 0x… hex), but "${lit}" is ` +
+          'a complex number — choose ℂ for it, or rewrite the polynomial');
       if (!/^0x/i.test(lit) && /[\/.eE]/.test(lit))
         throw new Error(`binary-field coefficients are bit patterns (integers or 0x… hex), but "${lit}" is ` +
           `${lit.includes('/') ? 'a fraction' : 'a decimal'} — choose ℚ, ℝ or a Mersenne-prime field for it, or rewrite the polynomial`);
@@ -92,8 +106,12 @@ function parseTerm(text, sign, char2) {
     if (lits.length > 1) throw new Error(termError(text));
     return { coef: lits.length ? BigInt(lits[0]) : 1n, deg };   // hex or decimal bit pattern
   }
-  let coef = Rat.ONE;
-  for (const lit of lits) coef = coef.mul(literalToRat(lit));
+  if (!complex) {
+    for (const lit of lits) if (lit.endsWith('i'))
+      throw new Error(`"${lit}" is a complex number — choose ℂ for it, or rewrite the polynomial`);
+  }
+  let coef = complex ? GaussRat.ONE : Rat.ONE;
+  for (const lit of lits) coef = coef.mul(complex ? literalToGauss(lit) : literalToRat(lit));
   if (divStr) {
     if (/^0+$/.test(divStr)) throw new Error(`"${text}": division by zero`);
     coef = coef.div(new Rat(BigInt(divStr)));
@@ -117,10 +135,23 @@ function literalToRat(lit) {
   return neg ? r.neg() : r;
 }
 
+/** A complex coefficient literal (real ones included) as a GaussRat: i, 2i,
+ *  -1/2i, 2.5e-3i, 1+2i, 2-i, 1/2-3/4i — and every literal literalToRat reads. */
+function literalToGauss(lit) {
+  if (!lit.endsWith('i')) return new GaussRat(literalToRat(lit));
+  const m = COMPLEX_LIT_RE.exec(lit);
+  if (!m) throw new Error(`cannot parse number "${lit}"`);
+  const re = m[1] ? literalToRat(m[1]) : Rat.ZERO;
+  const im = m[4] ? literalToRat(m[4]) : Rat.ONE;
+  return new GaussRat(re, (m[2] || m[3]) === '-' ? im.neg() : im);
+}
+
 function termError(text) {
-  const other = /[A-Za-wyzA-WYZ]/.exec(text.replace(/0x[0-9a-fA-F]+|\d+[eE][+-]?\d+/g, ''));
+  // any letter but x / X (the variable) and i / I (the imaginary unit, never a stray variable)
+  const other = /[A-HJ-WYZa-hj-wyz]/.exec(text.replace(/0x[0-9a-fA-F]+|\d+[eE][+-]?\d+/g, ''));
   if (other) return `cannot parse term "${text}": the variable must be x (found "${other[0]}")`;
-  if (/[()]/.test(text)) return `cannot parse term "${text}": parentheses may only wrap a coefficient, e.g. (1/6)x^3`;
+  if (/[()]/.test(text)) return `cannot parse term "${text}": parentheses may only wrap a coefficient, e.g. (1/6)x^3 or (1+2i)x`;
+  if (/i/i.test(text)) return `cannot parse term "${text}": i is the imaginary unit — write complex coefficients as 2i, (1+2i) or (1/2-3/4i)`;
   return `cannot parse term "${text}"`;
 }
 
@@ -134,7 +165,10 @@ export function decimalToRat(str) {
   return shift >= 0 ? new Rat(digits * 10n ** BigInt(shift)) : new Rat(digits, 10n ** BigInt(-shift));
 }
 
-/** Render a coefficient array back to a display string. */
+/** Render a coefficient array back to a display string (the input grammar:
+ *  exact fractions; a GaussRat coefficient prints itself — a non-real one as
+ *  (a+bi) with exact Rat parts, e.g. (1/2-3/4i)·x^2, a real one exactly as
+ *  over ℚ — so ℂ needs no option here). */
 export function polyToString(coeffs, { char2 = false } = {}) {
   const parts = [];
   for (let d = coeffs.length - 1; d >= 0; d--) {
@@ -151,5 +185,6 @@ export function polyToString(coeffs, { char2 = false } = {}) {
     parts.push((cs && xs && cs !== '-' ? cs + '·' : cs) + xs);
   }
   if (!parts.length) return '0';
+  // "+ -3/2·x" → "− 3/2·x"; a parenthesized complex coefficient "(-1+2i)" never matches
   return parts.join(' + ').replace(/\+ -/g, '− ');
 }

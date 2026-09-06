@@ -10,13 +10,17 @@
 //     GF(2^32) (uint32_t, PCLMUL/PMULL), GF(2^128) (__uint128_t,
 //     4-clmul general products / 2-clmul squares),
 //     2^61-1 (uint64_t, lazy folds; x any 64-bit word), 2^127-1 (__uint128_t;
-//     x any 128-bit word), R (the exact chain, constants rounded to doubles).
+//     x any 128-bit word), R (the exact chain, constants rounded to doubles),
+//     C (C99 double complex: ours on Gaussian and on real coefficients, the three
+//     classical methods, and the numeric rows Knuth–Eve / Pan / Belaga as the
+//     page builds them; compiled with -lm, compared by |.|-relative error).
 // Plus unit checks of ratToDouble (correct rounding) and the naming helpers.
 // Exit 1 on any mismatch. Scratch files go under /tmp/site2/cgen_test/.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { GF2k, Fp, Q, R, MERSENNE61, MERSENNE127 } from '../js/field.js';
+import { GF2k, Fp, Q, R, Cx, MERSENNE61, MERSENNE127 } from '../js/field.js';
 import { Rat } from '../js/rat.js';
+import { GaussRat } from '../js/gauss.js';
 import * as P from '../js/poly.js';
 import { parsePoly } from '../js/polyparse.js';
 import { compileChar2 } from '../js/compile2.js';
@@ -25,7 +29,7 @@ import { compileHorner } from '../js/methods/horner.js';
 import { compileRW } from '../js/methods/rw.js';
 import { compileEstrin } from '../js/methods/estrin.js';
 import { buildComparisons } from '../js/compare.js';
-import { methodChainC, char0C, char2C, ratToDouble, doubleLiteral, qConst,
+import { methodChainC, char0C, char2C, ratToDouble, doubleLiteral, qConst, complexLiteral, cxConst,
          wireLetter, cIdent, parseRhs, MERSENNE89, hasCProvenance } from '../js/cgen.js';
 
 const TMP = '/tmp/site2/cgen_test';
@@ -53,7 +57,7 @@ if (hostArm) {
 let fileNo = 0;
 // value kind per mode: how main() declares xs and prints eval_P's result
 const KINDS = {
-  Q: 'double', R: 'double',
+  Q: 'double', R: 'double', C: 'complex',
   gf2k: 'u64', gf64: 'u64', gf32: 'u32', gf128: 'u128',
   p: 'u64_u128', p89: 'u64_u128', p61: 'u64', p127: 'u128',
 };
@@ -61,6 +65,10 @@ const u128Lit = x => `U128(0x${(x >> 64n).toString(16)}ULL, 0x${(x & ((1n << 64n
 const MAINS = {
   double: xs => `    static const double xs[] = {${xs.map(doubleLiteral).join(', ')}};\n` +
     `    for (unsigned i = 0; i < sizeof xs / sizeof *xs; i++) printf("%.17g\\n", eval_P(xs[i]));\n`,
+  // xs: [{ re, im }]; one "re im" line per point
+  complex: xs => `    static const double complex xs[] = {${xs.map(z => `(${complexLiteral(z.re, z.im)})`).join(', ')}};\n` +
+    `    for (unsigned i = 0; i < sizeof xs / sizeof *xs; i++) { double complex r = eval_P(xs[i]);\n` +
+    `        printf("%.17g %.17g\\n", creal(r), cimag(r)); }\n`,
   u32: xs => `    static const uint32_t xs[] = {${xs.map(x => '0x' + x.toString(16) + 'U').join(', ')}};\n` +
     `    for (unsigned i = 0; i < sizeof xs / sizeof *xs; i++) printf("%08x\\n", (unsigned)eval_P(xs[i]));\n`,
   u64: xs => `    static const uint64_t xs[] = {${xs.map(x => '0x' + x.toString(16) + 'ULL').join(', ')}};\n` +
@@ -79,12 +87,12 @@ function buildAndRun(cText, mode, xs, tag) {
   const kind = KINDS[mode];
   if (!kind) throw new Error(`buildAndRun: unknown mode ${mode}`);
   const main = `\n#include <stdio.h>\nint main(void) {\n${MAINS[kind](xs)}    return 0;\n}\n`;
-  const gf = /^gf/.test(mode);
+  const gf = /^gf/.test(mode), cx = kind === 'complex';
   for (const t of targets) {
-    if (kind === 'double' && t.arch) continue;        // doubles: native is enough
+    if ((kind === 'double' || cx) && t.arch) continue;   // doubles: native is enough
     const src = `${TMP}/${tag}_${++fileNo}.c`, bin = src.replace(/\.c$/, '');
     writeFileSync(src, cText + main);
-    const flags = ['-O2', '-std=c11', '-Wall', ...(t.arch ?? []), ...(gf ? t.gfFlags : []), src, '-o', bin];
+    const flags = ['-O2', '-std=c11', '-Wall', ...(t.arch ?? []), ...(gf ? t.gfFlags : []), src, '-o', bin, ...(cx ? ['-lm'] : [])];
     const cc = spawnSync('cc', flags, { encoding: 'utf8' });
     if (cc.status !== 0) { check(false, `${tag} [${t.label}] compile: ${cc.stderr.slice(0, 400)}`); continue; }
     if (cc.stderr.trim()) console.log(`  warnings ${tag} [${t.label}]: ${cc.stderr.trim().split('\n')[0]}`);
@@ -103,6 +111,9 @@ const hex8 = v => v.toString(16).padStart(8, '0');
 const hex16 = v => v.toString(16).padStart(16, '0');
 const hex128 = v => `${(v >> 64n).toString(16)}:${hex16(v & ((1n << 64n) - 1n))}`;
 const relClose = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+// complex output line "re im" against { re, im }, |.|-relative
+const parseCx = line => { const [re, im] = line.trim().split(/\s+/).map(Number); return { re, im }; };
+const cxClose = (line, w, tol = 1e-9) => { const g = parseCx(line); return Math.hypot(g.re - w.re, g.im - w.im) <= tol * Math.max(1, Math.hypot(w.re, w.im)); };
 
 // ---------- unit checks ----------
 {
@@ -111,6 +122,8 @@ const relClose = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol * Math.max(1, Math
   check(doubleLiteral(3) === '3.0' && doubleLiteral(-0.5) === '-0.5' && doubleLiteral(1e21) === '1e+21', 'doubleLiteral');
   check(qConst(new Rat(-3n, 2n), 'fraction').expr === '(double)-3/2', 'qConst fraction');
   check(qConst(new Rat(-3n, 2n), 'float').expr === '-1.5', 'qConst float');
+  check(complexLiteral(1.5, -0.25) === '1.5 - 0.25*I' && complexLiteral(2, 0) === '2.0' && complexLiteral(0, 1) === '0.0 + 1.0*I' && complexLiteral(-1e-7, 3e21) === '-1e-7 + 3e+21*I', 'complexLiteral');
+  check(cxConst(new GaussRat(new Rat(1n, 2n), new Rat(-3n, 4n))) === '0.5 - 0.75*I' && cxConst(new Rat(-3n)) === '-3.0' && cxConst(7n) === '7.0' && cxConst(0) === '0.0', 'cxConst');
   const big = qConst(new Rat((1n << 60n) + 1n, 3n), 'fraction');
   check(!big.expr.includes('/') && big.note.includes('rounded'), 'qConst big fraction falls back to float');
   // correctly-rounded conversion: nearest neighbour test with exact rationals
@@ -145,6 +158,12 @@ const relClose = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol * Math.max(1, Math
   // rhs parser round trip
   const ast = parseRhs('(y + 2) * (w − 3/2) + t');
   check(ast.sum.length === 2 && ast.sum[0].t.length === 2, 'parseRhs');
+  // a complex literal (re±imi) is one atomic token, never a bracketed sum
+  const cx = parseRhs('(1+2i) * (y + (0-1i))');
+  check(cx.sum.length === 1 && cx.sum[0].t.length === 2 && cx.sum[0].t[0].tok === '(1+2i)', `parseRhs atomic complex factor: ${JSON.stringify(cx)}`);
+  check(cx.sum[0].t[1].sum?.length === 2 && cx.sum[0].t[1].sum[1].t[0].tok === '(0-1i)', `parseRhs atomic complex summand: ${JSON.stringify(cx)}`);
+  const cx2 = parseRhs('x − (1.5e-7+3.2e+5i)');
+  check(cx2.sum.length === 2 && cx2.sum[1].neg && cx2.sum[1].t[0].tok === '(1.5e-7+3.2e+5i)', `parseRhs complex with exponents: ${JSON.stringify(cx2)}`);
 }
 
 // ---------- ours: char 2 (GF(2^64)) ----------
@@ -379,6 +398,72 @@ for (const [mode, prime, bits, fmt, edge] of [
   check(big.cText === null && /no C rendering: constant -?Infinity/.test(big.note) && big.mults === 16 && /\de\+3\d\d/.test(big.mathText), 'R beyond double range: no C, math view survives');
 }
 
+// ---------- ours: C (C99 double complex; exact preprocessing over Q(i), constants rounded) ----------
+{
+  const zs = [{ re: -1.5, im: 0.5 }, { re: -0.7, im: -0.3 }, { re: 0.3, im: 1.1 }, { re: 0.9, im: -0.4 }, { re: 1.7, im: 0.2 }, { re: 2.5, im: -1 }];
+  const toC = g => ({ re: ratToDouble(g.re.n, g.re.d), im: ratToDouble(g.im.n, g.im.d) });
+  const cmul = (a, b) => ({ re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re });
+  const hornerC = (dc, z) => dc.reduceRight((v, c) => { const p = cmul(v, z); return { re: p.re + c.re, im: p.im + c.im }; }, { re: 0, im: 0 });
+  const coefScale = (dc, z) => dc.reduce((s, c, i) => s + Math.hypot(c.re, c.im) * Math.pow(Math.max(1, Math.hypot(z.re, z.im)), i), 0);
+  const runC = (text, tag) => buildAndRun(text, 'C', zs, tag);
+  const shape = (text, tag) => {
+    check(text.includes('#include <complex.h>') && text.includes('#pragma STDC CX_LIMITED_RANGE ON') && /double complex eval_P\(double complex x\)/.test(text) &&
+          /Field: C, evaluated in complex double precision/.test(text) && /-lm/.test(text), `${tag}: complex C shape`);
+  };
+  const src = '(1+2i)x^7 - ix^5 + 3x^4 - (1/2-3/4i)x^2 + x + i';
+  const cs = parsePoly(src, { complex: true }).coeffs, dc = cs.map(toC);
+  const want = zs.map(z => hornerC(dc, z));
+  const r = await compileChar0(src, 'C');
+  check(typeof r.cText === 'string' && r.cTextFraction === null && r.fieldId === 'C' && r.exact === false && r.status === '≈ numeric', 'C: C variant / status');
+  shape(r.cText, 'ours C');
+  check(/static const double complex P_alpha\[/.test(r.cText) && /return P \* \(1\.0 \+ 2\.0\*I\);/.test(r.cText) && /preprocessed exactly/.test(r.cText) &&
+        /\d\.\d+ [-+] \d\.\d+\*I,/.test(r.cText) && !/\(double\)/.test(r.cText) && !/\di\)/.test(r.cText.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')),
+        'C: complex table, complex leading coefficient, re ± im*I literals (the (re±imi) tokens only in comments)');
+  compare(runC(r.cText, 'oursC'), want, 'ours C', cxClose);
+  // the classical methods over ℂ: complex tokens in the chain, double complex in the C
+  for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
+    const m = fn(cs.map(c => Cx.fromRat(c)), Cx);
+    const c = methodChainC(m.lines, 'C', Cx, { name: nm, mults: m.mults, preprocessing: m.preprocessing, poly: src });
+    shape(c, `${nm} C`);
+    if (nm === 'RW') check(c.includes('static const double complex P_c[') && /\d\*I,/.test(c), 'RW C: constants table of complex doubles');
+    if (nm === 'Horner') check(!c.includes('static const') && /\(1\.0 \+ 2\.0\*I\) \* x/.test(c), 'Horner C: inline complex coefficients, parenthesised');
+    compare(runC(c, `${nm}C`), want, `${nm} C`, cxClose);
+  }
+  // the numeric rows as the page builds them: Knuth–Eve and Belaga at degree 7
+  // (Pan's complex scheme starts at degree 11 and says so), all three at degree 13
+  for (const [srcN, wantRows, notPan] of [
+    [src, ['Knuth–Eve', 'Belaga'], /complex schemes start at degree 11 \(scheme \(4\); family \(3\) from 13\); Knuth–Eve and Belaga give ⌊n\/2⌋\+1 multiplications for a monic polynomial here/],
+    ['(0+1i)x^13 + 2x^11 - ix^3 + (1-1i)x + 1', ['Knuth–Eve', 'Pan', 'Belaga'], null],
+  ]) {
+    const csN = parsePoly(srcN, { complex: true }).coeffs, dcN = csN.map(toC);
+    const wantN = zs.map(z => hornerC(dcN, z));
+    const rows = buildComparisons(csN.map(c => Cx.fromRat(c)), Cx, 'C', { poly: srcN });
+    if (notPan) check(!rows.find(r => r.name === 'Pan').ok && notPan.test(rows.find(r => r.name === 'Pan').note), `Pan C degree ${csN.length - 1}: refused with its note`);
+    for (const nm of wantRows) {
+      const row = rows.find(r => r.name === nm);
+      check(!!row?.ok && typeof row.cText === 'string' && row.cTextFraction === row.cText && row.exact === false, `${nm} C: the page has C for it (${row?.note?.slice(0, 60)})`);
+      if (!row?.cText) continue;
+      shape(row.cText, `${nm} C`);
+      check(row.cText.includes(' * Reference: ') && /Knuth|Pan|Belaga/.test(row.cText.split('Reference: ')[1] ?? ''), `${nm} C: header cites its reference`);
+      if (nm === 'Belaga') check(/Reference: E\. G\. Belaga/.test(row.cText) && /Pt = /.test(row.cText) && /P = P_c\[\d+\] \* Pt;/.test(row.cText), 'Belaga C: cited; the scale line restores the leading coefficient');
+      const o = runC(row.cText, `${cIdent(nm)}C_n${csN.length - 1}`);
+      compare(o, wantN, `${nm} C n=${csN.length - 1} (numeric preprocessing)`, (a, b) => {
+        const z = zs[wantN.indexOf(b)], g = parseCx(a);
+        return Math.hypot(g.re - b.re, g.im - b.im) <= 1e-6 * (1 + Math.hypot(b.re, b.im) + coefScale(dcN, z));
+      });
+    }
+  }
+  // a real input over ℂ: ℝ's chain typed double complex, every literal a plain double
+  const rsrc = '2x^9 - 4x^8 + 4x^7 - 7x^6 - 4x^5 - 11/2x^4 - 11x^3 + 5x^2 - 9/3x - 7';
+  const rr = await compileChar0(rsrc, 'C'), qq = await compileChar0(rsrc, 'R');
+  shape(rr.cText, 'ours C (real input)');
+  const body = t => t.slice(t.indexOf('/* preprocessed constants')).replace(/[ \t]*\/\/.*$/gm, '');
+  check(!/\*I/.test(rr.cText) && /return P \* 2\.0;/.test(rr.cText) && body(rr.cText) === body(qq.cText).replace(/\bdouble\b/g, 'double complex'),
+        'C real input: R\'s code with double complex in place of double');
+  const rdc = parsePoly(rsrc).coeffs.map(c => ({ re: ratToDouble(c.n, c.d), im: 0 }));
+  compare(runC(rr.cText, 'oursC_real'), zs.map(z => hornerC(rdc, z)), 'ours C (real input)', cxClose);
+}
+
 // ---------- mode aliases ----------
 {
   const F32 = GF2k(32);
@@ -395,6 +480,25 @@ for (const [mode, prime, bits, fmt, edge] of [
   let threw = false;
   try { char2C(GF2k(8), { n: 1, gates: [], out: { t: ['x'], k: null } }, []); } catch (e) { threw = true; }
   check(threw, 'char2C rejects GF(2^8)');
+}
+
+// ---------- methodChainC: the radix (ldexp) path and out-of-range constants ----------
+{
+  const radix = [{ lhs: 'z', rhs: '0.5·x', mul: false, radixShift: -1 }, { lhs: 'P', rhs: 'z * z', mul: true }];
+  const cR = methodChainC(radix, 'R', R, { name: 't', preprocessing: 'numeric' });
+  check(/double z = ldexp\(x, -1\);/.test(cR) && /#include <math.h>/.test(cR), 'R: a radix line is a free ldexp');
+  const cC = methodChainC(radix, 'C', Cx, { name: 't', preprocessing: 'numeric' });
+  check(!/ldexp\(x/.test(cC) && /double complex z = [^;]*\* x;/.test(cC), 'C: a radix line is a plain product, never ldexp(double complex)');
+  compare(buildAndRun(cC, 'C', [{ re: 2, im: 4 }, { re: -1, im: 0.5 }], 'radixC'), [{ re: -3, im: 4 }, { re: 0.1875, im: -0.25 }], 'C radix line', cxClose);
+  // a constant beyond the double range is refused (no inf literal), as char0C does
+  const huge = compileHorner([Rat.ZERO, Rat.ONE, Rat.ZERO, new Rat(10n ** 400n)], R);
+  let msg = null;
+  try { methodChainC(huge.lines, 'R', R, { name: 'Horner', preprocessing: 'none' }); } catch (e) { msg = e.message; }
+  check(msg !== null && /1e\+400 is not representable as a double/.test(msg), `R: 1e+400 constant refused (${msg})`);
+  const hugeC = compileHorner([Rat.ZERO, Rat.ONE, Rat.ZERO, new Rat(10n ** 400n)].map(c => Cx.fromRat(c)), Cx);
+  msg = null;
+  try { methodChainC(hugeC.lines, 'C', Cx, { name: 'Horner', preprocessing: 'none' }); } catch (e) { msg = e.message; }
+  check(msg !== null && /not representable as a double/.test(msg), `C: 1e+400 constant refused (${msg})`);
 }
 
 console.log(`${checks} checks, ${fails} failures (targets: ${targets.map(t => t.label).join(', ')})`);

@@ -7,7 +7,9 @@
 // ui.js needs a DOM, structurally checks the automatic-compilation wiring
 // (no Compile button, debounced edits, cancel-while-busy, compile on load).
 import { readFileSync } from 'node:fs';
-import { handleMessage } from '../js/worker.js';
+import { handleMessage, replyNumeric } from '../js/worker.js';
+import { resolveField } from '../js/field.js';
+import { numericMethodsFor } from '../js/compare.js';
 import { tokenizeC, highlightC } from '../js/highlight.js';
 import { graphStats } from '../js/graph.js';
 import { installDom, settle, ShimWorker } from './dom-shim.js';
@@ -32,15 +34,19 @@ function isPlain(v, path = '$') {
 const MODES = [
   ['char 0',   { lane: 'char0', fieldMode: 'Q',
                  src: 'x^7 - 2x^6 - 8x^5 - 6x^4 - 11x^3 + 10/3x^2 + 4/2x - 7/3' }],
+  ['complex',  { lane: 'char0', fieldMode: 'C',
+                 src: '(1+2i)x^7 - ix^5 + 3x^4 - (1/2-3/4i)x^2 + x + i' }],
   ['Mersenne', { lane: 'char0', fieldMode: 'p',
                  src: 'x^15 - 5x^14 - 17x^13 + 18x^12 - 12x^11 + 19x^10 - 12x^9 + 17x^8 + 17x^7 - 18x^6 + 3x^5 + 14x^4 + 8x^3 + 7x^2 + 11x + 9' }],
   ['char 2',   { lane: 'char2', fieldMode: null,
                  src: 'x^15 + 4x^14 + 0x14x^13 + 0xfx^12 + 3x^11 + 2x^10 + 4x^9 + 8x^8 + 9x^7 + 0x12x^6 + 0x15x^5 + 2x^4 + 0x13x^3 + 8x^2 + 0x18x + 0x16' }],
 ];
 
-const checkRow = (tag, r, { isQ, ours }) => {
-  for (const f of ['mathText', 'cText', 'graph', 'graphSvg', 'graphText', 'mults', 'adds', 'height'])
+// cCode: the registry's flag — a field without a C emitter would ship cText null (every field has one now)
+const checkRow = (tag, r, { isQ, ours, cCode = true }) => {
+  for (const f of ['mathText', ...(cCode ? ['cText'] : []), 'graph', 'graphSvg', 'graphText', 'mults', 'adds', 'height'])
     check(r[f] !== undefined && r[f] !== null, `${tag}: field ${f} missing`);
+  if (!cCode) check(r.cText === null && r.cTextFraction === null, `${tag}: no C for a field without an emitter`);
   check('mathTextOriginal' in r, `${tag}: mathTextOriginal key missing`);
   check('cTextFraction' in r, `${tag}: cTextFraction key missing`);
   if (ours) check(typeof r.mathTextOriginal === 'string' && r.mathTextOriginal.length > 0, `${tag}: mathTextOriginal text`);
@@ -52,13 +58,14 @@ const checkRow = (tag, r, { isQ, ours }) => {
     check(typeof r.graphSvg === 'string' && r.graphSvg.startsWith('<svg') && r.graphSvg.endsWith('</svg>'), `${tag}: graphSvg well-formed`);
     check(typeof r.graphText === 'string' && r.graphText.includes('# '), `${tag}: graphText footer`);
   }
-  check(r.cText.includes('eval_P'), `${tag}: cText has eval_P`);
+  if (cCode) check(r.cText.includes('eval_P'), `${tag}: cText has eval_P`);
 };
 
 for (const [label, msg] of MODES) {
   const t0 = Date.now();
   const result = await handleMessage(msg);
   const isQ = msg.lane === 'char0' && msg.fieldMode === 'Q';
+  const { cCode } = resolveField(msg.lane, msg.fieldMode);
   console.log(`${label}: ${Date.now() - t0} ms, mults=${result.mults}, field=${result.fieldName}, ` +
               `comparisons=${result.comparisons.map(c => `${c.name}${c.ok ? '' : '✗'}`).join(', ')}`);
   check(!result.oursFailed, `${label}: our compiler failed: ${result.oursFailed}`);
@@ -66,9 +73,9 @@ for (const [label, msg] of MODES) {
   let cloned = null;
   try { cloned = structuredClone(result); } catch (e) { check(false, `${label}: structuredClone threw ${e.message}`); }
   check(cloned && cloned.mults === result.mults, `${label}: structuredClone round trip`);
-  checkRow(label, result, { isQ, ours: true });
+  checkRow(label, result, { isQ, ours: true, cCode });
   check(typeof result.fieldName === 'string' && result.fieldName.length > 0, `${label}: fieldName`);
-  const expectField = isQ ? 'ℚ' : (msg.fieldMode === 'p' ? 'GF(2^89−1)' : 'GF(2^64)');
+  const expectField = isQ ? 'ℚ' : msg.fieldMode === 'C' ? 'ℂ' : (msg.fieldMode === 'p' ? 'GF(2^89−1)' : 'GF(2^64)');
   check(result.fieldName === expectField, `${label}: fieldName ${result.fieldName} != ${expectField}`);
   // original form: char 2 uses the appendix letter names; char 0 follows sections/constructions
   // (named gadget rows H_2, H_4, Q_k, T⁽¹⁾, T⁽²⁾ …, last row P_n, no per-gate headings)
@@ -80,6 +87,8 @@ for (const [label, msg] of MODES) {
     check(/^(H_2|y|P_\d+)\s+=/.test(rows[0]), `${label}: constructions form starts with a paper name (${rows[0].slice(0, 20)})`);
   }
   if (msg.fieldMode === 'p') check(result.cText.includes('M89') && result.cText.includes('__uint128_t'), `${label}: Mersenne C`);
+  if (msg.fieldMode === 'C') check(/\(1\+2i\) \* P̃/.test(result.mathText) && result.exact === false && result.status === '≈ numeric' && typeof result.maxRelError === 'number',
+                                   `${label}: complex scale line, ≈ numeric, rounding error`);
   if (msg.lane === 'char2') check(result.cText.includes('lemul') || result.cText.includes('gf64_mul'), `${label}: GF(2^64) C uses the hardware carryless path`);
   if (isQ) {
     check(result.cTextFraction.includes('(double)'), `${label}: fraction C uses (double)NUM/DEN`);
@@ -93,8 +102,27 @@ for (const [label, msg] of MODES) {
     check('ok' in c && 'name' in c, `${label}/${c.name}: ok/name`);
     if (!c.ok) { console.log(`  note: ${c.name} not ok: ${c.note}`); continue; }
     for (const f of ['preprocessing', 'exact', 'note']) check(f in c, `${label}/${c.name}: ${f}`);
-    checkRow(`${label}/${c.name}`, c, { isQ: isQ && !['Knuth–Eve', 'Pan'].includes(c.name), ours: false });
+    checkRow(`${label}/${c.name}`, c, { isQ: isQ && !['Knuth–Eve', 'Pan'].includes(c.name), ours: false, cCode });
   }
+  // the numeric part answers one method at a time (`only`), as the browser worker does
+  if (msg.fieldMode === 'C') {
+    for (const only of numericMethodsFor('C')) {
+      const nr = await handleMessage({ ...msg, part: 'numeric', only });
+      check(nr.comparisons.length === 1 && nr.comparisons[0].name === only, `${label}: numeric part with only=${only} yields that row alone`);
+    }
+  }
+}
+
+// the browser worker's numeric loop (worker.js replyNumeric): one reply per method
+// over ℂ — Knuth–Eve, Pan, Belaga — and a single failure reply for an unknown field
+{
+  const out = [];
+  await replyNumeric({ id: 9, lane: 'char0', fieldMode: 'C', src: MODES[1][1].src, part: 'numeric' }, m => out.push(m));
+  check(out.length === 3 && out.every(m => m.ok === true && m.id === 9 && m.part === 'numeric'), `replyNumeric over ℂ posts three ok replies (${out.length})`);
+  eq(out.map(m => m.result.comparisons.map(c => c.name)), [['Knuth–Eve'], ['Pan'], ['Belaga']], 'replyNumeric over ℂ: one row per reply, in method order');
+  const bad = [];
+  await replyNumeric({ id: 10, lane: 'char0', fieldMode: 'nope', src: 'x + 1', part: 'numeric' }, m => bad.push(m));
+  check(bad.length === 1 && bad[0].ok === false && bad[0].id === 10 && /unknown field/.test(bad[0].message), 'replyNumeric with an unknown field posts a single failure');
 }
 
 // error path: a char-2 degree above 26 (27 is the paper's open frontier) must throw a readable message
@@ -198,16 +226,32 @@ const latestJob = () => { const id = Math.max(0, ...allMessages().map(m => m.id)
 const lastMessage = () => latestJob().find(m => m.part === 'main') ?? null;
 const messageCount = () => allMessages().filter(m => m.part === 'main').length;   // jobs posted
 /** Answer the latest compile message of one worker part (main by default —
- *  over ℚ / ℝ the numeric methods come from a second worker) with the real
- *  compiler's result; `replyToLatest` answers every part. */
+ *  over ℚ / ℝ / ℂ the numeric methods come from a second worker) with the real
+ *  compiler's result; the numeric part is answered as the browser worker does,
+ *  one reply per method; `replyToLatest` answers every part. */
 const replyPart = async part => {
   const w = ShimWorker.instances.find(x => x.messages.at(-1)?.part === part && !x.terminated);
   if (!w) return null;
   const m = w.messages.at(-1);
+  if (part === 'numeric') {
+    const results = [];
+    await replyNumeric(m, reply => { results.push(reply.result); w.onmessage({ data: reply }); });
+    await settle();
+    return results;
+  }
   const result = await handleMessage(m);
   w.onmessage({ data: { id: m.id, part, ok: true, result } });
   await settle();
   return result;
+};
+/** One method's numeric reply (the browser worker's per-method message). */
+const replyNumericOnly = async only => {
+  const w = ShimWorker.instances.find(x => x.messages.at(-1)?.part === 'numeric' && !x.terminated);
+  const m = w.messages.at(-1);
+  const result = await handleMessage({ ...m, only });
+  w.onmessage({ data: { id: m.id, part: 'numeric', ok: true, result } });
+  await settle();
+  return { w, result };
 };
 const replyToLatest = async () => { const r = await replyPart('main'); await replyPart('numeric'); return r; };
 
@@ -258,8 +302,29 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
         $$('#compare td.pending').length === 2, 'after the main reply the two numeric methods show spinners on their chips and rows');
   $('#methods button[data-m="Pan"]').click(); await settle();
   check($('#methods button.on')?.dataset.m === 'Pan' && $('#chain.pending-pane') && !$('#copy'), 'a pending method can be selected: the pane spins, nothing to copy');
-  await replyPart('numeric');
-  check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'), 'the numeric reply removes every spinner');
+  // one method's reply fills only its row; the numeric worker is still computing the
+  // rest, so a superseding job must terminate it (the idle main worker is kept)
+  const { w: numW, result: keOnly } = await replyNumericOnly('Knuth–Eve');
+  check(keOnly.comparisons.length === 1 && keOnly.comparisons[0].name === 'Knuth–Eve' &&
+        $$('#methods button.pending').length === 1 && $$('#compare td.pending').length === 1 && $('#chain.pending-pane'),
+        'a per-method reply fills only its row');
+  const mainW = ShimWorker.instances.find(x => x.messages.at(-1)?.part === 'main' && !x.terminated);
+  const jobBefore = lastMessage().id;
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check(numW.terminated && !mainW.terminated && lastMessage().id === jobBefore + 1 && mainW.messages.at(-1).id === jobBefore + 1,
+        'a new job terminates a numeric worker that has replied for some methods but is still computing the rest; the idle main worker takes the new job');
+  const freshNum = ShimWorker.instances.filter(x => !x.terminated && x.messages.some(m => m.part === 'numeric'));
+  check(freshNum.length === 1 && freshNum[0] !== numW && freshNum[0].messages.length === 1 && freshNum[0].messages[0].id === jobBefore + 1,
+        'the new job posts its numeric part to a fresh worker, not to the abandoned one');
+  await replyPart('main');
+  check($$('#methods button.pending').length === 2 && $$('#compare td.pending').length === 2, 'the new job starts with both numeric rows pending again');
+  const numReplies = await replyPart('numeric');
+  check(numReplies.length === 2 && !$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'), 'the per-method numeric replies remove every spinner');
+  const doneNum = ShimWorker.instances.find(x => !x.terminated && x.messages.some(m => m.part === 'numeric'));
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check(doneNum && !doneNum.terminated && doneNum.messages.length === 2, 'a numeric worker whose every reply arrived is idle: a new job reuses it');
+  await replyPart('main'); await replyPart('numeric');
+  check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'), 'the reused worker\'s replies land');
   $('#methods button[data-m="ours"]').click(); await settle();
 
   $('#mode button[data-mode="gf64"]').click(); await settle();
@@ -291,6 +356,30 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   $('#share').click(); await settle();
   check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied'),
         'Share writes the state hash to the URL and flashes "copied"');
+
+  // ℂ: the pill regenerates a held example in the new field and its chips take over
+  $('a.chip[data-ex="sparse"]').click(); await settle();
+  check($('#poly-in').value === examplesFor('gf64', 8, 0, true).find(e => e.key === 'sparse').src, 'a GF(2^64) chip is held before switching');
+  $('#mode button[data-mode="C"]').click(); await settle();
+  check($('#mode button.on')?.dataset.mode === 'C' && lastMessage().fieldMode === 'C' && lastMessage().lane === 'char0' &&
+        $('#poly-in').value === defaultExample('C', 8, 0, true).src && $('#poly-in').value.includes('(0+1i)x'),
+        'the ℂ pill regenerates the held example (e^{ix} with Gaussian coefficients) and compiles it');
+  eq($$('#examples a.chip').map(c => c.dataset.ex), ['expi', 'binomi', 'exp1i', 'gauss'], 'ℂ shows its own chips');
+  check($$('.poly-hl .in-num').some(t => t.textContent === '(0+1i)'), 'the input backdrop paints the Gaussian literal as a number');
+  await replyPart('main');
+  check($$('#methods button.pending').length === 3 && $$('#compare td.pending').length === 3 && $('#compare tr[data-m="Belaga"] td.pending'),
+        'over ℂ the main reply leaves Knuth–Eve, Pan and Belaga pending');
+  let left = 3;
+  for (const only of numericMethodsFor('C')) {
+    const { result } = await replyNumericOnly(only);
+    left--;
+    check(result.comparisons.length === 1 && result.comparisons[0].name === only &&
+          $$('#methods button.pending').length === left && $$('#compare td.pending').length === left, `${only} reply clears its spinner (${left} left)`);
+  }
+  check($('#compare tr[data-m="Belaga"]') && !$('#compare tr[data-m="Belaga"] td.pending'), 'the Belaga row is filled in');
+  check($('#out') && $('#compare tr[data-m="ours"]') && $$('#compare tbody tr').length >= 4, 'a ℂ compile reply mounts the output and the table');
+  check($('#compare tr[data-m="ours"]').textContent.includes('≈ numeric') && $('#compare tr[data-m="Horner"]').textContent.includes('yes'),
+        'over ℂ the table reports ours as ≈ numeric and Horner as exact');
 }
 
 // phones --------------------------------------------------------------------
@@ -301,6 +390,10 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
   const boot = initialStateFor({ compact: true });
   check($('#poly-in').value === boot.src && $('#mode-select')?.value === 'Q', 'phones boot on the ℚ e^x example with the field dropdown');
+  const optC = $$('#mode-select option').find(o => o.value === 'C');
+  check(optC && !optC.disabled && optC.textContent.trim() === 'ℂ  complex' &&
+        $$('#mode-select option').map(o => o.value).slice(0, 3).join(',') === 'Q,R,C',
+        'the phone field dropdown lists ℂ after ℚ and ℝ, enabled, as "ℂ  complex"');
   check($$('#examples a.chip').length === 3 && !$('#degree') && !$('#monic') && !$('#share') && !$('#mode') && $('.intro-compact'),
         'phones: three chips, no stepper / monic / Share yet, dropdowns instead of pills, the intro');
   eq($$('.quick-links a').map(a => a.textContent.trim().replace(/\s+/g, ' ')), ['Paper', 'GitHub'], 'phone intro links');

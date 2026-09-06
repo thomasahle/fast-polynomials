@@ -22,6 +22,7 @@
 //   order (every edge goes from an earlier node to a later one), so
 //   "defined before use" is a structural invariant of the builders.
 import { parseRhs } from './cgen.js';
+import { NUM_TOKEN } from './tokens.js';
 
 class Builder {
   constructor() {
@@ -125,7 +126,7 @@ export function buildGraphFromAffineChain(chain, F, { names = null, groups = nul
 }
 
 // token classification for line-based chains
-const NUM_RE = /^-?(0x[0-9a-fA-F]+|\d+(\.\d+)?([eE][+-]?\d+)?(\/\d+)?)$/;
+const NUM_RE = NUM_TOKEN;   // real, hex or the atomic complex literal (re±imi) — js/tokens.js
 const MULT_RE = /^(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)·(.+)$/; // displayed scalar/radix multiple k·w
 
 /**
@@ -135,7 +136,8 @@ const MULT_RE = /^(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)·(.+)$/; // displayed scala
  * '*' nodes (k-ary products are split into k−1 binary '*' nodes, so
  * #mul nodes == multiplication count), sums become '+' nodes (subtraction ⇒
  * edge.neg).  The last line defines the output node (label = its lhs).
- * Atoms: 'x', a previously defined wire, a numeric literal, 'k·w' (integer
+ * Atoms: 'x', a previously defined wire, a numeric literal (real, hex or one
+ * complex token (re±imi)), 'k·w' (integer
  * multiple of a wire), '-w' (negated wire); anything else is a constant.
  * opts.groups — optional {wireName: groupLabel} (or Map).
  */

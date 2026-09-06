@@ -4,6 +4,8 @@
 //   fieldMode is a field id from js/field.js FIELDS:
 //     char0 lane: 'Q' (exact rationals), 'R' (the same exact preprocessing with
 //                 the constants shown and emitted as doubles, ≈ numeric),
+//                 'C' (exact over the Gaussian rationals ℚ(i), constants shown
+//                 as complex doubles, ≈ numeric),
 //                 'p61' | 'p89' | 'p127' (Mersenne primes 2^k − 1)
 //     char2 lane: 'gf32' | 'gf64' | 'gf128'
 //   Legacy spellings still resolve: 'p' → 'p89'; a null fieldMode → 'gf64'
@@ -18,7 +20,7 @@ import { resolveField } from './field.js';
 import { compileChar2 } from './compile2.js';
 import { compileChar0 } from './compile0.js';
 import { chainToText } from './chain.js';
-import { buildComparisons, buildClassical, buildNumeric, needsNumericWorker, pendingNumericRows, NUMERIC_METHODS } from './compare.js';
+import { buildComparisons, buildClassical, buildNumeric, needsNumericWorker, pendingNumericRows, numericMethodsFor } from './compare.js';
 import { renderGraphSVG, graphToText } from './graphview.js';
 
 /** Graph IR → the three graph payloads (IR, SVG string, text listing); null-safe. */
@@ -47,8 +49,9 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
   const cmpMode = fd.id;
   // a parse failure names the field it was read in (the text may have been typed
   // for another one, e.g. a fractional Taylor polynomial switched to GF(2^k))
+  const parseOpts = { char2: fd.lane === 'char2', complex: !!fd.complex };   // ℂ: every coefficient a GaussRat
   const parse = () => {
-    try { return parsePoly(src, { char2: fd.lane === 'char2' }); }
+    try { return parsePoly(src, parseOpts); }
     catch (e) { throw new Error(`cannot read the polynomial over ${fd.name}: ${e?.message ?? e}`); }
   };
   let polyText = null;                            // the input, canonically printed, for the C headers
@@ -56,12 +59,12 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
     const opts = { poly: polyText };
     if (part === 'main')
       return [...buildClassical(cmpCoeffs, F, cmpMode, opts),
-              ...(needsNumericWorker(cmpMode) ? pendingNumericRows() : buildNumeric(cmpCoeffs, F, cmpMode, opts))];
+              ...(needsNumericWorker(cmpMode) ? pendingNumericRows(cmpMode) : buildNumeric(cmpCoeffs, F, cmpMode, opts))];
     return buildComparisons(cmpCoeffs, F, cmpMode, opts);
   };
   if (part === 'numeric') {
     const { coeffs } = parse();
-    polyText = polyToString(coeffs, { char2: fd.lane === 'char2' });
+    polyText = polyToString(coeffs);
     cmpCoeffs = fd.lane === 'char2' ? coeffs.map(c => F.fromInt(c)) : coeffs.map(c => F.fromRat(c));
     return { comparisons: withGraphViews(buildNumeric(cmpCoeffs, F, cmpMode, { poly: polyText, only })) };
   }
@@ -73,7 +76,7 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
   } else {
     const { coeffs } = parse();
     polyText = polyToString(coeffs);
-    cmpCoeffs = coeffs.map(c => F.fromRat(c));      // exact Rats over ℚ and ℝ; residues over GF(p)
+    cmpCoeffs = coeffs.map(c => F.fromRat(c));      // exact Rats over ℚ and ℝ, GaussRats over ℂ; residues over GF(p)
     try {
       r = await compileChar0(src, fd.id);
     } catch (err) {
@@ -103,22 +106,32 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
   };
 }
 
+/** The numeric part: one reply per method, as soon as it is done (Knuth–Eve is
+ *  quick; Pan may take a while).  `post` receives { id, part, ok: true, result }
+ *  once per method of numericMethodsFor(field) — a method that throws yields
+ *  its failed row instead — or a single { id, part, ok: false, message } when
+ *  the field itself cannot be resolved (the worker's only reply then).
+ *  Exported so the node smoke test can drive the browser loop. */
+export async function replyNumeric(data, post) {
+  const { id, part = 'numeric' } = data;
+  let methods;
+  try { methods = numericMethodsFor(resolveField(data.lane, data.fieldMode).id); }
+  catch (err) { post({ id, part, ok: false, message: err?.message ?? String(err) }); return; }
+  for (const only of methods) {
+    try {
+      const result = await handleMessage({ ...data, only });
+      post({ id, part, ok: true, result });
+    } catch (err) {
+      post({ id, part, ok: true, result: { comparisons: [{ name: only, ok: false, note: err?.message ?? String(err) }] } });
+    }
+  }
+}
+
 // Browser worker entry point (absent under node, where the smoke test imports handleMessage).
 if (typeof globalThis.postMessage === 'function') {
   globalThis.onmessage = async e => {
     const { id, part = null } = e.data;
-    if (part === 'numeric') {
-      // one reply per method, as soon as it is done (Knuth–Eve is quick; Pan may take a while)
-      for (const only of NUMERIC_METHODS) {
-        try {
-          const result = await handleMessage({ ...e.data, only });
-          postMessage({ id, part, ok: true, result });
-        } catch (err) {
-          postMessage({ id, part, ok: true, result: { comparisons: [{ name: only, ok: false, note: err?.message ?? String(err) }] } });
-        }
-      }
-      return;
-    }
+    if (part === 'numeric') return replyNumeric(e.data, m => postMessage(m));
     try {
       const result = await handleMessage(e.data);
       postMessage({ id, part, ok: true, result });

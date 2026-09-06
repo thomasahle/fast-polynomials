@@ -19,6 +19,7 @@ const TYPES = new Set([
   'int8_t', 'int16_t', 'int32_t', 'int64_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
   '__uint128_t', '__int128_t', '__int128', '__m128i', '__m256i', 'uint8x16_t', 'uint64x2_t',
   'poly64_t', 'poly64x1_t', 'poly64x2_t', 'poly128_t', 'U128',
+  'complex', '_Complex',
 ]);
 
 const NUM_RE = /^(?:0[xX][0-9a-fA-F']+|(?:\d[\d']*\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)(?:[uU]?[lL]{0,2}|[lL]{0,2}[uU]?|[fF])?/;

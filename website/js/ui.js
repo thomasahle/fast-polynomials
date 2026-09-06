@@ -5,8 +5,8 @@
 // table, view tabs, sub-options and the pane can never disagree.  This file
 // owns only the markup and the side effects: the Web Workers that keep
 // unbounded exact-rational preprocessing off the UI thread — a main worker
-// for our chain and the classical methods, and over ℚ / ℝ a second one for
-// the numeric methods (Knuth–Eve, Pan), whose rows arrive later and show as
+// for our chain and the classical methods, and over ℚ / ℝ / ℂ a second one for
+// the numeric methods (Knuth–Eve, Pan; Belaga over ℂ), whose rows arrive later and show as
 // spinners meanwhile (created lazily, terminated whenever a newer job
 // supersedes a running one) — the
 // timers that make compilation automatic — the initial example compiles on
@@ -40,6 +40,7 @@ import {
   exampleHeld, exampleDegree, showOutput, compileMessages, methodTabs, comparisonTable,
   subOptionStrips, paneContent, fieldChooser, tokenizePoly, stats,
 } from './uistate.js';
+import { numericMethodsFor } from './compare.js';
 
 const DEBOUNCE_MS = 500;   // quiet time after an edit before the chain recompiles
 const COPIED_MS = 1200;    // how long Copy / Share show their transient "copied"
@@ -138,6 +139,7 @@ function fieldLabel(label) {
 function fieldOptionLabel(f) {
   if (f.id === 'Q') return 'ℚ  rational';
   if (f.id === 'R') return 'ℝ  real (doubles)';
+  if (f.id === 'C') return 'ℂ  complex';
   return f.name;
 }
 
@@ -162,6 +164,7 @@ function App() {
     s => stateFromHash(s, location.hash));
   const workersRef = useRef({});          // part ('main' | 'numeric') -> Worker
   const runningRef = useRef({});          // part -> true while a job is in flight there
+  const repliesLeftRef = useRef({});      // part -> replies the running job still owes (numeric: one per method)
   const stateRef = useRef(state);          // latest state, for timer callbacks
   stateRef.current = state;
   const postedSrcRef = useRef(null);       // src of the most recently posted job
@@ -170,7 +173,11 @@ function App() {
   const ensureWorker = part => {
     if (!workersRef.current[part]) {
       const w = new Worker(new URL('worker.js', import.meta.url), { type: 'module' });
-      w.onmessage = e => { runningRef.current[part] = false; dispatch({ type: 'reply', ...e.data }); };   // stale ids are dropped by the reducer
+      w.onmessage = e => {                 // the part is idle only after its job's LAST reply (stale ids never flip the flag;
+        if (e.data.id === stateRef.current.jobId &&   // the reducer drops them too); a numeric ok:false reply is that worker's only one
+            (!e.data.ok || --repliesLeftRef.current[part] <= 0)) runningRef.current[part] = false;
+        dispatch({ type: 'reply', ...e.data });
+      };
       w.onerror = e => {
         dropWorker(part);
         if (part === 'main') dispatch({ type: 'workerError', message: `worker failed to load: ${e.message ?? e}` });
@@ -193,7 +200,11 @@ function App() {
   useEffect(() => {
     if (!state.busy) return;
     postedSrcRef.current = state.src;
-    for (const m of compileMessages(state)) { ensureWorker(m.part).postMessage(m); runningRef.current[m.part] = true; }
+    for (const m of compileMessages(state)) {
+      ensureWorker(m.part).postMessage(m);
+      runningRef.current[m.part] = true;
+      repliesLeftRef.current[m.part] = m.part === 'numeric' ? numericMethodsFor(state.mode).length : 1;
+    }
   }, [state.jobId]);
 
   // Auto-compile edits after DEBOUNCE_MS of no typing (the cleanup resets the
@@ -295,9 +306,37 @@ function DegreeControls({ state, actions }) {
     </span>`;
 }
 
+/** A control row: the pills, then a small-caps legend to their right — shown
+ *  only while it fits on the pills' line (seven method chips over ℂ fill the
+ *  card; a legend wrapping under them read as a stray word). Measured with a
+ *  ResizeObserver; where none exists (tests) the legend simply stays. */
+function PillRow({ id, legend, children }) {
+  const rowRef = useRef(null), lblRef = useRef(null), lblWidth = useRef(0);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const row = rowRef.current, lbl = lblRef.current;
+    if (!row || !lbl || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      if (lbl.offsetWidth) lblWidth.current = lbl.offsetWidth;       // remember it while visible
+      const pills = [...row.children].filter(el => el !== lbl).reduce((w, el) => w + el.offsetWidth, 0);
+      const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+      setFits(pills + gap + lblWidth.current <= row.clientWidth);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    for (const el of row.children) ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  });
+  return html`<div class="controls" id=${id} ref=${rowRef}>
+    ${children}
+    <span class=${fits ? 'lbl' : 'lbl tight'} ref=${lblRef} aria-hidden=${!fits}>${legend}</span>
+  </div>`;
+}
+
 /** The field chooser: one pill group per registry group, FIELD legend to the right. */
 function FieldPills({ state, setMode }) {
-  return html`<div class="controls" id="field-row">
+  return html`<${PillRow} id="field-row" legend="Field">
     <div class="field-groups" id="mode">
       ${fieldChooser(state).map(g => html`<div class="seg" key=${g.id} data-group=${g.id}>
         ${g.fields.map(f => html`<button key=${f.id} data-mode=${f.id} title=${f.title || null}
@@ -305,13 +344,12 @@ function FieldPills({ state, setMode }) {
           onClick=${f.enabled ? () => setMode(f.id) : null}>${fieldLabel(f.label)}</button>`)}
       </div>`)}
     </div>
-    <span class="lbl">Field</span>
-  </div>`;
+  <//>`;
 }
 
 /** The method chips (bold reserve keeps their width stable), METHOD legend to the right. */
 function MethodPills({ tabs, dispatch }) {
-  return html`<div class="controls" id="method-row">
+  return html`<${PillRow} id="method-row" legend="Method">
     <div class="seg methods" id="methods">
       ${tabs.map(t => t.enabled
     ? html`<button key=${t.key} data-m=${t.key} data-label=${t.label} class=${[t.on && 'on', t.pending && 'pending'].filter(Boolean).join(' ') || null}
@@ -319,8 +357,7 @@ function MethodPills({ tabs, dispatch }) {
             onClick=${() => dispatch({ type: 'setMethod', method: t.key })}><span>${t.label}${t.pending && html`<${Spinner} />`}</span></button>`
     : html`<button key=${t.key} data-label=${t.label} disabled title=${t.title || null}><span>${t.label}</span></button>`)}
     </div>
-    <span class="lbl">Method</span>
-  </div>`;
+  <//>`;
 }
 
 /** Phones: the same field and method choices as two labelled dropdowns. */

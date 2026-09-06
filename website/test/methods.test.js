@@ -3,12 +3,14 @@ import { Rat } from '../js/rat.js';
 import * as P from '../js/poly.js';
 import { compileHorner } from '../js/methods/horner.js';
 import { compileEstrin } from '../js/methods/estrin.js';
+import { COMPLEX_TOKEN, complexTokenAt, parseComplexToken } from '../js/tokens.js';
 
 // tiny evaluator for rendered chain lines: rhs = sum of terms, term = atom | atom * atom
 function evalLines(lines, F, x, parseConst) {
   const env = { x };
   const atom = s => {
     s = s.trim();
+    if (COMPLEX_TOKEN.test(s)) return parseConst(s);        // one atomic (re±imi) constant, not a bracketed sum
     if (s.startsWith('(') && s.endsWith(')')) return sum(s.slice(1, -1));
     if (s in env) return env[s];
     return parseConst(s);
@@ -145,8 +147,9 @@ import { examplesFor } from '../js/uistate.js';
 import { parsePoly } from '../js/polyparse.js';
 {
   // evaluator for chainToText output: "lhs = rhs" lines; rhs uses ' + ', ' - '
-  // or ' − ', unary minus, parentheses, real or "(a+bi)" literals, and
-  // identifiers such as P̃ (any non-ASCII letters allowed).
+  // or ' − ', unary minus, parentheses, real literals, the atomic complex
+  // token (re±imi) of js/tokens.js, and identifiers such as P̃ (any non-ASCII
+  // letters allowed).
   const Cx = (re, im = 0) => ({ re, im });
   const add = (a, b) => Cx(a.re + b.re, a.im + b.im);
   const sub = (a, b) => Cx(a.re - b.re, a.im - b.im);
@@ -187,7 +190,9 @@ import { parsePoly } from '../js/polyparse.js';
       let neg = false;
       if (isMinus(src[i])) { neg = true; i++; ws(); }
       let v;
-      if (src[i] === '(') {
+      const cx = complexTokenAt(src, i);
+      if (cx !== null) { i += cx.length; v = parseComplexToken(cx); }
+      else if (src[i] === '(') {
         i++; v = expr(); ws();
         if (src[i] !== ')') throw new Error('missing ) in: ' + src);
         i++;

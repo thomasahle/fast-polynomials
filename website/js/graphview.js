@@ -20,6 +20,8 @@
 // variables (--accent, --ink, --border, --mono-bg, --muted, --panel,
 // --accent-soft) with light/dark fallbacks chosen by opts.theme.
 
+import { parseComplexToken, complexToken } from './tokens.js';
+
 const R = 13;             // operator-node radius
 const ROW_GAP = 44;       // vertical distance between node centres in a layer
 const VGAP = 16;          // vertical separation reserved for a routed edge rail
@@ -38,6 +40,10 @@ function nodeSize(n) {
 }
 function shortLabel(s) {
   s = String(s);
+  // a complex constant is never cut (a truncated "(-0.76473983683…" would read as a
+  // negative real): it is re-rounded to six digits, the box grows to fit
+  const c = parseComplexToken(s);
+  if (c) return complexToken(c.re, c.im, 6);
   return s.length > MAX_LABEL ? s.slice(0, MAX_LABEL - 1) + '…' : s;
 }
 

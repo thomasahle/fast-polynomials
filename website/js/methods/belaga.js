@@ -59,6 +59,18 @@
 // searched (heuristic orders plus a swap-based local search), scored by the
 // verification below.
 //
+// COMPLEX COEFFICIENTS.  The input may also be an ascending array of complex
+// {re, im} doubles (a real {re, im: 0} entry counts as real; an input whose
+// imaginary parts all vanish takes the real path above unchanged).  Over C
+// the scheme is the same and the decomposition P = A(y) + x B(y) is computed
+// exactly in Gaussian dyadics; a_1 = (c_{n-1} - 1)/l is a Gaussian rational,
+// the roots of B are found by the complex Aberth iteration (polyRootsComplex)
+// and polished by exact Newton steps, and every root is its own linear factor
+// (y + a): there are no conjugate pairs to keep together, so the peeling
+// divides by linear factors only and every constant a_2 .. a_n is a complex
+// double.  Such a chain is verified by verifyLinesComplex at real and
+// non-real sample points against complex Horner.
+//
 // VERIFICATION as in motzkin.js: the emitted rhs strings are re-parsed and
 // evaluated at 69 sample points against Horner (over complex doubles when the
 // constants are complex); constants are printed with 13 significant digits,
@@ -69,7 +81,8 @@
 // unlike Motzkin-Eve there is no shift to improve the conditioning.
 
 import {
-  C, cAbs, cDiv, isZeroC, polyRoots, fmt, appendConst, verifyLines,
+  C, cAbs, cDiv, cNeg, cSub, cMul, isZeroC, polyRoots, polyRootsComplex, fmt, appendConst,
+  verifyLines, verifyLinesComplex, toComplex,
   rat, rSub, rDiv, R1, ratFromDouble, ratToDouble,
 } from './motzkin.js';
 
@@ -106,39 +119,60 @@ function dyToDouble(a) {
   return neg ? -v : v;
 }
 
+// Gaussian dyadics {re, im} (both dyadic): the exact ring of the complex
+// preprocessing.  A complex double is one, and so is everything the complex
+// peeling produces from complex doubles by ring operations.
+const gd = (re, im = D0) => ({ re, im });
+const G0 = gd(D0);
+const gdFromC = z => gd(dyFromDouble(z.re), dyFromDouble(z.im));
+const gdToC = a => C(dyToDouble(a.re), dyToDouble(a.im));
+const gdAdd = (a, b) => gd(dyAdd(a.re, b.re), dyAdd(a.im, b.im));
+const gdSub = (a, b) => gd(dySub(a.re, b.re), dySub(a.im, b.im));
+const gdMul = (a, b) => gd(dySub(dyMul(a.re, b.re), dyMul(a.im, b.im)), dyAdd(dyMul(a.re, b.im), dyMul(a.im, b.re)));
+const gdIsZero = a => dyIsZero(a.re) && dyIsZero(a.im);
+
 // ---------- exact decomposition P = A(y) + x B(y), y = x^2 + a1 x ----------
 
-function splitXY(p, a1) {                          // dyadic arrays, ascending
+// The ring operations are passed in: dyadics for real coefficients, Gaussian
+// dyadics for complex ones.
+const DY = { zero: D0, sub: dySub, mul: dyMul };
+const GD = { zero: G0, sub: gdSub, mul: gdMul };
+
+function splitXYIn(ring, p, a1) {                  // ring arrays, ascending
+  const { zero, sub, mul } = ring;
   let cur = p.slice();
   const A = [], B = [];
   for (;;) {
-    if (cur.length <= 2) { A.push(cur[0] ?? D0); B.push(cur[1] ?? D0); break; }
+    if (cur.length <= 2) { A.push(cur[0] ?? zero); B.push(cur[1] ?? zero); break; }
     const m = cur.length - 1;
-    const q = new Array(m - 1).fill(D0);
+    const q = new Array(m - 1).fill(zero);
     const rem = cur.slice();
-    for (let i = m; i >= 2; i--) { const c = rem[i]; q[i - 2] = c; rem[i] = D0; rem[i - 1] = dySub(rem[i - 1], dyMul(c, a1)); }
+    for (let i = m; i >= 2; i--) { const c = rem[i]; q[i - 2] = c; rem[i] = zero; rem[i - 1] = sub(rem[i - 1], mul(c, a1)); }
     A.push(rem[0]); B.push(rem[1]);
     cur = q;
   }
   return [A, B];
 }
+const splitXY = (p, a1) => splitXYIn(DY, p, a1);
 
-// Newton polish of a root of the dyadic polynomial B (ascending) at the
-// complex double z, with B(z) and B'(z) evaluated exactly (Gaussian integers
-// after clearing the powers of two; the Newton step is their ratio).
-function polishExact(B, z) {
-  const d = B.length - 1;
-  const eB = Math.max(...B.map(c => c.e));
-  const Bn = B.map(c => c.n << BigInt(eB - c.e));
+// Newton polish of a root of the Gaussian-dyadic polynomial Bg (ascending)
+// at the complex double z, with B(z) and B'(z) evaluated exactly (Gaussian
+// integers after clearing the powers of two; the Newton step is their
+// ratio).  With realSnap a root on the real axis stays there (B real).
+function polishExactG(Bg, z, realSnap) {
+  const d = Bg.length - 1;
+  const eB = Math.max(...Bg.map(c => Math.max(c.re.e, c.im.e)));
+  const Br = Bg.map(c => c.re.n << BigInt(eB - c.re.e));
+  const Bi = Bg.map(c => c.im.n << BigInt(eB - c.im.e));
   for (let it = 0; it < 4; it++) {
     const zr = dyFromDouble(z.re), zi = dyFromDouble(z.im);
     const e = Math.max(zr.e, zi.e), Zr = zr.n << BigInt(e - zr.e), Zi = zi.n << BigInt(e - zi.e);
     const up = 1n << BigInt(e);
-    // V_i = V_{i+1} Z + Bn_i 2^(e (d - i)),  DV_i = DV_{i+1} Z + V_{i+1} 2^e
+    // V_i = V_{i+1} Z + B_i 2^(e (d - i)),  DV_i = DV_{i+1} Z + V_{i+1} 2^e
     let vr = 0n, vi = 0n, dr = 0n, di = 0n, pw = 1n;
     for (let i = d; i >= 0; i--) {
       [dr, di] = [dr * Zr - di * Zi + vr * up, dr * Zi + di * Zr + vi * up];
-      [vr, vi] = [vr * Zr - vi * Zi + Bn[i] * pw, vr * Zi + vi * Zr];
+      [vr, vi] = [vr * Zr - vi * Zi + Br[i] * pw, vr * Zi + vi * Zr + Bi[i] * pw];
       pw *= up;
     }
     const sh = BigInt(Math.max(0, Math.max(bitLen(dr), bitLen(di)) - 200));
@@ -148,11 +182,13 @@ function polishExact(B, z) {
     if (!Number.isFinite(step.re) || !Number.isFinite(step.im)) break;
     const cap = 0.1 * (1 + cAbs(z)), sa = cAbs(step);
     if (sa > cap) break;                           // not in the Newton basin: keep the Aberth root
-    z = C(z.re - step.re, z.im === 0 ? 0 : z.im - step.im);
+    z = C(z.re - step.re, realSnap && z.im === 0 ? 0 : z.im - step.im);
     if (sa <= 1e-17 * (1 + cAbs(z))) break;
   }
   return z;
 }
+// ... for the dyadic (real) polynomial B
+const polishExact = (B, z) => polishExactG(B.map(c => gd(c)), z, true);
 
 // Real roots and conjugate pairs of B: [{ re }, ...] and [{ re, im > 0 }, ...]
 function rootBlocks(roots) {
@@ -180,12 +216,14 @@ function rootBlocks(roots) {
 const quant = (v, digits) => parseFloat(fmt(v, digits));
 
 // A = Q (y + a) + rho, exact
-function divLinear(A, a) {
+function divLinearIn(ring, A, a) {
+  const { sub, mul } = ring;
   const d = A.length - 1, Q = new Array(d);
   let carry = A[d];
-  for (let j = d - 1; j >= 0; j--) { Q[j] = carry; carry = dySub(A[j], dyMul(a, carry)); }
+  for (let j = d - 1; j >= 0; j--) { Q[j] = carry; carry = sub(A[j], mul(a, carry)); }
   return [Q, carry];
 }
+const divLinear = (A, a) => divLinearIn(DY, A, a);
 // A = Q (y^2 + s y + t) + (lam y + mu), exact
 function divQuad(A, s, t) {
   const rem = A.slice(), d = A.length - 1;
@@ -258,6 +296,31 @@ function decode(A0, order, digits) {
   return alphas;
 }
 
+// The complex peeling: every block is one root r of B (type 'c'), the factor
+// (y + a) with a = -r, and the constants are complex doubles quantised in
+// both parts.
+const quantC = (z, digits) => C(quant(z.re, digits), quant(z.im, digits));
+
+function decodeG(A0, order, digits) {
+  const alphas = [];
+  let A = A0.slice();
+  for (let j = order.length - 1; j >= 1; j--) {
+    const kk = j + 1;                                // block j sits at node position j + 1
+    const a = quantC(cNeg(order[j].r), digits);
+    alphas[2 * kk + 1] = a;
+    const [Q, rho] = divLinearIn(GD, A, gdFromC(a));
+    alphas[2 * kk + 2] = quantC(gdToC(rho), digits);
+    A = Q;
+  }
+  // base block: A = y^2 + p y + q = (y + a_2)(y + a_3) + a_4
+  const a3 = quantC(cNeg(order[0].r), digits);
+  alphas[3] = a3;
+  const a2 = quantC(gdToC(gdSub(A[1], gdFromC(a3))), digits);
+  alphas[2] = a2;
+  alphas[4] = quantC(gdToC(gdSub(A[0], gdMul(gdFromC(a2), gdFromC(a3)))), digits);
+  return alphas;
+}
+
 // ---------- chain emission ----------
 
 function emit(n, a1, alphas, aN, digits) {
@@ -266,11 +329,11 @@ function emit(n, a1, alphas, aN, digits) {
   let mults = 0, adds = 0;
   const push = (lhs, rhs, mul, deps) => {
     lines.push({ lhs, rhs, mul });
-    depth[lhs] = 1 + Math.max(0, ...deps.map(dp => depth[dp]));
+    depth[lhs] = Math.max(0, ...deps.map(dp => depth[dp])) + (mul ? 1 : 0);   // multiplicative depth (every line here is a product)
     if (mul) mults++;
   };
   const l = Math.floor(n / 2), odd = n % 2 === 1;
-  const yFactor = appendConst('x', C(a1), digits);
+  const yFactor = appendConst('x', toComplex(a1), digits);
   if (yFactor !== 'x') adds++;
   push('y', `x * (${yFactor})`, true, ['x']);
   // s_2
@@ -290,7 +353,7 @@ function emit(n, a1, alphas, aN, digits) {
   }
   if (odd) {
     rhs = `x * ${acc}`;
-    const w = appendConst(rhs, C(aN), digits); if (w !== rhs) adds++;
+    const w = appendConst(rhs, toComplex(aN), digits); if (w !== rhs) adds++;
     push('P', w, true, ['x', acc]);
   }
   return { lines, mults, adds, height: depth.P };
@@ -302,7 +365,7 @@ function heuristicOrders(blocks) {
   const mag = b => (b.type === 'r' ? Math.abs(b.r) : cAbs(b.r));
   const re = b => (b.type === 'r' ? b.r : b.r.re);
   const by = f => blocks.slice().sort((a, b) => f(a) - f(b));
-  const realsFirst = ord => ord.filter(b => b.type === 'r').concat(ord.filter(b => b.type === 'p'));
+  const realsFirst = ord => ord.filter(b => b.type === 'r').concat(ord.filter(b => b.type !== 'r'));
   const seen = new Set(), out = [];
   const add = ord => { const key = ord.map(b => blocks.indexOf(b)).join(','); if (!seen.has(key)) { seen.add(key); out.push(ord); } };
   add(by(mag).reverse());                          // largest factor innermost
@@ -359,12 +422,14 @@ const ORDER_BUDGET = 160;                 // chain verifications per precision l
 export function compileBelaga(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length < 4)
     throw new Error('Belaga: need a degree >= 3 polynomial');
-  const p = coeffs.map(Number);
-  if (!p.every(Number.isFinite))
+  const pc = coeffs.map(toComplex);
+  if (!pc.every(z => Number.isFinite(z.re) && Number.isFinite(z.im)))
     throw new Error('Belaga: coefficients must be finite numbers');
-  const n = p.length - 1;
-  if (p[n] !== 1)
+  const n = pc.length - 1;
+  if (pc[n].re !== 1 || pc[n].im !== 0)
     throw new Error('Belaga: input must be monic (coeffs[n] === 1)');
+  if (pc.some(z => z.im !== 0)) return compileBelagaComplex(pc);
+  const p = pc.map(z => z.re);
 
   const finish = (chain, mode, err, pairs = 0) => {
     const degB = Math.floor(n / 2) - 1;
@@ -385,6 +450,7 @@ export function compileBelaga(coeffs) {
       name: 'Belaga scheme',
       lines: chain.lines, mults: chain.mults, adds: chain.adds, height: chain.height,
       preprocessing: mode, exact: false, note, maxRelError: err,
+      preprocessingLabel: n <= 5 ? 'rational preprocessing' : `${mode} roots (numeric)`,
     };
   };
 
@@ -450,4 +516,81 @@ export function compileBelaga(coeffs) {
       'values A(y) and x B(y) far exceed P(x) here)');
   }
   return finish(best.chain, best.mode, best.err, best.pairs);
+}
+
+// ---------- the same scheme over C ----------
+// pc: complex coefficients (ascending, monic, at least one nonzero imaginary
+// part).  Mirrors the real path with Gaussian dyadics, polyRootsComplex and
+// linear-factor-only peeling; verified by verifyLinesComplex.
+
+function compileBelagaComplex(pc) {
+  const n = pc.length - 1;
+  const finish = (chain, err) => ({
+    name: 'Belaga scheme',
+    lines: chain.lines, mults: chain.mults, adds: chain.adds, height: chain.height,
+    preprocessing: 'complex', exact: false, maxRelError: err,
+    preprocessingLabel: n <= 5 ? 'Gaussian rational preprocessing' : 'complex roots (numeric)',
+    note: 'Belaga 1958 (Pan 1966, scheme (0.5)): ceil(n/2) multiplications, n+1 additions over C for a ' +
+      'polynomial with complex coefficients; ' + (n <= 5
+        ? 'preprocessing is rational (Gaussian) at this degree'
+        : `a_1 = (c_{n-1} - 1)/l is a Gaussian rational and a_3, a_5, ... are the roots of a degree-${Math.floor(n / 2) - 1} ` +
+          'polynomial B fixed by the input, found numerically, so the chain is only correct up to floating-point error') +
+      '; the printed chain was verified at real and non-real sample points',
+  });
+
+  if (n === 3) {                                       // (x + a1)(x^2 + a2) + a3
+    const a1 = pc[2], a2 = pc[1], a3 = cSub(pc[0], cMul(pc[1], pc[2]));
+    let best = null;
+    for (const digits of [13, 17]) {
+      const lines = [{ lhs: 'y', rhs: 'x * x', mul: true }];
+      const f = appendConst('x', a1, digits), g = appendConst('y', a2, digits);
+      const rhs = `(${f}) * (${g})`;
+      lines.push({ lhs: 'P', rhs: appendConst(rhs, a3, digits), mul: true });
+      const adds = (f !== 'x') + (g !== 'y') + (lines[1].rhs !== rhs);
+      const err = verifyLinesComplex(lines, pc);
+      if (!best || err < best.err) best = { err, chain: { lines, mults: 2, adds, height: 2 } };
+      if (err <= 1e-9) break;
+    }
+    return finish(best.chain, best.err);
+  }
+
+  const l = Math.floor(n / 2), odd = n % 2 === 1;
+  const uG = pc.map(gdFromC);
+  const lR = rat(BigInt(l));
+  const a1re = rDiv(rSub(ratFromDouble(pc[n - 1].re), R1), lR);
+  const a1im = rDiv(ratFromDouble(pc[n - 1].im), lR);
+  let best = null;
+  for (const digits of [13, 17]) {
+    const a1 = C(quant(ratToDouble(a1re), digits), quant(ratToDouble(a1im), digits));
+    const a1G = gdFromC(a1);
+    let [A, B] = splitXYIn(GD, uG, a1G), aN = C(0);
+    if (odd) {
+      // P = [y B + a_n] + x [A - a1 B]:  the split gave A' = y B + a_n, B' = A - a1 B
+      const Ap = A, Bp = B;
+      aN = quantC(gdToC(Ap[0] ?? G0), digits);
+      B = Ap.slice(1);                                 // (A' - a_n)/y
+      A = Bp.map((v, i) => gdAdd(v, gdMul(a1G, B[i] ?? G0)));   // B' + a1 B
+    }
+    A = A.slice(0, l + 1); B = B.slice(0, l);
+    while (A.length < l + 1) A.push(G0);
+    while (B.length < l) B.push(G0);
+    if (gdIsZero(B[l - 1]) || !gdIsZero(gdSub(A[l], gd(D1))))
+      throw new Error('Belaga: preprocessing failed (decomposition P = A(y) + x B(y) is not monic)');
+    let roots = polyRootsComplex(B.map(gdToC));
+    if (!roots) throw new Error('Belaga: the root-finding iteration failed to converge on the roots of B');
+    roots = roots.map(z => polishExactG(B, z, false));
+    const blocks = roots.map(r => ({ type: 'c', r }));
+    const cost = ord => verifyLinesComplex(emit(n, a1, decodeG(A, ord, digits), aN, digits).lines, pc);
+    const r = searchOrder(blocks, cost, ORDER_BUDGET);
+    const chain = emit(n, a1, decodeG(A, r.ord, digits), aN, digits);
+    if (!best || r.err < best.err) best = { err: r.err, chain };
+    if (best.err <= 1e-9) break;
+  }
+  if (!(best.err <= 1e-3)) {
+    throw new Error('Belaga: the constants exceed double precision for this polynomial - max relative error ' +
+      `${best.err.toExponential(3)} (a_1 = (c_{n-1} - 1)/l and the roots of B are fixed by the input, so ` +
+      'unlike Motzkin-Eve there is no shift to improve the conditioning of the chain; its intermediate ' +
+      'values A(y) and x B(y) far exceed P(x) here)');
+  }
+  return finish(best.chain, best.err);
 }
