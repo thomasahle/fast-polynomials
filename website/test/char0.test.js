@@ -300,6 +300,12 @@ async function testCompilePipeline() {
       const cOk = typeof r.cText === 'string' && r.cText.includes('eval_P');
       check(fd.cCode ? cOk || (!exact || mode === 'Q') && /no C rendering: constant -?Infinity/.test(r.note)
                      : r.cText === null && r.cTextFraction === null && !/no C rendering/.test(r.note), `compileChar0 ${mode} n=${n}: C rendering`);
+      // result.cMissing (the UI's reason line) only when an emitter exists and rendered nothing
+      check(cOk || !fd.cCode ? r.cMissing === undefined : /exceeds the double range, so no double-precision chain exists/.test(r.cMissing ?? ''),
+        `compileChar0 ${mode} n=${n}: cMissing ${r.cMissing}`);
+      // the math view names the products with the letters the C and the graph use
+      check(/^y += /m.test(r.mathText) && !/\by0\b/.test(r.mathText) && (n < 4 || /^z += /m.test(r.mathText)),
+        `compileChar0 ${mode} n=${n}: letter wire names in the math view`);
       // independent exact evaluation check against Horner in the field of the chain
       const field = r.chain.field;
       const dense = ints.map(c => field.coerce(BigInt(c)));

@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { buildCBundle, cBundleArchive, hasCBundle, tarBytes } from '../js/cbundle.js';
 import { C_PROVENANCE, hasCProvenance } from '../js/cgen.js';
-import { paneContent } from '../js/uistate.js';
+import { paneContent, reduce, initialState, staleRow } from '../js/uistate.js';
 
 let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
@@ -35,6 +35,12 @@ check(b.files.find(f => f.name === 'benchmark.sh').mode === 0o755, 'benchmark sc
 check(b.files.find(f => f.name === 'inspect.sh').mode === 0o755, 'inspection script executable mode');
 check(b.files.filter(f => f.name.endsWith('.c')).every(f => hasCProvenance(f.text)),
       'every generated C file carries the stable site provenance');
+// the doc block of every generated C file (the harness cites the paper) stays within
+// 88 columns: long lines wrap with a continuation indent (a lone URL may exceed it)
+check(b.files.filter(f => f.name.endsWith('.c')).every(f => f.text.slice(0, f.text.indexOf('*/')).split('\n')
+        .every(l => l.length <= 88 || !l.replace(/^ \* +/, '').includes(' '))) &&
+      / \* Reference: T\. D\. Ahle/.test(b.files.find(f => f.name === 'benchmark.c').text),
+      'header lines within 88 columns, the harness Reference line wrapped');
 
 const tar = tarBytes(b);
 check(tar.length % 512 === 0 && tar.slice(-1024).every(x => x === 0), 'ustar padding and end blocks');
@@ -102,6 +108,31 @@ check(/method\s+FMA\s+SIMD-FP\s+CLMUL/.test(inspect.stdout) &&
   check(/this-paper.*ns\/eval.*\*I\s+\|checksum\| \d/.test(runC.stdout) && /horner.*ns\/eval/.test(runC.stdout), `ℂ benchmark reports complex checksums: ${runC.stdout}`);
   const inspectC = spawnSync('sh', ['inspect.sh'], { cwd: dirC, encoding: 'utf8' });
   check(inspectC.status === 0 && /this-paper\s+\d+\s+\d+\s+\d+/.test(inspectC.stdout), `ℂ inspect.sh runs: ${inspectC.stderr}`);
+}
+
+// ---- a selected numeric method still computing, its previous chain shown (uistate.staleRow): selected.c is withheld ----
+{
+  const rowC = (name, tag) => ({ name, ok: true, mults: 1, adds: 1, height: 1, exact: false, mathText: `${tag} math`,
+    cText: `${C_PROVENANCE}\n/* ${tag} */\ndouble eval_P(double x) { return x; }\n`, cTextFraction: null });
+  const full = { fieldId: 'Q', fieldName: 'ℚ', cText: C, cTextFraction: null, mults: 1, adds: 1, height: 1,
+    comparisons: [rowC('Horner', 'horner OLD'), rowC('Knuth–Eve', 'KE OLD')] };
+  let s = reduce({ ...initialState, mode: 'Q', src: 'x^7 - 1', exKey: null, view: 'c' }, { type: 'compile' });
+  s = reduce(s, { type: 'reply', id: s.jobId, part: 'main', ok: true, result: full });
+  s = reduce(s, { type: 'setMethod', method: 'Knuth–Eve' });
+  s = reduce(reduce(s, { type: 'setSrc', src: 'x^9 - 2' }), { type: 'compile' });
+  const pendingKE = { ...full, comparisons: [rowC('Horner', 'horner NEW'), { name: 'Knuth–Eve', ok: false, pending: true, note: 'computing…' }] };
+  s = reduce(s, { type: 'reply', id: s.jobId, part: 'main', ok: true, result: pendingKE });
+  check(staleRow(s)?.name === 'Knuth–Eve' && paneContent(s).kind === 'c' && paneContent(s).code.includes('KE OLD'),
+        'fixture: the pane shows the previous Knuth–Eve source while the new one computes');
+  const bp = buildCBundle(s), namesP = bp.files.map(f => f.name);
+  check(!namesP.includes('selected.c') && !/byte-for-byte/.test(bp.files.find(f => f.name === 'README.md').text) &&
+        namesP.includes('methods/horner.c') && !namesP.some(n => /knuth/.test(n)) &&
+        bp.files.find(f => f.name === 'methods/horner.c').text.includes('horner NEW') && bp.baseName === 'fast-polynomials-Q-degree-9',
+        'while the selected numeric method shows its previous chain the archive omits selected.c (methods/ is the new polynomial\'s)');
+  const s2 = reduce(s, { type: 'reply', id: s.jobId, part: 'numeric', ok: true, result: { comparisons: [rowC('Knuth–Eve', 'KE NEW')] } });
+  check(staleRow(s2) === null && buildCBundle(s2).files.find(f => f.name === 'selected.c')?.text.includes('KE NEW') &&
+        /byte-for-byte the Knuth–Eve source/.test(buildCBundle(s2).files.find(f => f.name === 'README.md').text),
+        'once the numeric reply lands selected.c is the new Knuth–Eve source and the README says so');
 }
 
 console.log(fails ? `C BUNDLE FAILED (${fails}/${checks})` : `C BUNDLE PASSES (${checks} checks)`);

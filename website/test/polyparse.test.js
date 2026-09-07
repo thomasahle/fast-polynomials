@@ -111,5 +111,67 @@ rejects('x^2 - 1', /no negatives/, { char2: true });
 rejects('1/2x + 1', /is a fraction/, { char2: true });
 rejects('0.5x', /is a decimal/, { char2: true });
 
+// ---- robustness: the input is user-typed, so nothing may allocate or spin first ----
+// exponent cap: rejected by name before the coefficient array is sized (x^1e9 used to OOM the worker,
+// a 20-digit exponent surfaced "Invalid array length")
+// the message quotes the real ceilings (methodlist.js MAX_DEGREE / DEGREE_CEILING), in
+// the same voice as the worker's per-field one, and elides a pathological exponent
+for (const src of ['x^99999999999999999999', 'x^1000000000 + 1', 'x^10001', '3x^100000000'])
+  rejects(src, /^"x\^\d+…?": this page compiles degrees up to 26 in characteristic 2, 38 over ℚ\/ℝ\/ℂ and 255 over the Mersenne-prime fields$/);
+for (const o of [{}, { char2: true }, { complex: true }]) rejects('x^1000000000', /^"x\^1000000000": this page compiles degrees up to 26/, o);
+rejects(`x^${'9'.repeat(400)}`, /^"x\^9{39}…": this page compiles/);   // the 400-digit exponent is elided, not echoed
+eq(parsePoly('x^10000 + 1').degree, 10000, 'the cap itself still parses');
+// many terms: no spread over the term list (130k terms used to overflow the call stack)
+{
+  const t0 = Date.now();
+  eq(parsePoly('x^3 + 1 ' + '+ 0 '.repeat(130000)).degree, 3, '130k terms parse');
+  check(Date.now() - t0 < 5000, `130k terms parse in ${Date.now() - t0} ms`);
+}
+// long digit runs: the literal regexes are linear (40k digits of a malformed term used to take 8 s)
+{
+  const big = '9'.repeat(100000);
+  let t0 = Date.now();
+  check(parsePoly(`x^3 + ${big}x + 1`).coeffs[1].eq(new Rat(BigInt(big))), '100k-digit coefficient reads exactly');
+  check(Date.now() - t0 < 2000, `100k-digit coefficient in ${Date.now() - t0} ms`);
+  t0 = Date.now();
+  rejects(`x^3 + ${big}y + 1`, /variable must be x.*"y"/);
+  check(Date.now() - t0 < 2000, `100k-digit malformed term rejected in ${Date.now() - t0} ms`);
+  t0 = Date.now();
+  check(parsePoly(`${big}.${big}x`).degree === 1, '100k+100k-digit decimal reads');
+  check(Date.now() - t0 < 2000, `100k+100k-digit decimal in ${Date.now() - t0} ms`);
+}
+// signs: a sign directly after a sign folds in (the form string-joined coefficient
+// lists produce), a signed exponent and whitespace inside a number are named
+eq(str('x^3 + -1'), 'x^3 − 1', '"+ -1" reads as − 1');
+eq(str('x + + 1'), 'x + 1', '"+ +" reads as +');
+eq(str('x - - 1'), 'x + 1', '"- -" reads as +');
+eq(str('--x'), 'x', 'a doubled leading sign');
+eq(str('x^2 + -(1/2)x + -3'), 'x^2 − 1/2·x − 3', 'folded signs before parenthesized and bare coefficients');
+rejects('x^3 + -1', /no negatives/, { char2: true });                     // the folded sign is still a minus over GF(2^k)
+rejects('x^3 -', /ends with a sign/);
+rejects('x + -', /ends with a sign/);
+rejects('x^-1', /"x\^-": exponents must be non-negative integers/);
+rejects('x^-2 + 1', /exponents must be non-negative integers/, { char2: true });
+// only a minus after the caret is a negative exponent; a half-typed "x^" is a term error
+rejects('x^', /cannot parse term "x\^"/);
+rejects('x^ + 1', /cannot parse term "x\^"/);
+rejects('x^+2', /cannot parse term "x\^"/);
+rejects('2x^', /cannot parse term "2x\^"/);
+rejects('2 3 x', /whitespace inside a number \("2 3"\): did you mean 2·3 or 2 \+ 3\?/);
+rejects('1/2 3x', /whitespace inside a number \("2 3"\)/);
+rejects('x^2 3', /whitespace inside a number \("2 3"\)/);
+rejects('x^2 .5', /whitespace inside a number \("2 \.5"\)/);
+rejects('0x1f 2x', /whitespace inside a number \("0x1f 2"\)/, { char2: true });   // a hex digit ends the left number too
+rejects('x2 3', /whitespace inside a number \("2 3"\)/);   // the x of a variable is not a hex prefix
+eq(str('2e-3x^2 + 1e+2'), '1/500·x^2 + 100', 'a signed mantissa exponent is still not a sign');
+// the mantissa rule is hex-aware, not characteristic-gated: over GF(2^k) a signed exponent
+// gets the "decimal" message (not a stray variable "e"), and 0x1e stays one hex literal
+rejects('1e-300 x + 1', /"1e-300" is a decimal — choose ℚ, ℝ or a Mersenne-prime field/, { char2: true });
+rejects('2e-3x^2', /"2e-3" is a decimal/, { char2: true });
+eq(str('0x1e+1', { char2: true }), '0x1f', 'hex ending in e followed by + stays a hex literal over GF(2^k)');
+eq(str('0x1E+0x3', { char2: true }), '0x1d', 'an upper-case hex literal ending in E splits at the +');
+eq(str('0x1e + 1'), '31', 'hex ending in e is a constant, not a mantissa, over ℚ');
+eq(str('0x1e - 1'), '29', 'and the minus after it stays a sign');
+
 if (fails) { console.log(`POLYPARSE FAILED (${fails}/${checks})`); process.exit(1); }
 console.log(`POLYPARSE PASSES (${checks} checks)`);

@@ -335,19 +335,30 @@ for (const n of SUPPORTED_DEGREES) {
       if (/leading coefficient/.test(r.cText) !== !monic) err('C scale');
       const horner = n - 1 + (monic ? 0 : 1);   // Horner on a monic input skips the leading multiplication
       if (!r.cText.includes(`This paper: ${want} multiplication${want === 1 ? '' : 's'} (Horner: ${horner}), ${n} preprocessed constant${n === 1 ? '' : 's'}.`)) err('C header counts');
-      const body = r.cText.slice(r.cText.indexOf('eval_P('));                       // the header defines gf64_mul (per ISA)
+      // the header defines gf64_mul (per ISA): count from the first eval_P / eval_P_key definition on
+      const body = r.cText.slice(r.cText.search(/\buint64_t eval_P(?:_key)?\(/));
       if ((body.match(/gf64_mul\(/g) || []).length !== want) err(`${(body.match(/gf64_mul\(/g) || []).length} gf64_mul calls, want ${want}`);
     }
   }
   if (!bad) console.log(`n=${n}: ${PIPELINE_MONIC_TRIALS} random monic + ${nonMonic} non-monic polynomials over GF(2^64) compile, re-expand exactly from the rendered rows, ${wantMults(n)} multiplications (+1 scale)${even ? ' (degree-' + (n - 1) + ' circuit + lift)' : ''} (${since()})`);
 }
-// out-of-range degrees: a readable message naming the frontier
+// out-of-range degrees: a readable message naming the frontier, the paper's
+// "Open Problems" section (there is no "outlook") and the fields that do compile it
 for (const n of [27, 30, 40]) {
   try { compileChar2([...Array(n).fill(1n), 1n], F64); fail(`degree ${n} did not throw`); }
   catch (e) {
-    if (!new RegExp(`^characteristic-2 chains exist for every degree up to 26 \\(you entered degree ${n}\\); degree 27 is the open frontier of the paper — see the outlook section\\.$`).test(e.message))
+    if (!new RegExp(`^characteristic-2 chains exist for every degree up to 26 \\(you entered degree ${n}\\); degree 27 is the open frontier of the paper \\(section "Open Problems"\\) — the Mersenne-prime fields GF\\(2\\^61−1\\), GF\\(2\\^89−1\\) and GF\\(2\\^127−1\\) compile any degree up to 255\\.$`).test(e.message))
       fail(`degree ${n} message: ${e.message}`);
+    if (/outlook/.test(e.message)) fail(`degree ${n} message names a non-existent outlook section`);
   }
+}
+// the C header names the INPUT polynomial, not the monic-scaled one the circuit decodes
+for (const [F, coeffs, want] of [[F64, [1n, 0n, 0n, 3n], 'P(x) = 0x3*x^3 + 1'],
+                                 [GF2k(32), [1n, 0n, 0n, 0x7e3db2e3n], 'P(x) = 0x7e3db2e3*x^3 + 1'],
+                                 [F64, [5n, 1n, 0n, 0n, 0n, 1n], 'P(x) = x^5 + x + 0x5']]) {
+  const r = compileChar2(coeffs, F);
+  if (!r.cText.includes(want)) fail(`${F.name} header for ${want}: ${(r.cText.match(/P\(x\) = .*/) ?? ['(none)'])[0]}`);
+  if (r.cMissing !== undefined) fail(`${F.name}: cMissing set although C was rendered`);
 }
 
 if (fails) { console.log(`${fails} FAILURES`); process.exit(1); }

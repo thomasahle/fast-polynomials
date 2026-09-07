@@ -462,7 +462,7 @@ function compilePanEight(p) {
     if (best?.err <= 1e-8) break;
   }
   if (!best || best.err > 1e-3)
-    throw new Error('Pan degree 8: numerical continuation on the two explicit scheme-(6) coefficient maps failed; ' +
+    throw new Error('numerical continuation on the two explicit scheme-(6) coefficient maps failed; ' +
       'Theorem 8 is exact, so this is a numerical decoder failure');
   return {
     name: 'Pan degree-8 scheme', lines: best.chain.lines,
@@ -486,13 +486,20 @@ function compilePanEight(p) {
 // no Newton) and the best-ranked subsets are tried under every spec before
 // the next rank; the search stops EXTRA_CELLS after a chain verifies at GOOD
 // (the trace on e^x at degree 16: first verified chain at cell 11, the best
-// ones near cell 1000); and MAX_CELLS bounds the whole compile, shared by the
-// conditioning rescales in round-robin slices so none of them starves.
+// ones near cell 300); and MAX_CELLS bounds the whole compile, shared by the
+// conditioning rescales in round-robin slices so none of them starves.  The
+// budget is sized for the successes: on the page's examples (degrees 9–24)
+// every chain that is found at all is found within ~1500 cells, and a failing
+// input never solves a single chart, so a failure costs 7–11 s rather than
+// 7–17 s (the corpus run behind these numbers: ln(1+x) at degree 15 needs
+// ~1400 cells inside one conditioning chart, so the slice must stay at 800 —
+// a 320-cell slice spread the budget over five rescales and lost that chain;
+// the degree-20–22 chips, all of which fail, cost 3–5 s CPU each).
 const ACCEPT = 1e-8;        // stop at once
 const GOOD = 1e-6;          // good enough: keep looking a little longer for a better chain
-const EXTRA_CELLS = 1200;   // ≈ 3–4 s
-const MAX_CELLS = 4000;     // ≈ 10–15 s worst case
-const SLICE = 800;          // cells per conditioning rescale per round
+const EXTRA_CELLS = 300;    // ≈ 1 s
+const MAX_CELLS = 1600;     // ≈ 7–11 s worst case
+const SLICE = 800;          // cells per conditioning rescale per round (ln(1+x) at degree 15 needs ~1400 in one chart; a smaller slice starves it)
 
 function specifications(n, maxN = 32) {
   const Ns = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 28, 32];
@@ -503,17 +510,18 @@ function specifications(n, maxN = 32) {
   return out;
 }
 
-/** budget: { cells, skip = 0, best = null } — run at most `cells` new cells,
- *  skipping the first `skip` of the (deterministic) enumeration, continuing from
- *  a `best` found earlier; on return / throw it carries `best`, the number of
- *  cells consumed (`used`) and whether the enumeration `finished`. */
+/** budget: { cells, skip = 0, best = null, spent = 0, rescales = 1 } — run at most
+ *  `cells` new cells, skipping the first `skip` of the (deterministic) enumeration,
+ *  continuing from a `best` found earlier (`spent` cells in `rescales` conditioning
+ *  rescales so far, for the failure message); on return / throw it carries `best`,
+ *  the number of cells consumed (`used`) and whether the enumeration `finished`. */
 function compilePanOddCore(coeffs, budget = { cells: MAX_CELLS }) {
   if (!Array.isArray(coeffs) || coeffs.length < 10)
-    throw new Error('Pan real: scheme (9) starts at odd degree 9');
+    throw new Error('scheme (9) starts at odd degree 9');
   const p = coeffs.map(Number), n = p.length - 1;
-  if (!p.every(Number.isFinite)) throw new Error('Pan real: coefficients must be finite numbers');
-  if (n % 2 === 0) throw new Error(`Pan real: scheme (9) is for odd degrees (you entered degree ${n})`);
-  if (p[n] === 0) throw new Error('Pan real: the leading coefficient must be nonzero');
+  if (!p.every(Number.isFinite)) throw new Error('coefficients must be finite numbers');
+  if (n % 2 === 0) throw new Error(`scheme (9) is for odd degrees (you entered degree ${n})`);
+  if (p[n] === 0) throw new Error('the leading coefficient must be nonzero');
 
   let best = budget.best ?? null, attempts = 0;
   budget.used = 0; budget.finished = false;
@@ -569,10 +577,17 @@ function compilePanOddCore(coeffs, budget = { cells: MAX_CELLS }) {
     }
   }
   budget.best = best; budget.finished = !exhausted;
-  if (!best || best.err > 1e-3)
-    throw new Error(`Pan real: Eve's explicit outer decomposition and ${attempts} degree-9 sign/radix branches did not find a verified ` +
+  if (!best || best.err > 1e-3) {
+    // the caller (compileOddWithConditioning) keeps spending cells on the later
+    // rescales after this throw, so it restates the count through `retext`
+    const failText = cells => `Eve's explicit outer decomposition and ${cells} degree-9 sign/radix branches` +
+      `${budget.rescales > 1 ? ` (over ${budget.rescales} conditioning rescales)` : ''} did not find a verified ` +
       `${(n + 1) / 2}-multiplication real parameterization${exhausted ? ' within the search budget' : ''}. ` +
-      `Pan's theorem is exact; this reports a numerical coupled-solver failure.`);
+      `Pan's theorem is exact; this reports a numerical coupled-solver failure.`;
+    const e = new Error(failText((budget.spent ?? 0) + attempts));
+    e.retext = failText;
+    throw e;
+  }
 
   const { spec, chain } = best;
   return {
@@ -627,17 +642,26 @@ function compileOddWithConditioning(p) {
   while (total > 0 && states.some(s => !s.done)) {
     for (const s of states) {
       if (s.done || total <= 0) continue;
-      const budget = { cells: Math.min(SLICE, total), skip: s.skip, best: s.best };
+      // spent / rescales: for the failure message (the cells spent so far, in all rescales)
+      const budget = { cells: Math.min(SLICE, total), skip: s.skip, best: s.best,
+                       spent: MAX_CELLS - total, rescales: states.length };
       try {
         const r = compilePanOddCore(s.q, budget);
         const scaled = withInputRadixScale(r, p, s.exponent);
         if (scaled) return scaled;
+        // a chain for the rescaled polynomial that the radix substitution rejects:
+        // report it when no search failure has a better story to tell
+        lastError = lastError ?? new Error(`a ${(n + 1) / 2}-multiplication chain was found for the rescaled ` +
+          `polynomial Q(z)=P(z/2^${s.exponent}) but the exact radix substitution z=2^${s.exponent}x did not verify`);
         s.done = true;
       } catch (e) { lastError = e; if (budget.finished) s.done = true; }
       total -= budget.used ?? 0; s.skip += budget.used ?? 0; s.best = budget.best ?? s.best;
     }
   }
-  throw lastError ?? new Error('Pan real: no numerically safe power-of-two decoding chart was found');
+  // the surviving message was built inside the slice that threw: restate it with
+  // the cells every rescale spent, including the ones that ran after it
+  if (lastError?.retext) lastError.message = lastError.retext(MAX_CELLS - total);
+  throw lastError ?? new Error('no numerically safe power-of-two decoding chart was found');
 }
 
 function compileEvenLift(p) {
@@ -649,7 +673,7 @@ function compileEvenLift(p) {
   lines.push({ lhs: 'P', rhs, mul: true });
   const err = verifyLines(lines, p);
   if (!(err <= 1e-3))
-    throw new Error(`Pan real: the degree-${n} even lift failed printed-chain verification (${err})`);
+    throw new Error(`the degree-${n} even lift failed printed-chain verification (${err})`);
   return {
     ...lower, name: 'Pan even-degree lift', lines,
     mults: lower.mults + 1, adds: lower.adds + (rhs === product ? 0 : 1),
@@ -662,14 +686,19 @@ function compileEvenLift(p) {
  * odd degree >= 9, and a one-product lift in even degree >= 10. */
 export function compilePan1978Real(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length === 0)
-    throw new Error('Pan real: need a nonempty coefficient array');
+    throw new Error('need a nonempty coefficient array');
   const p = coeffs.map(Number), n = p.length - 1;
-  if (!p.every(Number.isFinite)) throw new Error('Pan real: coefficients must be finite numbers');
-  if (n > 0 && p[n] === 0) throw new Error('Pan real: the leading coefficient must be nonzero');
-  if (n < 8)
-    throw new Error(`Pan: the separate real construction begins at degree 8; use Knuth--Eve in degree ${n}. ` +
-      `In particular, a general degree-7 polynomial provably needs 5 multiplications (Pan 1978, Table 3), ` +
-      `so the 4-multiplication half-count cannot extend to degree 7`);
+  if (!p.every(Number.isFinite)) throw new Error('coefficients must be finite numbers');
+  if (n > 0 && p[n] === 0) throw new Error('the leading coefficient must be nonzero');
+  if (n < 8) {
+    // the Knuth–Eve row's own monic count: ⌊n/2⌋+1 holds from degree 3 up, but the
+    // base cases are 1 at degree 2 and 0 below it, so quote the closed form only where it is true
+    const ke = n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1;
+    throw new Error(`Pan's real construction starts at degree 8; at degree ${n} the Knuth–Eve row gives ` +
+      `${n >= 3 ? '⌊n/2⌋+1 = ' : ''}${ke} multiplication${ke === 1 ? '' : 's'} for monic input` +
+      (n === 7 ? ' (one more with a leading coefficient; for a general odd degree ≤ 7 the lower bound ' +
+        'is (n+3)/2 = 5 — Knuth 1969, Revah 1973; Pan 1978, Table 3)' : ''));
+  }
   if (n === 8) return compilePanEight(p);
   if (n % 2 === 0) return compileEvenLift(p);
   return compileOddWithConditioning(p);

@@ -1,7 +1,8 @@
 // uistate.test.js — invariants of the page's pure state (js/uistate.js): the
 // reducer and the selectors the Preact UI renders from.  No DOM, no worker.
 import {
-  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE, compileMessages, pendingRow,
+  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE, compileMessages, pendingRow, staleRow, isStale,
+  inputHint, estimatedDegree, SLOW_DEGREE, displayNote, CHAR0_EXAMPLE_MAX,
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
   compileMessage, comparisonRow, selectedRow, methodTabs, comparisonTable, rowOps, stats,
@@ -9,7 +10,8 @@ import {
   defaultMethod, methodAvailable, FIELDS, FIELD_GROUPS, fieldChooser, fieldTitle, tokenizePoly,
 } from '../js/uistate.js';
 import { FIELDS as REGISTRY, FIELD_IDS } from '../js/field.js';
-import { parsePoly } from '../js/polyparse.js';
+import { methodNamesFor, numericMethodsFor, MAX_DEGREE } from '../js/methodlist.js';
+import { parsePoly, MAX_PARSE_DEGREE } from '../js/polyparse.js';
 import { countOps, formatConstants } from '../js/chain.js';
 import { Rat } from '../js/rat.js';
 import { GaussRat } from '../js/gauss.js';
@@ -75,7 +77,7 @@ const inMode = mode => reduce(BASE, { type: 'setMode', mode });
 
 // ---- initial state ---------------------------------------------------------
 eq(Object.keys(initialState).sort(),
-   ['busy', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'result', 'src', 'view'], 'state keys');
+   ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys');
 eq([initialState.mode, initialState.view, initialState.form, initialState.cstyle, initialState.numfmt, initialState.method,
     initialState.exDegree, initialState.exKey, initialState.exSeed, initialState.exMonic],
    ['Q', 'math', 'factor', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
@@ -161,7 +163,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const exM = reduce(reduce(s1, { type: 'setMode', mode: 'p89' }), { type: 'example', key: 'dense' });
   check(exM.src === defaultExample('p89', 10).src, 'example chips follow the mode (Mersenne)');
   const err = reduce(reduce(initialState, { type: 'compile' }), { type: 'reply', id: 1, ok: false, message: 'bad input' });
-  check(err.error === 'bad input' && !err.busy && err.result === null, 'error reply shows the message');
+  check(err.error === 'bad input' && !err.busy && err.result === null && err.jobId === 2, 'error reply shows the message (nothing to keep on a first compile) and retires the job id');
+  // a failed reply keeps the last result mounted under the error (the page never collapses while a draft is typed)
+  const kept = reduce(reduce(withResult(BASE), { type: 'setSrc', src: 'x^^2 +' }), { type: 'compile' });
+  const keptErr = reduce(kept, { type: 'reply', id: kept.jobId, ok: false, message: 'ends with a sign' });
+  check(keptErr.error === 'ends with a sign' && !keptErr.busy && keptErr.result === RESULT && showOutput(keptErr) && keptErr.jobId === kept.jobId + 1,
+        'a failed reply keeps the previous result (showOutput stays true) and retires the job id');
+  check(reduce(keptErr, { type: 'reply', id: kept.jobId, part: 'numeric', ok: true, result: { comparisons: [row('Pan')] } }) === keptErr,
+        'the failed job\'s numeric replies are stale (never merged into the kept result)');
+  check(paneContent(keptErr) !== null && comparisonTable(keptErr).length > 0, 'the kept result still renders under the error');
+  const keptOk = reduce(reduce(keptErr, { type: 'compile' }), { type: 'reply', id: keptErr.jobId + 1, ok: true, result: COUNTED });
+  check(keptOk.error === null && keptOk.result === COUNTED, 'the next good reply clears the error and replaces the kept result');
   check(reduce(err, { type: 'setMode', mode: 'gf32' }).error === null, 'mode switch clears the error');
   // a held example follows the field; typed text does not
   const heldG = reduce(initialState, { type: 'setMode', mode: 'gf64' });
@@ -190,6 +202,11 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const bsw = reduce(blank, { type: 'setMode', mode: 'Q' });
   check(!bsw.busy && bsw.jobId === blank.jobId && bsw.mode === 'Q' && bsw.result === null, 'setMode with blank source starts no job');
   check(reduce(blank, { type: 'compile' }) === blank, 'compile with blank source is a no-op');
+  // ... but a job that was running is retired: the id changes, so ui.js's job effect terminates its workers
+  const busyBlank = reduce(reduce(BASE, { type: 'compile' }), { type: 'setSrc', src: '' });
+  const bswBusy = reduce(busyBlank, { type: 'setMode', mode: 'Q' });
+  check(busyBlank.busy && !bswBusy.busy && bswBusy.jobId === busyBlank.jobId + 1 && bswBusy.result === null && bswBusy.lateNumeric === null,
+        'a blank-source field switch during a running job retires the job id (nothing keeps computing unseen)');
   const refs = comparisonTable(withResult(BASE)).map(r => [r.name, r.ref?.short ?? null]);
   eq(refs.slice(0, 3), [['This paper', 'Ahle & Knudsen 2026'], ['Horner', 'Horner 1819'], ['Estrin', 'Estrin 1960']],
      'comparison rows carry their references');
@@ -214,7 +231,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(s3.jobId === 3 && s3.busy && showOutput(s3) === (s3.result !== null), 'compile keeps any previous output while running (stale)');
   check(reduce(s3, { type: 'reply', id: 2, ok: true, result: RESULT }) === s3, 'reply from the superseded job ignored');
   const s4 = reduce(s3, { type: 'cancel' });
-  check(!s4.busy && s4.jobId === 4 && s4.result === RESULT, 'cancel keeps the stale output (idle, last result shown) and retires the job id');
+  check(!s4.busy && s4.jobId === 4 && s4.result === RESULT && s4.cancelled, 'cancel keeps the stale output (idle, last result shown, flagged cancelled) and retires the job id');
   check(reduce(s4, { type: 'reply', id: 3, ok: true, result: RESULT }) === s4, 'reply after cancel ignored');
   check(reduce(s4, { type: 'reply', id: 3, ok: false, message: 'x' }) === s4, 'error reply after cancel ignored');
   check(reduce(s4, { type: 'reply', id: 3, part: 'numeric', ok: true, result: { comparisons: [{ name: 'Pan', ok: true, mathText: 'late' }] } }) === s4,
@@ -227,7 +244,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   eq(compileMessage(reduce(initialState, { type: 'compile' })), { id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q' }, 'ℚ message');
   eq(compileMessage(reduce(inMode('gf64'), { type: 'compile' })), { id: 2, src: defaultExample('gf64', 10, 0, true).src, lane: 'char2', fieldMode: 'gf64' }, 'GF(2^64) message');
   const we = reduce(s5, { type: 'workerError', message: 'worker failed to load: boom' });
-  check(!we.busy && we.error === 'worker failed to load: boom' && we.result === null, 'worker error surfaces and returns to idle');
+  check(!we.busy && we.error === 'worker failed to load: boom' && we.result === RESULT && we.jobId === s5.jobId + 1, 'worker error surfaces, returns to idle, keeps the last result and retires the job');
   check(reduce(we, { type: 'reply', id: s5.jobId, ok: true, result: RESULT }) === we, 'reply after worker error ignored');
 }
 
@@ -478,7 +495,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(examplesFor('C', 5)[1].src === 'x^5 + (0+5i)x^4 - 10x^3 - (0+10i)x^2 + 5x + (0+1i)' && examplesFor('C', 5, 0, true)[1].src === examplesFor('C', 5)[1].src,
         `(x+i)^5 expanded, monic either way: ${examplesFor('C', 5)[1].src}`);
   check(examplesFor('C', 3)[2].src === '-(1/3-1/3i)x^3 + (0+1i)x^2 + (1+1i)x + 1', `e^{(1+i)x} at degree 3: ${examplesFor('C', 3)[2].src}`);
-  for (const n of [3, 9, 24]) {
+  for (const n of [3, 9, 20]) {
     const ex = Object.fromEntries(examplesFor('C', n).map(e => [e.key, parsePoly(e.src, { complex: true })]));
     let f = GaussRat.ONE;
     const want = Array.from({ length: n + 1 }, (_, k) => { if (k > 0) f = f.mul(GaussRat.I).div(new Rat(BigInt(k))); return f; });
@@ -539,8 +556,12 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(examplesFor('p89', 20, 0)[0].reseed === true && examplesFor('p89', 20)[3].reseed === undefined, 'only the random chip reseeds');
   check(/independent hashing/.test(examplesFor('gf64', 13)[0].title) && /21-independent/.test(examplesFor('p89', 20)[0].title), 'random key chip explains k-independence');
   // stepping
-  eq([stepDegree('Q', 10, 1), stepDegree('Q', 24, 1), stepDegree('Q', 3, -1), stepDegree('R', 24, 1)], [11, 24, 3, 24], 'ℚ/ℝ stepping clamps at [3,24]');
-  eq([stepDegree('C', 10, 1), stepDegree('C', 24, 1), stepDegree('C', 3, -1), clampDegree('C', 99), clampDegree('C', 1)], [11, 24, 3, 24, 3], 'ℂ stepping clamps at [3,24]');
+  eq([stepDegree('Q', 10, 1), stepDegree('Q', 22, 1), stepDegree('Q', 3, -1), stepDegree('R', 22, 1)], [11, 22, 3, 22], 'ℚ/ℝ stepping clamps at [3,22]');
+  // ℂ stops at 20: the monic e^{ix} chip's exact preprocessing takes ~1.5 s there but 3.4–3.8 s (idle) / 6–8 s (loaded) at 22
+  eq(CHAR0_EXAMPLE_MAX, { Q: 22, R: 22, C: 20 }, 'char-0 example caps: ℚ / ℝ 22, ℂ 20');
+  eq([stepDegree('C', 10, 1), stepDegree('C', 20, 1), stepDegree('C', 3, -1), clampDegree('C', 99), clampDegree('C', 1), clampDegree('C', 22)], [11, 20, 3, 20, 3, 20], 'ℂ stepping clamps at [3,20]');
+  check(parsePoly(examplesFor('C', 22)[0].src, { complex: true }).degree === 20 && stateFromHash(initialState, '#mode=C&deg=22').exDegree === 20,
+        'a ℂ chip asked for degree 22 (a chip click, a shared link) is generated at 20');
   eq([stepDegree('p89', 62, 1), stepDegree('p89', 63, 1)], [63, 63], 'Mersenne stepping clamps at 63');
   eq([stepDegree('gf64', 13, 1), stepDegree('gf64', 15, -1), stepDegree('gf64', 26, 1), stepDegree('gf64', 1, -1)],
      [14, 14, 26, 1], 'GF(2^k) stepping walks every degree 1..26 and clamps at the ends');
@@ -561,7 +582,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(reduce(up, { type: 'setExDegree' }) === up && reduce(up, { type: 'setExDegree', degree: 'x' }) === up,
         'setExDegree without a valid target is a no-op');
   const abs = reduce(initialState, { type: 'setExDegree', degree: 99 });
-  check(abs.exDegree === 24 && abs.src === hermite(24) && abs.busy, 'absolute degree clamps (ℚ: 24) and regenerates');
+  check(abs.exDegree === 22 && abs.src === hermite(22) && abs.busy, 'absolute degree clamps (ℚ: 22) and regenerates');
   // every example (random key included) regenerates when the stepper moves, in every field
   for (const m of MODES) for (const ex of examplesFor(m, 10)) {
     const s = reduce(inMode(m), { type: 'example', key: ex.key });
@@ -632,7 +653,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(stateFromHash(initialState, '') === initialState && stateFromHash(initialState, '#') === initialState, 'empty hash → defaults');
   eq(stateFromHash(initialState, '#!!%%&==junk&deg=frog&seed=-1'), initialState, 'junk hash → defaults');
   eq(stateFromHash(initialState, '#mode=klingon&view=x&form=y&cstyle=z&numfmt=w&method='), initialState, 'invalid params ignored');
-  check(stateFromHash(initialState, '#mode=Q&deg=99').exDegree === 24, 'deg clamps to the ℚ maximum');
+  check(stateFromHash(initialState, '#mode=Q&deg=99').exDegree === 22, 'deg clamps to the ℚ maximum');
   check(stateFromHash(initialState, '#mode=gf128&deg=14').exDegree === 14 && stateFromHash(initialState, '#mode=gf128&deg=40').exDegree === 26,
         'GF(2^k) deg: even degrees kept, clamped to the largest compiled degree');
   check(stateFromHash(initialState, '#deg=17').src === defaultExample('Q', 17, 0, true).src, "degree-only hash reseeds the field's default example at that degree");
@@ -654,6 +675,137 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const unmonic = reduce(initialState, { type: 'setExMonic', value: false });
   const ur = stateFromHash(initialState, hashFromState(unmonic));
   check(!ur.exMonic && hashFromState(unmonic).includes('&monic=0'), 'Share links preserve an unselected monic toggle');
+  // a held chip is shared by its key (ex=), not its text: every chip in every mode round-trips
+  check(hashFromState(initialState).startsWith('#ex=hermite&mode=Q&'), `the boot state shares its chip: ${hashFromState(initialState)}`);
+  check(hashFromState(rk).startsWith('#ex=random&') && hashFromState(rk).length < 120, `a random key is shared by key + seed (${hashFromState(rk).length} chars)`);
+  let longest = 0;
+  for (const m of MODES) for (const monic of [true, false]) for (const deg of [3, 10, clampDegree(m, 26)]) for (const seed of [0, 2])
+    for (const ex of examplesFor(m, deg, seed, monic)) {
+      const held = { ...initialState, mode: m, exDegree: deg, exSeed: seed, exMonic: monic, exKey: ex.key, src: ex.src, method: 'Horner', view: 'graph' };
+      check(exampleHeld(held), `${m}/${ex.key}/${deg}/${monic}/${seed}: the fixture holds the chip`);
+      const hh = hashFromState(held);
+      longest = Math.max(longest, hh.length);
+      check(hh.startsWith(`#ex=${ex.key}&mode=${m}&`) && !hh.includes('src='), `${m}/${ex.key}: shared as ex=`);
+      const back = stateFromHash(initialStateFor({ compact: true }), hh);
+      check(back.src === ex.src && back.exKey === ex.key && back.mode === m && back.exDegree === deg && back.exSeed === seed && back.exMonic === monic
+            && back.method === 'Horner' && back.view === 'graph' && exampleHeld(back),
+            `${m}/${ex.key}/${deg}/${monic ? 'monic' : 'raw'}/seed ${seed}: round-trips through ex=`);
+    }
+  check(longest < 120, `every chip link is short (longest ${longest} chars)`);
+  check(stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').src === defaultExample('p89', 20).src && stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').exKey === 'dense',
+        'an unknown chip key falls to the field\'s default example');
+  check(stateFromHash(initialState, '#ex=exp&mode=C&deg=9').exKey === 'expi', 'a chip the field lacks falls to its default');
+  check(stateFromHash(initialState, '#ex=sparse&src=x%5E3%2B1&mode=gf64&deg=12').src === examplesFor('gf64', 12).find(e => e.key === 'sparse').src, 'ex= wins over src= when both are present');
+  check(stateFromHash(initialState, '#src=x%5E9%2B1&mode=gf64').src === 'x^9+1' && stateFromHash(initialState, '#src=x%5E9%2B1&mode=gf64').exKey === null,
+        'src= links (typed text and earlier Shares) still work');
+  // method= is validated against the field's methods (a hyphen for the en dash is accepted)
+  eq(stateFromHash(initialState, '#mode=R&method=Belaga').method, 'ours', 'a method the field cannot show falls back to ours');
+  eq(stateFromHash(initialState, '#mode=C&method=Belaga').method, 'Belaga', 'Belaga is a ℂ method');
+  eq(stateFromHash(initialState, '#mode=Q&method=Rabin-Winograd').method, 'Rabin–Winograd', 'a hyphen typed for the en dash is accepted');
+  eq(stateFromHash(initialState, '#mode=gf64&method=Knuth-Eve').method, 'ours', 'a numeric method over a hashing field falls back to ours');
+  eq(stateFromHash(initialState, '#mode=gf64&method=Nonexistent').method, 'ours', 'an unknown method falls back to ours');
+  eq(stateFromHash({ ...initialState, method: 'Horner' }, '#mode=Q').method, 'Horner', 'no method param keeps the base\'s method');
+  for (const m of MODES) for (const name of methodNamesFor(m))
+    check(stateFromHash(initialState, `#mode=${m}&method=${encodeURIComponent(name)}`).method === name, `${m}: ${name} is accepted`);
+  eq(methodNamesFor('C'), ['ours', 'Horner', 'Estrin', 'Rabin–Winograd', ...numericMethodsFor('C')], 'ℂ method names');
+  eq(methodNamesFor('p89'), ['ours', 'Horner', 'Estrin', 'Rabin–Winograd'], 'hashing fields list no numeric method');
+  // 'restore': a hashchange after boot rebuilds the state and compiles it
+  const running = reduce(withResult(inMode('gf64')), { type: 'compile' });
+  const hash = '#ex=sparse&mode=p61&method=Horner&view=c&deg=12';
+  const restored = reduce(running, { type: 'restore', hash, compact: false });
+  const booted = stateFromHash(initialStateFor({ compact: false }), hash);
+  eq({ ...restored, jobId: 0, busy: false }, { ...booted, result: null }, 'restore = the boot state for that hash (plus a job)');
+  check(restored.busy && restored.jobId === running.jobId + 1 && restored.result === null && restored.error === null, 'restore starts a fresh job under a retired id');
+  check(reduce(restored, { type: 'reply', id: running.jobId, ok: true, result: RESULT }) === restored, 'the superseded job\'s reply is stale after restore');
+  eq(compileMessage(restored), { id: restored.jobId, src: booted.src, lane: 'char0', fieldMode: 'p61' }, 'restore compiles the restored source in its field');
+  const restoredC = reduce(initialState, { type: 'restore', hash: '#mode=R&deg=9', compact: true });
+  check(restoredC.mode === 'R' && restoredC.exDegree === 9 && restoredC.busy && restoredC.jobId === 1, 'restore on a phone rebuilds from the compact boot state');
+  const restoredBlank = reduce(running, { type: 'restore', hash: '#src=%20%20&mode=Q', compact: false });
+  check(restoredBlank.busy && restoredBlank.jobId === running.jobId + 1 && restoredBlank.mode === 'Q' && restoredBlank.exKey === 'hermite' && restoredBlank.src === initialState.src,
+        'a blank src= param is ignored: restore compiles the boot state\'s example');
+}
+
+// ---- input hint (typed high-degree input over ℚ / ℝ / ℂ) --------------------
+{
+  eq(SLOW_DEGREE, MAX_DEGREE, 'the slow-degree cap is the shared MAX_DEGREE (26)');
+  eq([estimatedDegree('x^27 + x + 1'), estimatedDegree('x**40 + x'), estimatedDegree('3x + 1'), estimatedDegree('7'), estimatedDegree(''), estimatedDegree('X ^ 12 + x^3')],
+     [27, 40, 1, null, null, 12], 'the degree estimate reads the largest written exponent');
+  check(inputHint(initialState) === null, 'no hint for a held chip');
+  const typed = reduce(initialState, { type: 'setSrc', src: 'x^27 + x + 1' });
+  const hint = inputHint(typed);
+  check(typeof hint === 'string' && /degree 27/.test(hint) && /minutes/.test(hint) && /Mersenne/.test(hint) && !hint.includes('\n'), `hint for degree 27 over ℚ: ${hint}`);
+  check(inputHint({ ...typed, mode: 'R' }) !== null && inputHint({ ...typed, mode: 'C' }) !== null, 'the hint fires over ℝ and ℂ too');
+  for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128']) check(inputHint({ ...typed, mode: m }) === null, `no hint over ${m}`);
+  check(inputHint(reduce(initialState, { type: 'setSrc', src: 'x^26 + x + 1' })) === null && inputHint(reduce(initialState, { type: 'setSrc', src: 'x^3 + 1' })) === null,
+        'no hint up to degree 26');
+  check(inputHint({ ...initialState, exDegree: 22, exKey: 'hermite', src: examplesFor('Q', 22).find(e => e.key === 'hermite').src }) === null, 'chips never trigger it (they stop at 22)');
+  check(inputHint(reduce(initialState, { type: 'setSrc', src: '' })) === null, 'blank input: no hint');
+  // degrees the worker refuses at once (above DEGREE_CEILING) get no hint — the error line says so; the
+  // estimate is always finite (a runaway exponent counts as one past the parser's own cap)
+  eq([estimatedDegree('x^' + '9'.repeat(400)), estimatedDegree('x^99999999999999999999999')], [MAX_PARSE_DEGREE + 1, MAX_PARSE_DEGREE + 1],
+     'an exponent beyond a safe integer counts as one past the parser\'s cap (finite)');
+  for (const src of ['x^40 + 1', 'x^1000000000', 'x^' + '9'.repeat(400)]) for (const m of ['Q', 'R', 'C'])
+    check(inputHint({ ...typed, src, mode: m }) === null, `no hint for ${src.slice(0, 12)}… over ${m}: the worker refuses it at once`);
+  const atCap = inputHint({ ...typed, src: 'x^38 + 1' });
+  check(atCap !== null && /degree 38/.test(atCap) && /above 38/.test(atCap), `the hint covers the slow band up to the ceiling and names it (${atCap})`);
+  check(!/Cancel/.test(hint) && /much further \(degrees up to 255; about a minute near the cap\)/.test(hint),
+        'the hint uses the worker\'s wording for the Mersenne remark and promises no Cancel');
+}
+
+// ---- Cancel: the kept output is flagged stale until the next job -----------
+{
+  const done = withResult(inMode('Q'), COUNTED);
+  check(!done.cancelled && !isStale(done), 'a settled result is current');
+  const stepped = reduce(done, { type: 'setExDegree', delta: 1 });   // a new input; its job runs
+  check(isStale(stepped) && !stepped.cancelled, 'a running job dims the output');
+  const c = reduce(stepped, { type: 'cancel' });
+  check(c.cancelled && !c.busy && c.result === COUNTED && isStale(c) && c.error === null && c.src !== done.src,
+        'Cancel keeps the result but flags it cancelled (stale) — without an error: the input is valid');
+  check(!reduce(c, { type: 'compile' }).cancelled && !reduce(c, { type: 'example', key: 'exp' }).cancelled && !reduce(c, { type: 'setMode', mode: 'R' }).cancelled,
+        'the next job (Cmd/Ctrl+Enter, a chip, a field switch) clears the flag');
+  check(reduce(c, { type: 'setSrc', src: `${c.src} + 1` }).cancelled, 'an edit keeps the flag until its debounce compiles (the output is still not this input\'s)');
+  check(!reduce(c, { type: 'setSrc', src: '' }).cancelled, 'emptying the input drops the note (nothing to run again)');
+  check(isStale({ ...done, error: 'bad' }) && isStale({ ...done, busy: true }) && !isStale({ ...done, cancelled: false }), 'isStale: a standing error, a running job, a cancel');
+  const firstCancel = reduce(reduce(initialState, { type: 'compile' }), { type: 'cancel' });
+  check(firstCancel.cancelled && !showOutput(firstCancel) && !firstCancel.busy, 'cancelling the first job leaves no output — the flag lets the status line say why');
+}
+
+// ---- comparison-table notes: the measured rounding error and the C reason ----
+{
+  const ours = (extra, mode = 'R') => comparisonTable(withResult(inMode(mode), deepFreeze({ ...RESULT, exact: false, fieldId: mode, comparisons: [row('Horner')], ...extra })))[0];
+  const fin = ours({ maxRelError: 3.640955101574794e+26, note: 'exact rational preprocessing (as ℚ), verified by re-expansion and random-point evaluation; rounding costs a max relative error of 3.6e+26 on sample evaluations' });
+  eq(fin.exactNote, 'exact rational preprocessing; chain constants rounded to doubles, max rel. error 3.6e+26', 'ℝ: the ours row carries the measured rounding error');
+  eq(fin.maxRelError, 3.640955101574794e+26, 'and the figure as a number');
+  check(!/verified/.test(fin.note) && /rounding costs a max relative error of 3.6e\+26/.test(fin.note), `the ours note is listed without its verification clause: ${fin.note}`);
+  const small = ours({ maxRelError: 1.8706516481368453e-15 }, 'C');
+  eq(small.exactNote, 'exact Gaussian-rational preprocessing; chain constants rounded to complex doubles, max rel. error 1.9e-15', 'ℂ: the same with complex doubles');
+  const inf = ours({ maxRelError: Infinity, cText: null, cTextFraction: null, note: 'exact rational preprocessing — no C rendering: constant Infinity is not representable as a double' });
+  check(/exceed the double range/.test(inf.exactNote) && /no double-precision chain/.test(inf.exactNote) && inf.maxRelError === Infinity, `Infinity: the overflow wording (${inf.exactNote})`);
+  check(/complex-double/.test(ours({ maxRelError: Infinity }, 'C').exactNote), 'ℂ overflow wording names complex doubles');
+  const none = ours({ maxRelError: null });
+  eq(none.exactNote, 'exact rational preprocessing; chain constants rounded to doubles', 'no figure: the generic sentence');
+  check(none.maxRelError === null && ours({}).maxRelError === null, 'no figure: maxRelError null');
+  // every ok row exposes its note (the UI lists them under the table); the numeric methods' figure is split out
+  const t = comparisonTable(withResult(inMode('R'), deepFreeze({ ...RESULT, exact: false, fieldId: 'R', comparisons: [
+    row('Horner', { note: 'sequential; every step depends on the previous one' }),
+    row('Knuth–Eve', { exact: false, preprocessing: 'real roots (numeric)', note: 'after the shift y = x + 0.44: real roots of the odd part, verified by re-expansion at 5 points. max rel. error 5.5e-10' }),
+  ] })));
+  eq(t[1].note, 'sequential; every step depends on the previous one', 'a classical row lists its note');
+  eq(t[2].note, 'after the shift y = x + 0.44: real roots of the odd part', `the numeric note drops the verification clause and the figure: ${t[2].note}`);
+  eq([t[2].exactNote, t[2].maxRelError], ['real roots (numeric), max rel. error 5.5e-10', 5.5e-10], 'the figure lives in exactNote / maxRelError');
+  eq(displayNote(''), '', 'displayNote of nothing');
+  eq(displayNote('a, b, ... c'), 'a, b, ... c', 'displayNote keeps the space before an ellipsis');
+  eq(displayNote('the constants a_3, a_5, ... are the roots of a degree-5 polynomial B; verified by re-expansion at 5 points. max rel. error 7.0e-13'),
+     'the constants a_3, a_5, ... are the roots of a degree-5 polynomial B', 'Belaga\'s ℂ note keeps its ellipsis spacing');
+  eq(displayNote('exact rational preprocessing; verified by re-expansion and random-point evaluation — no C rendering: constant Infinity is not representable as a double'),
+     'exact rational preprocessing — no C rendering: constant Infinity is not representable as a double', 'the ℚ overflow note keeps its C reason');
+  // the C pane names the worker's reason for a missing C (result.cMissing, or the reason compile0 leaves in the note)
+  const cm = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cMissing: 'an exact constant exceeds the double range, so no double-precision chain exists' }));
+  eq(paneContent(reduce(cm, { type: 'setView', view: 'c' })), { kind: 'c-missing', text: 'ours math', note: '/* no C for this chain: an exact constant exceeds the double range, so no double-precision chain exists */' }, 'cMissing reason in the C pane');
+  const cn = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, note: 'exact rational preprocessing; verified by re-expansion — no C rendering: constant Infinity is not representable as a double' }));
+  eq(paneContent(reduce(cn, { type: 'setView', view: 'c' })).note, '/* no C for this chain: constant Infinity is not representable as a double */', 'the reason is read from the note when cMissing is absent');
+  const cf = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cCode: false, cMissing: 'whatever' }));
+  eq(paneContent(reduce(cf, { type: 'setView', view: 'c' })).note, '/* no C rendering for this field yet */', 'a field without a C emitter keeps the field note');
 }
 
 // ---- field registry → chooser ----------------------------------------------
@@ -724,12 +876,12 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(msg !== null && /−1 = 1/.test(msg), `minus over GF(2^k): ${msg}`);
   check(parsePoly('0xdeadx^2 + 0x1e', { char2: true }).coeffs[0] === 0x1en, 'hex literals containing an e digit still parse in GF(2^k)');
   check(parsePoly('1/2x^2 + 0.5x + 2e1', { char2: false }).coeffs[1].eq(new Rat(1n, 2n)), 'the same literals read fine in characteristic 0');
-  // the worker's failure reply is what the page shows, verbatim; the stale output is dropped
+  // the worker's failure reply is what the page shows, verbatim; the stale output stays mounted (dimmed by ui.js)
   const s = reduce(reduce(withResult(inMode('Q')), { type: 'setSrc', src: examplesFor('Q', 10)[0].src }), { type: 'setMode', mode: 'gf64' });
   check(s.busy && s.mode === 'gf64' && s.result !== null, 'switching field recompiles the fractional text over GF(2^64)');
   const bad = 'cannot read the polynomial over GF(2^64): binary-field coefficients are bit patterns (integers or 0x… hex), but "1/3628800" is a fraction — choose ℚ, ℝ or a Mersenne-prime field for it, or rewrite the polynomial';
   const e = reduce(s, { type: 'reply', id: s.jobId, ok: false, message: bad });
-  check(e.error === bad && e.result === null && !e.busy && !showOutput(e), 'the failure reply is shown as the error, the stale output dropped');
+  check(e.error === bad && e.result === s.result && !e.busy && showOutput(e), 'the failure reply is shown as the error, the stale output kept');
   const back = reduce(e, { type: 'setMode', mode: 'Q' });
   check(back.error === null && back.busy && back.src === examplesFor('Q', 10)[0].src, 'switching back to ℚ clears the message and recompiles the same text');
 }
@@ -746,6 +898,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
      'fractions, powers, hex, operators');
   eq(types(tokenizePoly('X^3-x')), ['var:X^3', 'op:-', 'var:x'], 'upper-case variable, no spaces');
   eq(types(tokenizePoly('0x1f')), ['num:0x1f'], 'the x inside a hex literal is not a variable');
+  eq(types(tokenizePoly('0X1F')), ['num:0', 'var:X', 'num:1', 'text:F'], 'upper-case 0X is no hex literal — the parser rejects it, so the highlighter does not paint it as one number');
   eq(types(tokenizePoly('2 x ^ 2')), ['num:2', 'space: ', 'var:x', 'space: ', 'op:^', 'space: ', 'num:2'], 'spaced caret stays an operator');
   eq(types(tokenizePoly('ab ?? 1')), ['text:ab', 'space: ', 'text:??', 'space: ', 'num:1'], 'unknown characters merge into plain text runs');
   eq(tokenizePoly(''), [], 'empty input has no tokens');
@@ -791,14 +944,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         'the main reply lands with the numeric rows pending (and selectable)');
   eq(comparisonTable(main).filter(r => r.pending).map(r => r.name), ['Knuth–Eve', 'Pan'], 'pending rows in the table');
   const onPan = reduce(main, { type: 'setMethod', method: 'Pan' });
-  check(onPan.method === 'Pan' && pendingRow(onPan)?.name === 'Pan' && selectedRow(onPan) === null && paneContent(onPan).kind === 'pending' &&
-        stats(onPan).length === 0, 'a pending method can be selected: the pane shows it is computing, no stats');
+  check(onPan.method === 'Pan' && pendingRow(onPan)?.name === 'Pan' && staleRow(onPan) === null && selectedRow(onPan) === null && paneContent(onPan).kind === 'pending' &&
+        stats(onPan).length === 0, 'a pending method with no previous chain: the pane shows it is computing, no stats');
+  check(main.prevResult === null, 'a first main reply has no previous result to keep');
   const filled = reduce(onPan, { type: 'reply', id: started.jobId, part: 'numeric', ok: true, result: NUMERIC });
   check(!filled.result.comparisons.some(r => r.pending) && comparisonRow({ ...filled, method: 'Knuth–Eve' })?.exact === false &&
         filled.result.comparisons.find(r => r.name === 'Pan').note === 'degree too low' && filled.result.comparisons[0] === MAIN.comparisons[0],
         'the numeric reply fills the placeholders and keeps the other rows');
-  check(filled.method === 'Pan' && paneContent(filled) !== null && paneContent(filled).kind !== 'pending' && selectedRow(filled) === filled.result,
-        'a selected method that turned out unavailable falls through to ours in the pane');
+  check(filled.method === 'ours' && paneContent(filled).kind === 'math' && paneContent(filled).text === 'ours math' && selectedRow(filled) === filled.result &&
+        methodTabs(filled).find(t => t.on).key === 'ours' && comparisonTable(filled).find(r => r.on).key === 'ours' && !hashFromState(filled).includes('method=Pan'),
+        'a method selected while pending that turned out unavailable is deselected: chips, table, pane and Share agree on ours');
+  check(comparisonTable(filled).every(r => !(r.on && !r.ok && !r.pending)), 'no failed row is ever the selected one');
   check(reduce(main, { type: 'reply', id: started.jobId - 1, part: 'numeric', ok: true, result: NUMERIC }) === main, 'a stale numeric reply is ignored');
   const failedNum = reduce(main, { type: 'reply', id: started.jobId, part: 'numeric', ok: false, message: 'boom' });
   eq(failedNum.result.comparisons.slice(2).map(r => [r.ok, r.note]), [[false, 'boom'], [false, 'boom']], 'a failed numeric worker leaves explained rows');
@@ -815,6 +971,81 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(!both.busy && both.lateNumeric === null && !both.result.comparisons.some(r => r.pending) && both.result.comparisons[2].exact === false,
         'the main reply merges the waiting numeric rows');
   check(reduce(early, { type: 'cancel' }).lateNumeric === null, 'cancel drops waiting numeric rows');
+  // the waiting rows belong to the job they arrived for: a new job — in any field — drops them,
+  // so a stale numeric chain (another polynomial's, another field's) can never merge into the next result
+  const earlyP89 = reduce(early, { type: 'setMode', mode: 'p89' });
+  check(earlyP89.busy && earlyP89.lateNumeric === null, 'a field switch during an early numeric reply drops the waiting rows');
+  const P89 = deepFreeze({ ...RESULT, fieldId: 'p89', fieldName: 'GF(2^89−1)', comparisons: [row('Horner'),
+    { name: 'Knuth–Eve', ok: false, note: 'needs real or complex roots' }, { name: 'Pan', ok: false, note: 'needs numerical real-algebraic preprocessing' }] });
+  const p89Main = reduce(earlyP89, { type: 'reply', id: earlyP89.jobId, part: 'main', ok: true, result: P89 });
+  check(p89Main.result.comparisons[1].ok === false && p89Main.result.comparisons[1].note === 'needs real or complex roots' &&
+        !methodTabs(p89Main).find(t => t.key === 'Knuth–Eve').enabled && reduce(p89Main, { type: 'setMethod', method: 'Knuth–Eve' }) === p89Main,
+        'the worker\'s rejected Knuth–Eve row survives a field switch: the ℚ chain is not merged in, the tab stays disabled');
+  const earlyRe = reduce(reduce(early, { type: 'setSrc', src: 'x^9 + 3' }), { type: 'compile' });
+  check(earlyRe.lateNumeric === null && reduce(earlyRe, { type: 'reply', id: earlyRe.jobId, part: 'main', ok: true, result: MAIN }).result.comparisons[2].pending === true,
+        'a recompile in the same field drops the early rows: the new result\'s numeric rows stay pending');
+  // stale-while-revalidate for a numeric method: while the new job's numeric rows are pending, the
+  // selected method keeps showing its previous chain (staleRow) — the pending pane only when there is none
+  const onKE = reduce(filled, { type: 'setMethod', method: 'Knuth–Eve' });
+  check(onKE.method === 'Knuth–Eve' && selectedRow(onKE).name === 'Knuth–Eve', 'Knuth–Eve selected from the filled result');
+  const again = reduce(onKE, { type: 'compile' });
+  const mainAgain = reduce(again, { type: 'reply', id: again.jobId, part: 'main', ok: true, result: MAIN });
+  check(!mainAgain.busy && mainAgain.prevResult === filled.result && pendingRow(mainAgain)?.name === 'Knuth–Eve',
+        'the main reply with the selected method pending keeps the previous result');
+  check(staleRow(mainAgain) === filled.result.comparisons[2] && selectedRow(mainAgain) === staleRow(mainAgain) &&
+        paneContent(mainAgain).kind === 'math' && paneContent(mainAgain).text === 'Knuth–Eve math' && stats(mainAgain).length === 5,
+        'selectedRow / paneContent / stats fall back to the previous chain of the pending method');
+  check(comparisonTable(mainAgain).find(r => r.on).key === 'Knuth–Eve' && comparisonTable(mainAgain).find(r => r.key === 'Knuth–Eve').pending,
+        'the table still marks the row as selected and pending');
+  check(paneContent({ ...mainAgain, method: 'Pan' }).kind === 'pending' && staleRow({ ...mainAgain, method: 'Pan' }) === null,
+        'a pending method whose previous row failed has nothing to fall back on');
+  check(selectedRow({ ...mainAgain, method: 'ours' }) === MAIN, 'ours is unaffected by the stale row');
+  const filledAgain = reduce(mainAgain, { type: 'reply', id: again.jobId, part: 'numeric', ok: true, result: NUMERIC });
+  check(filledAgain.prevResult === null && selectedRow(filledAgain) === filledAgain.result.comparisons[2] && staleRow(filledAgain) === null,
+        'the numeric reply replaces the stale row and drops the previous result');
+  const oneOfTwo = reduce(mainAgain, { type: 'reply', id: again.jobId, part: 'numeric', ok: true, result: { comparisons: [NUMERIC.comparisons[1]] } });
+  check(oneOfTwo.prevResult === filled.result && staleRow(oneOfTwo) !== null, 'a per-method reply for another method keeps the previous result while a row is still pending');
+  check(reduce(mainAgain, { type: 'reply', id: again.jobId, part: 'numeric', ok: false, message: 'boom' }).prevResult === null, 'a failed numeric worker ends the fallback');
+  check(reduce(reduce(mainAgain, { type: 'compile' }), { type: 'reply', id: mainAgain.jobId + 1, ok: false, message: 'bad' }).prevResult === null,
+        'a failed main reply drops the previous result');
+  check(reduce(reduce(mainAgain, { type: 'setSrc', src: ' ' }), { type: 'setMode', mode: 'gf64' }).prevResult === null, 'a blank-source mode switch drops it too');
+  const noPending = reduce(reduce(mainAgain, { type: 'compile' }), { type: 'reply', id: mainAgain.jobId + 1, ok: true, result: RESULT });
+  check(noPending.prevResult === null, 'a main reply without pending rows keeps no previous result');
+  // the fallback survives further recompiles during a pending phase (two stepper clicks in a row): the
+  // newest result whose rows actually landed is carried forward, not the one whose worker was dropped
+  const again2 = reduce(mainAgain, { type: 'compile' });
+  const mainAgain2 = reduce(again2, { type: 'reply', id: again2.jobId, part: 'main', ok: true, result: MAIN });
+  check(mainAgain2.prevResult === filled.result && staleRow(mainAgain2) === filled.result.comparisons[2] &&
+        paneContent(mainAgain2).kind === 'math' && paneContent(mainAgain2).text === 'Knuth–Eve math',
+        'a second recompile while the previous numeric rows never landed keeps the settled result as the fallback (no spinner collapse)');
+  const mainAgain3 = reduce(reduce(mainAgain2, { type: 'compile' }), { type: 'reply', id: mainAgain2.jobId + 1, part: 'main', ok: true, result: MAIN });
+  check(staleRow(mainAgain3) === filled.result.comparisons[2] && paneContent(mainAgain3).kind === 'math', 'and a third');
+  // Cancel / a failed compile after a superseding job: the kept result's pending rows can never fill
+  // (their worker went with the superseded job), so they settle as not computed instead of spinning forever
+  const superseded = reduce(mainAgain, { type: 'compile' });
+  const cancelledS = reduce(superseded, { type: 'cancel' });
+  check(!cancelledS.busy && cancelledS.result.comparisons.every(r => !r.pending) && cancelledS.result.comparisons[2].ok === false &&
+        /cancelled/.test(cancelledS.result.comparisons[2].note) && cancelledS.prevResult === null && staleRow(cancelledS) === null &&
+        paneContent(cancelledS).kind !== 'pending' && cancelledS.method === 'ours' && comparisonTable(cancelledS).find(r => r.on).key === 'ours' && cancelledS.cancelled,
+        'Cancel settles the orphaned pending rows (not computed), drops the fallback, re-selects ours and flags the output cancelled');
+  const failedS = reduce(superseded, { type: 'reply', id: superseded.jobId, ok: false, message: 'unexpected end of input' });
+  check(failedS.error === 'unexpected end of input' && failedS.result.comparisons.every(r => !r.pending) && /recompiled/.test(failedS.result.comparisons[2].note) &&
+        failedS.prevResult === null && staleRow(failedS) === null && paneContent(failedS).kind !== 'pending' && failedS.method === 'ours' && !failedS.cancelled,
+        'a failed main reply settles them too, under the error');
+  check(reduce(superseded, { type: 'workerError', message: 'lost' }).result.comparisons.every(r => !r.pending), 'a lost worker as well');
+  check(reduce(mainAgain, { type: 'cancel' }) === mainAgain, 'cancel while idle with pending rows is still a no-op (their worker is running)');
+  // never across a field switch: the ℝ chain is no fallback for the ℂ result (it would show under the ℂ label and land in a ℂ download)
+  const MAIN_R = deepFreeze({ ...MAIN, fieldId: 'R', fieldName: 'ℝ' }), MAIN_CX = deepFreeze({ ...MAIN, fieldId: 'C', fieldName: 'ℂ' });
+  const startedR = reduce(inMode('R'), { type: 'compile' });
+  const filledR = reduce(reduce(startedR, { type: 'reply', id: startedR.jobId, part: 'main', ok: true, result: MAIN_R }),
+                         { type: 'reply', id: startedR.jobId, part: 'numeric', ok: true, result: NUMERIC });
+  const toC = reduce(reduce(filledR, { type: 'setMethod', method: 'Knuth–Eve' }), { type: 'setMode', mode: 'C' });
+  const mainCx = reduce(toC, { type: 'reply', id: toC.jobId, part: 'main', ok: true, result: MAIN_CX });
+  check(mainCx.prevResult === filledR.result && pendingRow(mainCx)?.name === 'Knuth–Eve' && staleRow(mainCx) === null &&
+        paneContent(mainCx).kind === 'pending' && stats(mainCx).length === 0,
+        'after a field switch the pending method has no stale fallback: the pane is pending, no mixed stats');
+  const sameR = reduce(reduce(reduce(filledR, { type: 'setMethod', method: 'Knuth–Eve' }), { type: 'compile' }), { type: 'reply', id: filledR.jobId + 1, part: 'main', ok: true, result: MAIN_R });
+  check(staleRow(sameR) === filledR.result.comparisons[2], 'within the same field the fallback holds');
   check(methodAvailable(MAIN, 'Pan') && !methodAvailable(NUMERIC.comparisons && { comparisons: NUMERIC.comparisons }, 'Pan'), 'pending counts as available; a failed row does not');
   // ℂ: three numeric methods (Knuth–Eve, Pan, Belaga), one reply each
   const startedC = reduce(inMode('C'), { type: 'compile' });
@@ -854,6 +1085,15 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(presentedState(cx, { compact: true }).numfmt === 'decimal' && presentedState(cx).numfmt === 'exact', 'phones present ℂ with readable constants; desktop does not');
   const already = { ...ke, numfmt: 'decimal' };
   check(presentedState(already, { compact: true }) === already, 'an explicit readable choice is left alone');
+}
+
+{
+  // cancelling the very first job of a share link keeps the link's method (no result to re-check against)
+  const linked = stateFromHash(initialState, '#mode=Q&method=Knuth%E2%80%93Eve&src=x%5E7%2B1');
+  check(linked.method === 'Knuth–Eve', 'share link selects Knuth–Eve');
+  const cancelled = reduce(reduce(linked, { type: 'compile' }), { type: 'cancel' });
+  check(cancelled.method === 'Knuth–Eve' && !cancelled.busy && cancelled.cancelled === true,
+        'cancelling the first job keeps the linked method');
 }
 
 console.log(fails ? `UISTATE FAILED (${fails}/${checks})` : `UISTATE PASSES (${checks} checks)`);

@@ -422,7 +422,7 @@ function isComplex(params) {
 // complex coefficients (constant term first).
 function compileOddScheme(target) {
   const n = target.length - 1;
-  if (isZeroC(target[n])) throw new Error('Pan 1978: the leading coefficient must be nonzero');
+  if (isZeroC(target[n])) throw new Error('the leading coefficient must be nonzero');
   const complexInput = target.some(z => z.im !== 0);
   const p = target.map(z => z.re);
   const verify = complexInput ? lines => verifyLinesComplex(lines, target) : lines => verifyLines(lines, p);
@@ -452,7 +452,7 @@ function compileOddScheme(target) {
       ? `Pan proves scheme (4) represents every degree-11 complex polynomial, but the numerical path can still become singular`
       : `Scheme (3) is guaranteed only for almost every polynomial`;
     throw new Error(
-      `Pan 1978: numerical continuation did not find a verified ${((n + 1) / 2)}-multiplication ` +
+      `numerical continuation did not find a verified ${((n + 1) / 2)}-multiplication ` +
       `parameterization. ${coverage}; a numerical failure does not by itself prove non-representability.`,
     );
   }
@@ -488,7 +488,7 @@ function compileEvenLift(target) {
   const complexInput = target.some(z => z.im !== 0);
   const err = complexInput ? verifyLinesComplex(lines, target) : verifyLines(lines, target.map(z => z.re));
   if (!(err <= 1e-3))
-    throw new Error(`Pan 1978: the degree-${n} even lift failed printed-chain verification (${err})`);
+    throw new Error(`the degree-${n} even lift failed printed-chain verification (${err})`);
   const complex = lower.preprocessing === 'complex' || target[0].im !== 0;
   return {
     ...lower, name: 'Pan 1978 even-degree lift', lines,
@@ -500,19 +500,20 @@ function compileEvenLift(target) {
   };
 }
 
-const LOW_DEGREE_MESSAGE =
-  "Pan 1978's complex schemes start at degree 11 (scheme (4); family (3) from 13); " +
-  'Knuth–Eve and Belaga give ⌊n/2⌋+1 multiplications for a monic polynomial here.';
+/** The refusal below degree 11: one sentence, naming the input's degree. */
+const lowDegreeMessage = n =>
+  `Pan's complex schemes start at degree 11 (scheme (4); family (3) from 13) and this polynomial has degree ${n}; ` +
+  'below degree 11, Knuth–Eve and Belaga already give ⌊n/2⌋+1 multiplications for a monic polynomial.';
 
 /** Pan's complex compiler: scheme (4) at degree 11, family (3) in every odd
  * degree >= 13, and the one-product lift P = x·Q + a_0 in even degree >= 12.
  * Coefficients ascend (constant term first), plain numbers or {re, im}. */
 export function compilePan1978(coeffs) {
-  if (!Array.isArray(coeffs)) throw new Error('Pan 1978: need a coefficient array');
+  if (!Array.isArray(coeffs)) throw new Error('need a coefficient array');
   const n = coeffs.length - 1;
-  if (n < 11) throw new Error(LOW_DEGREE_MESSAGE);
+  if (n < 11) throw new Error(lowDegreeMessage(n));
   const target = coeffs.map(toComplex);
   if (!target.every(z => Number.isFinite(z.re) && Number.isFinite(z.im)))
-    throw new Error('Pan 1978: coefficients must be finite numbers');
+    throw new Error('coefficients must be finite numbers');
   return n % 2 === 0 ? compileEvenLift(target) : compileOddScheme(target);
 }

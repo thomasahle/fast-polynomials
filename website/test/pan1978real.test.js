@@ -3,7 +3,7 @@
 // lift, non-monic inputs, and both input and internal radix shifts.
 
 import { compilePan1978Real } from '../js/methods/pan1978real.js';
-import { verifyLines } from '../js/methods/motzkin.js';
+import { verifyLines, compileKnuthEve } from '../js/methods/motzkin.js';
 import { buildGraphFromLines } from '../js/graph.js';
 import { buildComparisons } from '../js/compare.js';
 import { Q } from '../js/field.js';
@@ -78,6 +78,40 @@ for (const [label, coeffs, wantM] of [
     'comparison row does not distinguish real from complex preprocessing');
   check(row.mathText.split('\n').slice(0, -1).every(line => line.includes(' * ')),
     'Pan factored form contains a non-product intermediate line');
+}
+
+// the low-degree refusal quotes the Knuth–Eve row's own monic count, so the two rows of
+// the comparison table never disagree; ⌊n/2⌋+1 is named only where it actually holds
+{
+  for (let n = 1; n <= 7; n++) {
+    const coeffs = Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : (i % 3) + 1));
+    const ke = compileKnuthEve(coeffs).mults;
+    let note = '';
+    try { compilePan1978Real(coeffs); check(false, `degree ${n}: Pan real did not refuse`); continue; }
+    catch (e) { note = e.message; }
+    check(new RegExp(`at degree ${n} the Knuth–Eve row gives (⌊n/2⌋\\+1 = )?${ke} multiplication${ke === 1 ? '' : 's'} `).test(note),
+      `degree ${n}: note says "${note}" but Knuth–Eve gives ${ke}M`);
+    check(!/\b1 multiplications\b/.test(note), `degree ${n}: note reads "1 multiplications"`);
+    check((n >= 3) === note.includes('⌊n/2⌋+1'),
+      `degree ${n}: the closed form ⌊n/2⌋+1 is quoted where it does not hold`);
+  }
+}
+
+// a failure reports the cells every conditioning rescale spent, not just the ones the
+// slice that threw had seen: e^x at degree 22 spends the whole budget, the last slice in
+// a rescale whose chain the radix substitution rejects (which recorded no error of its own)
+{
+  const fact = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
+  const exp22 = Array.from({ length: 23 }, (_, i) => 1 / fact(i));
+  let note = '';
+  try { compilePan1978Real(exp22); check(false, 'e^x at degree 22: Pan real unexpectedly succeeded'); }
+  catch (e) { note = e.message; }
+  if (note) {
+    const cells = Number((/and (\d+) degree-9 sign\/radix branches/.exec(note) ?? [])[1]);
+    const rescales = Number((/over (\d+) conditioning rescales/.exec(note) ?? [])[1]);
+    check(cells === 1600, `e^x at degree 22: the failure reports ${cells} cells, not the 1600 the budget spent`);
+    check(rescales >= 4, `e^x at degree 22: ${rescales} conditioning rescales named`);
+  }
 }
 
 if (failures) process.exit(1);

@@ -2,9 +2,9 @@
 // dependency, so we write POSIX ustar directly and use the browser's native
 // gzip stream when available.
 
-import { C_PROVENANCE, C_LICENSE, cFileHeader, hasCProvenance } from './cgen.js';
+import { C_PROVENANCE, C_LICENSE, cFileHeader, hasCProvenance, referenceLines, wrapHeaderLine } from './cgen.js';
 import { referenceFor } from './references.js';
-import { selectedCSource } from './uistate.js';
+import { selectedCSource, staleRow } from './uistate.js';
 
 const UTF8 = new TextEncoder();
 
@@ -73,8 +73,8 @@ export function benchmarkHarness(mode) {
       : t.bits === 64
         ? '    printf("%.3f ns/eval  checksum %016llx\\n", ns_per_eval, (unsigned long long)checksum);'
         : '    printf("%.3f ns/eval  checksum %08x\\n", ns_per_eval, (unsigned)checksum);';
-  return `${cFileHeader(['Shared timing harness: compile with -DMETHOD_FILE="methods/<name>.c" (benchmark.sh does).',
-    `Reference: ${referenceFor('This paper').cite} ${referenceFor('This paper').url}`])}
+  return `${cFileHeader([...wrapHeaderLine('Shared timing harness: compile with -DMETHOD_FILE="methods/<name>.c" (benchmark.sh does).'),
+    ...referenceLines(referenceFor('This paper'))])}
 #define _POSIX_C_SOURCE 200809L
 #include <stdint.h>
 #include <stdio.h>
@@ -257,11 +257,15 @@ ${entries.map(e => `- \`${e.file}\`: ${e.label}`).join('\n')}
 `;
 }
 
-/** Plain files constituting the download. */
+/** Plain files constituting the download.  `selected.c` is included only when
+ *  the pane's C source belongs to this result: while a selected numeric method
+ *  is still computing, the pane shows its previous chain (uistate.staleRow),
+ *  which is another polynomial's — the archive then omits selected.c rather
+ *  than pack a source that contradicts its README and methods/. */
 export function buildCBundle(state) {
   const rows = cRows(state);
   if (!rows.length) throw new Error('no generated C implementations are available');
-  const selected = selectedCSource(state);
+  const selected = staleRow(state) ? null : selectedCSource(state);
   const used = new Set(), entries = [], files = [];
   for (let i = 0; i < rows.length; ++i) {
     const { name, row } = rows[i];

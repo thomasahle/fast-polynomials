@@ -493,7 +493,14 @@ export function renderConstructionsForm(F, chain, extraRow = null) {
   const lines = renderAffineChain(F, chain);          // index names y0.., last row P
   const labels = chain.gate_labels ?? [];
   const ng = chain.gates.length;
-  if (!labels.length || labels.length !== ng) return chainToText({ lines });
+  if (!labels.length || labels.length !== ng) {
+    // no gadget provenance (degree 1: P_1 = x + α_0, no gate): the rows as they
+    // are, still followed by the leading-coefficient scale of a non-monic input
+    if (!extraRow) return chainToText({ lines });
+    const last = lines[lines.length - 1], nm = ng === 0 ? 'P_1' : 'P̃';
+    return chainToText({ lines: [...lines.slice(0, -1), { ...last, lhs: nm },
+      { lhs: extraRow.lhs, rhs: extraRow.rhs.replace('P̃', nm), mul: extraRow.mul }] });
+  }
   // consecutive gates with the same label form a gadget; the output row joins the last gadget
   const groups = [];
   for (let i = 0; i < ng; i++) {

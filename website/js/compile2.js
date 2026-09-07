@@ -13,6 +13,7 @@
 import * as P from './poly.js';
 import { CIRCUITS, evalCircuit, decodeChar2, circuitStats, SUPPORTED_DEGREES, MAX_DEGREE,
          baseDegree } from './char2.js';
+import { DEGREE_CEILING } from './methodlist.js';   // the Mersenne ceiling this message points at
 import { renderGateChain, makeResult, chainToText } from './chain.js';
 import { char2C } from './cgen.js';
 import { polyToString } from './polyparse.js';
@@ -52,7 +53,8 @@ export function compileChar2(coeffs, F) {
   if (!SUPPORTED_DEGREES.includes(n))
     throw new Error(
       `characteristic-2 chains exist for every degree up to ${MAX_DEGREE} (you entered degree ${n}); ` +
-      `degree ${MAX_DEGREE + 1} is the open frontier of the paper — see the outlook section.`);
+      `degree ${MAX_DEGREE + 1} is the open frontier of the paper (section "Open Problems") — ` +
+      `the Mersenne-prime fields GF(2^61−1), GF(2^89−1) and GF(2^127−1) compile any degree up to ${DEGREE_CEILING.p61}.`);
   // normalize to monic; remember the leading coefficient
   const lc = p[n];
   let scaleStep = null, extraMult = 0;
@@ -109,9 +111,11 @@ export function compileChar2(coeffs, F) {
   result.linesPaper = scaleStep ? [...linesPaper, scaleStep] : linesPaper;
   result.mathTextOriginal = chainToText({ lines: result.linesPaper });
   // C is emitted for GF(2^32), GF(2^64) (the paper's field) and GF(2^128) with
-  // their standard moduli; other fields keep the math view.
-  try { result.cText = char2C(F, spec, keys, { scaleBy: scaleStep ? lc : null, lift: lifted ? c[0] : null, poly: polyToString(p, { char2: true }) }); }
-  catch (e) { result.cText = null; result.note += ` — no C rendering: ${e.message}`; }
+  // their standard moduli; other fields keep the math view (result.cMissing then
+  // carries the reason).  The header names the INPUT polynomial (coeffs), not
+  // the monic-scaled p the circuit was decoded from.
+  try { result.cText = char2C(F, spec, keys, { scaleBy: scaleStep ? lc : null, lift: lifted ? c[0] : null, poly: polyToString(coeffs, { char2: true }) }); }
+  catch (e) { result.cText = null; result.cMissing = e.message; result.note += ` — no C rendering: ${e.message}`; }
   // computational graph IR from the rendered lines (letter wire names; the lift
   // and scale rows become the last '*' nodes; headings carry the groups)
   try { result.graph = buildGraphFromLines(result.lines); }

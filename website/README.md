@@ -36,17 +36,20 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   per method: multiplications with the scalar count, additions, multiplicative depth,
   exact or ≈ numeric; clicking a row selects the method; each method name links to its
   reference, listed under the table from `js/references.js`, which the generated C of a
-  comparison method also cites) + Share. Copy is paired with
+  comparison method also cites; a caption spells out the columns and lists each row's note,
+  including the measured rounding error of every ≈ numeric row) + Share (links name a held
+  example as `ex=` instead of carrying its text). Copy is paired with
   Download, which packages every available C method with benchmark and assembly-audit
   scripts. On phones (≤ 640px, `COMPACT_QUERY` in `ui.js` and the matching media query in
   `style.css`) the same state renders as a short intro with Paper / GitHub (star count) /
   Share links and three cards: the input (three example chips beside the label, no degree
   stepper or monic toggle — the page opens on the ℚ e^x example at degree 5, monic, whose
   chain has small constants) with Field / Method dropdowns; the output with underline tabs
-  and the form strip beside them, a floating Copy (no Download), ℝ / ℂ constants to six
+  and the form strip beside them, a static right-aligned Copy + Share row above the pane
+  body (no Download; nothing floats over an equation), ℝ / ℂ constants to six
   significant digits, and a stats line (long rows scroll sideways, as in every pane);
   and a collapsed "Compare methods" disclosure.
-- `js/rat.js` — exact rationals over BigInt
+- `js/rat.js` — exact rationals over BigInt (Lehmer gcd; `test/rat.test.js` checks it against Euclid)
 - `js/gauss.js` — the Gaussian rationals ℚ(i) (`GaussRat`, Rat-compatible surface) and the
   ℂ field object `Cx`; `js/tokens.js` — the shared constant-token grammar of chain text
   (real, hex and complex tokens, `complexToken(re, im)`)
@@ -58,7 +61,14 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   `x·2`, decimals and exponents (`0.5x`, `1.5e-3`), a Unicode minus, hex bit patterns over
   GF(2^k), and over ℂ (`parsePoly(src, { complex: true })`) the Gaussian literals `i`, `2i`,
   `(1+2i)`, `(1/2-3/4i)`; rejections say what was wrong (division by zero, a variable other
-  than x, a fraction in a binary field, …). Tested in `test/polyparse.test.js`.
+  than x, a fraction in a binary field, …); a sign after a sign folds (`x^3 + -1`), whitespace
+  inside a number is rejected with a hint, and exponents above `MAX_PARSE_DEGREE` (10 000) are
+  refused before anything is allocated. Tested in `test/polyparse.test.js`. `js/worker.js` adds
+  the field-side checks: constants (degree 0) are rejected, GF(2^k) literals wider than k bits
+  and denominators ≡ 0 mod p get named messages, and every field has a degree ceiling
+  (`DEGREE_CEILING` in `js/methodlist.js`: 38 over ℚ / ℝ / ℂ, 255 over the Mersenne primes;
+  the char-2 lane's cap is `MAX_DEGREE` = 26 in the same file, enforced in `compile2.js`),
+  so a crafted link cannot spin the worker for minutes.
 - `js/char2.js`, `js/n13decode.js`, `js/compile2.js` — the char-2 circuits and
   decoders (odd degrees 3 to 21; all but 7 and 17 have polynomial decoders valid over
   every characteristic-2 field, 7 and 17 take Frobenius roots and need a finite field),
@@ -79,7 +89,7 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   restores the leading coefficient). Pan's search (radix/sign specs × Eve candidates × node
   subsets, each a multi-start Newton solve) is budgeted: node subsets are tried
   best-fitting first under every spec, the search stops shortly after a chain verifies
-  at 1e-6, and at most ~4000 cells (10–15 s) are spent, shared across the conditioning
+  at 1e-6, and at most 1600 cells (3–9 s) are spent, shared across the conditioning
   rescales; inputs whose chains the solver cannot reach (the e^x Taylor polynomial at
   degree 20) fail in seconds with a note instead of running for minutes.
   `js/compare.js` runs the displayed methods on the same input (`numericMethodsFor(mode)`:
@@ -96,7 +106,11 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   pragma, so it is guarded and the bundle's scripts pass `-fcx-limited-range` instead —
   compiled with `-lm`). Estrin rows are
   emitted by dependency layer so the compiler can
-  schedule independent FMAs and apply SLP when profitable.
+  schedule independent FMAs and apply SLP when profitable. For the hashing fields (GF(2^k)
+  and the Mersenne primes) every file also exposes `eval_P_key(const T a[], T x)`, the same
+  circuit reading its constants from a caller-supplied key (a uniform key gives a uniformly
+  random monic polynomial), with `eval_P` as the baked-in wrapper; ℝ / ℂ headers record the
+  chain's measured double-rounding error; doc-block lines wrap at 88 columns.
 - `js/cbundle.js` — dependency-free `.tar.gz` creation for the Download button, plus
   the portable timing harness and an assembly report for FMA, SIMD, and CLMUL/PMULL;
   every generated file opens with `cSourceHeader` (cgen.js): provenance, license, the
@@ -116,10 +130,20 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
 - `js/uistate.js` — the page's state: one plain object (mode, source, job id, result,
   selected method, view and its sub-options), a pure reducer, and the selectors every
   control is rendered from (`selectedRow`, `paneContent`, `availableSubOptions`, …);
-  testable under node without a DOM
+  testable under node without a DOM. Stale-while-revalidate lives here too: `prevResult` /
+  `staleRow` keep a numeric method's previous chain while its worker recomputes, `isStale`
+  says when every view dims (a job, a parse error, a Cancel), `inputHint` warns before a
+  slow typed compile, and Share links name a held chip as `ex=`
+- `js/methodlist.js` — the dependency-free list of method names and degree caps shared by
+  the page thread and the workers, so `ui.js` never loads the compilers
 - `js/ui.js` — the page as a Preact + htm app mounted into `#app`: renders `uistate.js`
-  and owns the side effects (the Web Workers, created lazily and terminated when a
-  newer job supersedes them);
+  and owns the side effects (the Web Workers, created lazily and terminated in one place —
+  the job effect — when a newer job supersedes them or Cancel is pressed; a `hashchange`
+  listener restores shared state in an already-open tab). Output is stale-while-revalidate:
+  while a job runs, a numeric row recomputes, the draft fails to parse, or a job was cancelled,
+  the previous chain — with the method chips, the comparison table and the phone stats line —
+  stays mounted and dims (a status line says so after a Cancel), and a Cancel button shows
+  while compiling;
   `App` → `DesktopLayout` | `CompactLayout` over shared pieces (`InputCard`, `FieldPills`,
   `MethodPills`, `FieldMethodPickers`, `Output`, `FooterBar`); the phone boot state and the
   six-digit rule for numeric rows are `initialStateFor` / `presentedState` in `uistate.js`
@@ -134,7 +158,8 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   MIT; see `js/vendor/LICENSE-preact.txt`)
 - `js/vendor/katex/` — pinned KaTeX runtime, stylesheet and WOFF2 fonts (vendored,
   MIT; see its `LICENSE` and `README.md`); no CDN and no build step
-- `test/` — dependency-free Node test suites: `char2.test.js`, `char0.test.js` (985 checks incl.
+- `test/` — dependency-free Node test suites: `rat.test.js` (Lehmer gcd against Euclid),
+  `methodlist.test.js`, `char2.test.js`, `char0.test.js` (985 checks incl.
   Python-generated goldens), `chain.test.js` (paper-format naming + gadget
   provenance), `cgen.test.js` (generated C compiled and executed), `graph.test.js`,
   `methods.test.js`, `motzkin.test.js`, `belaga.test.js`, `pan1978.test.js`,
@@ -143,7 +168,7 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   mode + highlighter, then the page itself rendered under `test/dom-shim.js` — a minimal
   DOM and Worker stand-in — at both layouts: boot, chips, stepper, debounce, field and
   method switches, a real compile result, tabs, Share), `uistate.test.js` (reducer / selector invariants: mode switch,
-  result selection, sub-option visibility, cancel and stale replies), and
+  result selection, sub-option visibility, cancel / restore and stale replies, share round-trips), and
   `cbundle.test.js` (archive contents plus compile/run of the shipped scripts), and
   `mathview.test.js` (plain-chain to TeX conversion plus KaTeX rendering across fields
   and methods)

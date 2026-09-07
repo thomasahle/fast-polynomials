@@ -54,6 +54,24 @@ for (let n = 3; n <= 24; n++) {
   }
   console.log(`n=${n}: ${rows.length} rows, ${chain.gates.length} gates — ${rows.map(r => r.split(' ')[0]).join(', ')}`);
 }
+// non-monic input: the leading-coefficient scale row follows the constructions rows —
+// also for a linear input, whose chain has no gate (and so no gadget provenance)
+{
+  const { compileChar0 } = await import('../js/compile0.js');
+  for (const [src, lastRow, n] of [['2x + 1', 'P_1', 1], ['3x^3 + 2x + 1', 'P_3', 3], ['1/2x^7 - x^5 + 3x^2 + 2', 'P_7', 7]]) {
+    const r = await compileChar0(src, 'Q');
+    const text = r.mathTextOriginal, rows = text.split('\n');
+    const cs = (await import('../js/polyparse.js')).parsePoly(src, { char2: false }).coeffs;
+    if (!new RegExp(`^${lastRow} `).test(rows[rows.length - 2]) || !/^P += \S+ \* P_\d+ +\(leading-coefficient scale\)$/.test(rows[rows.length - 1]))
+      { console.log(`${src}: scale row missing or misnamed:\n${text}`); fails++; }
+    for (const xv of [new Rat(0n), new Rat(2n), new Rat(-3n, 7n)]) {
+      let want = Rat.ZERO; for (let i = n; i >= 0; i--) want = want.mul(xv).add(cs[i]);
+      const got = evalRows(text, xv); checked++;
+      if (!got.eq(want)) { console.log(`${src} x=${xv}: MISMATCH (got ${got}, want ${want})\n${text}`); fails++; }
+    }
+    console.log(`${src}: ${rows.length} rows — ${rows.map(r => r.split(' ')[0]).join(', ')}`);
+  }
+}
 console.log(`${checked} evaluations, ${fails} failures`);
 if (fails) process.exit(1);
 console.log('CONSTRUCTIONS FORM PASSES');

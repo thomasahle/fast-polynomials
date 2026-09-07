@@ -198,12 +198,25 @@ export function chainMathRows(text) {
   });
 }
 
+// Rendered markup per TeX string.  The page re-renders its whole tree on every
+// keystroke, tab switch and worker reply, and a chain at degree 24 has ~45
+// cells, so without a cache each render re-typesets everything (tens of ms of
+// KaTeX per keystroke).  Rows repeat verbatim between renders — and between a
+// C → math tab switch, which remounts the pane — so a bounded map keyed by the
+// TeX text makes the unchanged ones free; the oldest entries go first once it
+// fills (Map iteration is insertion-ordered).
+const RENDER_CACHE = new Map();
+const RENDER_CACHE_MAX = 4000;
+
 /** Safe synchronous KaTeX rendering. null means the plain-text fallback should be used. */
 export function renderLatex(tex) {
   const katex = globalThis.katex;
   if (!katex || !tex) return null;
+  const hit = RENDER_CACHE.get(tex);
+  if (hit !== undefined) return hit;
+  let markup = null;
   try {
-    return katex.renderToString(tex, {
+    markup = katex.renderToString(tex, {
       displayMode: false,
       output: 'htmlAndMathml',
       throwOnError: true,
@@ -213,6 +226,9 @@ export function renderLatex(tex) {
       strict: code => code === 'htmlExtension' ? 'ignore' : 'error',
     });
   } catch (_) {
-    return null;
+    markup = null;
   }
+  if (RENDER_CACHE.size >= RENDER_CACHE_MAX) RENDER_CACHE.delete(RENDER_CACHE.keys().next().value);
+  RENDER_CACHE.set(tex, markup);
+  return markup;
 }

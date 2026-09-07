@@ -333,6 +333,25 @@ for (const coeffs of [[1, 1, 0, 0, 0, 0, 0, 1], [3, -2, 0.5, 1, -4, 2, 1, 0, 1]]
 }
 console.log(`complex coefficients: ${complexOk}/${complexAttempts} compiled`);
 
+// ---- failure messages read as a clause in the already-named comparison row ----
+// (compare.js stores e.message verbatim and ui.js prints it after the row's own name)
+{
+  const rejected = [
+    ['degree < 3', [1, 2, 1]],
+    ['non-finite coefficient', [1, Number.NaN, 3, 1]],
+    ['non-monic input', [1, 2, 3, 5]],
+  ];
+  for (const [label, coeffs] of rejected) {
+    let msg = null;
+    try { compileBelaga(coeffs); } catch (e) { msg = e.message; }
+    if (msg === null) bad(`${label}: compileBelaga did not reject it`);
+    else if (/^Belaga\b/.test(msg) || /^[A-Z]/.test(msg)) bad(`${label}: message repeats the row name or starts capitalised: "${msg}"`);
+  }
+  for (const [msg] of failMsgs) {
+    if (msg.includes('Belaga: ')) bad(`a compile failure repeats the row name: "${msg}"`);
+  }
+}
+
 // ---- report ----
 console.log('--- Belaga scheme test ---');
 for (const band of ['3-8', '9-16', '17-24']) {

@@ -7,13 +7,18 @@
 // ui.js needs a DOM, structurally checks the automatic-compilation wiring
 // (no Compile button, debounced edits, cancel-while-busy, compile on load).
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { handleMessage, replyNumeric } from '../js/worker.js';
+import { parsePoly } from '../js/polyparse.js';
 import { resolveField } from '../js/field.js';
 import { numericMethodsFor } from '../js/compare.js';
 import { tokenizeC, highlightC } from '../js/highlight.js';
 import { graphStats } from '../js/graph.js';
 import { installDom, settle, ShimWorker } from './dom-shim.js';
-import { initialState, initialStateFor, examplesFor, defaultExample } from '../js/uistate.js';
+import { initialState, initialStateFor, examplesFor, defaultExample, tokenizePoly } from '../js/uistate.js';
+import { PAPER_URL, PAPER_TITLE, REFERENCES, referenceFor } from '../js/references.js';
 
 let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
@@ -199,8 +204,21 @@ check(uiSrc.includes('navigator.clipboard') && uiSrc.includes("execCommand('copy
       'clipboard write has an execCommand fallback');
 
 const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-check(indexSrc.includes('id="paper-card"') && indexSrc.includes('href="https://arxiv.org/abs/submit/8036575"') && uiSrc.includes('href="https://arxiv.org/abs/submit/8036575"'),
-  'the paper card and the phone Paper link point at the arXiv submission');
+// the paper's link has one source, references.js PAPER_URL: the phone intro and the
+// "This paper" reference read it, and the static paper card in index.html carries the same URL
+check(/^https:\/\/arxiv\.org\/abs\//.test(PAPER_URL) && referenceFor('ours').url === PAPER_URL &&
+      indexSrc.includes(`href="${PAPER_URL}"`) && uiSrc.includes('href=${PAPER_URL}') && !uiSrc.includes('arxiv.org/abs/'),
+  'the paper card, the phone Paper link and reference [1] share PAPER_URL from references.js');
+// the tooltips too: PAPER_TITLE is derived from PAPER_URL (it names the submission / the arXiv id), so the
+// announcement flip is that one constant — no literal id survives in ui.js, and index.html's static copy is checked equal
+check(PAPER_TITLE.includes(PAPER_URL.split('/').pop()) && uiSrc.includes('title=${PAPER_TITLE}') && !/arXiv submission \d+/.test(uiSrc) &&
+      indexSrc.includes(`title="${PAPER_TITLE}"`),
+  'the Paper links\' tooltips come from PAPER_TITLE, derived from PAPER_URL');
+check(Object.values(REFERENCES).every(r => typeof r.blurb === 'string' && r.blurb.length > 20 && !/verif/i.test(r.blurb)),
+  'every method has a fixed one-line blurb (no verification wording)');
+// ui.js no longer pulls the compilers onto the page thread: only the dependency-free method list
+check(uiSrc.includes("from './methodlist.js'") && !uiSrc.includes("from './compare.js'"),
+  'ui.js imports the method names from methodlist.js, not compare.js');
 check(indexSrc.includes('<b>Fast Evaluation of Polynomials with Rational Preprocessing</b>'),
       'paper card heading');
 check(indexSrc.includes('js/vendor/katex/katex.min.css') &&
@@ -218,6 +236,79 @@ check(indexSrc.includes('id="github-star-count"') && indexSrc.includes('viewBox=
 check(githubStarsSrc.includes('https://api.github.com/repos/thomasahle/fast-polynomials') &&
       githubStarsSrc.includes('stargazers_count'),
       'star count comes from the public GitHub repository API');
+// page metadata: description / Open Graph / Twitter card (text only: no image exists
+// in the tree), canonical, a theme-color per theme, a <main> landmark, and GA4
+// reporting the page without the hash fragment (which carries the polynomial)
+check(/<meta name="description"\s+content="[^"]{60,}"/.test(indexSrc) && /<meta property="og:title" content="Fast Polynomial Evaluation/.test(indexSrc) &&
+      /<meta property="og:description"/.test(indexSrc) && /<meta property="og:url" content="https:\/\/thomasahle\.com\/fast-polynomials\/"/.test(indexSrc) &&
+      /<link rel="canonical" href="https:\/\/thomasahle\.com\/fast-polynomials\/"/.test(indexSrc) &&
+      /<meta name="twitter:card" content="summary"/.test(indexSrc) && !/og:image/.test(indexSrc),
+      'index.html carries description, Open Graph and Twitter card metas (no fabricated image)');
+check(/<meta name="theme-color" media="\(prefers-color-scheme: light\)" content="#f7f6f2"/.test(indexSrc) &&
+      /<meta name="theme-color" media="\(prefers-color-scheme: dark\)" content="#191817"/.test(indexSrc),
+      'theme-color metas match style.css --bg for both themes');
+check(indexSrc.includes('<main id="app"></main>') && !indexSrc.includes('<div id="app">'), 'the app renders into a <main> landmark');
+check(/gtag\('config', 'G-40XB6Q54CE', \{ page_location: location\.origin \+ location\.pathname \}\)/.test(indexSrc),
+      'GA4 page_location omits the hash fragment');
+check(indexSrc.includes('Simply type a polynomial below') && !indexSrc.includes('Simple type') &&
+      indexSrc.includes('&lfloor;<i>n</i>/2&rfloor;+1</span> multiplications suffice for any monic') &&
+      indexSrc.includes('one more for a general one') && indexSrc.includes('<i>n</i>−1</span> if it is monic'),
+      'the desktop intro counts agree with the table (n / n−1 monic for Horner, ⌊n/2⌋+1 monic / one more general)');
+check(indexSrc.includes('data-paper-link href="') &&
+      /import \{ PAPER_URL, PAPER_TITLE \} from '\.\/js\/references\.js';\s*for \(const a of document\.querySelectorAll\('\[data-paper-link\]'\)\) \{ a\.href = PAPER_URL; a\.title = PAPER_TITLE; \}/.test(indexSrc),
+      'the paper card takes its href and title from references.js at load (the static copies are the fallback)');
+// modulepreload hints: exactly the worker's module closure minus what the page itself imports
+{
+  const site = resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const closure = entry => {
+    const seen = new Set(), stack = [resolve(site, entry)];
+    while (stack.length) {
+      const f = stack.pop();
+      if (seen.has(f)) continue;
+      seen.add(f);
+      const src = readFileSync(f, 'utf8');
+      const re = /(?:import|export)\s*(?:[^'"]*?\s*from\s*)?['"](\.[^'"]+)['"]|import\(\s*['"](\.[^'"]+)['"]\s*\)/g;
+      let m;
+      while ((m = re.exec(src))) stack.push(resolve(dirname(f), m[1] ?? m[2]));
+    }
+    return [...seen].map(f => relative(site, f));
+  };
+  const pageScripts = [...indexSrc.matchAll(/<script type="module" src="([^"]+)"/g)].map(m => m[1]);
+  const page = new Set(pageScripts.flatMap(closure));
+  const workerOnly = closure('js/worker.js').filter(f => !page.has(f)).sort();
+  const preloads = [...indexSrc.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(m => m[1]).sort();
+  eq(preloads, workerOnly, 'index.html modulepreloads exactly the worker-only module closure');
+  check(pageScripts.includes('js/ui.js') && workerOnly.includes('js/worker.js') && workerOnly.includes('js/char0/core.js') &&
+        !workerOnly.includes('js/methodlist.js') && !page.has('js/compare.js'),
+        'the page thread loads methodlist.js but no compiler; the workers load compare.js and core.js');
+}
+// the vendored Preact + htm bundle: its provenance header names the version, and the
+// bundle below the header still hashes to the recorded sha256 (an upgrade must update both)
+{
+  const vendored = readFileSync(new URL('../js/vendor/preact-htm.module.js', import.meta.url), 'utf8');
+  const header = /^(?:\/\/[^\n]*\n)+/.exec(vendored)?.[0] ?? '';
+  const recorded = /sha256[^\n]*\n\/\/ ([0-9a-f]{64})/.exec(header)?.[1];
+  const actual = createHash('sha256').update(vendored.slice(header.length)).digest('hex');
+  check(header.includes('htm@3.1.1') && header.includes('preact/standalone.module.js') && recorded === actual,
+        `vendored bundle provenance: htm@3.1.1 recorded, body sha256 ${actual.slice(0, 12)}… matches the header`);
+}
+// the input highlighter's number grammar (uistate.tokenizePoly) agrees with the parser
+// on every literal below: one 'num' token iff parsePoly accepts `<lit>*x`
+{
+  const literals = ['3', '1/2', '0.25', '.5', '1.5e-3', '2e3', '1e-3', '3.', '3.e2', '0x1f',
+    'i', '2i', '1/2i', '0.5i', '(1+2i)', '(1/2-3/4i)', '(2-i)', '(-i)', '(1/2)i', '(-1/2)*i', '(0+1i)'];
+  for (const lit of literals) {
+    const toks = tokenizePoly(lit);
+    const oneNum = toks.length === 1 && toks[0].type === 'num';
+    let parses = true;
+    try { parsePoly(`${lit}*x`, { complex: /i/.test(lit) }); } catch { parses = false; }
+    check(oneNum && parses, `highlighter and parser both accept the literal ${lit}`);
+  }
+  for (const bad of ['1.5.2', 'x', '0x', '1//2', '0X1F']) {
+    const toks = tokenizePoly(bad);
+    check(!(toks.length === 1 && toks[0].type === 'num'), `highlighter does not paint ${bad} as one number`);
+  }
+}
 
 const typeInto = async (ta, text) => { ta.value = text; ta.dispatch('input'); };
 // the messages of the most recent job (highest id), its main part first
@@ -257,22 +348,45 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
 
 // desktop ------------------------------------------------------------------
 {
-  const { app } = installDom({ compact: false });
+  const { app, history: shimHistory } = installDom({ compact: false });
   await import('../js/ui.js?layout=desktop');
   await settle();
   const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
   check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'Q',
         'desktop boots on the initial example (He_7 over ℚ) with its field pill on');
-  eq($$('#examples a.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'hermite'], 'desktop shows every chip');
+  eq($$('#examples button.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'hermite'], 'desktop shows every chip');
+  check($$('#examples .chip').every(c => c.localName === 'button' && c.getAttribute('type') === 'button') &&
+        $('#examples').getAttribute('role') === 'group', 'example chips are real buttons (keyboard reachable) in a labelled group');
+  // ARIA state on the pill rows and the stepper (screen readers hear which is on)
+  check($('#mode').getAttribute('role') === 'group' && $('#mode').getAttribute('aria-label') === 'Field' &&
+        $('#mode button[data-mode="Q"]').getAttribute('aria-pressed') === 'true' &&
+        $('#mode button[data-mode="R"]').getAttribute('aria-pressed') === 'false' &&
+        $('#mode button[data-mode="gf64"]').getAttribute('aria-label') === 'GF(2^64)' &&
+        $('#mode button[data-mode="p61"]').getAttribute('aria-label') === 'GF(2^61−1)',
+        'field pills carry aria-pressed and spelled-out accessible names');
+  check($('#deg-minus').getAttribute('aria-label') === 'decrease degree' && $('#deg-plus').getAttribute('aria-label') === 'increase degree' &&
+        /extra scalar multiplication/.test($('#monic').getAttribute('title')),
+        'the degree stepper is named and the monic toggle explains the non-monic cost');
+  check($('#error') && $('#error').getAttribute('aria-live') === 'polite' && $('#error').textContent === '' &&
+        $('#poly-in').getAttribute('aria-invalid') === null,
+        'the error line is an always-mounted polite live region, empty while the input is fine');
+  check($('#main h2.sr-only')?.textContent === 'Your polynomial', 'the input card has a (visually hidden) heading');
   check($('#monic') && $('#degree') && $('.head-row #share') && !$('#pickers') && !$('.intro-compact'),
         'desktop has the monic toggle, degree stepper and Share in the head row; no dropdowns or phone intro');
   check(ShimWorker.instances.length === 2 && messageCount() === 1 && allMessages().length === 2 &&
         ShimWorker.instances.map(w => w.messages[0].part).join(',') === 'main,numeric' &&
         JSON.stringify(ShimWorker.instances[0].messages[0]) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q', part: 'main' }),
         'the first load over ℚ compiles the initial example through a main and a numeric worker');
-  check(!$('#busy') && !$('#cancel') && !$('#out'), 'no busy row while the first job runs (nothing to show yet, nothing to shift)');
+  check($('#busy') && $('#busy #cancel') && !$('#out'), 'while the first job runs with nothing to show, a busy row offers Cancel');
+  check($('#job-status').getAttribute('role') === 'status' && $('#job-status').getAttribute('aria-live') === 'polite' && $('#job-status #busy') &&
+        $('#busy').getAttribute('role') === null && $('#busy .spinner').getAttribute('aria-hidden') === 'true' && $('#busy').textContent.includes('compiling'),
+        'the busy row sits in the always-mounted job-status region (only its text changes); its spinner is decorative');
   const firstWorkers = ShimWorker.instances.slice();
-  $('a.chip[data-ex="ln"]').click(); await settle();
+  // a click the reducer ignores (the field pill that is already on) must not touch the workers
+  $('#mode button[data-mode="Q"]').click(); await settle();
+  check(firstWorkers.every(w => !w.terminated) && ShimWorker.instances.length === 2 && messageCount() === 1 && $('#busy'),
+        'a no-op click while a job runs leaves its workers running (no stuck stale page)');
+  $('button.chip[data-ex="ln"]').click(); await settle();
   check(firstWorkers.every(w => w.terminated) && ShimWorker.instances.length === 4, 'a new job while one runs terminates its workers and starts fresh ones');
   check($('#poly-in').value === examplesFor('Q', 7, 0, true).find(e => e.key === 'ln').src &&
         lastMessage()?.src === $('#poly-in').value, 'a chip fills the input and compiles it');
@@ -281,6 +395,16 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check($('.deg-n').textContent === 'degree 8' && messageCount() === before + 1 &&
         lastMessage().src === examplesFor('Q', 8, 0, true).find(e => e.key === 'ln').src,
         'the degree stepper regenerates the held chip and compiles');
+  // the stepper's ends: at degree 3 the − button is aria-disabled (dimmed, still focusable so its tooltip says why) and inert
+  check($('#deg-minus').getAttribute('aria-disabled') === 'false' && $('#deg-plus').getAttribute('aria-disabled') === 'false', 'mid-range both stepper buttons are live');
+  for (let i = 0; i < 5; i++) { $('#deg-minus').click(); await settle(); }
+  const atMin = messageCount();
+  check($('.deg-n').textContent === 'degree 3' && $('#deg-minus').getAttribute('aria-disabled') === 'true' && $('#deg-plus').getAttribute('aria-disabled') === 'false' &&
+        /smallest/.test($('#deg-minus').getAttribute('title')), 'at the smallest degree the − button is aria-disabled and says so');
+  $('#deg-minus').click(); await settle();
+  check(messageCount() === atMin && $('.deg-n').textContent === 'degree 3', 'clicking it posts nothing');
+  for (let i = 0; i < 5; i++) { $('#deg-plus').click(); await settle(); }
+  check($('.deg-n').textContent === 'degree 8' && $('#deg-minus').getAttribute('aria-disabled') === 'false', 'stepping back up re-enables it');
   $('#monic').click(); await settle();
   check(!$('#monic').classList.contains('on') && $('#monic').getAttribute('aria-pressed') === 'false' &&
         $('#poly-in').value === examplesFor('Q', 8, 0, false).find(e => e.key === 'ln').src,
@@ -295,6 +419,20 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   await typeInto($('#poly-in'), 'x^4 + 1');
   $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
   check(lastMessage().src === 'x^4 + 1', 'Cmd/Ctrl+Enter compiles at once');
+  // Cancel retires the job: its workers are terminated (in the job effect), nothing new is posted
+  const cancelled = ShimWorker.instances.filter(w => !w.terminated), nCancel = messageCount();
+  $('#cancel').click(); await settle();
+  check(cancelled.length === 2 && cancelled.every(w => w.terminated) && !$('#busy') && !$('#cancel') && messageCount() === nCancel,
+        'Cancel terminates the running workers and posts no job');
+  check(!$('#out') && $('#job-status').textContent.includes('compilation cancelled') && /Ctrl\+Enter or edit/.test($('#job-status').textContent) &&
+        $('#error').textContent === '' && $('#poly-in').getAttribute('aria-invalid') === null,
+        'with nothing mounted the status line explains the empty page after Cancel — not as an error');
+  // an edit that is reverted within the debounce still recompiles: the cancelled text is not the mounted output's
+  await typeInto($('#poly-in'), 'x^4 + 1 '); await typeInto($('#poly-in'), 'x^4 + 1'); await settle(650);
+  check(messageCount() === nCancel + 1 && lastMessage().src === 'x^4 + 1' && $('#busy') && !$('#job-status').textContent.includes('cancelled'),
+        'after Cancel an edit-and-revert compiles the same text again (a fresh job) and drops the note');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check(messageCount() === nCancel + 2 && lastMessage().src === 'x^4 + 1' && $('#busy'), 'Cmd/Ctrl+Enter compiles again after Cancel too');
 
   // over ℚ the numeric methods arrive from their own worker: spinners meanwhile
   await replyPart('main');
@@ -325,6 +463,56 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(doneNum && !doneNum.terminated && doneNum.messages.length === 2, 'a numeric worker whose every reply arrived is idle: a new job reuses it');
   await replyPart('main'); await replyPart('numeric');
   check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'), 'the reused worker\'s replies land');
+  check(!$('#out').classList.contains('stale') && !$('#cancel') && $('#job-status').textContent === '' && $('#job-status').getAttribute('role') === 'status',
+        'an idle page with every row filled is neither stale nor cancellable; the job-status region stays mounted, empty');
+  // stale-while-revalidate for a numeric method: its last chain stays mounted and dims
+  // while the new job's numeric worker computes, instead of collapsing to a spinner
+  $('#methods button[data-m="Knuth–Eve"]').click(); await settle();
+  const keChain = $('#chain')?.textContent;
+  check($('#methods button.on')?.dataset.m === 'Knuth–Eve' && keChain && !$('.pending-pane'), 'Knuth–Eve is selected with its chain shown');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check($('#out').classList.contains('stale') && $('.pane-actions #cancel') && $('#chain')?.textContent === keChain,
+        'a running job dims the mounted output and offers Cancel in the pane corner');
+  await replyPart('main');
+  check($$('#compare td.pending').length === 2 && $('#out').classList.contains('stale') && !$('.pending-pane') &&
+        $('#chain')?.textContent === keChain && !$('#cancel'),
+        'after the main reply the selected numeric method keeps its previous chain, dimmed, while its row is pending');
+  check(!$('#download'), 'Download is withheld while the pane shows the previous chain (the archive would hold another polynomial\'s selected.c)');
+  await replyPart('numeric');
+  check(!$('#out').classList.contains('stale') && !$('#compare td.pending') && $('#chain')?.textContent === keChain && $('#download'),
+        'the numeric reply fills the row and the output is current again (Download back)');
+  // Cancel after a superseding job: the kept result's pending rows settle (their worker is gone), and
+  // every view of the result — pane, chips, table — dims under a status note until the next job
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  await replyPart('main');
+  check($$('#compare td.pending').length === 2 && $('#methods.stale') && $('#footer-stats.stale') && $('#out.stale'),
+        'a pending phase dims the chips and the table along with the pane');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();   // job B: the numeric worker of job A is terminated
+  $('#cancel').click(); await settle();
+  check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane') && !$('#cancel') && !$('#busy'),
+        'after Cancel no spinner is left: the orphaned numeric rows are settled');
+  check($('#out').classList.contains('stale') && $('#methods').classList.contains('stale') && $('#footer-stats').classList.contains('stale') &&
+        $('#job-status').textContent.includes('compilation cancelled') && $('#error').textContent === '',
+        'the kept output reads as stale everywhere and the status line says the compilation was cancelled');
+  check($('#methods button.on')?.dataset.m === 'ours' && $('#compare tr[data-m="Knuth–Eve"]')?.classList.contains('off') &&
+        /cancelled/.test($('#compare tr[data-m="Knuth–Eve"] .why')?.textContent ?? ''),
+        'the selected numeric method, now not computed, is deselected in favour of ours; its row says why');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  await replyPart('main'); await replyPart('numeric');
+  $('#methods button[data-m="Knuth–Eve"]').click(); await settle();
+  check(!$('#out').classList.contains('stale') && !$('#methods').classList.contains('stale') && $('#job-status').textContent === '' &&
+        $('#methods button.on')?.dataset.m === 'Knuth–Eve' && $('#chain')?.textContent === keChain,
+        'the next compile clears the note and the dimming; Knuth–Eve is back');
+  check($('#compare tr[data-m="Knuth–Eve"] td .rel-err') && /e-\d+$/.test($('#compare tr[data-m="Knuth–Eve"] td .rel-err').textContent) &&
+        !$('#compare tr[data-m="Knuth–Eve"] td.warn') && !$('#compare tr[data-m="Horner"] .rel-err'),
+        'a ≈ numeric row shows its measured rounding error in the exact column (not flagged when tiny); exact rows show none');
+  check($('#cmp-caption')?.textContent.includes('scalar') && $('#cmp-caption').textContent.includes('depth') &&
+        $$('#cmp-notes li').some(li => li.textContent.startsWith('Knuth–Eve') && li.textContent.includes('coefficient adaptation')) &&
+        !$('#cmp-notes').textContent.includes('verified'),
+        'the caption explains the columns and the rows\' notes are listed under the table, without verification wording');
+  check($('#compare tr[data-m="Horner"] td.m').getAttribute('title')?.includes('n multiplications') &&
+        $('#methods button[data-m="Horner"]').getAttribute('title') === referenceFor('Horner').blurb,
+        'method cells and chips carry the one-line blurb as their tooltip');
   $('#methods button[data-m="ours"]').click(); await settle();
 
   $('#mode button[data-mode="gf64"]').click(); await settle();
@@ -344,27 +532,71 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check($('#copy') && $('#download') && !$('.pane-actions #share'), 'desktop pane: Copy and Download, Share stays in the head row');
   $('#methods button[data-m="Horner"]').click(); await settle();
   check($('#methods button.on')?.dataset.m === 'Horner' && $('#compare tr.on')?.dataset.m === 'Horner', 'a method chip selects the method and its row');
+  check($('#methods').getAttribute('role') === 'group' && $('#methods button[data-m="Horner"]').getAttribute('aria-pressed') === 'true' &&
+        $('#methods button[data-m="ours"]').getAttribute('aria-pressed') === 'false', 'method chips carry aria-pressed');
   $('#compare tr[data-m="Estrin"]').click(); await settle();
   check($('#methods button.on')?.dataset.m === 'Estrin', 'a table row selects its method');
+  // rows are keyboard-selectable: focusable, Enter / Space select, aria-selected follows
+  check($('#compare tr[data-m="Horner"]').getAttribute('tabindex') === '0' && $('#compare tr[data-m="Estrin"]').getAttribute('aria-selected') === 'true' &&
+        $('#compare tr[data-m="Horner"]').getAttribute('aria-selected') === 'false' && $('#compare tr[data-m="Pan"]')?.getAttribute('tabindex') === null,
+        'enabled comparison rows are focusable with aria-selected; rejected rows are not');
+  $('#compare tr[data-m="Horner"]').dispatch('keydown', { key: 'Enter' }); await settle();
+  check($('#methods button.on')?.dataset.m === 'Horner', 'Enter on a focused row selects its method');
+  $('#compare tr[data-m="Estrin"]').dispatch('keydown', { key: ' ' }); await settle();
+  check($('#methods button.on')?.dataset.m === 'Estrin', 'Space on a focused row selects its method');
+  check($('#compare caption.sr-only')?.textContent.includes('Comparison') && $('#references').getAttribute('aria-label') === 'references' &&
+        $$('#compare th .abbr').every(a => a.getAttribute('aria-hidden') === 'true'),
+        'the table has a caption, the references a label, and the phone header abbreviations are hidden from AT');
+  check($('#view').getAttribute('role') === 'tablist' && $$('#view button').every(b => b.getAttribute('role') === 'tab') &&
+        $('#view button[data-view="math"]').getAttribute('aria-selected') === 'true' && $('#view button[data-view="c"]').getAttribute('aria-selected') === 'false',
+        'the view tabs are a tablist with aria-selected on the current view');
+  // the complete tab pattern: ids + aria-controls to the pane (a tabpanel labelled by the selected tab), a roving tabindex
+  check($$('#view button').every(b => b.getAttribute('aria-controls') === 'pane' && b.getAttribute('id') === `tab-${b.dataset.view}`) &&
+        $('#view button[data-view="math"]').getAttribute('tabindex') === '0' && $('#view button[data-view="c"]').getAttribute('tabindex') === '-1' &&
+        $('#pane').getAttribute('role') === 'tabpanel' && $('#pane').getAttribute('aria-labelledby') === 'tab-math' && $('#pane').getAttribute('tabindex') === '0' &&
+        $('#pane #chain'), 'each tab controls the pane (tabpanel); only the selected tab is in the Tab order');
+  $('#view').dispatch('keydown', { key: 'ArrowRight' }); await settle();
+  check($('#view button.on')?.dataset.view === 'c' && $('#view button[data-view="c"]').getAttribute('tabindex') === '0' &&
+        $('#view button[data-view="math"]').getAttribute('tabindex') === '-1' && $('#pane').getAttribute('aria-labelledby') === 'tab-c',
+        'ArrowRight moves the selection (and the tab stop) to the next view');
+  $('#view').dispatch('keydown', { key: 'End' }); await settle();
+  check($('#view button.on')?.dataset.view === 'graph', 'End selects the last view');
+  $('#view').dispatch('keydown', { key: 'ArrowRight' }); await settle();
+  check($('#view button.on')?.dataset.view === 'math', 'ArrowRight wraps around');
+  $('#view').dispatch('keydown', { key: 'ArrowLeft' }); await settle();
+  check($('#view button.on')?.dataset.view === 'graph', 'ArrowLeft wraps the other way');
+  $('#view').dispatch('keydown', { key: 'Home' }); await settle();
+  check($('#view button.on')?.dataset.view === 'math', 'Home selects the first view');
+  $('#view').dispatch('keydown', { key: 'Tab' }); await settle();
+  check($('#view button.on')?.dataset.view === 'math', 'other keys leave the selection alone');
   $('#view button[data-view="c"]').click(); await settle();
   check($('#view button.on')?.dataset.view === 'c' && $('#chain').innerHTML.includes('Code generated from'), 'the C tab shows the generated source with its header');
+  check($('#view button[data-view="c"]').getAttribute('aria-selected') === 'true' && $('#view button[data-view="math"]').getAttribute('aria-selected') === 'false',
+        'aria-selected follows the view');
   $('#view button[data-view="graph"]').click(); await settle();
-  check($('#graph') && $('#graph-legend'), 'the graph tab shows the SVG pane and legend');
+  check($('#graph') && $('#graph-legend') && $('.graph-pane-wrap #graph') && !$('#graph-scroll-cue'),
+        'the graph tab shows the SVG pane and legend (no scroll cue without a layout to measure)');
   $('#view button[data-view="math"]').click(); await settle();
-  $('#view-sub a[data-opt="original"]').click(); await settle();
-  check($('#view-sub a[data-opt="original"]').classList.contains('on'), 'a sub-option toggles');
+  check($$('#view-sub .strip').every(st => st.getAttribute('role') === 'group' && st.getAttribute('aria-label')) &&
+        $$('#view-sub button').every(b => b.getAttribute('type') === 'button' && /^(true|false)$/.test(b.getAttribute('aria-pressed'))) &&
+        $('#view-sub button[data-opt="factor"]').getAttribute('aria-pressed') === 'true',
+        'sub-option strips are labelled groups of buttons with aria-pressed');
+  $('#view-sub button[data-opt="original"]').click(); await settle();
+  check($('#view-sub button[data-opt="original"]').classList.contains('on') && $('#view-sub button[data-opt="original"]').getAttribute('aria-pressed') === 'true' &&
+        $('#view-sub button[data-opt="factor"]').getAttribute('aria-pressed') === 'false', 'a sub-option toggles (class and aria-pressed)');
   $('#share').click(); await settle();
-  check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied'),
-        'Share writes the state hash to the URL and flashes "copied"');
+  check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied') &&
+        shimHistory.entries === 0,
+        'Share writes the state hash to the URL in place (replaceState, no history entry) and flashes "copied"');
 
   // ℂ: the pill regenerates a held example in the new field and its chips take over
-  $('a.chip[data-ex="sparse"]').click(); await settle();
+  $('button.chip[data-ex="sparse"]').click(); await settle();
   check($('#poly-in').value === examplesFor('gf64', 8, 0, true).find(e => e.key === 'sparse').src, 'a GF(2^64) chip is held before switching');
   $('#mode button[data-mode="C"]').click(); await settle();
   check($('#mode button.on')?.dataset.mode === 'C' && lastMessage().fieldMode === 'C' && lastMessage().lane === 'char0' &&
         $('#poly-in').value === defaultExample('C', 8, 0, true).src && $('#poly-in').value.includes('(0+1i)x'),
         'the ℂ pill regenerates the held example (e^{ix} with Gaussian coefficients) and compiles it');
-  eq($$('#examples a.chip').map(c => c.dataset.ex), ['expi', 'binomi', 'exp1i', 'gauss'], 'ℂ shows its own chips');
+  eq($$('#examples button.chip').map(c => c.dataset.ex), ['expi', 'binomi', 'exp1i', 'gauss'], 'ℂ shows its own chips');
   check($$('.poly-hl .in-num').some(t => t.textContent === '(0+1i)'), 'the input backdrop paints the Gaussian literal as a number');
   await replyPart('main');
   check($$('#methods button.pending').length === 3 && $$('#compare td.pending').length === 3 && $('#compare tr[data-m="Belaga"] td.pending'),
@@ -380,11 +612,34 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check($('#out') && $('#compare tr[data-m="ours"]') && $$('#compare tbody tr').length >= 4, 'a ℂ compile reply mounts the output and the table');
   check($('#compare tr[data-m="ours"]').textContent.includes('≈ numeric') && $('#compare tr[data-m="Horner"]').textContent.includes('yes'),
         'over ℂ the table reports ours as ≈ numeric and Horner as exact');
+  check($('#compare tr[data-m="ours"] .rel-err') && $('#compare tr[data-m="ours"] td[title*="Gaussian-rational"]'),
+        'over ℂ the paper\'s row shows its rounding error with the complex-double note');
+
+  // a failed compile keeps the last output mounted (dimmed under the error) and
+  // retires the job, terminating the numeric worker still computing it
+  await typeInto($('#poly-in'), 'x^^2 +');
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  const failW = ShimWorker.instances.find(x => x.messages.at(-1)?.part === 'main' && !x.terminated);
+  const failNum = ShimWorker.instances.find(x => x.messages.at(-1)?.part === 'numeric' && !x.terminated);
+  failW.onmessage({ data: { id: failW.messages.at(-1).id, part: 'main', ok: false, message: 'cannot read the polynomial over ℂ: the polynomial ends with a sign' } });
+  await settle();
+  check($('#error')?.textContent.includes('ends with a sign') && $('#out') && $('#out').classList.contains('stale') &&
+        $('#methods').classList.contains('stale') && $('#footer-stats').classList.contains('stale') &&
+        $$('#compare tbody tr').length >= 4 && !$('#busy') && !$('#cancel'),
+        'a parse error keeps the output, chips and table mounted, all dimmed under the error');
+  check(!$('#methods button.pending') && !$('#compare td.pending') && !$('.pending-pane'),
+        'the pending numeric rows of the kept result are settled (their worker was terminated): no frozen spinners under the error');
+  check(failNum.terminated && !failW.terminated, 'the failed job\'s numeric worker is terminated; the idle main worker stays');
+  const nFail = messageCount();
+  await settle(650);
+  check(messageCount() === nFail && !$('#busy') && !$('#cancel'), 'the debounce still pending from the typing does not re-run the compile that just failed');
+  check($('#poly-in').getAttribute('aria-invalid') === 'true' && $('#poly-in').getAttribute('aria-describedby') === 'error',
+        'the textarea is marked invalid and described by the error line while an error stands');
 }
 
 // phones --------------------------------------------------------------------
 {
-  const { app } = installDom({ compact: true });
+  const { app, fire } = installDom({ compact: true });
   await import('../js/ui.js?layout=compact');
   await settle();
   const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
@@ -394,8 +649,11 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(optC && !optC.disabled && optC.textContent.trim() === 'ℂ  complex' &&
         $$('#mode-select option').map(o => o.value).slice(0, 3).join(',') === 'Q,R,C',
         'the phone field dropdown lists ℂ after ℚ and ℝ, enabled, as "ℂ  complex"');
-  check($$('#examples a.chip').length === 3 && !$('#degree') && !$('#monic') && !$('#share') && !$('#mode') && $('.intro-compact'),
+  check($$('#examples button.chip').length === 3 && !$('#degree') && !$('#monic') && !$('#share') && !$('#mode') && $('.intro-compact'),
         'phones: three chips, no stepper / monic / Share yet, dropdowns instead of pills, the intro');
+  const intro = $('.intro-compact .sub').textContent.replace(/\s+/g, ' ');
+  check(intro.includes('once and ⌊n/2⌋+1 suffice for any monic polynomial') && intro.includes('(n−1 if it is monic)') &&
+        intro.includes('one more for a general one'), 'the phone intro states the same counts as the desktop intro');
   eq($$('.quick-links a').map(a => a.textContent.trim().replace(/\s+/g, ' ')), ['Paper', 'GitHub'], 'phone intro links');
   const toggle = $('.quick-links .theme-toggle');
   check(toggle && /switch to the dark theme/.test(toggle.getAttribute('aria-label') ?? ''), 'the phone intro has the day / night toggle, offering dark while light');
@@ -413,12 +671,50 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   await replyToLatest();
   check($('.out-card #out') && $('.pane-actions #share') && $('.pane-actions #copy') && !$('#download'),
         'phone output card: Share floats beside Copy, no Download');
-  check($('#stats-line').textContent.startsWith('3 mul') && $('#cmp-card') && !$('#cmp-card').open && $$('#compare tbody tr').length >= 4,
-        'phone stats line and the collapsed comparison card');
+  check(/^3 multiplications(?: \(\d scalar\))? · \d+ additions · mult\. depth \d+$/.test($('#stats-line').textContent) &&
+        $('#cmp-card') && !$('#cmp-card').open && $$('#compare tbody tr').length >= 4,
+        `phone stats line in words and the collapsed comparison card (${$('#stats-line').textContent})`);
+  eq($$('#method-select option').map(o => o.textContent).slice(0, 4), ['Paper (3)', 'Horner (4)', 'Estrin (5)', 'R–W (5)'],
+     'the phone Method dropdown uses short names so the count stays visible');
+  // Copy hands out ASCII: the displayed chain keeps U+2212 / U+00B7
+  const shown = $('#chain').textContent;
+  let copiedText = null;
+  globalThis.navigator.clipboard = { writeText: t => { copiedText = t; return Promise.resolve(); } };
+  $('#copy').click(); await settle();
+  check(shown.includes('−') && copiedText === shown.replace(/−/g, '-').replace(/·/g, '*') && !/[−·]/.test(copiedText),
+        'Copy in the math view writes an ASCII minus and asterisk');
+  delete globalThis.navigator.clipboard;
   eq($$('#view-sub .strip').map(s => s.dataset.strip), ['form'], 'phones hide the constants strip');
   const msel = $('#method-select'); msel.value = 'Knuth–Eve'; msel.dispatch('change'); await settle();
   check($('#compare tr.on')?.dataset.m === 'Knuth–Eve' && /\d\.\d{2,5}\b/.test($('#chain').textContent) && !/\d\.\d{7,}/.test($('#chain').textContent),
         'the method dropdown selects a method; a numeric row shows six-digit constants on phones');
+  check(/· ≈ real roots \(numeric\)$/.test($('#stats-line').textContent), `the stats line ends with the row's own inexact reason (${$('#stats-line').textContent})`);
+  // Share links the state as chosen: the phone's readable-constants presentation (numfmt=decimal) never travels in the link
+  $('.pane-actions #share').click(); await settle();
+  check(location.hash.includes('method=Knuth%E2%80%93Eve') && location.hash.includes('numfmt=exact') && !location.hash.includes('numfmt=decimal'),
+        `phone Share writes the un-presented state (${location.hash})`);
+  // while a job runs the phone's other views of the result dim with the pane
+  $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
+  check($('#out').classList.contains('stale') && $('#stats-line').classList.contains('stale') && $('#method-picker').classList.contains('stale'),
+        'while the job runs the phone stats line and Method dropdown dim with the output');
+  await replyToLatest();
+  check(!$('#out').classList.contains('stale') && !$('#stats-line').classList.contains('stale') && !$('#method-picker').classList.contains('stale'),
+        'and are current again once the replies land');
+  // a hash change after boot restores the shared state and compiles it
+  const nBefore = messageCount();
+  location.hash = '#mode=p89&deg=7';
+  fire('hashchange'); await settle();
+  check($('#mode-select').value === 'p89' && $('#poly-in').value === defaultExample('p89', 7, 0, true).src &&
+        messageCount() === nBefore + 1 && lastMessage().fieldMode === 'p89' && lastMessage().src === $('#poly-in').value,
+        'a hashchange after boot restores the state from the URL and compiles it');
+  check(!$('#input-hint'), 'no input hint for a held example');
+  await typeInto($('#poly-in'), 'x^30 + 1'); await settle();
+  check(!$('#input-hint'), 'no degree hint over a Mersenne field');
+  const fsel = $('#mode-select'); fsel.value = 'R'; fsel.dispatch('change'); await settle();
+  check($('#input-hint')?.textContent.includes('degree 30') && $('#input-hint').textContent.includes('minutes') && !$('#input-hint').textContent.includes('Cancel'),
+        'typed input of degree > 26 over ℝ shows the slow-preprocessing hint under the input');
+  await typeInto($('#poly-in'), 'x^40 + 1'); await settle();
+  check(!$('#input-hint'), 'no hint for a degree the worker refuses at once (the error line will say so)');
 }
 
 // a shared link boots the shared state -------------------------------------

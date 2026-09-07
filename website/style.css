@@ -7,9 +7,10 @@
   --accent: #8a4b2d; --accent-soft: #f2e4da; --border: #e2ddd2;
   --mono-bg: #fbfaf7;                 /* the editable input */
   --out-bg: #f0ece3; --out-border: #d9d2c4;   /* the generated output pane: clearly not an input */
-  --good: #2e6e4e; --pivot: #b0692f;
-  /* C syntax colours */
-  --hl-comment: #7a7466; --hl-preproc: #7a4d9c; --hl-string: #9a5b1e;
+  --good: #2e6e4e; --error: #b03030;   /* error text: 6.3:1 on the panel */
+  --pivot: #8a5800;   /* the rounding-error warning in the table: 5.6:1 on the page, 6.0:1 on the panel, 5.8:1 on a hovered row */
+  /* C syntax colours (comments ≥ 4.5:1 on --out-bg: 4.9 light, 4.7 dark) */
+  --hl-comment: #6a655a; --hl-preproc: #7a4d9c; --hl-string: #9a5b1e;
   --hl-number: #1f5f9f; --hl-keyword: #8a4b2d; --hl-type: #2e6e4e; --hl-fn: #2a4f8f;
   /* input polynomial colours */
   --in-num: #1f5f9f; --in-var: #8a4b2d;
@@ -20,8 +21,8 @@
     --accent: #d69a71; --accent-soft: #3a2c22; --border: #383430;
     --mono-bg: #171614;
     --out-bg: #2a2724; --out-border: #403b35;
-    --good: #7fc9a2; --pivot: #dfa065;
-    --hl-comment: #8f887b; --hl-preproc: #c39bde; --hl-string: #e0a568;
+    --good: #7fc9a2; --pivot: #dfa065; --error: #ef8a7a;   /* 6.7:1 on the dark panel */
+    --hl-comment: #98917f; --hl-preproc: #c39bde; --hl-string: #e0a568;
     --hl-number: #8fb9ea; --hl-keyword: #d69a71; --hl-type: #7fc9a2; --hl-fn: #9db7e8;
     --in-num: #8fb9ea; --in-var: #d69a71;
   }
@@ -31,8 +32,8 @@
   --accent: #d69a71; --accent-soft: #3a2c22; --border: #383430;
   --mono-bg: #171614;
   --out-bg: #2a2724; --out-border: #403b35;
-  --good: #7fc9a2; --pivot: #dfa065;
-  --hl-comment: #8f887b; --hl-preproc: #c39bde; --hl-string: #e0a568;
+  --good: #7fc9a2; --pivot: #dfa065; --error: #ef8a7a;   /* 6.7:1 on the dark panel */
+  --hl-comment: #98917f; --hl-preproc: #c39bde; --hl-string: #e0a568;
   --hl-number: #8fb9ea; --hl-keyword: #d69a71; --hl-type: #7fc9a2; --hl-fn: #9db7e8;
   --in-num: #8fb9ea; --in-var: #d69a71;
 }
@@ -42,6 +43,13 @@ body {
   font: 16px/1.55 Charter, Georgia, 'Times New Roman', serif;
 }
 .wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+/* visually hidden, read by assistive tech: the sub-headings, the table caption,
+   the full column names on phones */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.nowrap { white-space: nowrap; }   /* inline formulas never line-break */
 /* day / night: one button shows the theme it would switch TO — the moon while
    the page is light, the sun while it is dark (system preference or explicit) */
 .theme-toggle {
@@ -117,14 +125,19 @@ label.head { display: block; font-weight: 700; }
 
 /* example chips, regenerated at the chosen degree */
 .examples { display: inline-flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-.examples a.chip {
+.examples .chip {
   display: inline-flex; align-items: center;
   border: 1px solid var(--border); border-radius: 999px; background: var(--mono-bg);
-  padding: .14rem .7rem; color: var(--accent); cursor: pointer; font-size: .88rem;
-  user-select: none;
+  padding: .14rem .7rem; color: var(--accent); cursor: pointer; font: inherit; font-size: .88rem;
+  line-height: inherit; user-select: none;
 }
-.examples a.chip:hover { border-color: var(--accent); }
-.examples a.chip .katex { font-size: 1em; line-height: 1; }
+.examples .chip:hover { border-color: var(--accent); }
+.examples .chip:focus-visible, .monic-toggle:focus-visible, .degree button:focus-visible,
+.seg button:focus-visible, .views button:focus-visible, .subopts button:focus-visible,
+button.copy:focus-visible, button.download:focus-visible, button.share:focus-visible,
+button.cancel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg button:focus-visible { outline-offset: -2px; }   /* inside the clipped pill group */
+.examples .chip .katex { font-size: 1em; line-height: 1; }
 .monic-toggle {
   border: 1px solid var(--border); border-radius: 999px; background: transparent;
   padding: .14rem .7rem; color: var(--muted); cursor: pointer; font: inherit;
@@ -139,7 +152,8 @@ label.head { display: block; font-weight: 700; }
   width: 1.55rem; height: 1.55rem; border: 1px solid var(--border); border-radius: 6px;
   background: transparent; color: var(--ink); cursor: pointer; font: inherit; line-height: 1;
 }
-.degree button:hover { border-color: var(--accent); color: var(--accent); }
+.degree button:not([aria-disabled="true"]):hover { border-color: var(--accent); color: var(--accent); }
+.degree button[aria-disabled="true"] { opacity: .45; cursor: default; }   /* at the end of the field's range */
 .degree .deg-n { color: var(--muted); font-size: .88rem; padding: 0 .4rem; white-space: nowrap; }
 
 /* The polynomial input: a transparent textarea stacked over a highlighted
@@ -159,7 +173,7 @@ textarea#poly-in {
   width: 100%; min-height: 4.2rem; resize: vertical;
   color: transparent; caret-color: var(--ink); background: transparent;
 }
-textarea#poly-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+textarea#poly-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }   /* ≥ 3:1 ring */
 textarea#poly-in::selection { background: rgba(138, 75, 45, .28); }
 .poly-edit .poly-hl {
   position: absolute; inset: 0; overflow: hidden; pointer-events: none;
@@ -200,7 +214,26 @@ textarea#poly-in::selection { background: rgba(138, 75, 45, .28); }
 .field-groups .seg { flex-wrap: wrap; max-width: 100%; }   /* narrow screens: a group wraps inside its pill */
 .field-groups .seg button { padding: .42rem .5rem; white-space: nowrap; }
 
-#error { color: #b03030; margin-top: .8rem; white-space: pre-wrap; }
+#error { color: var(--error); margin-top: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+#error:empty { margin: 0; }   /* the live region stays mounted; empty it takes no room */
+/* under the input: the slow-degree warning */
+.input-hint { margin-top: .45rem; color: var(--muted); font-size: .85rem; line-height: 1.4; }
+/* the job status line (an always-mounted live region): a job running with no
+   output to dim — spinner, "compiling…", Cancel — or the note after a Cancel */
+#job-status { margin-top: .9rem; color: var(--muted); font-style: italic; }
+#job-status:empty { margin: 0; }
+.busy-row { display: flex; align-items: center; gap: .55rem; }
+.busy-row .spinner { margin: 0; }
+button.cancel {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+  color: var(--accent); cursor: pointer; font: inherit; font-size: .8rem; font-style: normal;
+  padding: .12rem .6rem;
+}
+button.cancel:hover { border-color: var(--accent); }
+/* in the pane corner Cancel appears only once a recompile has run for a moment
+   (a quick one would flash it for ~30 ms) */
+@keyframes appear { from { visibility: hidden; } to { visibility: visible; } }
+.pane-actions button.cancel { animation: appear .01s linear .2s both; }
 
 /* a numeric method (Knuth–Eve, Pan) still computing in its own worker: a
    small ring on its chip, its table row and — if selected — the pane */
@@ -248,13 +281,13 @@ table.cmp td.pending .spinner { margin-left: 0; margin-right: .3em; }
 .subopts { display: flex; flex-wrap: wrap; gap: .2rem .9rem; align-items: center; font-size: .82rem; color: var(--muted); padding-bottom: .35rem; }
 .subopts .strip { display: inline-flex; gap: .2rem; align-items: center; }
 .subopts .lbl { margin-right: .3rem; }
-.subopts a {
+.subopts button {
   cursor: pointer; padding: .1rem .55rem; border-radius: 999px; border: 1px solid transparent;
-  color: var(--muted); user-select: none;
+  color: var(--muted); user-select: none; background: none; font: inherit; line-height: inherit;
 }
-.subopts a.on { color: var(--accent); border-color: var(--accent); }
-.subopts a.off { opacity: .4; cursor: default; }
-.subopts a:not(.on):not(.off):hover { color: var(--ink); }
+.subopts button.on { color: var(--accent); border-color: var(--accent); }
+.subopts button:disabled { opacity: .55; cursor: default; }
+.subopts button:not(.on):not(:disabled):hover { color: var(--ink); }
 
 /* the pane wrapper anchors Copy + Download to the pane's top-right corner */
 .pane-wrap { position: relative; }
@@ -342,9 +375,19 @@ pre.chain .none { color: var(--muted); font-style: italic; }
 .hl-type    { color: var(--hl-type); }
 .hl-fn      { color: var(--hl-fn); }
 
-/* graph view: the SVG is sized to content; the pane scrolls horizontally */
+/* graph view: the SVG is sized to content; a graph up to ~1.35× the pane shrinks
+   to fit (ui.js GraphPane, class `fit`), a wider one scrolls sideways behind a
+   right-edge fade (class `more` on the wrapper while more lies past the edge)
+   and the legend says so */
+.graph-pane-wrap { position: relative; }
 .graph-pane { padding: .6rem; overflow-x: auto; overflow-y: hidden; }
 .graph-pane svg { display: block; max-width: none; }
+.graph-pane.fit svg { width: 100%; height: auto; }
+.graph-pane-wrap.more::after {
+  content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 3.5rem; pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--out-bg) 85%); border-radius: 0 0 8px 0;
+}
+.graph-legend .lg-scroll { color: var(--accent); }
 .graph-pane .none { color: var(--muted); font-style: italic; padding: .4rem .5rem; }
 .graph-legend {
   display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem;
@@ -374,12 +417,16 @@ table.cmp th, table.cmp td {
   border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
 }
 table.cmp th {
-  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 400;
+  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 400;
   color: var(--muted); padding-bottom: .2rem;
 }
 table.cmp th.m, table.cmp td.m { text-align: left; padding-left: .5rem; }
 table.cmp tbody tr { cursor: pointer; }
-table.cmp tbody tr:hover td { background: var(--mono-bg); }
+table.cmp tbody tr:hover td, table.cmp tbody tr:focus-visible td { background: var(--mono-bg); }
+table.cmp tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+table.cmp td.warn { color: var(--pivot); }             /* measured rounding error above 1e-6 */
+table.cmp .rel-err { color: var(--muted); font-size: .78rem; margin-left: .2rem; font-weight: 400; }
+table.cmp td.warn .rel-err { color: inherit; font-weight: 600; }
 table.cmp tbody tr.on td { font-weight: 700; }
 table.cmp tbody tr.off { cursor: default; color: var(--muted); }
 table.cmp tbody tr.off:hover td { background: none; }
@@ -388,10 +435,18 @@ table.cmp .why { font-size: .78rem; white-space: normal; }
 table.cmp a.ref { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--muted); }
 table.cmp a.ref:hover { color: var(--accent); border-bottom-color: var(--accent); }
 table.cmp .ref-no { color: var(--muted); font-size: .62rem; margin-left: .15rem; font-weight: 400; }
+/* under the table: what the columns count, then each row's own note */
+.cmp-caption, .cmp-notes {
+  max-width: 40rem; margin: .6rem auto 0; color: var(--muted); font-size: .8rem; line-height: 1.45;
+}
+.cmp-caption { padding: 0 .5rem; }
+.cmp-notes { padding-left: 1.4rem; }
+.cmp-notes li { margin-bottom: .15rem; }
+.cmp-notes b { color: var(--ink); font-weight: 600; }
 /* the references behind the methods, numbered as in the method cells */
 .refs {
   max-width: 40rem; margin: .7rem auto 0; padding-left: 1.4rem;
-  color: var(--muted); font-size: .74rem; line-height: 1.4;
+  color: var(--muted); font-size: .8rem; line-height: 1.4;
 }
 .refs li { padding-left: .15rem; margin-bottom: .12rem; }
 .refs a { color: inherit; text-decoration: none; }
@@ -401,7 +456,10 @@ table.cmp th .abbr { display: none; }
   table.cmp { font-size: .82rem; }
   table.cmp th, table.cmp td { padding: .24rem .35rem; }
   table.cmp td.m { white-space: normal; }   /* long method names (Rabin–Winograd) may wrap */
-  table.cmp th .full { display: none; }
+  table.cmp th .full {                        /* still read out in full; sighted users see "mult." */
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
   table.cmp th .abbr { display: inline; }
 }
 button.share {
@@ -413,20 +471,27 @@ button.share {
 button.share:hover { border-color: var(--accent); }
 
 
-/* stale-while-revalidate: while a new job runs the previous output stays
-   mounted and dims briefly (the delay hides the dim on fast compiles) */
-#out { transition: opacity 0.12s ease; }
-#out.stale { opacity: 0.55; transition: opacity 0.15s ease 0.12s; }
+/* stale-while-revalidate: while a new job runs (or a parse error stands, or
+   the last job was cancelled) the previous output stays mounted and dims
+   briefly (the delay hides the dim on fast compiles) — every view of it: the
+   pane, the method chips / dropdown, the comparison table, the phone stats line */
+#out, #methods, #method-picker, #footer-stats, #stats-line { transition: opacity 0.12s ease; }
+#out.stale, #methods.stale, #method-picker.stale, #footer-stats.stale, #stats-line.stale {
+  opacity: 0.55; transition: opacity 0.15s ease 0.12s;
+}
 
 
 /* ---- phones (≤ 640px; ui.js shares the breakpoint) --------------------------
    Header: the title, a short intro and Paper / GitHub ★ n links with the desktop
-   icons (the desktop intro and paper card are hidden); Share floats beside Copy.  Input card: label + three example
-   chips on one line, the auto-growing input, then Field and Method as two
-   dropdowns.  Output card: underline tabs with the form strip beside them, the
-   pane attached right under the tab line with a floating Copy (long rows scroll
-   sideways, as in the C and graph panes), then a stats line.  The comparison
-   table folds into a collapsed "Compare methods" card. */
+   icons (the desktop intro and paper card are hidden).  Input card: label +
+   three example chips on one line, the auto-growing input, then Field and
+   Method as two dropdowns.  Output card: underline tabs with the form strip
+   (pills only, its caption hidden) beside them, then a static right-aligned
+   Copy + Share row at the top of the pane — not floating: a floated corner
+   covered the end of mid-width equation rows, which do not scroll — and the
+   pane body (rows wider than the pane scroll sideways, as in the C and graph
+   panes), then a stats line.  Secondary controls are padded to ≥ 32px tall.
+   The comparison table folds into a collapsed "Compare methods" card. */
 @media (max-width: 640px) {
   .wrap { padding: 1.3rem .85rem 3rem; }
   header { margin-bottom: 0; gap: 0; }
@@ -436,20 +501,20 @@ button.share:hover { border-color: var(--accent); }
   .intro-compact .sub { display: block; font-size: .98rem; line-height: 1.45; }
   .quick-links { display: flex; align-items: center; gap: 1.4rem; margin-top: .6rem; font-size: 1.05rem; }
   .quick-links a { display: inline-flex; align-items: center; gap: .4rem; color: var(--accent); text-decoration: none; font-weight: 600; }
-  .quick-links .theme-toggle { margin-left: auto; width: 2rem; height: 2rem; }
+  .quick-links .theme-toggle { margin-left: auto; width: 2.4rem; height: 2.4rem; }
   .quick-links .stars {
     display: inline-flex; align-items: center; gap: .25rem; margin-left: .2rem; padding-left: .5rem;
     border-left: 1px solid var(--border); color: var(--muted); font-weight: 400; font-size: .92rem;
     font-variant-numeric: tabular-nums;
   }
-  .pane-actions button.share { background: var(--panel); padding: .22rem .65rem; font-size: .85rem; }
+  .pane-actions button.share { background: var(--panel); padding: .3rem .65rem; font-size: .85rem; }
 
   .card { padding: .95rem .9rem 1rem; margin-bottom: .9rem; border-radius: 12px; }
-  .head-row { margin-bottom: .55rem; gap: .4rem .4rem; flex-wrap: nowrap; }
+  .head-row { margin-bottom: .75rem; gap: .4rem .4rem; flex-wrap: nowrap; }
   label.head { font-size: 1rem; white-space: nowrap; }
   .ex-row { margin-left: auto; gap: .35rem; flex-wrap: nowrap; }
   .examples { gap: .3rem; flex-wrap: nowrap; }
-  .examples a.chip { padding: .16rem .45rem; font-size: .82rem; white-space: nowrap; }
+  .examples .chip { padding: .3rem .45rem; font-size: .82rem; white-space: nowrap; }
   /* ≥ 16px in form fields: iOS Safari stops auto-zooming the page on focus */
   .poly-edit .poly-hl, textarea#poly-in { font-size: 16px; padding: .65rem .75rem; }
   textarea#poly-in { min-height: 3.6rem; }
@@ -464,28 +529,36 @@ button.share:hover { border-color: var(--accent); }
     background-repeat: no-repeat; background-position: right .6rem center; background-size: 1rem;
     text-overflow: ellipsis;
   }
-  .picker select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .picker select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .controls > .lbl { flex-basis: 100%; order: -1; margin-left: 0; }   /* busy row etc. */
 
   /* output card: tabs + form strip on one line, the pane attached below */
   .out-card { padding: 0 0 .85rem; overflow: hidden; }
   .out-card .out { margin-top: 0; }
   .viewbar { padding: .1rem .8rem 0; border-bottom: 1px solid var(--out-border); gap: .1rem .5rem; flex-wrap: nowrap; }
-  .views { gap: 0; }
+  .views { gap: 0; flex-shrink: 0; }   /* the tabs never wrap or shrink ("C code" stays one line) */
   .views button {
     border: 0; border-bottom: 2px solid transparent; border-radius: 0; margin: 0 .8rem -1px 0;
     text-transform: none; letter-spacing: 0; font-size: .98rem; padding: .55rem .05rem .45rem;
+    white-space: nowrap;
   }
   .views button.on { background: none; border-color: var(--accent); color: var(--accent); }
-  .subopts { padding: 0 0 .4rem; font-size: .8rem; gap: .2rem .5rem; flex-wrap: nowrap; margin-left: auto; }
-  .subopts .lbl { margin-right: .1rem; font-size: .66rem; }
-  .subopts a { padding: .08rem .45rem; }
+  .subopts { padding: 0 0 .4rem; font-size: .8rem; gap: .2rem .5rem; flex-wrap: nowrap; margin-left: auto; min-width: 0; }
+  .subopts .lbl { display: none; }     /* "factor | original" is self-explanatory; the room goes to the tabs at 360px */
+  .subopts button { padding: .28rem .45rem; }
   .pane-wrap { margin: 0; }
   .out-card .chain, .out-card .graph-pane { border-left: 0; border-right: 0; border-radius: 0; }
-  .pane-actions { top: .45rem; right: .55rem; }
-  button.copy { background: var(--panel); padding: .22rem .65rem; font-size: .85rem; }
-  pre.chain { padding: .7rem .9rem .9rem; }
-  .math-chain { padding: .55rem .8rem .9rem; }
+  /* Copy / Share / Cancel: a static right-aligned row inside the pane, above its body */
+  .pane-actions {
+    position: static; justify-content: flex-end; padding: .45rem .7rem 0; background: var(--out-bg);
+  }
+  .pane-actions:empty { display: none; }
+  button.copy { background: var(--panel); padding: .3rem .65rem; font-size: .85rem; }
+  .out-card .pane-actions button.cancel { background: var(--panel); padding: .3rem .65rem; font-size: .85rem; }
+  pre.chain { padding: .3rem .9rem .9rem; }
+  .math-chain { padding: .3rem .8rem .9rem; }
+  .pending-pane { padding-top: .5rem; }
+  .graph-pane { padding-top: .3rem; }
   .math-chain .katex { font-size: 1.12em; }
   .math-table { border-spacing: 0 .3rem; }
   .math-lhs { min-width: 2rem; padding-left: 0; }
@@ -508,6 +581,7 @@ button.share:hover { border-color: var(--accent); }
   .cmp-card[open] summary { border-bottom: 1px solid var(--border); }
   .cmp-card[open] summary::after { transform: rotate(-135deg); margin-top: .25rem; }
   .cmp-card .foot { margin: 0; padding: .5rem .5rem .8rem; }
-  .cmp-card .refs { padding-left: 1.2rem; font-size: .72rem; }
+  .cmp-card .refs { padding-left: 1.2rem; font-size: .8rem; }
+  .cmp-card .cmp-caption, .cmp-card .cmp-notes { font-size: .8rem; }
   .cmp-card table.cmp { max-width: none; }
 }

@@ -22,8 +22,20 @@ export function applyTheme(theme) {
   if (theme) document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
   remember(theme);
+  paintThemeColor(theme);
   for (const b of document.querySelectorAll('[data-theme-toggle]')) label(b);
   document.dispatchEvent(new CustomEvent('themechange', { detail: currentTheme() }));
+}
+
+const THEME_COLOR = { light: '#f7f6f2', dark: '#191817' };
+/** Keep the browser chrome (<meta name=theme-color>) in step with an explicit choice;
+ *  with no choice the two media-gated metas in index.html follow the system again. */
+function paintThemeColor(theme) {
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
+    const media = m.getAttribute('media') || '';
+    const system = media.includes('dark') ? 'dark' : 'light';
+    m.setAttribute('content', THEME_COLOR[theme || system]);
+  }
 }
 
 export function toggleTheme() { applyTheme(currentTheme() === 'dark' ? 'light' : 'dark'); }

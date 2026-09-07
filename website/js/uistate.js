@@ -4,7 +4,7 @@
 // selectors say, so the controls can never disagree with each other.
 //
 //   state = { mode, src, exDegree, exKey, exSeed, exMonic, busy, jobId, error, result,
-//             method, view, form, cstyle, numfmt }
+//             prevResult, lateNumeric, cancelled, method, view, form, cstyle, numfmt }
 //     mode      a field id from the js/field.js registry ('Q', 'R', 'C', 'p61', 'p89',
 //               'p127', 'gf32', 'gf64', 'gf128'): which field the input is read in
 //     src       textarea contents
@@ -15,10 +15,20 @@
 //     exSeed    reseed counter of the 'random key' chip (every click draws a fresh key;
 //               the same seed reproduces the same key, so Share links round-trip)
 //     exMonic   whether generated examples are normalized to leading coefficient 1
-//     busy      a compile job is in flight (a small Cancel affordance is shown)
+//     busy      a compile job is in flight (ui.js shows a Cancel button meanwhile)
 //     jobId     id of the newest job; replies carrying any other id are stale
-//     error     message string | null
+//     error     message string | null — a failed compile keeps the last result
+//               mounted under the error (ui.js dims it), so the page never collapses
+//               while a draft is being typed
 //     result    the worker's result object | null (null hides the output)
+//     prevResult the result shown before the current one, kept only while the
+//               current one still has numeric rows pending: the selected method's
+//               previous chain stays mounted (dimmed) until its worker replies
+//               (staleRow); null once every row is in
+//     lateNumeric numeric-method rows that arrived before their job's main reply
+//     cancelled the last job was cancelled: whatever output is mounted is not the
+//               chain of the current input (ui.js dims it and says so) until the
+//               next job starts
 //     method    'ours' | a comparison row name (which chain the output shows)
 //     view      'math' | 'c' | 'graph'
 //     form      'factor' | 'original'  math view: factored gate list or the method's own form
@@ -43,20 +53,32 @@
 //                                    only when the textarea still holds an example
 //   { type: 'cancel' }               busy → false and the job id is retired (jobId + 1); the
 //                                    abandoned job's replies (main and per-method numeric) are
-//                                    then stale by id
-//   { type: 'reply', id, ok, result | message }   worker reply (ignored unless id === jobId and busy)
-//   { type: 'workerError', message }
+//                                    then stale by id, and ui.js's job effect terminates the workers;
+//                                    the kept result is flagged `cancelled` (stale) and any of its
+//                                    numeric rows still pending are settled as not computed (their
+//                                    worker went with the superseded job)
+//   { type: 'restore', hash, compact }   rebuilds the state from a URL hash (a hashchange after
+//                                    boot): stateFromHash over the layout's boot state, the job
+//                                    id retired past the current one, and a job started when
+//                                    the source is non-blank
+//   { type: 'reply', id, ok, result | message }   worker reply (ignored unless id === jobId and busy);
+//                                    a failed main reply keeps the last result, sets `error` and
+//                                    retires the job id (its numeric replies are then stale)
+//   { type: 'workerError', message } as a failed reply
 //   { type: 'setMethod', method }    ignored unless that method has an ok chain in `result`
 //   { type: 'setView', view }
 //   { type: 'setForm', form } / { type: 'setCstyle', cstyle } / { type: 'setNumfmt', numfmt }
 //   { type: 'setSubOption', key }    routed to the strip showing that key
 import { Rat } from './rat.js';
+import { REAL_SRC, MAX_PARSE_DEGREE } from './polyparse.js';
+import { DEGREE_CEILING } from './methodlist.js';
 import { GaussRat } from './gauss.js';
 import { countOps, formatConstants } from './chain.js';
 import { FIELDS, FIELD_GROUPS, gfLiteral } from './field.js';
 import { referenceFor } from './references.js';
-import { numericMethodsFor, needsNumericWorker } from './compare.js';
-import { MAX_DEGREE } from './char2.js';
+// the method names and degree caps come from the dependency-free methodlist.js,
+// so the page thread never loads the compilers (they run in the workers)
+import { numericMethodsFor, needsNumericWorker, methodNamesFor, MAX_DEGREE } from './methodlist.js';
 
 export const VIEWS = ['math', 'c', 'graph'];
 export const FORMS = ['factor', 'original'];
@@ -122,11 +144,11 @@ export function fieldChooser(state) {
 // transparent textarea.
 // Sticky regexes matched at the current position (no lookahead window: a
 // complex literal with two 17-digit parts is longer than 40 characters).
-const POLY_REAL = String.raw`(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?(?:\/\d+)?)`;
+const POLY_REAL = REAL_SRC;   // the parser's own number grammar, so the highlighter cannot drift from it
 const POLY_NUM_RE = new RegExp(
   `(?:\\(-?(?:${POLY_REAL}[+-])?${POLY_REAL}?i\\)` +    // (1+2i), (1/2-3/4i), (2-i), (-i)
   `|\\(-?${POLY_REAL}\\)\\*?i` +                         // (1/2)i, (-1/2)*i
-  `|0[xX][0-9a-fA-F]+|${POLY_REAL}?i|${POLY_REAL})`, 'y'); // 0x1f, 2i, i, 3, 1/2, 0.25e-3
+  `|${POLY_REAL}?i|${POLY_REAL})`, 'y');                  // 2i, i, 3, 1/2, 0.25e-3, 0x1f (hex is REAL_SRC's, lowercase 0x only — as the parser reads it)
 const POLY_VAR_RE = /[xX](?:\^\d+)?/y;
 const POLY_OP_RE = /[+\-*/^]/y;
 const POLY_SPACE_RE = /\s+/y;
@@ -167,14 +189,19 @@ export function tokenizePoly(src) {
  *  circuits, even ones by the x-lift of the degree below; 27 is the open frontier). */
 export const CHAR2_EXAMPLE_DEGREES = Array.from({ length: MAX_DEGREE }, (_, i) => i + 1);
 
-/** Per-field degree limits for the example generators (ℚ's exact preprocessing
- *  slows beyond ~24 and ℝ / ℂ lose accuracy there; Mersenne fields are instant at
- *  any size; char 2 compiles every degree up to 26). */
+/** Per-field degree limits for the example generators, set where the monic
+ *  Taylor chips' exact preprocessing is still a short wait (measured with the
+ *  real compiler): over ℂ e^{ix} takes ~1.5 s at degree 20 but 3.4–3.8 s on an
+ *  idle machine (6–8 s under load) at 22, so ℂ stops at 20; over ℚ e^x takes
+ *  ~22 s at degree 23, so ℚ / ℝ stop at 22 — and ℝ / ℂ lose accuracy beyond
+ *  that anyway.  Mersenne fields are instant at any size; char 2 compiles
+ *  every degree up to 26. */
+export const CHAR0_EXAMPLE_MAX = { Q: 22, R: 22, C: 20 };
 export function degreeRange(mode) {
   const f = fieldOf(mode);
   if (!f) return null;
   if (f.char === 2) return { set: CHAR2_EXAMPLE_DEGREES };
-  return f.char === 'p' ? { min: 3, max: 63 } : { min: 3, max: 24 };
+  return f.char === 'p' ? { min: 3, max: 63 } : { min: 3, max: CHAR0_EXAMPLE_MAX[f.id] ?? 22 };
 }
 
 /** Snap a requested degree into the field's range (char 2: up to the next supported degree). */
@@ -470,7 +497,9 @@ export const initialState = Object.freeze({
   jobId: 0,
   error: null,
   result: null,
+  prevResult: null,    // the result before this one, while this one still has numeric rows pending
   lateNumeric: null,   // numeric-method rows that arrived before their job's main reply (one reply per method)
+  cancelled: false,    // the last job was cancelled: the mounted output is stale until the next job
   method: 'ours',
   view: 'math',
   form: 'factor',
@@ -493,8 +522,11 @@ export function initialStateFor({ compact = false } = {}) {
 // ---- reducer ---------------------------------------------------------------
 
 // Starting a job keeps the last result visible (stale-while-revalidate): the
-// output stays mounted and the reply swaps its content in place.
-const startJob = s => ({ ...s, busy: true, jobId: s.jobId + 1, error: null });
+// output stays mounted and the reply swaps its content in place.  Any numeric
+// rows waiting in lateNumeric belong to the job being retired (ui.js terminates
+// its workers on the id change), so they are dropped: merged into the new job's
+// result they would show the previous polynomial's — or field's — chain.
+const startJob = s => ({ ...s, busy: true, jobId: s.jobId + 1, error: null, lateNumeric: null, cancelled: false });
 
 /** Method shown first for a fresh result: ours, or the first ok comparison when ours failed. */
 export const defaultMethod = result =>
@@ -513,6 +545,34 @@ const withNumeric = (result, rows) => ({
   ...result,
   comparisons: (result.comparisons ?? []).map(c => rows.find(r => r.name === c.name) ?? c),
 });
+
+/** Is any numeric row of `result` still waiting for its worker? */
+export const hasPending = result => !!result?.comparisons?.some(r => r.pending);
+
+/** `result` with its pending numeric rows settled as not computed (`note` says
+ *  why): used when a job is retired without a replacement result — Cancel, a
+ *  failed compile — since the rows' worker was terminated when that job started
+ *  and no reply can fill them any more (a spinner would run forever). */
+const settlePending = (result, note) => (!hasPending(result) ? result : {
+  ...result,
+  comparisons: result.comparisons.map(c => (c.pending ? { name: c.name, ok: false, pending: false, note } : c)),
+});
+
+/** Idle without a replacement result: the last result kept mounted with its
+ *  orphaned numeric rows settled, no stale fallback, the selected method
+ *  re-checked against the settled rows, and the job id retired. */
+const retireJob = (state, note, extra) => {
+  const result = settlePending(state.result, note);
+  return { ...state, busy: false, jobId: state.jobId + 1, lateNumeric: null, prevResult: null, result,
+    method: state.result ? (methodAvailable(result, state.method) ? state.method : defaultMethod(result)) : state.method,
+    ...extra };
+};
+
+/** A failed compile (or a lost worker): idle under the error, the last result
+ *  kept mounted, and the job id retired so the job's other replies — the
+ *  numeric rows of the polynomial that failed to compile — cannot land on it. */
+const failJob = (state, message) =>
+  retireJob(state, 'not computed — the input was recompiled before its numerical preprocessing finished', { error: message });
 
 /** Does the textarea still hold the generated example named by exKey (at the
  *  current degree and seed)?  Only then does the degree stepper regenerate it. */
@@ -536,13 +596,17 @@ export function reduce(state, action) {
         if (ex) s = { ...s, src: ex.src, exKey: ex.key, exDegree: clampDegree(s.mode, s.exDegree) };
       }
       // recompile in the new mode, keeping the old output visible meanwhile;
-      // with nothing to compile there is nothing to show either
-      return s.src.trim() ? startJob(s) : { ...s, result: null };
+      // with nothing to compile there is nothing to show either — and a job
+      // that was running is retired (the id change lets ui.js terminate its workers)
+      return s.src.trim() ? startJob(s)
+        : { ...s, result: null, prevResult: null, lateNumeric: null, cancelled: false,
+            jobId: state.busy ? state.jobId + 1 : state.jobId };
     }
     case 'setSrc':
       if (state.src === action.src) return state;
       // an emptied input has nothing to be wrong about: drop a stale parse error
-      return { ...state, src: action.src, exKey: null, ...(action.src.trim() ? {} : { error: null }) };
+      // (and a cancel notice — there is nothing left to run again)
+      return { ...state, src: action.src, exKey: null, ...(action.src.trim() ? {} : { error: null, cancelled: false }) };
     case 'compile':
       return state.src.trim() ? startJob(state) : state;
     case 'example': {
@@ -578,8 +642,18 @@ export function reduce(state, action) {
     }
     case 'cancel':
       // retiring the id makes every late reply of the cancelled job stale, so a
-      // per-method numeric reply cannot be merged into the previous job's result
-      return state.busy ? { ...state, busy: false, lateNumeric: null, jobId: state.jobId + 1 } : state;
+      // per-method numeric reply cannot be merged into the previous job's result;
+      // the kept result no longer answers the input (ui.js dims it: `cancelled`)
+      return state.busy
+        ? retireJob(state, 'not computed — the compilation was cancelled before its numerical preprocessing finished', { cancelled: true })
+        : state;
+    case 'restore': {
+      // a hashchange after boot: the same state the page would boot with on that
+      // hash, under a job id past the current one (a running job's replies are
+      // then stale), compiling at once when there is something to compile
+      const fresh = { ...stateFromHash(initialStateFor({ compact: !!action.compact }), action.hash), jobId: state.jobId };
+      return fresh.src.trim() ? startJob(fresh) : { ...fresh, jobId: state.jobId + 1 };
+    }
     case 'reply': {
       if (action.id !== state.jobId) return state;                  // stale
       if (action.part === 'numeric') {
@@ -588,17 +662,27 @@ export function reduce(state, action) {
         const rows = action.ok ? action.result.comparisons
           : numericMethodsFor(state.mode).map(name => ({ name, ok: false, note: action.message ?? 'numerical preprocessing failed' }));
         if (state.busy) return { ...state, lateNumeric: [...(state.lateNumeric ?? []), ...rows] };
-        return state.result ? { ...state, result: withNumeric(state.result, rows) } : state;
+        if (!state.result) return state;
+        const result = withNumeric(state.result, rows);
+        // a method selected while pending that turned out unavailable is deselected
+        // (the chip row, the table and the pane would otherwise disagree)
+        return { ...state, result, prevResult: hasPending(result) ? state.prevResult : null,
+          method: methodAvailable(result, state.method) ? state.method : defaultMethod(result) };
       }
       if (!state.busy) return state;                                // cancelled
-      if (!action.ok)
-        return { ...state, busy: false, result: null, lateNumeric: null, error: action.message ?? 'compilation failed' };
+      if (!action.ok) return failJob(state, action.message ?? 'compilation failed');
       const result = state.lateNumeric ? withNumeric(action.result, state.lateNumeric) : action.result;
+      // while numeric rows are still pending the previous result stays around, so
+      // a selected numeric method keeps showing its last chain (dimmed) meanwhile —
+      // the newest result whose rows actually landed: a previous result whose own
+      // numeric rows never arrived (its worker went with a superseding job) has no
+      // chain to fall back on, so the one before it is carried forward
       return { ...state, busy: false, error: null, result, lateNumeric: null,
+        prevResult: hasPending(result) ? (hasPending(state.result) && state.prevResult ? state.prevResult : state.result) : null,
         method: methodAvailable(result, state.method) ? state.method : defaultMethod(result) };
     }
     case 'workerError':
-      return { ...state, busy: false, result: null, error: action.message ?? 'worker failed' };
+      return failJob(state, action.message ?? 'worker failed');
     case 'setMethod':
       if (action.method === state.method || !methodAvailable(state.result, action.method)) return state;
       return { ...state, method: action.method };
@@ -630,6 +714,43 @@ export function reduce(state, action) {
 
 export const showOutput = state => state.result !== null;
 
+/** Degrees beyond which the exact char-0 preprocessing turns slow (minutes at
+ *  27–28 and 31, tens of seconds at 40): the same cap the char-2 lane has. */
+export const SLOW_DEGREE = MAX_DEGREE;
+
+/** A cheap estimate of the degree of typed input: the largest exponent written
+ *  as x^k / x**k (a bare x counts as 1); null when no x appears.  Always a
+ *  finite integer: an exponent too long to be a safe integer counts as one past
+ *  MAX_PARSE_DEGREE (above every cap, like the parser's own rejection). */
+export function estimatedDegree(src) {
+  let d = null;
+  for (const m of String(src ?? '').matchAll(/[xX](?:\s*(?:\^|\*\*)\s*(\d+))?/g)) {
+    const k = m[1] === undefined ? 1 : Number(m[1]);
+    d = Math.max(d ?? 0, Number.isSafeInteger(k) ? k : MAX_PARSE_DEGREE + 1);
+  }
+  return d;
+}
+
+/** A one-line warning to show under the input before compiling, or null:
+ *  typed (non-chip) text over ℚ / ℝ / ℂ whose degree lies in the slow band
+ *  above SLOW_DEGREE and up to the field's DEGREE_CEILING — where the exact
+ *  preprocessing really runs for minutes.  Degrees above the ceiling are
+ *  refused at once (the error line says so; a hint promising a long compile
+ *  would contradict it), and the chips stop at 20–22, so a held example never
+ *  triggers it. */
+export function inputHint(state) {
+  const f = fieldOf(state.mode);
+  if (!f || f.char !== 0) return null;
+  if (state.exKey && exampleHeld(state)) return null;
+  const d = estimatedDegree(state.src);
+  if (d === null || !Number.isFinite(d) || d <= SLOW_DEGREE) return null;
+  const cap = DEGREE_CEILING[state.mode];
+  if (cap && d > cap) return null;
+  return `degree ${d} over ${f.name}: exact preprocessing can take minutes at this degree` +
+         `${cap ? ` (degrees above ${cap} are not compiled)` : ''}; the Mersenne-prime fields take this polynomial ` +
+         'much further (degrees up to 255; about a minute near the cap)';
+}
+
 /** The degree the chooser displays / the chips generate at (state.exDegree clamped for the mode). */
 export const exampleDegree = state => clampDegree(state.mode, state.exDegree);
 
@@ -653,11 +774,35 @@ export function pendingRow(state) {
   return state.result.comparisons?.find(r => r.name === state.method && r.pending) ?? null;
 }
 
-/** The object whose chain the output shows: a comparison row or the result
- *  itself (null while the selected method is still computing). */
+/** While the selected method is still computing: its row from the previous
+ *  result, so the last chain stays mounted (ui.js dims it, as it dims the
+ *  output during a job) instead of collapsing to a spinner.  Null when there
+ *  is nothing to fall back on (the first selection) — the pane is then pending. */
+export function staleRow(state) {
+  if (!pendingRow(state) || !state.prevResult) return null;
+  // never across a field switch: an ℝ chain under the ℂ label (and in a ℂ download) is no fallback
+  if ((state.prevResult.fieldId ?? null) !== (state.result.fieldId ?? null)) return null;
+  return state.prevResult.comparisons?.find(r => r.name === state.method && r.ok) ?? null;
+}
+
+/** Is the mounted output not (yet) the chain of the current input?  While a
+ *  job runs, while a parse error stands over it, after a Cancel, and while the
+ *  selected numeric method is still computing and shows its previous chain
+ *  (staleRow).  ui.js dims every view of the result — the pane, the method
+ *  chips, the comparison table, the phone stats line — on it. */
+export const isStale = state =>
+  state.busy || state.error !== null || !!state.cancelled || staleRow(state) !== null;
+
+/** The comparison row the output shows: the selected one, or its stale
+ *  predecessor while it computes (null when ours is shown or nothing is). */
+const shownRow = state => comparisonRow(state) ?? staleRow(state);
+
+/** The object whose chain the output shows: a comparison row (or its stale
+ *  predecessor) or the result itself; null while the selected method is
+ *  still computing and has no predecessor. */
 export function selectedRow(state) {
   if (!state.result) return null;
-  return comparisonRow(state) ?? (pendingRow(state) ? null : state.result);
+  return shownRow(state) ?? (pendingRow(state) ? null : state.result);
 }
 
 /**
@@ -703,39 +848,76 @@ export function methodTabs(state) {
 /**
  * The comparison table under the output pane, one row per method in worker
  * order (This paper, Horner, Estrin, Rabin–Winograd, Knuth–Eve, Pan; Belaga over ℂ):
- *   [{ key, name, ok, on, mults, scalar, adds, height, exact, exactNote, note }]
+ *   [{ key, name, ok, on, mults, scalar, adds, height, exact, exactNote, maxRelError, note }]
  * Counts come from rowOps on each method's factored rendering (mults = the
  * total, scalar = how many of them are by a constant); a method that did not
- * run has ok: false, null counts and its reason in `note`.  A row that is not
- * exact (≈ numeric) says why in `exactNote` — over ℝ / ℂ the preprocessing itself
- * is exact and only the chain constants are rounded to (complex) doubles; the
- * root-finding methods name what they solved numerically — null otherwise.
+ * run has ok: false, null counts and its reason in `note`; a method that ran
+ * carries its own note (the worker's description of what it did) there, so
+ * the UI can list the notes under the table.  A row that is not exact
+ * (≈ numeric) says why in `exactNote` — over ℝ / ℂ the preprocessing itself is
+ * exact and only the chain constants are rounded to (complex) doubles, with the
+ * measured rounding error ("max rel. error 3.6e+26") when the worker measured
+ * it; the root-finding methods name what they solved numerically — null
+ * otherwise.  `maxRelError` is that figure as a number (Infinity when the
+ * chain constants exceed the double range), null when none was measured.
  */
 export function comparisonTable(state) {
   const r = state.result;
   if (!r) return [];
   const entries = [{ key: 'ours', name: 'This paper', ok: !r.oursFailed, exact: r.exact ?? true,
-                     note: r.oursFailed ? String(r.oursFailed) : '', row: r }];
+                     note: r.oursFailed ? String(r.oursFailed) : displayNote(r.note), row: r }];
   for (const c of r.comparisons ?? [])
-    entries.push({ key: c.name, name: c.name, ok: !!c.ok, pending: !!c.pending, exact: !!c.exact, note: c.ok ? '' : String(c.note ?? ''), row: c });
+    entries.push({ key: c.name, name: c.name, ok: !!c.ok, pending: !!c.pending, exact: !!c.exact, note: displayNote(c.note), row: c });
   return entries.map(({ row, ...e }) => {
     const o = e.ok ? rowOps(row) : null;
     return { ...e, pending: !!e.pending, on: e.key === state.method, ref: referenceFor(e.name),
       mults: o ? o.mults + o.scalar : null, scalar: o ? o.scalar : 0,
       adds: o ? o.adds : null, height: e.ok ? row.height ?? null : null, exact: e.ok ? e.exact : null,
-      exactNote: e.ok && !e.exact ? numericNote(row, fieldOf(r.fieldId ?? state.mode)) : null };
+      exactNote: e.ok && !e.exact ? numericNote(row, fieldOf(r.fieldId ?? state.mode)) : null,
+      maxRelError: e.ok && !e.exact ? rowMaxRelError(row) : null };
   });
+}
+
+// The workers' notes state that each chain was verified (re-expansion, sample
+// points).  Those checks are internal — the chains are correct by construction
+// and the page never shows a verification claim — so the clause is cut before
+// a note reaches a view: "; verified by …", ", verified by …" up to the next
+// clause break, and the sentence tails "… and the printed chain (was) (independently) verified …".
+const VERIFY_CLAUSE = /(?:[;,]\s*(?:and\s+)?|\s+and\s+|^)(?:the printed chain )?(?:was )?(?:independently )?verified\b(?:(?!max rel\. error)[^;.—])*\.?/g;
+/** A worker's note as the table shows it ('' for none): without its verification
+ *  clause, and without the trailing "max rel. error …" figure of the numeric
+ *  methods (the table carries it as `maxRelError` / in `exactNote`). */
+export const displayNote = note => String(note ?? '')
+  .replace(VERIFY_CLAUSE, '').replace(/\s*max rel\. error \S+\s*$/, '')
+  .replace(/\s*—/g, ' —').replace(/\s+([;,]|\.(?!\.))/g, '$1').replace(/ {2,}/g, ' ').trim();   // a literal "..." keeps its space
+
+/** The measured rounding error of a numeric row: the worker's number (ours over
+ *  ℝ / ℂ: result.maxRelError, Infinity when the constants overflow), else the
+ *  figure the numeric methods write into their note; null when none. */
+function rowMaxRelError(row) {
+  if (typeof row.maxRelError === 'number') return Number.isNaN(row.maxRelError) ? null : row.maxRelError;
+  const m = /max rel\. error (\S+)/.exec(row.note ?? '');
+  const v = m ? Number(m[1]) : NaN;
+  return Number.isNaN(v) ? null : v;
 }
 
 /** Why a row is ≈ numeric: the ℝ / ℂ rendering of an exact chain (ours, and the
  *  classical methods whose preprocessing is exact or absent) rounds the constants
- *  to doubles / complex doubles; Knuth–Eve, Pan and Belaga carry their own
- *  preprocessing kind + note. */
+ *  to doubles / complex doubles — with the measured rounding error when the
+ *  worker has one (only the paper's chain is measured), or the overflow wording
+ *  when the constants exceed the double range; Knuth–Eve, Pan and Belaga carry
+ *  their own preprocessing kind + measured error. */
 function numericNote(row, f = null) {
   const pre = row.preprocessing;
-  if (!pre || pre === 'none' || pre === 'rational' || pre === 'numeric')
-    return f?.complex ? 'exact Gaussian-rational preprocessing; the chain constants are rounded to complex doubles'
-                      : 'exact rational preprocessing; the chain constants are rounded to doubles';
+  if (!pre || pre === 'none' || pre === 'rational' || pre === 'numeric') {
+    const dbl = f?.complex ? 'complex doubles' : 'doubles';
+    const head = f?.complex ? 'exact Gaussian-rational preprocessing' : 'exact rational preprocessing';
+    const err = rowMaxRelError(row);
+    if (err === null) return `${head}; chain constants rounded to ${dbl}`;
+    if (!Number.isFinite(err))
+      return `${head}; the chain constants exceed the double range, so no ${f?.complex ? 'complex-double' : 'double-precision'} chain exists`;
+    return `${head}; chain constants rounded to ${dbl}, max rel. error ${err.toExponential(1)}`;
+  }
   const err = /max rel\. error \S+/.exec(row.note ?? '');   // the rest of the note is the method's description
   return err ? `${pre}, ${err[0]}` : pre;
 }
@@ -747,7 +929,7 @@ export function stats(state) {
   if (!src) return [];
   const ops = rowOps(src, effectiveForm(state) === 'original' ? src.mathTextOriginal : src.mathText);
   if (ops === null) return [];
-  const row = comparisonRow(state);
+  const row = shownRow(state);
   return [
     { label: 'multiplications', value: ops.scalar ? `${ops.mults + ops.scalar} (${ops.scalar} scalar)` : ops.mults },
     { label: 'additions', value: ops.adds },
@@ -779,7 +961,7 @@ export function selectedCSource(state) {
   const style = effectiveCstyle(state);
   const code = style === 'fraction' ? row.cTextFraction : row.cText;
   if (!code) return null;
-  return { code, style, label: comparisonRow(state)?.name ?? 'This paper' };
+  return { code, style, label: shownRow(state)?.name ?? 'This paper' };
 }
 
 /** The exact math text of the selected row in the effective form ('' without one). */
@@ -813,7 +995,7 @@ export function effectiveNumfmt(state) {
  *  significant digits (the readable rendering); exact fractions are left alone. */
 export function presentedState(state, { compact = false } = {}) {
   if (!compact || state.numfmt === 'decimal' || !state.result) return state;
-  const row = comparisonRow(state);
+  const row = shownRow(state);
   const numeric = inexactChar0(fieldOf(state.mode)) || (row ? row.exact === false : state.result.exact === false);
   return numeric ? { ...state, numfmt: 'decimal' } : state;
 }
@@ -879,15 +1061,27 @@ export const availableSubOptions = state => subOptionStrips(state)[0] ?? null;
  * What the pane below the view bar shows, or null without a result:
  *   { kind: 'math', text }                       chain text (readable constants applied when chosen)
  *   { kind: 'c', code }                          C source (ui.js highlights it)
- *   { kind: 'c-missing', note, text }            no C for this field / method: note line + math text
+ *   { kind: 'c-missing', note, text }            no C for this field / chain: note line + math text
+ *                                                (the worker's reason, result.cMissing, when it gave one)
  *   { kind: 'graph', svg }                       SVG string from the worker
  *   { kind: 'graph-missing', note }
+ *   { kind: 'pending', note }                    the selected method is still computing and has no
+ *                                                previous chain to keep showing (staleRow)
  */
+/** Why a row has no C rendering: the worker's `cMissing` (compile2.js and
+ *  compile0.js both set it; the "— no C rendering: …" tail of the note is the
+ *  fallback for payloads without the field), or null. */
+const cMissingOf = row =>
+  (typeof row.cMissing === 'string' && row.cMissing.trim()) ? row.cMissing.trim()
+  : (/—\s*no C rendering:\s*(.+?)\s*$/.exec(row.note ?? '')?.[1] ?? null);
+
 export function paneContent(state) {
-  const waiting = pendingRow(state);
-  if (waiting) return { kind: 'pending', note: `${waiting.name} is still computing its numerical preprocessing\u2026` };
   const src = selectedRow(state);
-  if (!src) return null;
+  if (!src) {
+    const waiting = pendingRow(state);
+    if (waiting) return { kind: 'pending', note: `${waiting.name} is still computing its numerical preprocessing\u2026` };
+    return null;
+  }
   if (state.view === 'math') {
     const readable = state.numfmt === 'decimal' ? readableRendering(state) : null;
     return { kind: 'math', text: readable ? readable.text : exactMathText(state) };
@@ -897,8 +1091,13 @@ export function paneContent(state) {
     if (selected) return { kind: 'c', code: selected.code };
     const f = fieldOf(state.result.fieldId ?? state.mode);
     const fieldHasC = state.result.cCode ?? f?.cCode ?? true;
-    return { kind: 'c-missing', text: src.mathText ?? '',
-      note: fieldHasC ? '/* no C rendering for this method */' : '/* no C rendering for this field yet */' };
+    // the worker says why a chain has no C (constants beyond the double range);
+    // a registry field without a C emitter has none for any row
+    const reason = cMissingOf(src);
+    const note = !fieldHasC ? '/* no C rendering for this field yet */'
+      : reason ? `/* no C for this chain: ${reason} */`
+      : '/* no C rendering for this method */';
+    return { kind: 'c-missing', text: src.mathText ?? '', note };
   }
   if (src.graphSvg) return { kind: 'graph', svg: src.graphSvg,
     dash: src.graphSvg.includes('stroke-dasharray'),   // any subtracted input?
@@ -909,18 +1108,26 @@ export function paneContent(state) {
 // ---- URL-hash sharing ------------------------------------------------------
 
 /** The state as the Share button's URL hash:
- *  #src=..&mode=..&method=..&view=..&form=..&cstyle=..&numfmt=..&deg=..[&seed=..][&monic=0]  */
+ *  #ex=<chip>|src=..&mode=..&method=..&view=..&form=..&cstyle=..&numfmt=..&deg=..[&seed=..][&monic=0]
+ *  A held example chip is shared by its key (`ex=`, with deg / seed / monic
+ *  regenerating it — a full-width key polynomial would be 1.5 kB of src=);
+ *  typed text travels verbatim in src=. */
 export const hashFromState = s =>
-  `#src=${encodeURIComponent(s.src)}&mode=${s.mode}&method=${encodeURIComponent(s.method)}` +
+  (exampleHeld(s) ? `#ex=${encodeURIComponent(s.exKey)}` : `#src=${encodeURIComponent(s.src)}`) +
+  `&mode=${s.mode}&method=${encodeURIComponent(s.method)}` +
   `&view=${s.view}&form=${s.form}&cstyle=${s.cstyle}&numfmt=${s.numfmt}&deg=${clampDegree(s.mode, s.exDegree)}` +
   (s.exSeed ? `&seed=${s.exSeed}` : '') + (s.exMonic ? '' : '&monic=0');
 
 /**
  * Seed a boot state from location.hash (pure; ui.js passes it to useReducer's
- * init).  Unknown / invalid params keep `base`'s values; a hash without src
- * seeds the requested mode's default example at the requested degree, so a
- * mode-only link still compiles something.  Never starts a job — the normal
- * first-load auto-compile runs on the returned state.
+ * init, and the 'restore' action to a hashchange).  Unknown / invalid params
+ * keep `base`'s values: a method the field cannot show falls back to 'ours'
+ * (a hyphen typed for the en dash of 'Rabin–Winograd' / 'Knuth–Eve' is
+ * accepted); `ex=` names a chip (an unknown key falls to the field's default
+ * example); `src=` carries typed text (and the src= links of earlier Shares);
+ * a hash with neither seeds the requested mode's default example at the
+ * requested degree, so a mode-only link still compiles something.  Never
+ * starts a job — the normal first-load auto-compile runs on the returned state.
  */
 export function stateFromHash(base, hash) {
   if (typeof hash !== 'string' || !hash.replace(/^#/, '')) return base;
@@ -935,14 +1142,20 @@ export function stateFromHash(base, hash) {
   if (seed !== null && /^\d{1,9}$/.test(seed.trim())) s.exSeed = Number(seed);
   const monic = p.get('monic');
   if (monic === '0' || monic === '1') s.exMonic = monic === '1';
-  const src = p.get('src');
-  if (src && src.trim()) { s.src = src; s.exKey = null; }
+  const exKey = p.get('ex'), src = p.get('src');
+  if (exKey && exKey.trim()) {
+    const exs = examplesFor(s.mode, s.exDegree, s.exSeed, s.exMonic);
+    const ex = exs.find(e => e.key === exKey.trim()) ?? defaultExample(s.mode, s.exDegree, s.exSeed, s.exMonic);
+    if (ex) { s.src = ex.src; s.exKey = ex.key; }
+  } else if (src && src.trim()) { s.src = src; s.exKey = null; }
   else if (s.mode !== base.mode || s.exDegree !== base.exDegree || s.exMonic !== base.exMonic)
     s.src = defaultExample(s.mode, s.exDegree, s.exSeed, s.exMonic).src;
   // recognize an untouched generated example so the degree stepper keeps working
   const ex = examplesFor(s.mode, s.exDegree, s.exSeed, s.exMonic).find(e => e.src === s.src);
   s.exKey = ex ? ex.key : (exampleHeld(s) ? s.exKey : null);
-  if (p.get('method')) s.method = p.get('method');   // reply falls back if unavailable
+  const method = (p.get('method') ?? '').trim().replace(/-/g, '–');   // 'Rabin-Winograd' → 'Rabin–Winograd'
+  if (methodNamesFor(s.mode).includes(method)) s.method = method;
+  else if (method) s.method = 'ours';                 // a method the field cannot show
   if (VIEWS.includes(p.get('view'))) s.view = p.get('view');
   if (FORMS.includes(p.get('form'))) s.form = p.get('form');
   if (CSTYLES.includes(p.get('cstyle'))) s.cstyle = p.get('cstyle');

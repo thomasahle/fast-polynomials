@@ -5,17 +5,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fast Polynomial Evaluation — chain compiler</title>
+  <!-- link unfurls and search snippets: static text, no image (none exists in the tree) -->
+  <meta name="description"
+    content="Evaluate a degree-n polynomial with about n/2 multiplications. Type a polynomial, pick ℚ, ℝ, ℂ, a Mersenne prime or a binary field, and get the preprocessed evaluation chain as math, C code or a circuit — everything runs in your browser.">
+  <link rel="canonical" href="https://thomasahle.com/fast-polynomials/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Fast Polynomial Evaluation — chain compiler">
+  <meta property="og:description"
+    content="Evaluate a degree-n polynomial with about n/2 multiplications. Type a polynomial, pick ℚ, ℝ, ℂ, a Mersenne prime or a binary field, and get the preprocessed evaluation chain as math, C code or a circuit — everything runs in your browser.">
+  <meta property="og:url" content="https://thomasahle.com/fast-polynomials/">
+  <meta property="og:site_name" content="thomasahle.com">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Fast Polynomial Evaluation — chain compiler">
+  <meta name="twitter:description"
+    content="Evaluate a degree-n polynomial with about n/2 multiplications, over ℚ, ℝ, ℂ, Mersenne-prime or binary fields — the chain as math, C or a circuit, in the browser.">
+  <!-- the page background of each theme (style.css --bg), for mobile browser chrome -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f6f2">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191817">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#x2797;</text></svg>">
   <link rel="stylesheet" href="js/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="style.css">
-  <!-- Google Analytics: the same GA4 property as thomasahle.com -->
+  <!-- The compilers run in Web Workers (js/worker.js), spawned only once js/ui.js
+       has executed; preloading the worker's module closure lets those files
+       download alongside ui.js instead of afterwards (browsers do not follow the
+       import graph for modulepreload, so every file the page itself does not
+       import is listed; test/ui-smoke.test.js keeps this list equal to the graph). -->
+  <link rel="modulepreload" href="js/worker.js">
+  <link rel="modulepreload" href="js/poly.js">
+  <link rel="modulepreload" href="js/compile0.js">
+  <link rel="modulepreload" href="js/compile2.js">
+  <link rel="modulepreload" href="js/compare.js">
+  <link rel="modulepreload" href="js/char2.js">
+  <link rel="modulepreload" href="js/n13decode.js">
+  <link rel="modulepreload" href="js/graph.js">
+  <link rel="modulepreload" href="js/graphview.js">
+  <link rel="modulepreload" href="js/char0/core.js">
+  <link rel="modulepreload" href="js/methods/horner.js">
+  <link rel="modulepreload" href="js/methods/estrin.js">
+  <link rel="modulepreload" href="js/methods/rw.js">
+  <link rel="modulepreload" href="js/methods/motzkin.js">
+  <link rel="modulepreload" href="js/methods/knutheve-complex.js">
+  <link rel="modulepreload" href="js/methods/pan1978.js">
+  <link rel="modulepreload" href="js/methods/pan1978real.js">
+  <link rel="modulepreload" href="js/methods/belaga.js">
+  <!-- Google Analytics: the same GA4 property as thomasahle.com; page_location
+       omits the fragment, which carries the visitor's polynomial (Share links) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-40XB6Q54CE"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-    gtag('config', 'G-40XB6Q54CE');
+    gtag('config', 'G-40XB6Q54CE', { page_location: location.origin + location.pathname });
   </script>
   <!-- a remembered day / night choice is applied before first paint (js/theme.js owns it) -->
   <script>try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
@@ -27,17 +68,22 @@
       <div class="head-main">
         <h1>Evaluating Polynomials Fast</h1>
         <p class="sub">
-          You may have heard about Horner's method that allows evaluating a polynomial of degree <i>n</i> in <i>n</i>
-          multiplications.
-          But did you know that with a bit of preprocessing of the coefficients, often <b><i>n/2</i> multiplications
-            suffice?</b>
+          You may have heard about Horner's method, which evaluates a polynomial of degree <i>n</i> in <i>n</i>
+          multiplications (<span class="nowrap"><i>n</i>−1</span> if it is monic).
+          But did you know that with a bit of preprocessing of the coefficients,
+          <b><span class="nowrap">&lfloor;<i>n</i>/2&rfloor;+1</span> multiplications suffice for any monic
+            polynomial</b>, one more for a general one?
           You can use this to approximate functions like exp, sin, cos, or to evaluate polynomials in cryptography,
           hashing, and coding theory.
-          Simple type a polynomial below, pick your field, and we'll preprocess it for you.
+          Simply type a polynomial below, pick your field, and we'll preprocess it for you.
         </p>
       </div>
       <div class="header-links">
-        <a class="paper-card" id="paper-card" href="https://arxiv.org/abs/submit/8036575" target="_blank" rel="noopener noreferrer"
+        <!-- href / title: copies of js/references.js PAPER_URL / PAPER_TITLE (the module
+             script at the end of the body sets both from the constants; the copies keep
+             the link working before scripts run and are checked equal by
+             test/ui-smoke.test.js) -->
+        <a class="paper-card" id="paper-card" data-paper-link href="https://arxiv.org/abs/submit/8036575" target="_blank" rel="noopener noreferrer"
           title="arXiv submission 8036575 (the permanent identifier follows on announcement)">
           <svg class="doc-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none"
             stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
@@ -74,13 +120,18 @@
 
     <!-- The single card (input, field / method choosers, tabs + output pane, stats)
        is rendered here by js/ui.js (Preact + htm, vendored). -->
-    <div id="app"></div>
+    <main id="app"></main>
 
   </div>
   <script src="js/vendor/katex/katex.min.js"></script>
   <script type="module" src="js/github-stars.js"></script>
   <script type="module" src="js/theme.js"></script>
   <script type="module" src="js/ui.js"></script>
+  <!-- the paper's URL has one source: js/references.js PAPER_URL (and its tooltip PAPER_TITLE) -->
+  <script type="module">
+    import { PAPER_URL, PAPER_TITLE } from './js/references.js';
+    for (const a of document.querySelectorAll('[data-paper-link]')) { a.href = PAPER_URL; a.title = PAPER_TITLE; }
+  </script>
 </body>
 
 </html>

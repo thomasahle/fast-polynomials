@@ -12,11 +12,21 @@
 //   (char2) or 'Q' (char0).
 // Reply: { id, ok: true, result } | { id, ok: false, message }
 //
+// Input validation (one readable page error each, before any compiler runs):
+//   - the parser's own errors, prefixed "cannot read the polynomial over <field>: …"
+//     (this also covers a GF(2^k) literal wider than k bits, a GF(p) denominator
+//     that is 0 mod p, and exponents above polyparse.js MAX_PARSE_DEGREE)
+//   - over GF(p) a leading coefficient that vanishes mod p lowers the degree
+//   - a constant (degree 0) is rejected in every lane
+//   - the char-0 lane rejects degrees above DEGREE_CEILING[field] (the char-2
+//     lane's cap is compile2.js / char2.js MAX_DEGREE)
+//
 // handleMessage(data) is exported so the node smoke test can drive the same
 // code path without a browser; the result is plain JSON (structured-clone
 // safe: strings, numbers, booleans, null, arrays, plain objects only).
 import { parsePoly, polyToString } from './polyparse.js';
-import { resolveField } from './field.js';
+import { DEGREE_CEILING } from './methodlist.js';
+import { resolveField, echo } from './field.js';
 import { compileChar2 } from './compile2.js';
 import { compileChar0 } from './compile0.js';
 import { chainToText } from './chain.js';
@@ -35,6 +45,30 @@ export function graphViews(graph) {
 /** Comparison rows: render each row's graph IR (rows without a chain get null views). */
 const withGraphViews = rows => rows.map(c => ({ ...c, ...graphViews(c.graph ?? null) }));
 
+/** Largest degree the char-0 lane accepts per field (the char-2 lane's cap is
+ *  char2.js MAX_DEGREE).  Over ℚ/ℝ/ℂ the exact decoder's constants grow so fast
+ *  that degree 39 already runs for minutes; over the Mersenne primes it is a
+ *  second or two at 200 and growing quickly. */
+// (defined in methodlist.js so the page thread can show the same numbers)
+export { DEGREE_CEILING };
+
+const MERSENNE_NAMES = 'GF(2^61−1), GF(2^89−1) and GF(2^127−1)';
+/** The Mersenne fields are worth naming only for a degree they themselves accept,
+ *  and near their own cap they take about a minute, not "seconds". */
+function degreeCeilingMessage(fd, n) {
+  const cap = DEGREE_CEILING[fd.id];
+  const lower = 'split the polynomial, or lower the degree';
+  return fd.char === 'p'
+    ? `over ${fd.name} this page compiles degrees 1–${cap} (you entered degree ${n}): ` +
+      `higher degrees would take minutes of exact preprocessing — ${lower}`
+    : `over ${fd.name} this page compiles degrees 1–${cap} (you entered degree ${n}): ` +
+      `exact preprocessing above degree ${cap} can take minutes — ` +
+      (n <= DEGREE_CEILING.p61
+        ? `the Mersenne-prime fields ${MERSENNE_NAMES} take this polynomial much further ` +
+          `(degrees up to ${DEGREE_CEILING.p61}; about a minute near the cap)`
+        : lower);
+}
+
 /** Run one compile request; returns the result object (throws on hard failure).
  *  part: 'main' — our chain and the classical methods, with placeholder rows
  *        for the numeric methods when those run in their own worker;
@@ -45,16 +79,47 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
   const fd = resolveField(lane, fieldMode);
   const F = fd.make();
   const fieldInfo = { fieldId: fd.id, fieldName: fd.name, status: fd.status, exact: fd.exact, cCode: fd.cCode };
-  let r, cmpCoeffs;
+  let r;
   const cmpMode = fd.id;
-  // a parse failure names the field it was read in (the text may have been typed
-  // for another one, e.g. a fractional Taylor polynomial switched to GF(2^k))
-  const parseOpts = { char2: fd.lane === 'char2', complex: !!fd.complex };   // ℂ: every coefficient a GaussRat
+  const char2 = fd.lane === 'char2';
+  // Read the input and move it into the field.  A failure names the field it
+  // was read in (the text may have been typed for another one, e.g. a
+  // fractional Taylor polynomial switched to GF(2^k), or a GF(2^64) key kept
+  // across a switch to GF(2^32)).  Returns
+  //   coeffs     the parsed coefficients (Rat / GaussRat / BigInt bit patterns)
+  //   cmpCoeffs  the same as field elements (residues over GF(p)), and both
+  //              trimmed when a leading coefficient vanishes in the field
+  //   polyText   the input, canonically printed, for the C headers
+  //   srcText    the input for compileChar0 (which re-reads it): src itself
+  //              unless the trim above changed the degree
   const parse = () => {
-    try { return parsePoly(src, parseOpts); }
-    catch (e) { throw new Error(`cannot read the polynomial over ${fd.name}: ${e?.message ?? e}`); }
+    try {
+      let { coeffs } = parsePoly(src, { char2, complex: !!fd.complex });   // ℂ: every coefficient a GaussRat
+      let cmpCoeffs;
+      if (char2) {
+        const wide = coeffs.find(c => c >= (1n << BigInt(fd.k)));
+        if (wide !== undefined)
+          throw new Error(`${fd.name} elements are at most ${fd.k} bits, but 0x${echo(wide.toString(16))} has ${wide.toString(2).length} ` +
+            '— choose a wider field or shorten the constant');
+        cmpCoeffs = coeffs.map(c => F.fromInt(c));
+      } else {
+        cmpCoeffs = coeffs.map(c => F.fromRat(c));   // exact Rats over ℚ and ℝ, GaussRats over ℂ; residues over GF(p)
+      }
+      // GF(p): a leading coefficient that is a multiple of p is 0 in the field —
+      // drop it (and any below it) so the degree is the polynomial's true degree
+      let d = cmpCoeffs.length - 1;
+      while (d > 0 && F.isZero(cmpCoeffs[d])) d--;
+      const trimmed = d < cmpCoeffs.length - 1;
+      if (trimmed) { coeffs = coeffs.slice(0, d + 1); cmpCoeffs = cmpCoeffs.slice(0, d + 1); }
+      const polyText = polyToString(coeffs, { char2 });
+      return { coeffs, cmpCoeffs, degree: d, polyText, srcText: trimmed ? polyText : src };
+    } catch (e) { throw new Error(`cannot read the polynomial over ${fd.name}: ${e?.message ?? e}`); }
   };
-  let polyText = null;                            // the input, canonically printed, for the C headers
+  const { cmpCoeffs, degree: n, polyText, srcText } = parse();
+  // a constant has nothing to compile (and the classical rows would show raw
+  // arithmetic failures for it); the same page error in every lane
+  if (n < 1) throw new Error('a constant needs no multiplications — enter a polynomial of degree ≥ 1');
+  if (!char2 && n > (DEGREE_CEILING[fd.id] ?? Infinity)) throw new Error(degreeCeilingMessage(fd, n));
   const comparisonsFor = () => {
     const opts = { poly: polyText };
     if (part === 'main')
@@ -62,23 +127,13 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
               ...(needsNumericWorker(cmpMode) ? pendingNumericRows(cmpMode) : buildNumeric(cmpCoeffs, F, cmpMode, opts))];
     return buildComparisons(cmpCoeffs, F, cmpMode, opts);
   };
-  if (part === 'numeric') {
-    const { coeffs } = parse();
-    polyText = polyToString(coeffs);
-    cmpCoeffs = fd.lane === 'char2' ? coeffs.map(c => F.fromInt(c)) : coeffs.map(c => F.fromRat(c));
+  if (part === 'numeric')
     return { comparisons: withGraphViews(buildNumeric(cmpCoeffs, F, cmpMode, { poly: polyText, only })) };
-  }
-  if (fd.lane === 'char2') {
-    const { coeffs } = parse();
-    polyText = polyToString(coeffs, { char2: true });
-    cmpCoeffs = coeffs.map(c => F.fromInt(c));
+  if (char2) {
     r = compileChar2(cmpCoeffs, F);
   } else {
-    const { coeffs } = parse();
-    polyText = polyToString(coeffs);
-    cmpCoeffs = coeffs.map(c => F.fromRat(c));      // exact Rats over ℚ and ℝ, GaussRats over ℂ; residues over GF(p)
     try {
-      r = await compileChar0(src, fd.id);
+      r = await compileChar0(srcText, fd.id);
     } catch (err) {
       // our compiler unavailable/failed: still deliver the classical methods
       let comparisons = [];
@@ -102,6 +157,7 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
     mults: r.mults, hornerMults: r.hornerMults, adds: r.adds,
     height: r.height, ...fieldInfo, fieldName: r.field.name, note: r.note ?? '',
     maxRelError: r.maxRelError ?? null,
+    ...(r.cMissing ? { cMissing: r.cMissing } : {}),
     comparisons,
   };
 }

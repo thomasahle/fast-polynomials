@@ -1028,12 +1028,12 @@ const REFINE_TOP = 3;
  */
 export function eveOddDecompositionCandidates(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length < 4)
-    throw new Error('Eve decomposition: need a degree >= 3 polynomial');
+    throw new Error('need a degree >= 3 polynomial');
   const raw = coeffs.map(Number);
-  if (!raw.every(Number.isFinite)) throw new Error('Eve decomposition: coefficients must be finite numbers');
+  if (!raw.every(Number.isFinite)) throw new Error('coefficients must be finite numbers');
   const n = raw.length - 1, lc = raw[n];
-  if (n % 2 === 0) throw new Error('Eve decomposition: odd degree required');
-  if (lc === 0) throw new Error('Eve decomposition: leading coefficient must be nonzero');
+  if (n % 2 === 0) throw new Error('odd degree required');
+  if (lc === 0) throw new Error('leading coefficient must be nonzero');
   const p = raw.map(v => v / lc);
   const uRat = p.map(ratFromDouble);
   let D = 1n;
@@ -1056,13 +1056,13 @@ export function eveOddDecompositionCandidates(coeffs) {
 // row is useful for every polynomial degree (including constants).
 export function compileKnuthEve(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length === 0)
-    throw new Error('Knuth/Eve: need a nonempty coefficient array');
+    throw new Error('need a nonempty coefficient array');
   const p = coeffs.map(Number), n = p.length - 1;
   if (!p.every(Number.isFinite))
-    throw new Error('Knuth/Eve: coefficients must be finite numbers');
+    throw new Error('coefficients must be finite numbers');
   if (n >= 3) return compileMotzkin(p);
   if (n > 0 && p[n] !== 1)
-    throw new Error('Knuth/Eve: input must be monic (coeffs[n] === 1)');
+    throw new Error('input must be monic (coeffs[n] === 1)');
 
   let lines, mults = 0, adds = 0;
   if (n === 0) {
@@ -1085,19 +1085,19 @@ export function compileKnuthEve(coeffs) {
     name: 'Knuth-Eve base case', lines, mults, adds, height: mults,
     preprocessing: 'real', preprocessingLabel: 'elementary real preprocessing',
     exact: false, maxRelError: err,
-    note: `elementary degree-${n} base case of the Knuth--Eve real construction`,
+    note: `elementary degree-${n} base case of the Knuth–Eve real construction`,
   };
 }
 
 export function compileMotzkin(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length < 4)
-    throw new Error('Motzkin/Eve: need a degree >= 3 polynomial');
+    throw new Error('need a degree >= 3 polynomial');
   const p = coeffs.map(Number);
   if (!p.every(Number.isFinite))
-    throw new Error('Motzkin/Eve: coefficients must be finite numbers');
+    throw new Error('coefficients must be finite numbers');
   const n = p.length - 1;
   if (p[n] !== 1)
-    throw new Error('Motzkin/Eve: input must be monic (coeffs[n] === 1)');
+    throw new Error('input must be monic (coeffs[n] === 1)');
   const K = Math.ceil(n / 2) - 1;
   const uRat = p.map(ratFromDouble);                 // u = U / D exactly
   let D = 1n;
@@ -1121,7 +1121,7 @@ export function compileMotzkin(coeffs) {
     if (r.err < 1e-10) break;
   }
   if (!prepared.length) {
-    throw new Error('Motzkin/Eve: no admissible shift found (the polynomial has no real ' +
+    throw new Error('no admissible shift found (the polynomial has no real ' +
       'parameterisation of the required form: degenerate odd part for every shift)');
   }
   prepared.sort((a, b) => a.err - b.err);
@@ -1146,7 +1146,7 @@ export function compileMotzkin(coeffs) {
     if (err <= 1e-9) break;
   }
   if (!(chosen.err <= 1e-3)) {
-    throw new Error('Motzkin/Eve: the adapted constants exceed double precision at this degree - ' +
+    throw new Error('the adapted constants exceed double precision at this degree - ' +
       `max relative error ${chosen.err.toExponential(3)} over ${prepared.length} admissible shifts and ` +
       'their peel orders (the real parameterisation exists by Knuth\'s Theorem E and was found, but ' +
       'its constants are too large for the chain to be evaluated accurately in binary64: the ' +

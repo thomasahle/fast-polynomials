@@ -1,9 +1,11 @@
 // A minimal DOM for rendering the Preact page under node (ui-smoke.test.js):
 // just enough of Document / Element / Text for preact's diff, a small selector
 // matcher, and stubs for the browser globals ui.js touches (matchMedia,
-// location, Worker, fetch, innerHeight).  It is not a browser: no layout, no
-// CSS, and events are delivered only to listeners registered on the element
-// itself (preact attaches its handlers there, so that is what the page needs).
+// location, history.replaceState, window.addEventListener, Worker, fetch,
+// innerHeight).  It is not a browser: no layout, no CSS, and events are
+// delivered only to listeners registered on the element itself (preact
+// attaches its handlers there, so that is what the page needs); window events
+// (hashchange) are delivered by the `fire` helper installDom returns.
 
 class ShimNode {
   constructor() { this.parentNode = null; }
@@ -173,17 +175,27 @@ export class ShimWorker {
   terminate() { this.terminated = true; }
 }
 
-/** Install the shim as the page's globals for one render; returns the #app container. */
+/** Install the shim as the page's globals for one render; returns the #app
+ *  container, the compact media-query object, and `fire(type)` delivering a
+ *  window event (e.g. 'hashchange') to the page's listeners. */
 export function installDom({ compact = false, hash = '' } = {}) {
   const document = new ShimDocument();
   const app = new ShimElement('div');
   app.id = 'app';
   document.body.appendChild(app);
+  const location = { hash, href: `http://localhost/${hash}` };
+  // history.replaceState rewrites the address in place: no entry, no hashchange
+  const history = { entries: 0, replaceState(_, __, url) { location.hash = String(url); location.href = `http://localhost/${location.hash}`; },
+    pushState() { history.entries++; } };
+  const winListeners = new Map();
+  const addEventListener = (type, fn) => winListeners.set(type, [...(winListeners.get(type) ?? []), fn]);
+  const removeEventListener = (type, fn) => winListeners.set(type, (winListeners.get(type) ?? []).filter(f => f !== fn));
+  const fire = (type, extra = {}) => { for (const fn of winListeners.get(type) ?? []) fn({ type, ...extra }); };
   const mql = { matches: compact, media: '(max-width: 640px)', listeners: [],
     addEventListener(_, fn) { this.listeners.push(fn); }, removeEventListener(_, fn) { this.listeners = this.listeners.filter(f => f !== fn); } };
   const dark = { matches: false, media: '(prefers-color-scheme: dark)', addEventListener() {}, removeEventListener() {} };
   Object.assign(globalThis, {
-    document, window: globalThis, location: { hash, href: `http://localhost/${hash}` },
+    document, window: globalThis, location, history, addEventListener, removeEventListener,
     matchMedia: q => (q.includes('max-width') ? mql : dark), Worker: ShimWorker, innerHeight: 800,
     fetch: () => Promise.reject(new Error('offline in the test shim')),
     // preact flushes effects on the next frame; without rAF it waits 100 ms
@@ -191,7 +203,7 @@ export function installDom({ compact = false, hash = '' } = {}) {
   });
   if (typeof globalThis.navigator === 'undefined') globalThis.navigator = {};
   ShimWorker.instances.length = 0;
-  return { app, document, mql };
+  return { app, document, mql, fire, history };
 }
 
 /** Let preact's deferred effects and the page's timers run. */

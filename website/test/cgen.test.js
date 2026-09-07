@@ -80,13 +80,14 @@ const MAINS = {
     `    for (unsigned i = 0; i < sizeof xs / sizeof *xs; i++) { __uint128_t r = eval_P(xs[i]);\n` +
     `        printf("%llx:%016llx\\n", (unsigned long long)(r >> 64), (unsigned long long)r); }\n`,
 };
-function buildAndRun(cText, mode, xs, tag) {
-  // xs: bigint[] (finite fields) or number[] (Q / R)
+function buildAndRun(cText, mode, xs, tag, mainBody = null) {
+  // xs: bigint[] (finite fields) or number[] (Q / R); mainBody: the body of
+  // main() in place of the mode's default (MAINS), e.g. to call eval_P_key
   check(hasCProvenance(cText), `${tag}: generated-source provenance`);
   const outs = {};
   const kind = KINDS[mode];
   if (!kind) throw new Error(`buildAndRun: unknown mode ${mode}`);
-  const main = `\n#include <stdio.h>\nint main(void) {\n${MAINS[kind](xs)}    return 0;\n}\n`;
+  const main = `\n#include <stdio.h>\nint main(void) {\n${mainBody ?? MAINS[kind](xs)}    return 0;\n}\n`;
   const gf = /^gf/.test(mode), cx = kind === 'complex';
   for (const t of targets) {
     if ((kind === 'double' || cx) && t.arch) continue;   // doubles: native is enough
@@ -287,6 +288,7 @@ for (const [n, lead] of [[14, Rat.ONE], [15, new Rat(3n)], [31, Rat.ONE]]) {
   const r = await compileChar0(src, 'Q');
   check(r.cText === null && r.cTextFraction === null, 'Q overflow: no C rendering');
   check(/no C rendering: constant Infinity/.test(r.note), 'Q overflow: note explains');
+  check(/^an exact constant exceeds the double range, so no double-precision chain exists/.test(r.cMissing ?? ''), `Q overflow: cMissing (${r.cMissing})`);
   check(r.mults === 12 && typeof r.mathText === 'string' && r.graph && r.graph.nodes.filter(n => n.kind === 'mul').length === 12,
         'Q overflow: chain, math text and graph survive');
 }
@@ -358,6 +360,71 @@ for (const [mode, prime, bits, fmt, edge] of [
   compare(outs, xs.map(x => fmt(chain.eval(field.coerce(x)))), `char0C ${mode} chain`, (a, b) => a === b);
 }
 
+// ---------- keyed entry point of the hashing fields: the same circuit with a second key ----------
+// eval_P_key(a, x) reads every constant from a[]; eval_P(x) = eval_P_key(P_a / P_alpha, x).
+// A second polynomial of the same degree compiles to the same circuit, so its
+// table, passed as the key, must evaluate it.  Over the Mersenne fields a
+// parameter that happens to be 0 (x^n + 1) keeps its slot.
+{
+  const tableOf = (text, tbl) => {
+    const m = new RegExp(`static const (\\S+) ${tbl}\\[(\\d+)\\] = \\{\\n([\\s\\S]*?)\\n\\};`).exec(text);
+    return m ? { T: m[1], n: Number(m[2]), body: m[3] } : null;
+  };
+  const keyedMain = (kind, T, table, xs) => `    static const ${T} key2[${table.n}] = {\n${table.body}\n    };\n` +
+    MAINS[kind](xs).replace('eval_P(xs[i])', 'eval_P_key(key2, xs[i])');
+  const headerOf = text => text.slice(0, text.indexOf('*/')).replace(/\n \* +/g, ' ');   // the doc block, unwrapped
+  const keyedBody = text => text.slice(text.indexOf('eval_P_key(const'));            // from the keyed function on
+  // Mersenne primes: random monic pairs, x^n + 1 (a zero parameter), a non-monic input
+  for (const [mode, prime, fmt, randX] of [['p61', MERSENNE61, hex16, () => rnd()], ['p89', MERSENNE89, hex128, () => rnd()],
+                                          ['p127', MERSENNE127, hex128, () => (rnd() << 64n) | rnd()]]) {
+    const Fq = Fp(prime);
+    const kind = KINDS[mode];
+    for (const [n, lead] of [[4, Rat.ONE], [7, Rat.ONE], [9, new Rat(5n)], [12, Rat.ONE]]) {
+      const mk = () => [...Array.from({ length: n }, () => new Rat(rnd() % 1000n - 500n)), lead];
+      const cs1 = mk(), cs2 = mk(), csZ = [Rat.ONE, ...Array(n - 1).fill(Rat.ZERO), Rat.ONE];   // x^n + 1
+      const r1 = await compileChar0(ratSrc(cs1), mode), r2 = await compileChar0(ratSrc(cs2), mode), rz = await compileChar0(ratSrc(csZ), mode);
+      const t1 = tableOf(r1.cText, 'P_alpha'), t2 = tableOf(r2.cText, 'P_alpha'), tz = tableOf(rz.cText, 'P_alpha');
+      check(t1 && t2 && tz && t1.n === n && t2.n === n && tz.n === n, `${mode} n=${n}: one key slot per parameter (${t1?.n}, ${t2?.n}, ${tz?.n})`);
+      check(new RegExp(`static inline \\S+ eval_P_key\\(const \\S+ a\\[${n}\\], \\S+ x\\)`).test(r1.cText) && /eval_P_key\(P_alpha, x\)/.test(r1.cText) &&
+            !/P_alpha\[\d+\]/.test(keyedBody(r1.cText)), `${mode} n=${n}: keyed entry point, the table only through the wrapper`);
+      check(new RegExp(`degree-${n} polynomial, i\\.e\\. ${n === 8 || n === 11 || n === 18 ? 'an' : 'a'} ${n}-wise independent hash`).test(headerOf(r1.cText)) &&
+            /bijection/.test(headerOf(r1.cText)), `${mode} n=${n}: header note on the key map`);
+      if (lead.isOne()) check(!/leading coefficient/.test(r1.cText.slice(r1.cText.indexOf('eval_P('))), `${mode} n=${n}: monic wrapper has no scale`);
+      else check(/eval_P_key\(P_alpha, x\);\n[^\n]*leading coefficient/.test(r1.cText), `${mode} n=${n}: the scale stays outside eval_P_key`);
+      const xs = [0n, 1n, mode === 'p89' ? (1n << 64n) - 1n : prime - 1n, ...Array.from({ length: 5 }, randX)];   // x: a 64-bit word over 2^89-1
+      const want = coeffs => xs.map(x => fmt(P.evalAt(Fq, coeffs.map(c => Fq.fromRat(c)), x % prime)));
+      // r1's file with r2's (and x^n + 1's) constants as the key: the second polynomial —
+      // its monic part (the key is the chain of P/lc; the wrapper applies lc)
+      compare(buildAndRun(r1.cText, mode, xs, `keyed_${mode}_n${n}`, keyedMain(kind, t1.T, t2, xs)), want(cs2.map(c => c.div(lead))), `keyed ${mode} n=${n} (second key)`, (a, b) => a === b);
+      compare(buildAndRun(r1.cText, mode, xs, `keyedZ_${mode}_n${n}`, keyedMain(kind, t1.T, tz, xs)), want(csZ), `keyed ${mode} n=${n} (x^n + 1 as the key)`, (a, b) => a === b);
+      // and the wrapper still evaluates its own polynomial (leading coefficient applied)
+      compare(buildAndRun(r1.cText, mode, xs, `keyedSelf_${mode}_n${n}`), want(cs1), `keyed ${mode} n=${n} (eval_P)`, (a, b) => a === b);
+    }
+  }
+  // GF(2^k): the char-2 circuits, including an even (lifted) degree
+  for (const [k, mode, fmt] of [[64, 'gf64', hex16], [32, 'gf32', hex8]]) {
+    const F = GF2k(k);
+    const randK = () => rnd() & ((1n << BigInt(k)) - 1n);
+    const kind = KINDS[mode];
+    for (const [n, monic] of [[7, true], [8, true], [13, true], [9, false]]) {
+      const mk = () => [...Array.from({ length: n }, randK), monic ? 1n : (randK() | 2n)];
+      const c1 = mk(), c2 = mk();
+      const r1 = compileChar2(c1, F), r2 = compileChar2(c2, F);
+      const t1 = tableOf(r1.cText, 'P_a'), t2 = tableOf(r2.cText, 'P_a');
+      check(t1 && t2 && t1.n === t2.n && t1.n === n, `gf${k} n=${n}: one key slot per parameter (${t1?.n}, ${t2?.n})`);
+      check(new RegExp(`static inline \\S+ eval_P_key\\(const \\S+ a\\[${n}\\], \\S+ x\\)`).test(r1.cText) && /eval_P_key\(P_a, x\)/.test(r1.cText), `gf${k} n=${n}: keyed entry point`);
+      // the article agrees with the spoken degree ("an 8-wise", "a 13-wise")
+      check(new RegExp(`degree-${n} polynomial, i\\.e\\. ${n === 8 ? 'an' : 'a'} ${n}-wise independent hash`).test(headerOf(r1.cText)) &&
+            /bijection/.test(headerOf(r1.cText)), `gf${k} n=${n}: header note on the key map`);
+      const xs = [0n, 1n, (1n << BigInt(k)) - 1n, ...Array.from({ length: 5 }, randK)];
+      const want = coeffs => xs.map(x => fmt(P.evalAt(F, coeffs, x)));
+      const inv2 = F.inv(c2[n]);   // the key is the chain of the monic part P/lc
+      compare(buildAndRun(r1.cText, mode, xs, `keyed_gf${k}_n${n}`, keyedMain(kind, t1.T, t2, xs)), want(c2.map(c => F.mul(c, inv2))), `keyed gf${k} n=${n} (second key)`, (a, b) => a === b);
+      compare(buildAndRun(r1.cText, mode, xs, `keyedSelf_gf${k}_n${n}`), want(c1), `keyed gf${k} n=${n} (eval_P)`, (a, b) => a === b);
+    }
+  }
+}
+
 // ---------- ours: R (doubles; exact preprocessing, constants rounded) ----------
 {
   const src = '2x^9 - 4x^8 + 4x^7 - 7x^6 - 4x^5 - 11/2x^4 - 11x^3 + 5x^2 - 9/3x - 7';
@@ -367,6 +434,11 @@ for (const [mode, prime, bits, fmt, edge] of [
   check(typeof r.cText === 'string' && r.cTextFraction === null && r.fieldId === 'R' && r.exact === false && r.status === '≈ numeric', 'R: C variant / status');
   check(/double P = /.test(r.cText) && /static const double P_alpha\[/.test(r.cText) && /preprocessed exactly/.test(r.cText) && !/\(double\)/.test(r.cText), 'R: header / constants');
   check(/return P \* 2\.0;/.test(r.cText), 'R: leading coefficient as a double literal');
+  // the header repeats compile0's measured rounding (one doc block, lines within 88 columns)
+  check(new RegExp(`Double rounding: max relative error ${r.maxRelError.toExponential(1).replace('+', '\\+')} at the sample points`).test(r.cText) &&
+        r.cText.slice(0, r.cText.indexOf('*/')).split('\n').every(l => l.length <= 88), `R: rounding remark in the header (${r.maxRelError})`);
+  check(r.cMissing === undefined && /Compile: cc -O3 -march=native <this file>/.test(r.cText) && !/\.\.\./.test(r.cText.slice(0, r.cText.indexOf('*/'))), 'R: compile line names the file');
+  check(/^y += /m.test(r.mathText) && /^z += /m.test(r.mathText) && !/\by0\b/.test(r.mathText), 'R: math view uses the letter wire names of the C');
   // the chain is Q's exact chain: below the banner the C code is identical to Q's float
   // style (only Q's table comments carry the exact fractions)
   const body = t => t.slice(t.indexOf('/* preprocessed constants')).replace(/[ \t]*\/\/.*$/gm, '');
@@ -396,6 +468,7 @@ for (const [mode, prime, bits, fmt, edge] of [
   // beyond the double range the C is dropped (as over Q) while the chain survives
   const big = await compileChar0(Array.from({ length: 32 }, (_, i) => (i === 31 ? 'x^31' : `${((i * 37 + 11) % 19 - 9) || 3}x^${i}`)).join(' + ').replace(/\+ -/g, '- '), 'R');
   check(big.cText === null && /no C rendering: constant -?Infinity/.test(big.note) && big.mults === 16 && /\de\+3\d\d/.test(big.mathText), 'R beyond double range: no C, math view survives');
+  check(/^an exact constant exceeds the double range/.test(big.cMissing ?? '') && big.maxRelError === Infinity, `R beyond double range: cMissing (${big.cMissing})`);
 }
 
 // ---------- ours: C (C99 double complex; exact preprocessing over Q(i), constants rounded) ----------
@@ -419,12 +492,20 @@ for (const [mode, prime, bits, fmt, edge] of [
   check(/static const double complex P_alpha\[/.test(r.cText) && /return P \* \(1\.0 \+ 2\.0\*I\);/.test(r.cText) && /preprocessed exactly/.test(r.cText) &&
         /\d\.\d+ [-+] \d\.\d+\*I,/.test(r.cText) && !/\(double\)/.test(r.cText) && !/\di\)/.test(r.cText.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')),
         'C: complex table, complex leading coefficient, re ± im*I literals (the (re±imi) tokens only in comments)');
+  check(new RegExp(`Double rounding: max relative error ${r.maxRelError.toExponential(1).replace('+', '\\+')} at the sample points`).test(r.cText), `C: rounding remark in the header (${r.maxRelError})`);
   compare(runC(r.cText, 'oursC'), want, 'ours C', cxClose);
   // the classical methods over ℂ: complex tokens in the chain, double complex in the C
   for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
     const m = fn(cs.map(c => Cx.fromRat(c)), Cx);
     const c = methodChainC(m.lines, 'C', Cx, { name: nm, mults: m.mults, preprocessing: m.preprocessing, poly: src });
     shape(c, `${nm} C`);
+    // the ℂ constants note is 97 columns unwrapped: the whole doc block stays within 88
+    {
+      const hl = c.slice(0, c.indexOf('*/')).split('\n');
+      check(hl.every(l => l.length <= 88) && hl.join('\n').replace(/\n \* {3}/g, ' ')
+              .includes('rounded to the nearest complex double (each part a shortest round-trip decimal).'),
+            `${nm} C: the complex constants note is wrapped inside the 88-column doc block`);
+    }
     if (nm === 'RW') check(c.includes('static const double complex P_c[') && /\d\*I,/.test(c), 'RW C: constants table of complex doubles');
     if (nm === 'Horner') check(!c.includes('static const') && /\(1\.0 \+ 2\.0\*I\) \* x/.test(c), 'Horner C: inline complex coefficients, parenthesised');
     compare(runC(c, `${nm}C`), want, `${nm} C`, cxClose);
@@ -432,7 +513,7 @@ for (const [mode, prime, bits, fmt, edge] of [
   // the numeric rows as the page builds them: Knuth–Eve and Belaga at degree 7
   // (Pan's complex scheme starts at degree 11 and says so), all three at degree 13
   for (const [srcN, wantRows, notPan] of [
-    [src, ['Knuth–Eve', 'Belaga'], /complex schemes start at degree 11 \(scheme \(4\); family \(3\) from 13\); Knuth–Eve and Belaga give ⌊n\/2⌋\+1 multiplications for a monic polynomial here/],
+    [src, ['Knuth–Eve', 'Belaga'], /^Pan's complex schemes start at degree 11 \(scheme \(4\); family \(3\) from 13\) and this polynomial has degree 7; below degree 11, Knuth–Eve and Belaga already give ⌊n\/2⌋\+1 multiplications for a monic polynomial\.$/],
     ['(0+1i)x^13 + 2x^11 - ix^3 + (1-1i)x + 1', ['Knuth–Eve', 'Pan', 'Belaga'], null],
   ]) {
     const csN = parsePoly(srcN, { complex: true }).coeffs, dcN = csN.map(toC);
@@ -462,6 +543,20 @@ for (const [mode, prime, bits, fmt, edge] of [
         'C real input: R\'s code with double complex in place of double');
   const rdc = parsePoly(rsrc).coeffs.map(c => ({ re: ratToDouble(c.n, c.d), im: 0 }));
   compare(runC(rr.cText, 'oursC_real'), zs.map(z => hornerC(rdc, z)), 'ours C (real input)', cxClose);
+}
+
+// ---------- header width: a long P(x) line is wrapped, not left to overflow ----------
+{
+  const fact = n => { let f = 1n; for (let i = 2n; i <= BigInt(n); i++) f *= i; return f; };
+  // the degree-12 truncation of e^x — its P(x) line is over 150 columns unwrapped
+  const src = Array.from({ length: 13 }, (_, i) => 12 - i).map(i => (i === 0 ? '1' : `1/${fact(i)}x^${i}`)).join(' + ');
+  const r = await compileChar0(src, 'R');
+  const hl = r.cText.slice(0, r.cText.indexOf('*/')).split('\n');
+  check(hl.every(l => l.length <= 88), `R deg 12: every header line within 88 columns (widest ${Math.max(...hl.map(l => l.length))})`);
+  const poly = hl.join('\n').replace(/\n \* {3}/g, ' ').split('\n').find(l => l.includes('P(x) = '));
+  check(poly && poly.includes('1/479001600*x^12') && poly.trim().endsWith('+ 1') && poly.length > 88,
+        'R deg 12: the P(x) line is complete once the continuations are joined');
+  check(hl.filter(l => /^ \* {3}\S/.test(l)).length >= 1, 'R deg 12: the P(x) line uses the doc-block continuation indent');
 }
 
 // ---------- mode aliases ----------

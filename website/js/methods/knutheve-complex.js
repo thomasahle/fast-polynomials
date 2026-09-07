@@ -58,7 +58,7 @@ function toC(v, what = 'coefficient') {
     }
     if ('n' in v && 'd' in v) return C(Number(v.n) / Number(v.d), 0);
   }
-  throw new Error(`Knuth/Eve (complex): bad ${what} ${String(v)}`);
+  throw new Error(`bad ${what} ${String(v)}`);
 }
 const finiteC = z => Number.isFinite(z.re) && Number.isFinite(z.im);
 
@@ -484,11 +484,11 @@ function prepareShift(pc, n, c) {
  */
 export function compileKnuthEveComplex(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length === 0)
-    throw new Error('Knuth/Eve (complex): need a nonempty coefficient array');
+    throw new Error('need a nonempty coefficient array');
   const pc = coeffs.map(v => toC(v));
-  if (!pc.every(finiteC)) throw new Error('Knuth/Eve (complex): coefficients must be finite numbers');
+  if (!pc.every(finiteC)) throw new Error('coefficients must be finite numbers');
   const n = pc.length - 1, lc = pc[n];
-  if (n > 0 && isZeroC(lc)) throw new Error('Knuth/Eve (complex): leading coefficient must be nonzero');
+  if (n > 0 && isZeroC(lc)) throw new Error('leading coefficient must be nonzero');
   const scaled = n > 0 && !(lc.re === 1 && lc.im === 0);
   const p = scaled ? pc.map(v => cDiv(v, lc)) : pc;
   const K = Math.ceil(n / 2) - 1;
@@ -519,7 +519,7 @@ export function compileKnuthEveComplex(coeffs) {
       lines = [{ lhs: 'P', rhs, mul: false }];
     }
     return finish({ lines, mults: 0, adds, height: 0 }, 17,
-      `elementary degree-${n} base case of the Knuth--Eve scheme over C`, { shift: C(0) });
+      `elementary degree-${n} base case of the Knuth–Eve scheme over C`, { shift: C(0) });
   }
 
   // The unshifted polynomial, then (only if needed) a few small shifts; for
@@ -537,7 +537,7 @@ export function compileKnuthEveComplex(coeffs) {
     }
   }
   if (!prepared.length) {
-    throw new Error('Knuth/Eve (complex): the odd part of the shifted polynomial is degenerate ' +
+    throw new Error('the odd part of the shifted polynomial is degenerate ' +
       'for every shift tried, or its roots could not be found');
   }
   prepared.sort((a, b) => a.err - b.err);
@@ -561,13 +561,13 @@ export function compileKnuthEveComplex(coeffs) {
     if (err <= 1e-9) break;
   }
   if (!(chosen.err <= 1e-3)) {
-    throw new Error('Knuth/Eve (complex): the adapted constants exceed double precision at this degree - ' +
+    throw new Error('the adapted constants exceed double precision at this degree - ' +
       `max relative error ${chosen.err.toExponential(3)} over ${prepared.length} shifts and their peel orders`);
   }
   const c = best.c;
   const shiftText = isZeroC(c) ? 'no shift is needed over C' : `after the shift y = x + ${fmtC(c, 7)} ` +
     '(the odd part of the unshifted polynomial is degenerate or rounds badly)';
-  const note = 'coefficient adaptation over C (Motzkin 1955; Knuth 1962; the Knuth--Eve scheme without ' +
+  const note = 'coefficient adaptation over C (Motzkin 1955; Knuth 1962; the Knuth–Eve scheme without ' +
     `Eve's real-rootedness search): ${shiftText}; the constants are the complex roots of the odd part ` +
     'and its divided differences - algebraic numbers found numerically, so the chain is only correct ' +
     'up to floating-point error' + (scaled ? '; the leading coefficient is restored by a final scale line' : '');

@@ -4,7 +4,9 @@
 // comparison rows), legacy message spellings still resolve, the parser reads
 // decimal coefficients exactly, ℝ is exact rational arithmetic displayed as
 // doubles, ℂ the same over the Gaussian rationals displayed as complex doubles
-// (C99 double complex over ℂ: registry cCode), and every backend decodes +
+// (C99 double complex over ℂ: registry cCode), the worker's input validation
+// (constants, degree ceilings, over-wide GF(2^k) literals, GF(p) denominators
+// and leading coefficients that vanish mod p), and every backend decodes +
 // renders C for degrees 3..20 (char 2: the odd degrees it has circuits for).
 // Plain node, exit 1 on failure.
 import { FIELDS, FIELD_GROUPS, FIELD_IDS, fieldById, resolveField, ratToDoubleString, doubleString, ratToDouble, R, Q, Fp, GF2k,
@@ -13,7 +15,8 @@ import { parsePoly, decimalToRat } from '../js/polyparse.js';
 import { Rat } from '../js/rat.js';
 import { GaussRat } from '../js/gauss.js';
 import { COMPLEX_SRC, COMPLEX_TOKEN } from '../js/tokens.js';
-import { handleMessage } from '../js/worker.js';
+import { handleMessage, DEGREE_CEILING } from '../js/worker.js';
+import { MAX_DEGREE } from '../js/methodlist.js';
 import { examplesFor } from '../js/uistate.js';
 import { compileChar0 } from '../js/compile0.js';
 import { compileChar2 } from '../js/compile2.js';
@@ -184,6 +187,100 @@ for (const [src, id, what] of [['1/3628800x^10 + 1/2x^2 + x + 1', 'gf64', 'fract
   check(msg !== null && !/BigInt|Cannot convert/.test(msg) && msg.startsWith(`cannot read the polynomial over ${fieldById(id).name}:`) && msg.includes(what) && /ℚ/.test(msg),
         `${what} over ${id}: ${msg}`);
 }
+// ---------- worker input validation: one readable page error, before any compiler runs ----------
+const workerError = async msg => { try { await handleMessage(msg); return null; } catch (e) { return e.message; } };
+// a constant (degree 0 — also after cancellation, and after reduction mod p) is rejected in every lane,
+// with the same message, so the classical rows never show raw arithmetic failures for it
+{
+  const CONST = 'a constant needs no multiplications — enter a polynomial of degree ≥ 1';
+  for (const [src, id] of [['5', 'Q'], ['0', 'Q'], ['1/2', 'R'], ['2i', 'C'], ['x - x + 3', 'p61'], ['5', 'gf64'], ['x + x', 'gf32'],
+                           ['2305843009213693951 x + 1', 'p61']]) {                          // 2^61−1 ≡ 0: the x term vanishes
+    const f = fieldById(id);
+    const msg = await workerError({ lane: f.lane, src, fieldMode: id });
+    check(msg === CONST, `constant ${JSON.stringify(src)} over ${id}: ${msg}`);
+    if (f.lane === 'char0') check(await workerError({ lane: f.lane, src, fieldMode: id, part: 'main' }) === CONST, `constant ${JSON.stringify(src)} over ${id} (main part)`);
+  }
+  check(await workerError({ lane: 'char0', src: '7', fieldMode: 'Q', part: 'numeric', only: 'Knuth–Eve' }) === CONST, 'constant: the numeric part rejects too');
+}
+// per-field degree ceilings over the char-0 lane (ℚ/ℝ/ℂ 38, Mersenne 255): named, instant,
+// pointing at the Mersenne fields only for a degree those fields themselves accept
+{
+  check(DEGREE_CEILING.Q === 38 && DEGREE_CEILING.R === 38 && DEGREE_CEILING.C === 38 && DEGREE_CEILING.p61 === 255 && DEGREE_CEILING.p89 === 255 && DEGREE_CEILING.p127 === 255, 'degree ceilings');
+  for (const [id, n] of [['Q', 39], ['R', 40], ['C', 47], ['Q', 10000], ['p61', 256], ['p89', 1000], ['p127', 10000]]) {
+    const f = fieldById(id), t0 = Date.now();
+    const msg = await workerError({ lane: 'char0', src: `x^${n} + 3x^2 + x + 1`, fieldMode: id });
+    const cap = DEGREE_CEILING[id];
+    check(msg !== null && msg.startsWith(`over ${f.name} this page compiles degrees 1–${cap} (you entered degree ${n})`), `ceiling ${id} n=${n}: ${msg}`);
+    const pointsAtMersenne = /Mersenne-prime fields GF\(2\^61−1\), GF\(2\^89−1\) and GF\(2\^127−1\) take this polynomial much further \(degrees up to 255; about a minute near the cap\)/.test(msg);
+    check(pointsAtMersenne === (f.char !== 'p' && n <= DEGREE_CEILING.p61), `ceiling ${id} n=${n}: points at the Mersenne fields only when they accept the degree: ${msg}`);
+    check(pointsAtMersenne || /split the polynomial, or lower the degree/.test(msg), `ceiling ${id} n=${n}: no usable advice: ${msg}`);
+    check(!/compile the same polynomial in seconds/.test(msg), `ceiling ${id} n=${n}: still promises "in seconds" near the Mersenne cap`);
+    check(Date.now() - t0 < 1000, `ceiling ${id} n=${n}: rejected in ${Date.now() - t0} ms`);
+  }
+  // the ceiling is a ceiling: degree 38 over ℚ compiles (x^38 + x + 1 is a fast, sparse input)
+  const r = await handleMessage({ lane: 'char0', src: 'x^38 + x + 1', fieldMode: 'Q' });
+  check(!r.oursFailed && r.mults === 20, `degree 38 over ℚ compiles (${r.oursFailed ?? r.mults})`);
+  // over binary fields the char-2 cap keeps its own message (the paper's open frontier)
+  const m2 = await workerError({ lane: 'char2', src: 'x^27 + x + 1', fieldMode: 'gf64' });
+  check(/degree 27 is the open frontier of the paper \(section "Open Problems"\)/.test(m2) && /GF\(2\^61−1\), GF\(2\^89−1\) and GF\(2\^127−1\) compile any degree up to 255/.test(m2), `char-2 cap: ${m2}`);
+}
+// an exponent beyond the parser's cap is rejected by name (never allocates), in the field's "cannot read" wrapper
+for (const [id, src] of [['Q', 'x^1000000000 + 1'], ['gf64', 'x^99999999999999999999'], ['p89', '2x^100000000']]) {
+  const f = fieldById(id), t0 = Date.now();
+  const msg = await workerError({ lane: f.lane, src, fieldMode: id });
+  // the parser does not know the field, so it names every ceiling — the real ones (26 / 38 / 255)
+  check(msg !== null && msg.startsWith(`cannot read the polynomial over ${f.name}: "x^`) &&
+        new RegExp(`this page compiles degrees up to ${MAX_DEGREE} in characteristic 2, ${DEGREE_CEILING.Q} over ℚ/ℝ/ℂ and ${DEGREE_CEILING.p61} over the Mersenne-prime fields$`).test(msg) &&
+        !/a few hundred/.test(msg) && !/Invalid array length/.test(msg),
+        `exponent cap ${id}: ${msg}`);
+  check(Date.now() - t0 < 1000, `exponent cap ${id}: rejected in ${Date.now() - t0} ms`);
+}
+// GF(2^k): a literal wider than k bits is rejected (it used to be reduced silently, so the chain
+// and the header described a different polynomial than the one typed — e.g. a GF(2^64) key kept
+// across a switch to GF(2^32))
+{
+  for (const [src, id, lit, bits] of [['0xffffffffffffffff x^3 + 1', 'gf32', 'ffffffffffffffff', 64], ['x^7 + 0x100000000 x + 1', 'gf32', '100000000', 33],
+                                      ['0x10000000000000000 x^5 + x', 'gf64', '10000000000000000', 65], ['x^3 + 4294967296', 'gf32', '100000000', 33]]) {
+    const f = fieldById(id);
+    const msg = await workerError({ lane: 'char2', src, fieldMode: id });
+    check(msg === `cannot read the polynomial over ${f.name}: ${f.name} elements are at most ${f.k} bits, but 0x${lit} has ${bits} — choose a wider field or shorten the constant`,
+          `wide literal over ${id}: ${msg}`);
+    check(await workerError({ lane: 'char2', src, fieldMode: id, part: 'numeric', only: 'Knuth–Eve' }) === msg, `wide literal over ${id}: the numeric part agrees`);
+  }
+  // a pathological literal is elided, so the page's error line stays one readable line
+  const msgWide = await workerError({ lane: 'char2', src: `0x${'f'.repeat(300)} x^3 + 1`, fieldMode: 'gf32' });
+  check(msgWide.includes(`but 0x${'f'.repeat(39)}… has 1200 `) && msgWide.length < 200, `over-wide literal elided: ${msgWide.length} chars`);
+  // exactly k bits is fine, and the header names the input polynomial, not the monic-scaled one
+  const r = await handleMessage({ lane: 'char2', src: '0xffffffff x^3 + 1', fieldMode: 'gf32' });
+  check(!r.oursFailed && r.mults === 3 && r.cText.includes('P(x) = 0xffffffff*x^3 + 1'), `32-bit literal over gf32: ${r.oursFailed ?? (r.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+  const r3 = await handleMessage({ lane: 'char2', src: '0x3 x^3 + 1', fieldMode: 'gf64' });
+  check(r3.cText.includes('P(x) = 0x3*x^3 + 1') && !r3.cText.includes('0xfffffffffffffff6'), `gf64 header names the input: ${(r3.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+}
+// GF(p): a denominator that vanishes mod p is named inside the "cannot read" wrapper (it used to
+// be a bare 'inverse of 0'); a vanishing leading coefficient lowers the degree instead of reaching
+// the compiler's monic normalisation ('division by zero in prime field')
+{
+  const p61 = MERSENNE61.toString(), p89 = MERSENNE89.toString();
+  for (const [src, id, den, extra] of [[`x^3 + 1/${p61} x`, 'p61', p61, ''], [`x^9 + 1/${p89} x^2 + 1`, 'p89', p89, ''],
+                                       [`x^2 + 1/${(MERSENNE61 * 3n).toString()}`, 'p61', (MERSENNE61 * 3n).toString(), ` (a multiple of ${p61})`]]) {
+    const f = fieldById(id);
+    const msg = await workerError({ lane: 'char0', src, fieldMode: id });
+    check(msg === `cannot read the polynomial over ${f.name}: the denominator ${den} is 0 in ${f.name}${extra}`, `zero denominator over ${id}: ${msg}`);
+  }
+  const bigDen = (MERSENNE61 * 10n ** 40n).toString();     // a 60-digit multiple of p: elided, like every echoed literal
+  const msgBig = await workerError({ lane: 'char0', src: `x^3 + 1/${bigDen} x`, fieldMode: 'p61' });
+  check(msgBig.includes(`the denominator ${bigDen.slice(0, 39)}… is 0 in `) && msgBig.length < 160, `long denominator elided: ${msgBig.length} chars`);
+  check(/inverse of 0/.test((() => { try { Fp(7n).inv(0n); } catch (e) { return e.message; } })()), 'Fp.inv keeps its internal message');
+  const r = await handleMessage({ lane: 'char0', src: `${p61} x^3 + x^2 + 3x + 1`, fieldMode: 'p61' });   // the x^3 term is 0 mod p: degree 2
+  check(!r.oursFailed && r.mults === 1 && r.comparisons.filter(c => c.ok).map(c => c.name).join(',') === 'Horner,Estrin,Rabin–Winograd' && !/division by zero/.test(r.mathText),
+        `vanishing leading coefficient over p61: ${r.oursFailed ?? `${r.mults} mults, rows ${r.comparisons.map(c => c.name + (c.ok ? '' : '✗')).join(',')}`}`);
+  check(r.cText.includes('P(x) = x^2 + 3*x + 1') && r.comparisons.every(c => !c.cText || c.cText.includes('P(x) = x^2 + 3*x + 1')), 'vanishing leading coefficient: the headers name the reduced polynomial');
+  const same = await handleMessage({ lane: 'char0', src: 'x^2 + 3x + 1', fieldMode: 'p61' });
+  check(same.mathText === r.mathText, 'vanishing leading coefficient: the same chain as the reduced input');
+  const dbl = await handleMessage({ lane: 'char0', src: `${(MERSENNE61 * 2n).toString()} x^4 + ${p61} x^3 + x + 1`, fieldMode: 'p61' });   // two vanishing terms
+  check(!dbl.oursFailed && dbl.mults === 0, `two vanishing leading terms over p61: ${dbl.oursFailed ?? dbl.mults}`);
+}
+
 // legacy messages
 {
   const a = await handleMessage({ lane: 'char0', src: 'x^7 - 2x^6 - 8x^5 - 6x^4 - 11x^3 + 10/3x^2 + 4/2x - 7/3', fieldMode: 'p' });

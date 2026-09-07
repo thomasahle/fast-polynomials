@@ -48,6 +48,7 @@
 //         tail is affine in the still-undecoded keys with slopes 1, q0+q6 or
 //         q0+q6+1 (spec.chain), and the constant parts are read off the circuit.
 //         Unit pivots only — every field of characteristic two
+import { MAX_DEGREE } from './methodlist.js';
 import * as P from './poly.js';
 import { decodeN13 } from './n13decode.js';
 
@@ -503,8 +504,10 @@ export function decodeChar2(n, c, F) {
 }
 /** The odd degrees that carry a fixed circuit above (3, 5, ..., 25). */
 export const CIRCUIT_DEGREES = Object.keys(CIRCUITS).map(Number);
-/** Largest degree the lane compiles; 27 is the paper's open frontier. */
-export const MAX_DEGREE = 26;
+/** Largest degree the lane compiles; 27 is the paper's open frontier.  The
+ *  number lives in the dependency-free js/methodlist.js (the page reads it
+ *  without loading this module); re-exported here for the lane's importers. */
+export { MAX_DEGREE };
 /** Every degree the lane compiles, 1..26: the odd degrees 3..25 by their
  *  circuits, 1 and 2 directly (P = x + a0, P = x (x + a1) + a0), and every
  *  even degree 4..26 by lifting the circuit of degree n-1 with one extra

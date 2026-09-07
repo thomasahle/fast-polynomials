@@ -8,6 +8,14 @@ import { Rat } from './rat.js';
  *  chips): a hex bit pattern, except 0 and 1 — the field's identities — as digits. */
 export const gfLiteral = v => (v > 1n ? '0x' + v.toString(16) : v.toString());
 
+/** A user literal quoted back in an error message: a pathological one (a 400-digit
+ *  exponent, a 300-digit hex key, a 379-digit denominator) is elided so the page's
+ *  error line stays one readable line.  Shared by the parser and the worker. */
+export const echo = (text, max = 40) => {
+  const t = String(text);
+  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+};
+
 export const Q = {
   name: 'ℚ', char: 0,
   zero: Rat.ZERO, one: Rat.ONE,
@@ -119,18 +127,25 @@ export function primeName(p) {
 }
 
 export function Fp(p) {
+  const name = primeName(p);
   const norm = a => ((a % p) + p) % p;
   const powm = (a, e) => { let r = 1n, b = norm(a); while (e) { if (e & 1n) r = (r * b) % p; b = (b * b) % p; e >>= 1n; } return r; };
   const inv = a => { a = norm(a); if (a === 0n) throw new Error('inverse of 0'); return powm(a, p - 2n); };
+  // a typed fraction whose denominator vanishes mod p has no residue: name it
+  // (the bare 'inverse of 0' is for arithmetic inside the compilers)
+  const fromRat = r => {
+    const d = norm(r.d);
+    if (d === 0n) throw new Error(`the denominator ${echo(r.d)} is 0 in ${name}${r.d === p ? '' : ` (a multiple of ${p})`}`);
+    return (norm(r.n) * inv(d)) % p;
+  };
   return {
-    name: primeName(p), char: Number(p % 1000000n) /* display only */, p,
+    name, char: Number(p % 1000000n) /* display only */, p,
     zero: 0n, one: 1n,
     add: (a, b) => (a + b) % p, sub: (a, b) => norm(a - b),
     mul: (a, b) => (a * b) % p, div: (a, b) => (a * inv(b)) % p,
     neg: a => norm(-a), inv,
     eq: (a, b) => a === b, isZero: a => a === 0n, isOne: a => a === 1n,
-    fromInt: n => norm(BigInt(n)),
-    fromRat: r => (norm(r.n) * inv(norm(r.d))) % p,
+    fromInt: n => norm(BigInt(n)), fromRat,
     toDisplay: a => a.toString(),
   };
 }

@@ -30,7 +30,7 @@
 // produces, so for n >= 6 the scheme needs every root of a polynomial of
 // degree l-1 - real or complex.  The scheme has exactly n parameters for the
 // n coefficients of a monic polynomial: there is NO free parameter (no shift
-// as in the Motzkin-Eve method) that could move the roots of B onto the real
+// as in the Knuth–Eve method) that could move the roots of B onto the real
 // line, and Pan (1966, p. 108) states outright that in scheme (0.5) the
 // parameters "turn out, in general, to be complex for real coefficients" -
 // his scheme (0.7) is the real-parameter alternative, at the cost of one more
@@ -78,7 +78,7 @@
 // only if the best chain is wrong to more than 1e-3: like every adapted
 // chain its rounding error grows with the degree (the intermediate values
 // are of the size of A and x B separately, which can far exceed P), and
-// unlike Motzkin-Eve there is no shift to improve the conditioning.
+// unlike Knuth–Eve there is no shift to improve the conditioning.
 
 import {
   C, cAbs, cDiv, cNeg, cSub, cMul, isZeroC, polyRoots, polyRootsComplex, fmt, appendConst,
@@ -421,13 +421,13 @@ const ORDER_BUDGET = 160;                 // chain verifications per precision l
 
 export function compileBelaga(coeffs) {
   if (!Array.isArray(coeffs) || coeffs.length < 4)
-    throw new Error('Belaga: need a degree >= 3 polynomial');
+    throw new Error('need a degree >= 3 polynomial');
   const pc = coeffs.map(toComplex);
   if (!pc.every(z => Number.isFinite(z.re) && Number.isFinite(z.im)))
-    throw new Error('Belaga: coefficients must be finite numbers');
+    throw new Error('coefficients must be finite numbers');
   const n = pc.length - 1;
   if (pc[n].re !== 1 || pc[n].im !== 0)
-    throw new Error('Belaga: input must be monic (coeffs[n] === 1)');
+    throw new Error('input must be monic (coeffs[n] === 1)');
   if (pc.some(z => z.im !== 0)) return compileBelagaComplex(pc);
   const p = pc.map(z => z.re);
 
@@ -490,13 +490,13 @@ export function compileBelaga(coeffs) {
     // A is monic exactly; B is monic up to the rounding of a1 (its leading
     // coefficient is 1 + l (a1 - a1exact)), which does not move its roots
     if (dyIsZero(B[l - 1]) || !dyIsZero(dySub(A[l], D1)))
-      throw new Error('Belaga: preprocessing failed (decomposition P = A(y) + x B(y) is not monic)');
+      throw new Error('preprocessing failed (decomposition P = A(y) + x B(y) is not monic)');
     const Bd = B.map(dyToDouble);
     let roots = polyRoots(Bd);
-    if (!roots) throw new Error('Belaga: the root-finding iteration failed to converge on the roots of B');
+    if (!roots) throw new Error('the root-finding iteration failed to converge on the roots of B');
     roots = roots.map(z => polishExact(B, z));
     const blk = rootBlocks(roots);
-    if (!blk) throw new Error('Belaga: preprocessing failed (the roots of B do not form conjugate pairs)');
+    if (!blk) throw new Error('preprocessing failed (the roots of B do not form conjugate pairs)');
     const blocks = blk.reals.concat(blk.pairs);
     const pairs = blk.pairs.length;
     const cost = ord => {
@@ -510,9 +510,9 @@ export function compileBelaga(coeffs) {
     if (best.err <= 1e-9) break;
   }
   if (!(best.err <= 1e-3)) {
-    throw new Error('Belaga: the constants exceed double precision for this polynomial - max relative error ' +
+    throw new Error('the constants exceed double precision for this polynomial - max relative error ' +
       `${best.err.toExponential(3)} (a_1 = (c_{n-1} - 1)/l and the roots of B are fixed by the input, so ` +
-      'unlike Motzkin-Eve there is no shift to improve the conditioning of the chain; its intermediate ' +
+      'unlike Knuth–Eve there is no shift to improve the conditioning of the chain; its intermediate ' +
       'values A(y) and x B(y) far exceed P(x) here)');
   }
   return finish(best.chain, best.mode, best.err, best.pairs);
@@ -575,9 +575,9 @@ function compileBelagaComplex(pc) {
     while (A.length < l + 1) A.push(G0);
     while (B.length < l) B.push(G0);
     if (gdIsZero(B[l - 1]) || !gdIsZero(gdSub(A[l], gd(D1))))
-      throw new Error('Belaga: preprocessing failed (decomposition P = A(y) + x B(y) is not monic)');
+      throw new Error('preprocessing failed (decomposition P = A(y) + x B(y) is not monic)');
     let roots = polyRootsComplex(B.map(gdToC));
-    if (!roots) throw new Error('Belaga: the root-finding iteration failed to converge on the roots of B');
+    if (!roots) throw new Error('the root-finding iteration failed to converge on the roots of B');
     roots = roots.map(z => polishExactG(B, z, false));
     const blocks = roots.map(r => ({ type: 'c', r }));
     const cost = ord => verifyLinesComplex(emit(n, a1, decodeG(A, ord, digits), aN, digits).lines, pc);
@@ -587,9 +587,9 @@ function compileBelagaComplex(pc) {
     if (best.err <= 1e-9) break;
   }
   if (!(best.err <= 1e-3)) {
-    throw new Error('Belaga: the constants exceed double precision for this polynomial - max relative error ' +
+    throw new Error('the constants exceed double precision for this polynomial - max relative error ' +
       `${best.err.toExponential(3)} (a_1 = (c_{n-1} - 1)/l and the roots of B are fixed by the input, so ` +
-      'unlike Motzkin-Eve there is no shift to improve the conditioning of the chain; its intermediate ' +
+      'unlike Knuth–Eve there is no shift to improve the conditioning of the chain; its intermediate ' +
       'values A(y) and x B(y) far exceed P(x) here)');
   }
   return finish(best.chain, best.err);

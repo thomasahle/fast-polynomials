@@ -24,6 +24,7 @@
 // decides) for methodChainC; char2C takes the field object. The legacy 'p'
 // means 'p89'.
 import { Rat } from './rat.js';
+import { REL_ERROR_WARN } from './methodlist.js';
 import { GaussRat } from './gauss.js';
 import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 import { referenceFor } from './references.js';
@@ -47,21 +48,48 @@ const PROVENANCE_START = C_PROVENANCE.slice(0, -'\n */'.length);
 /** True when a generated C text starts with the provenance header (with or without per-file lines). */
 export const hasCProvenance = text => String(text).startsWith(PROVENANCE_START);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** Indefinite article before a spelled-out number: eight, eleven, eighteen (and
+ *  eight hundred / eight thousand …) take "an", every other degree takes "a". */
+const article = n => (/^(8\d{0,3}|1[18])$/.test(String(n)) ? 'an' : 'a');
+/** Width of a header line including the doc block's " * " prefix. */
+const HEADER_WIDTH = 88;
+/** Word-wrap one header line so that, with the " * " prefix, it stays within
+ *  HEADER_WIDTH columns; continuation lines are indented so the leading label
+ *  ("Reference: ", "Compile: ") stays at the start of the first line.  A
+ *  single word longer than the width (a URL) is left whole. */
+export function wrapHeaderLine(text, indent = '  ') {
+  const width = HEADER_WIDTH - 3;
+  const out = [];
+  let cur = '';
+  for (const word of String(text).split(' ')) {
+    const limit = width - (out.length ? indent.length : 0);
+    if (cur && cur.length + 1 + word.length > limit) { out.push(cur); cur = word; }
+    else cur = cur ? `${cur} ${word}` : word;
+  }
+  if (cur) out.push(cur);
+  return out.map((l, i) => (i ? indent + l : l));
+}
+/** The "Reference: ..." header line(s) of a citation, wrapped. */
+export const referenceLines = reference =>
+  wrapHeaderLine(`Reference: ${reference.cite ?? reference}${reference.url ? ` ${reference.url}` : ''}`);
 /** The header of one generated source: provenance, then the polynomial (an
  *  ASCII line; polyToString uses · and −), the field, the method with its
  *  multiplication count (Horner's alongside when known), the number of
  *  preprocessed constants, and the compile line(s).  Every emitter uses it. */
 export function cSourceHeader({ poly = null, field, method, mults = null, horner = null, constants = 0, compile = [], reference = null, notes = [] }) {
   const lines = [];
-  if (poly) lines.push(`P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}`);
-  let summary = `Field: ${field}.  ${method}`;
+  if (poly) lines.push(...wrapHeaderLine(`P(x) = ${String(poly).replace(/·/g, '*').replace(/−/g, '-')}`));
+  lines.push(`Field: ${field}.`);
+  let summary = method;
   if (mults !== null) summary += `: ${plural(mults, 'multiplication')}${horner !== null ? ` (Horner: ${horner})` : ''}`;
   if (constants > 0) summary += `, ${plural(constants, 'preprocessed constant')}`;
   lines.push(`${summary}.`);
-  if (reference) lines.push(`Reference: ${reference.cite ?? reference}${reference.url ? ` ${reference.url}` : ''}`);
+  if (reference) lines.push(...referenceLines(reference));
   // the file's remarks (how the constants were rounded, FMA advice, the kernel's
   // conventions) live in this one block too, after a blank line
-  return cFileHeader([...lines, ...[].concat(compile), ...(notes.length ? ['', ...notes] : [])]);
+  // notes are wrapped too, but an indented line (a kernel's preformatted intro) is left as typed
+  const noteLines = notes.flatMap(l => (/^\s/.test(l) ? [l] : wrapHeaderLine(l)));
+  return cFileHeader([...lines, ...[].concat(compile).flatMap(l => wrapHeaderLine(l)), ...(noteLines.length ? ['', ...noteLines] : [])]);
 }
 /** The lines of a block comment (slash-star … star-slash) as plain note lines for cSourceHeader. */
 const uncomment = lines => [].concat(lines).flatMap(l => l.split('\n'))
@@ -297,14 +325,22 @@ export function gf128Header(body = '') {
 const GF_SPECS = {
   32: { mod: (1n << 32n) | 0b10001101n,
         T: 'uint32_t', mul: 'gf32_mul', header: gf32Header, lit: hex32, inline: v => '0x' + toBig(v).toString(16) + 'U',
-        compile: ['Compile (x86): cc -O2 -mpclmul ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
+        compile: ['Compile (x86): cc -O2 -mpclmul <this file>', 'Compile (ARM): cc -O2 -march=armv8-a+crypto <this file>'] },
   64: { mod: (1n << 64n) | 0b11011n,
         T: 'uint64_t', mul: 'gf64_mul', header: gf64Header, lit: hex64, inline: v => '0x' + toBig(v).toString(16) + 'ULL',
-        compile: ['Compile (x86): cc -O2 -mpclmul -mssse3 ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
+        compile: ['Compile (x86): cc -O2 -mpclmul -mssse3 <this file>', 'Compile (ARM): cc -O2 -march=armv8-a+crypto <this file>'] },
   128: { mod: (1n << 128n) | 0b10000111n,
          T: '__uint128_t', mul: 'gf128_mul', square: 'gf128_square', header: gf128Header, lit: u128, inline: u128,
-         compile: ['Compile (x86): cc -O2 -mpclmul ...', 'Compile (ARM): cc -O2 -march=armv8-a+crypto ...'] },
+         compile: ['Compile (x86): cc -O2 -mpclmul <this file>', 'Compile (ARM): cc -O2 -march=armv8-a+crypto <this file>'] },
 };
+/** Header remark of the keyed entry point of the hashing fields (GF(2^k), Mersenne
+ *  primes): the chain's constants are the runtime key of a k-wise hash.
+ *  elements: what a key word must be ('' for GF(2^k), where every word is one). */
+const keyedNote = (fn, nkeys, deg, scaled, elements = '') => wrapHeaderLine(
+  `${fn}_key(a, x) evaluates the same chain with its ${nkeys} constants passed as the key a[]${elements}. ` +
+  `The key map is a bijection (the paper's k-wise hashing use), so a uniformly random a[] is a ` +
+  `uniformly random monic degree-${deg} polynomial, i.e. ${article(deg)} ${deg}-wise independent hash ` +
+  `with no runtime decoding` + (scaled ? `; ${fn} then applies the leading coefficient.` : '.'), '');
 /** Emitter spec for a GF(2^k) field object; throws for unsupported k / moduli. */
 function gfSpec(F) {
   const spec = GF_SPECS[F?.k];
@@ -329,14 +365,17 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   const nkeys = nk + (lifted ? 1 : 0);                 // the lift constant is key a_{n-1}
   const mults = spec.gates.length + (lifted ? 1 : 0) + (scaleBy !== null ? 1 : 0);
   const tbl = tableName(name, 'a');
-  const cFactor = f => [...f.t, ...(f.k !== null ? [`${tbl}[${f.k}]`] : [])].join(' ^ ');
+  // the chain body reads its constants from the key parameter a[] (every slot,
+  // unconditionally: the keyed form is the same circuit for every key)
+  const cFactor = f => [...f.t, ...(f.k !== null ? [`a[${f.k}]`] : [])].join(' ^ ');
   const mFactor = f => {
     const parts = [...f.t, ...(f.k !== null ? [`a${f.k}`] : [])];
     return parts.length > 1 ? `(${parts.join(' + ')})` : parts[0];
   };
   const usesSquare = !!G.square && spec.gates.some(g => cFactor(g.l) === cFactor(g.r));
   const L = [cSourceHeader({ poly, field: `GF(2^${G.k})`, method: 'This paper', mults,
-    horner: deg - 1 + (scaleBy !== null ? 1 : 0), constants: nkeys, compile: G.compile, reference: OURS })];
+    horner: deg - 1 + (scaleBy !== null ? 1 : 0), constants: nkeys, compile: G.compile, reference: OURS,
+    notes: keyedNote(name, nkeys, deg, scaleBy !== null) })];
   L.push(...G.header(usesSquare ? `${G.square}(` : 'no square').split('\n'));
   L.push('');
   L.push(`/* preprocessed constants (the paper's a_i${lifted ? `; a${nk} is the constant term of the even-degree lift` : ''}) */`);
@@ -346,7 +385,8 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   L.push(...withComments(table));
   L.push('};');
   L.push('');
-  L.push(`${G.T} ${name}(${G.T} x) {`);
+  L.push(`/* the chain with its constants as a runtime key (a uniform a[] is a uniform monic polynomial) */`);
+  L.push(`static inline ${G.T} ${name}_key(const ${G.T} a[${nkeys}], ${G.T} x) {`);
   const body = [];
   for (const g of spec.gates) {
     const left = cFactor(g.l), right = cFactor(g.r);
@@ -358,12 +398,16 @@ export function char2C(F, spec, keys, { scaleBy = null, lift = null, name = 'eva
   body.push([`    ${G.T} ${core} = ${cFactor(o)};`,
              `${core} = ${[...o.t, ...(o.k !== null ? [`a${o.k}`] : [])].join(' + ')}`]);
   if (lifted)
-    body.push([`    ${G.T} P = ${G.mul}(x, ${core}) ^ ${tbl}[${nk}];`,
+    body.push([`    ${G.T} P = ${G.mul}(x, ${core}) ^ a[${nk}];`,
                `P = x * ${core} + a${nk}   (even-degree lift)`]);
   L.push(...withComments(body));
+  L.push('    return P;');
+  L.push('}');
+  L.push('');
+  L.push(`${G.T} ${name}(${G.T} x) {`);
   if (scaleBy !== null)
-    L.push(`    return ${G.mul}(P, ${G.lit(scaleBy)});  // leading coefficient`);
-  else L.push('    return P;');
+    L.push(`    return ${G.mul}(${name}_key(${tbl}, x), ${G.lit(scaleBy)});  // leading coefficient`);
+  else L.push(`    return ${name}_key(${tbl}, x);`);
   L.push('}');
   return L.join('\n');
 }
@@ -615,8 +659,20 @@ const FMA_NOTE = [
   'Optionally compile with -ffp-contract=fast (/fp:contract): it lets the compiler fuse',
   'multiply-adds (FMA), which is faster on most cores and changes the rounding slightly.',
 ];
-const DOUBLE_COMPILE = 'Compile: cc -O3 -march=native ...  (MSVC: /O2)';
-const COMPLEX_COMPILE = 'Compile: cc -std=c11 -O3 -march=native ... -lm  (C99 <complex.h>: gcc / clang; -fcx-limited-range where accepted)';
+const DOUBLE_COMPILE = 'Compile: cc -O3 -march=native <this file>  (MSVC: cl /O2 <this file>)';
+const COMPLEX_COMPILE = 'Compile: cc -std=c11 -O3 -march=native <this file> -lm  (C99 <complex.h>: gcc / clang; -fcx-limited-range where accepted)';
+/** Header remark on the measured double rounding of an ℝ / ℂ chain (compile0's
+ *  maxRelError: finite, or Infinity when the double chain overflows at the
+ *  sample points although its constants are representable). */
+const roundingRemark = (maxRelError, cplx) => {
+  if (maxRelError === null || maxRelError === undefined || Number.isNaN(maxRelError)) return [];
+  const T = cplx ? 'complex-double' : 'double-precision';
+  return wrapHeaderLine(Number.isFinite(maxRelError)
+    ? `Double rounding: max relative error ${maxRelError.toExponential(1)} at the sample points (|x| up to 3/2)` +
+      (maxRelError > REL_ERROR_WARN ? '; the exact chain constants of this input are large, so the rounded doubles lose accuracy.' : '.')
+    : `Double rounding: the ${T} chain overflows at the sample points (|x| up to 3/2); its constants ` +
+      'are representable, but expect overflow away from small |x|.', '');
+};
 const COMPLEX_INCLUDE = [
   '#include <complex.h>',
   '/* textbook (a+bi)(c+di) products, without the infinity/NaN recovery of __muldc3',
@@ -625,14 +681,18 @@ const COMPLEX_INCLUDE = [
   '#pragma STDC CX_LIMITED_RANGE ON',
   '#endif',
 ].join('\n');
-const PRIME_COMPILE = 'Compile: cc -O2 ...  (gcc / clang: the kernel uses __uint128_t)';
+const PRIME_COMPILE = 'Compile: cc -O2 <this file>  (gcc / clang: the kernel uses __uint128_t)';
 
 /** C for a char-0 PolynomialChain. mode: 'Q' | 'R' (doubles: the exact chain
  *  constants rounded — the same code, ℝ differs only in its banner), 'C'
  *  (C99 double complex: the exact Gaussian-rational constants rounded),
- *  'p61' | 'p89' | 'p127' (Mersenne primes; 'p' = 'p89').
- *  cstyle (Q only): 'float' | 'fraction'. */
-export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = 'eval_P', poly = null, horner = null } = {}) {
+ *  'p61' | 'p89' | 'p127' (Mersenne primes; 'p' = 'p89': the hashing fields,
+ *  emitted as the keyed entry point eval_P_key(a, x) plus eval_P(x) = eval_P_key(P_alpha, x)).
+ *  cstyle (Q only): 'float' | 'fraction'; maxRelError (ℝ / ℂ): compile0's measured
+ *  double rounding, repeated in the header; degree: of the polynomial (the keyed
+ *  note; defaults to the number of parameters). */
+export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = 'eval_P', poly = null, horner = null,
+                                      maxRelError = null, degree = null } = {}) {
   if (mode === 'p') mode = 'p89';
   const wnames = chain.wire_names ?? [];
   const nameOf = w => {
@@ -641,16 +701,24 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const given = wnames[w];
     return given && !/^y\d+$/.test(given) ? cIdent(given) : wireLetter(w - 2);
   };
-  // constants table: one slot per nonzero affine constant, in program order
+  // constants table, in program order: over the doubles one slot per nonzero
+  // affine constant; in the keyed (Mersenne) form one slot per parameter α_i —
+  // a parameter that happens to be 0 keeps its slot, so that the same circuit
+  // serves every key.  The port keeps the paper's parameters as field values
+  // (bigint / Rat) and its structural zeros (a bare wire, an integer sum of
+  // wires) as the plain number 0, which tells the two apart.
+  const keyed = mode in PRIME_OPS;
+  const isParam = c => !(typeof c === 'number' && c === 0);
   const consts = [];
   const slot = new Map();          // form -> table index
   const forms = [];
   for (const g of chain.gates) forms.push(g.left, g.right);
   forms.push(chain.output);
-  for (const f of forms) if (!isZeroConst(f.const)) { slot.set(f, consts.length); consts.push(f.const); }
+  for (const f of forms) if (keyed ? isParam(f.const) : !isZeroConst(f.const)) { slot.set(f, consts.length); consts.push(f.const); }
   const tbl = tableName(name, 'alpha');
   const cname = f => `alpha${slot.get(f)}`;
-  const cref = f => `${tbl}[${slot.get(f)}]`;
+  // the chain body reads its constants from the table, or (keyed) from the key parameter a[]
+  const cref = f => `${keyed ? 'a' : tbl}[${slot.get(f)}]`;
 
   // mathematical rendering for the trailing comments
   const mForm = (f, paren) => {
@@ -680,8 +748,11 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const ops = PRIME_OPS[mode];
     const M = chain.field?.modulus ?? null;
     if (M !== null && M !== ops.prime) throw new Error(`Mersenne C generation for ${mode}: chain is over another prime`);
-    L.push(header(ops.banner, PRIME_COMPILE, uncomment(ops.intro)));
-    const fnL = [`${ops.T} ${name}(${ops.xT} x) {`, ...ops.entry];
+    const deg = degree ?? consts.length;
+    L.push(header(ops.banner, PRIME_COMPILE, [...uncomment(ops.intro), '',
+      ...keyedNote(name, consts.length, deg, scaleBy !== null, ` (field elements: each a[i] below p)`)]));
+    const fnL = [`/* the chain with its constants as a runtime key (a uniform a[] is a uniform monic polynomial) */`,
+                 `static inline ${ops.T} ${name}_key(const ${ops.T} a[${consts.length}], ${ops.xT} x) {`, ...ops.entry];
     const cForm = f => {
       const ents = entriesOf(f.terms);
       if (ents.length === 1 && ents[0][0] === 1 && ents[0][1] === 1 && !slot.has(f)) return ['x', ops.xBound, true];
@@ -701,9 +772,17 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const [oe] = ops.clampOut(cForm(chain.output));
     body.push([`    ${ops.T} P = ${oe};`, `P = ${mForm(chain.output, false)}`]);
     fnL.push(...withComments(body));
-    if (scaleBy !== null) fnL.push(ops.scale('P', scaleBy));
     fnL.push(...ops.finish('P'));
     fnL.push('    return P;');
+    fnL.push('}');
+    fnL.push('');
+    fnL.push(`${ops.T} ${name}(${ops.xT} x) {`);
+    if (scaleBy !== null) {
+      fnL.push(`    ${ops.T} P = ${name}_key(${tbl}, x);`);
+      fnL.push(ops.scale('P', scaleBy));
+      fnL.push(...ops.finish('P'));
+      fnL.push('    return P;');
+    } else fnL.push(`    return ${name}_key(${tbl}, x);`);
     fnL.push('}');
     const fnText = fnL.join('\n');
     L.push(...ops.header(fnText).split('\n'));
@@ -724,13 +803,13 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     L.push(header('C, evaluated in complex double precision', COMPLEX_COMPILE, [
       'The chain was preprocessed exactly (Gaussian-rational arithmetic, as over Q); its',
       'constants are rounded to the nearest complex double (each part the shortest decimal',
-      'that round-trips), so P is reproduced approximately.', ...FMA_NOTE]));
+      'that round-trips), so P is reproduced approximately.', ...roundingRemark(maxRelError, true), ...FMA_NOTE]));
     L.push(COMPLEX_INCLUDE);
   } else if (real) {
     L.push(header('R, evaluated in double precision', DOUBLE_COMPILE, [
       'The chain was preprocessed exactly (rational arithmetic, as over Q); its constants',
       'are rounded to the nearest double (shortest decimal that round-trips), so P is',
-      'reproduced approximately.', ...FMA_NOTE]));
+      'reproduced approximately.', ...roundingRemark(maxRelError, false), ...FMA_NOTE]));
   } else {
     L.push(header('Q, evaluated in double precision', DOUBLE_COMPILE, [
       'The chain is exact over Q; here the constants are rounded to the nearest double',

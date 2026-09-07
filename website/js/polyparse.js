@@ -1,6 +1,8 @@
 // Parse a user-typed polynomial into a coefficient array (index = degree).
-// Grammar (whitespace-insensitive; the variable is x or X):
-//   poly  := term (('+'|'-'|'−') term)*   with an optional leading sign
+// Grammar (whitespace-insensitive, except that a number may not contain any;
+// the variable is x or X):
+//   poly  := term (('+'|'-'|'−') term)*   with an optional leading sign; a sign
+//            directly after a sign folds in (x^3 + -1 reads as x^3 − 1)
 //   term  := coef | coef mul? var | var (mul coef)? | term '/' int   (a term divided by an integer)
 //   coef  := int ('/' int)? | decimal ('e' int)?   (char 0)  |  int | hex     (char 2)
 //            optionally in parentheses: (1/6)x^3, (-1/2)x
@@ -10,21 +12,53 @@
 //   var   := x | x '^' int | x '**' int | x with Unicode superscripts (x², x¹²)
 //   mul   := '*' | '·' | '×'
 // so x^3/6, 3x^2/2, x/2, 2*x, x*2, 1/6 x^3, (1/6)x^3, x**3, x³ and a Unicode
-// minus all read.  Returns { coeffs: (Rat|GaussRat|bigint)[], degree } — bigint
+// minus all read.  Exponents above MAX_PARSE_DEGREE are rejected before the
+// coefficient array is allocated.  Returns { coeffs: (Rat|GaussRat|bigint)[], degree } — bigint
 // lane for char 2 (values are field elements encoded as BigInt bit patterns),
 // GaussRat for EVERY coefficient over ℂ.  Decimal and exponent forms (0.25,
 // 1.5e-3) are read exactly into Rat in characteristic 0.
 import { Rat } from './rat.js';
 import { GaussRat } from './gauss.js';
-import { gfLiteral } from './field.js';
+import { gfLiteral, echo } from './field.js';
+import { MAX_DEGREE, DEGREE_CEILING } from './methodlist.js';   // the caps the message quotes (no imports of its own)
 
 const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
 
+/** Largest exponent the parser accepts. Every compiler on the site stops far
+ *  below it (26 in characteristic 2, 38 over ℚ/ℝ/ℂ, 255 over the Mersenne-prime
+ *  fields — methodlist.js MAX_DEGREE and DEGREE_CEILING), so the cap costs
+ *  nothing; it exists so that a typo like x^1000000000 is rejected with a
+ *  message instead of allocating a billion-entry coefficient array. */
+export const MAX_PARSE_DEGREE = 10000;
+
+/** Unicode superscript exponents as carets: x² → x^2. */
+const supers = src => String(src).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, run => '^' + [...run].map(c => SUP[c]).join(''));
+
 /** Spelling variants → the canonical grammar (superscripts, **, ·, ×, −). */
 function normalize(src) {
-  return src.replace(/\s+/g, '')
-    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, run => '^' + [...run].map(c => SUP[c]).join(''))
+  // Whitespace inside a number would concatenate its digits silently ("2 3x" → 23x).
+  // Probe a superscript-normalized copy so "x² 3" is caught like "x^2 3", and let a hex
+  // digit end the left number so "0x1f 2x" cannot swallow the next one.  (Both classes
+  // are single characters: an alternation here backtracks quadratically on long runs.)
+  const probe = supers(src);
+  const gap = /([\da-fA-F])\s+([\d.]+)/.exec(probe);
+  if (gap) {
+    let b = gap.index;                                    // quote the whole literal ("0x1f 2", not "f 2")
+    while (b > 0 && (/[0-9a-fA-F]/.test(probe[b - 1]) || ((probe[b - 1] === 'x' || probe[b - 1] === 'X') && probe[b - 2] === '0'))) b--;
+    const left = echo(probe.slice(b, gap.index + 1)), right = echo(gap[2]);
+    throw new Error(`whitespace inside a number ("${left} ${right}"): did you mean ${left}·${right} or ${left} + ${right}?`);
+  }
+  return supers(src).replace(/\s+/g, '')
     .replace(/\*\*/g, '^').replace(/[·×⋅]/g, '*').replace(/[−–]/g, '-').replace(/⁄/g, '/');
+}
+
+/** True when the hex-digit run ending just before index j is a 0x… literal, so
+ *  the e/E that ends it is a hex digit and not a mantissa's exponent marker.
+ *  Walks backwards (a slice + regex here would be quadratic on a long term). */
+function endsHexLiteral(s, start, j) {
+  let k = j;
+  while (k > start && /[0-9a-fA-F]/.test(s[k - 1])) k--;
+  return k >= start + 2 && (s[k - 1] === 'x' || s[k - 1] === 'X') && s[k - 2] === '0';
 }
 
 export function parsePoly(src, { char2 = false, complex = false } = {}) {
@@ -42,11 +76,27 @@ export function parsePoly(src, { char2 = false, complex = false } = {}) {
     if (c === '(') { depth++; continue; }
     if (c === ')') { depth--; continue; }
     if (depth > 0 && i < s.length) continue;
-    const inExponent = !char2 && (c === '+' || c === '-') && i >= start + 2 &&
-      /[eE]/.test(s[i - 1]) && /\d/.test(s[i - 2]) && /\d/.test(s[i + 1] ?? '');
+    // a mantissa's exponent marker (2e-3), in every characteristic: over GF(2^k)
+    // the literal is rejected later with the "decimal" message rather than split
+    // into a term "2e" and blamed on a stray variable.  A hex literal ending in
+    // e/E (0x1e + 1) is a constant, not a mantissa, so the sign stays a sign.
+    const inExponent = (c === '+' || c === '-') && i >= start + 2 &&
+      /[eE]/.test(s[i - 1]) && /\d/.test(s[i - 2]) && /\d/.test(s[i + 1] ?? '') &&
+      !endsHexLiteral(s, start, i);
     if (inExponent) continue;
     if (c === '+' || c === '-' || i === s.length) {
-      if (i === start) throw new Error(i === s.length ? 'the polynomial ends with a sign' : `empty term at position ${i}`);
+      if (i === start) {
+        if (i === s.length) throw new Error('the polynomial ends with a sign');
+        // a sign directly after a sign (x^3 + -1, as string-joined coefficient
+        // lists produce): fold it into the term's sign
+        if (c === '-') sign = -sign;
+        start = i + 1;
+        continue;
+      }
+      // a minus right after the caret is a negative exponent (x^-1); a caret with
+      // nothing after it ("x^", "x^ + 1") is a half-typed term, named as one
+      if (c === '-' && s[i - 1] === '^')
+        throw new Error(`"${echo(s.slice(start, i + 1))}": exponents must be non-negative integers`);
       terms.push({ text: s.slice(start, i), sign });
       sign = c === '-' ? -1 : 1;
       start = i + 1;
@@ -54,7 +104,8 @@ export function parsePoly(src, { char2 = false, complex = false } = {}) {
   }
   if (depth !== 0) throw new Error('unbalanced parentheses');
   const monos = terms.map(t => parseTerm(t.text, t.sign, char2, complex));
-  const degree = Math.max(...monos.map(m => m.deg), 0);
+  let degree = 0;                                   // (no spread: a 100k-term input would overflow the call stack)
+  for (const m of monos) if (m.deg > degree) degree = m.deg;
   const zero = char2 ? 0n : complex ? GaussRat.ZERO : Rat.ZERO;
   const coeffs = Array.from({ length: degree + 1 }, () => zero);
   for (const m of monos) {
@@ -68,8 +119,10 @@ export function parsePoly(src, { char2 = false, complex = false } = {}) {
   return { coeffs, degree: d };
 }
 
-// a real coefficient literal: 3, 1/6, -0.5, 2e-3, 0x1f
-const REAL = String.raw`(?:0x[0-9a-fA-F]+|\d+(?:\/\d+)?|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)`;
+// a real coefficient literal: 3, 1/6, -0.5, 2e-3, 0x1f  (the digit branches are
+// exclusive after the first run, so a long digit run cannot backtrack quadratically)
+export const REAL_SRC = String.raw`(?:0x[0-9a-fA-F]+|\d+(?:\/\d+|\.\d*(?:[eE][+-]?\d+)?|[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)`;
+const REAL = REAL_SRC;
 // a complex one (the imaginary unit is i; a bare i is 1i): i, 2i, 1/2i, 1+2i, 2-i, 1/2-3/4i
 const CPX = String.raw`(?:${REAL}[+-])?${REAL}?i`;
 // a coefficient literal, optionally parenthesized: 3, 1/6, (1/6), (-0.5), 2e-3, 0x1f, 2i, (1+2i),
@@ -87,6 +140,10 @@ function parseTerm(text, sign, char2, complex) {
   const m = TERM_RE.exec(text);
   if (!m || (!m[1] && !m[2]) || (m[4] && !m[2])) throw new Error(termError(text));
   const [, c1, varStr, expStr, c2, divStr] = m;
+  // the cap runs before the coefficient array is allocated (parsePoly sizes it by the degree)
+  if (expStr && Number(expStr) > MAX_PARSE_DEGREE)
+    throw new Error(`"x^${echo(expStr)}": this page compiles degrees up to ${MAX_DEGREE} in characteristic 2, ` +
+      `${DEGREE_CEILING.Q} over ℚ/ℝ/ℂ and ${DEGREE_CEILING.p61} over the Mersenne-prime fields`);
   const deg = varStr ? (expStr ? parseInt(expStr, 10) : 1) : 0;
   const lits = [c1, c2].filter(Boolean).map(t => t.replace(/[()*]/g, ''));   // (1/2)*i -> 1/2i
   if (char2) {
@@ -148,7 +205,7 @@ function literalToGauss(lit) {
 
 function termError(text) {
   // any letter but x / X (the variable) and i / I (the imaginary unit, never a stray variable)
-  const other = /[A-HJ-WYZa-hj-wyz]/.exec(text.replace(/0x[0-9a-fA-F]+|\d+[eE][+-]?\d+/g, ''));
+  const other = /[A-HJ-WYZa-hj-wyz]/.exec(text.replace(/0x[0-9a-fA-F]+|\d[eE][+-]?\d/g, ''));
   if (other) return `cannot parse term "${text}": the variable must be x (found "${other[0]}")`;
   if (/[()]/.test(text)) return `cannot parse term "${text}": parentheses may only wrap a coefficient, e.g. (1/6)x^3 or (1+2i)x`;
   if (/i/i.test(text)) return `cannot parse term "${text}": i is the imaginary unit — write complex coefficients as 2i, (1+2i) or (1/2-3/4i)`;

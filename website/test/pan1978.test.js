@@ -50,8 +50,9 @@ for (const coeffs of [[1, ...Array(8).fill(0), 1], [1, ...Array(9).fill(0), 1], 
   let message = '';
   try { compilePan1978(coeffs); } catch (e) { message = e.message; }
   const n = coeffs.length - 1;
-  check(/complex schemes start at degree 11 \(scheme \(4\); family \(3\) from 13\); Knuth–Eve and Belaga give ⌊n\/2⌋\+1 multiplications for a monic polynomial here/.test(message),
-    `degree ${n}: low-degree message is not the stated sentence (${message})`);
+  check(new RegExp(`^Pan's complex schemes start at degree 11 \\(scheme \\(4\\); family \\(3\\) from 13\\) and this polynomial has degree ${n}; below degree 11, Knuth–Eve and Belaga already give ⌊n/2⌋\\+1 multiplications for a monic polynomial\\.$`).test(message),
+    `degree ${n}: low-degree message is not the stated sentence naming the degree (${message})`);
+  check(!/--|\bhere\b/.test(message), `degree ${n}: low-degree message has a TeX dash or a dangling "here" (${message})`);
   check((message.match(/[.!?](\s|$)/g) ?? []).length === 1, `degree ${n}: low-degree message is not one sentence (${message})`);
 }
 

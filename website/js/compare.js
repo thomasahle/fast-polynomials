@@ -13,17 +13,24 @@ import { compileBelaga } from './methods/belaga.js';
 import { buildGraphFromLines } from './graph.js';
 import { hasComplexToken, complexToken } from './tokens.js';
 import { FIELDS, ratToDouble } from './field.js';
+import { CLASSICAL_METHODS, NUMERIC_METHODS, NUMERIC_METHODS_C, numericMethodsFor, needsNumericWorker, pendingNumericRows } from './methodlist.js';
+// The method names live in the dependency-free js/methodlist.js (the page thread
+// reads them without loading the compilers); re-exported so existing imports keep working.
+export { CLASSICAL_METHODS, NUMERIC_METHODS, NUMERIC_METHODS_C, numericMethodsFor, needsNumericWorker, pendingNumericRows };
 
 const graphOf = lines => { try { return buildGraphFromLines(lines); } catch (e) { return null; } };
 /** Whether the registry renders C for a mode; the legacy spellings ('p',
  *  'gf2k') are not registry ids and always have C. */
 const fieldHasC = mode => FIELDS.find(f => f.id === mode)?.cCode ?? true;
 
-const METHODS = [
-  ['Horner', compileHorner],
-  ['Estrin', compileEstrin],
-  ['Rabin–Winograd', compileRW],
-];
+// Implementations by name (the names themselves are methodlist.js's lists, so a
+// method cannot be listed without an implementation or implemented without a row).
+const CLASSICAL_IMPL = { Horner: compileHorner, Estrin: compileEstrin, 'Rabin–Winograd': compileRW };
+const METHODS = CLASSICAL_METHODS.map(name => [name, implOf(CLASSICAL_IMPL, name)]);
+function implOf(table, name) {
+  if (!table[name]) throw new Error(`compare.js: no implementation for the method "${name}" listed in methodlist.js`);
+  return table[name];
+}
 
 /** mode: a field id from js/field.js FIELDS ('Q', 'R', 'p61', 'p89', 'p127',
  *  'gf32', 'gf64', 'gf128'); the legacy 'p' (= p89) and 'gf2k' (F.k decides)
@@ -37,14 +44,23 @@ export function buildComparisons(coeffs, F, mode, opts = {}) {
  *  they are rejected at once, so no second worker is needed there.
  *  Over ℚ / ℝ the rows are Knuth–Eve (real roots) and Pan's real schemes; over
  *  ℂ Knuth–Eve with complex roots, Pan's complex scheme of 1978 and Belaga's
- *  scheme (numericMethodsFor); the other fields list ℚ's two, rejected. */
-export const NUMERIC_METHODS = ['Knuth\u2013Eve', 'Pan'];
-const NUMERIC_METHODS_C = [...NUMERIC_METHODS, 'Belaga'];
-export const numericMethodsFor = mode => (mode === 'C' ? NUMERIC_METHODS_C : NUMERIC_METHODS);
-export const needsNumericWorker = mode => mode === 'Q' || mode === 'R' || mode === 'C';
-/** Rows standing in for the numeric methods until their worker replies. */
-export const pendingNumericRows = (mode = 'Q') =>
-  numericMethodsFor(mode).map(name => ({ name, ok: false, pending: true, note: 'computing the numerical preprocessing\u2026' }));
+ *  scheme (numericMethodsFor in js/methodlist.js); the other fields list ℚ's two, rejected.
+ *  Unlike the classical monic scheme, Pan's coefficient maps accept the
+ *  original leading coefficient and therefore need no final scaling
+ *  multiplication; over ℂ Knuth–Eve emits its own scale line (preserveLeading),
+ *  while Belaga's monic scheme is scaled in numericRow.  Pan over ℂ
+ *  (compilePanC) routes an all-real input through the real schemes first. */
+const NUMERIC_IMPL = {
+  real: {
+    'Knuth\u2013Eve': { fn: compileKnuthEve },
+    Pan: { fn: compilePan1978Real, preserveLeading: true, need: 'needs numerical real-algebraic preprocessing' },
+  },
+  complex: {
+    'Knuth\u2013Eve': { fn: compileKnuthEveComplex, preserveLeading: true },
+    Pan: { fn: compilePanC, preserveLeading: true },
+    Belaga: { fn: compileBelaga },
+  },
+};
 
 /** Horner, Estrin and Rabin–Winograd: exact, instant. */
 export function buildClassical(coeffs, F, mode, { poly = null } = {}) {
@@ -81,24 +97,14 @@ export function buildClassical(coeffs, F, mode, { poly = null } = {}) {
 /** Knuth–Eve and Pan (and Belaga over ℂ): numerical preprocessing, characteristic 0 only. */
 export function buildNumeric(coeffs, F, mode, { poly = null, only = null } = {}) {
   const rows = [];
-  // Every field lists the same methods, so the comparison table keeps
-  // its shape.  These algebraic/numeric preprocessors run in characteristic
-  // zero only and are reported (not silently dropped) elsewhere.  Unlike the
-  // classical monic scheme, Pan's coefficient maps accept the original
-  // leading coefficient and therefore need no final scaling multiplication;
-  // over ℂ Knuth–Eve emits its own scale line (preserveLeading), while
-  // Belaga's monic scheme is scaled here.  Pan over ℂ (compilePanC) routes an
-  // all-real input through the real schemes first.
-  const numeric = F.complex ? [
-    { name: 'Knuth\u2013Eve', fn: compileKnuthEveComplex, preserveLeading: true },
-    { name: 'Pan', fn: compilePanC, preserveLeading: true },
-    { name: 'Belaga', fn: compileBelaga },
-  ] : [
-    { name: 'Knuth\u2013Eve', fn: compileKnuthEve },
-    { name: 'Pan', fn: compilePan1978Real, preserveLeading: true, need: 'needs numerical real-algebraic preprocessing' },
-  ];
-  for (const { name, fn, preserveLeading = false, need = 'needs real or complex roots' } of numeric) {
+  // Every field lists the same methods, so the comparison table keeps its
+  // shape.  These algebraic/numeric preprocessors run in characteristic zero
+  // only and are reported (not silently dropped) elsewhere.  The names are
+  // methodlist.js's (ℂ adds Belaga), the implementations NUMERIC_IMPL's.
+  const impl = F.complex ? NUMERIC_IMPL.complex : NUMERIC_IMPL.real;
+  for (const name of numericMethodsFor(F.complex ? 'C' : mode)) {
     if (only !== null && name !== only) continue;
+    const { fn, preserveLeading = false, need = 'needs real or complex roots' } = implOf(impl, name);
     if (needsNumericWorker(mode)) rows.push(numericRow(name, fn, coeffs, F, mode, { preserveLeading, poly }));
     else rows.push({ name, ok: false, note: `${need}: characteristic 0 (\u211a, \u211d, \u2102) only, not ${F.name}` });
   }

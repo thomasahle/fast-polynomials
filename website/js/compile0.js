@@ -15,6 +15,9 @@ import { makeResult, renderAffineChain, chainToText, paperWireNames, gateGroups,
 import { buildGraphFromAffineChain } from './graph.js';
 import { char0C } from './cgen.js';
 import { fieldById, ratToDouble, ratToDoubleString, primeName } from './field.js';
+// the degree above which exact preprocessing is worth a warning: the same number
+// the page shows as its slow threshold (uistate.js SLOW_DEGREE = MAX_DEGREE)
+import { MAX_DEGREE as SLOW_DEGREE, REL_ERROR_WARN } from './methodlist.js';
 
 
 let corePromise = null;
@@ -77,19 +80,22 @@ export async function compileChar0(src, fieldMode = 'Q') {
   // constants representable as doubles at all?  (a chain whose constants fit can
   // still overflow when evaluated at the sample points: a different message)
   const consts = [...chain.gates.flatMap(g => [g.left.const, g.right.const]), chain.output.const, lc];
-  const constantsFinite = (isR || isC) && consts.every(c => { const v = isC ? toCx(c) : { re: toDouble(c), im: 0 }; return Number.isFinite(v.re) && Number.isFinite(v.im); });
+  const fitsDouble = c => { const v = isC ? toCx(c) : { re: toDouble(c), im: 0 }; return Number.isFinite(v.re) && Number.isFinite(v.im); };
+  const constantsFinite = rational && consts.every(fitsDouble);
   const maxRelError = isR ? doubleRoundingError(chain, coeffs, lc)
     : isC ? (allReal ? doubleRoundingError(chain, coeffs.map(c => toGauss(c).re), toGauss(lc).re) : complexRoundingError(chain, coeffs, lc))
       : null;
 
-  const lines = renderAffineChain(F, chain);
+  // the math view names the products with the appendix letters (y, z, t, u, …),
+  // the same names the C code and the graph use
+  const lines = renderAffineChain(F, chain, { names: 'letters' });
   if (scaleStep) lines[lines.length - 1].lhs = 'P̃';
-  // paper-format rendering (appendix letter names + gadget headings) for the UI toggle
+  // paper-format rendering (letter names + gadget headings) for the UI toggle
   const linesPaper = renderAffineChain(F, chain, { names: 'letters', group: true });
   if (scaleStep) linesPaper[linesPaper.length - 1].lhs = 'P̃';
   const mults = chain.gates.length + extraMult;
-  const slowNote = n > 26
-    ? ' — note: exact rational constants grow quickly with degree, and fractional coefficients can make preprocessing take minutes here (Cancel any time); the Mersenne modes are instant at any size'
+  const slowNote = n > SLOW_DEGREE
+    ? ' — note: exact rational constants grow quickly with degree, and fractional coefficients can make preprocessing take minutes here; the Mersenne modes are instant at any size'
     : '';
   const note = isQ
     ? 'exact rational preprocessing; verified by re-expansion and random-point evaluation' + slowNote
@@ -98,7 +104,7 @@ export async function compileChar0(src, fieldMode = 'Q') {
       'the constants are displayed and emitted in C as doubles (≈ numeric): ' +
       (Number.isFinite(maxRelError)
         ? `rounding them costs a max relative error of ${maxRelError.toExponential(1)} on sample evaluations of the double-precision chain` +
-          (maxRelError > 1e-6 ? ' — the exact chain constants for this input are large (compare the ℚ mode), so the rounded doubles lose accuracy' : '')
+          (maxRelError > REL_ERROR_WARN ? ' — the exact chain constants for this input are large (compare the ℚ mode), so the rounded doubles lose accuracy' : '')
         : constantsFinite
           ? 'the double-precision chain overflows at the sample points (|x| up to 3/2): its constants are representable, so the C is emitted, but expect overflow away from small |x|'
           : 'the exact chain constants for this input exceed the double range (compare the ℚ mode), so no double-precision chain exists') +
@@ -108,7 +114,7 @@ export async function compileChar0(src, fieldMode = 'Q') {
       `the constants are displayed${fd.cCode ? ' and emitted in C' : ''} as complex doubles (≈ numeric): ` +
       (Number.isFinite(maxRelError)
         ? `rounding them costs a max relative error of ${maxRelError.toExponential(1)} on sample evaluations of the complex-double chain` +
-          (maxRelError > 1e-6 ? ' — the exact chain constants for this input are large, so the rounded doubles lose accuracy' : '')
+          (maxRelError > REL_ERROR_WARN ? ' — the exact chain constants for this input are large, so the rounded doubles lose accuracy' : '')
         : constantsFinite
           ? 'the complex-double chain overflows at the sample points (|x| up to about 1.51): its constants are representable, but expect overflow away from small |x|'
           : 'the exact chain constants for this input exceed the double range, so no complex-double chain exists') +
@@ -120,23 +126,29 @@ export async function compileChar0(src, fieldMode = 'Q') {
     height: chainHeight(chain),
     scaleStep, note,
   });
-  const copts = { scaleBy: scaleStep ? lc : null, poly: polyToString(coeffs), horner: n - 1 + extraMult };
+  // the C header repeats the rounding figure (ℝ / ℂ) and, for the keyed entry point
+  // of the Mersenne fields, the degree
+  const copts = { scaleBy: scaleStep ? lc : null, poly: polyToString(coeffs), horner: n - 1 + extraMult, maxRelError, degree: n };
   result.chain = chain;                       // verified PolynomialChain (gate_labels parallel to gates)
   result.fieldId = fd.id;
   result.exact = fd.exact;
   result.status = fd.status;
   result.maxRelError = maxRelError;
-  result.mathText = chainToText(result);      // index names (y0, y1, …)
+  result.mathText = chainToText(result);      // letter names (y, z, t, …), as in the C and the graph
   result.linesPaper = scaleStep ? [...linesPaper, scaleStep] : linesPaper;
   result.mathTextOriginal = renderConstructionsForm(F, chain, scaleStep);  // rows as in sections/constructions
   // C rendering is optional: over Q / R the exact chain constants can exceed the
-  // double range, in which case the math/graph views must survive without it.
+  // double range, in which case the math/graph views must survive without it;
+  // result.cMissing then says why (the UI shows it in place of the C).
   // A field without a C emitter yet (registry cCode false) renders none, silently.
+  let cError = null;
   const tryC = (mode, cstyle) => {
     try { return char0C(chain, mode, { ...copts, cstyle }); }
-    catch (e) { result.note += ` — no C rendering: ${e.message}`; return null; }
+    catch (e) { cError = e.message; result.note += ` — no C rendering: ${e.message}`; return null; }
   };
   result.cText = fd.cCode ? tryC(fd.id, 'float') : null;
+  if (fd.cCode && result.cText === null)
+    result.cMissing = rational && !constantsFinite ? NO_DOUBLE_CHAIN : cError;
   // Q mode only: the same code with exact (double)NUM/DEN constants, so the UI
   // can switch constant styles without recompiling.
   result.cTextFraction = isQ && result.cText ? tryC('Q', 'fraction') : null;
@@ -147,6 +159,10 @@ export async function compileChar0(src, fieldMode = 'Q') {
   } catch (e) { result.graph = null; }
   return result;
 }
+
+/** result.cMissing when the exact chain has no double rendering (ℚ / ℝ / ℂ). */
+const NO_DOUBLE_CHAIN = 'an exact constant exceeds the double range, so no double-precision chain exists ' +
+  '(the math view shows the exact chain; a lower degree or a Mersenne-prime field has one)';
 
 const termVals = t => (t instanceof Map ? [...t.values()] : Object.values(t));
 const termKeys = t => (t instanceof Map ? [...t.keys()] : Object.keys(t).map(Number));
