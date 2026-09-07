@@ -3,6 +3,9 @@
 // mathview.js, compare.js and the test evaluators) matches against.
 //
 //   real     -?ddd[.ddd][e±dd][/ddd]      12, -3/2, 0.25, 1.5e-7, 65342529/16384
+//            (a prime-field constant is a signed integer: the symmetric
+//            representative of its residue, field.js fpSymmetric — -3, never
+//            p − 3; consumers that need the residue back use fpResidue)
 //   hex      -?0x…                        binary-field constants
 //   complex  (re±imi)                     ONE atomic token: the real part is always
 //            present, the imaginary part always carries digits (never a bare i),

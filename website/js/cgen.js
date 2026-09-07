@@ -26,7 +26,7 @@
 import { Rat } from './rat.js';
 import { REL_ERROR_WARN } from './methodlist.js';
 import { GaussRat } from './gauss.js';
-import { ratToDouble, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
+import { ratToDouble, fpResidue, fpSymmetric, MERSENNE61, MERSENNE89, MERSENNE127 } from './field.js';
 import { referenceFor } from './references.js';
 import { NUM_TOKEN, complexTokenAt, parseComplexToken } from './tokens.js';
 
@@ -582,7 +582,7 @@ const PRIME_OPS = {
     clampOut: v => (v[1] > LAZY_LIMIT ? [`reduce89(${v[0]})`, 1, false] : v),
     wireBound: 2, xBound: 1, entry: [],
     finish: out => [`    ${out} = (${out} & M89) + (${out} >> 89);`, `    if (${out} >= M89) ${out} -= M89;`],
-    scale: (out, c) => `    ${out} = extra_large_mult_mod(${out}, ${u128(c)});  // leading coefficient`,
+    scale: (out, c) => `    ${out} = extra_large_mult_mod(${out}, ${u128(c)});  // leading coefficient ${fpSymmetric(MERSENNE89, toBig(c))}`,
   },
   p61: {
     prime: MERSENNE61, macro: 'M61', T: 'uint64_t', xT: 'uint64_t', lit: hex64,
@@ -612,7 +612,7 @@ const PRIME_OPS = {
     clampOut: v => v,
     wireBound: 1, xBound: 1, entry: ['    x = fold61(x);'],
     finish: out => [`    ${out} = fold61(${out});`, `    if (${out} >= M61) ${out} -= M61;`],
-    scale: (out, c) => `    ${out} = mul61(fold61(${out}), ${hex64(c)});  // leading coefficient`,
+    scale: (out, c) => `    ${out} = mul61(fold61(${out}), ${hex64(c)});  // leading coefficient ${fpSymmetric(MERSENNE61, toBig(c))}`,
   },
   p127: {
     prime: MERSENNE127, macro: 'M127', T: '__uint128_t', xT: '__uint128_t', lit: u128,
@@ -636,7 +636,7 @@ const PRIME_OPS = {
     clampOut: v => v,
     wireBound: 1, xBound: 1, entry: ['    x = fold127(fold127(x));'],
     finish: out => [`    if (${out} >= M127) ${out} -= M127;`],
-    scale: (out, c) => `    ${out} = mul127(${out}, ${u128(c)});  // leading coefficient`,
+    scale: (out, c) => `    ${out} = mul127(${out}, ${u128(c)});  // leading coefficient ${fpSymmetric(MERSENNE127, toBig(c))}`,
   },
 };
 const primeOps = mode => {
@@ -787,9 +787,12 @@ export function char0C(chain, mode, { scaleBy = null, cstyle = 'float', name = '
     const fnText = fnL.join('\n');
     L.push(...ops.header(fnText).split('\n'));
     L.push('');
-    L.push(`/* preprocessed constants (the paper's alpha_i) */`);
+    // the table holds the canonical residues in [0, p) — eval_P_key's key map stays
+    // a bijection on keys — while the comment names each as the chain shows it (the
+    // symmetric representative: -1, not p - 1)
+    L.push(`/* preprocessed constants (the paper's alpha_i; each in [0, p), named by its signed representative) */`);
     L.push(`static const ${ops.T} ${tbl}[${consts.length}] = {`);
-    L.push(...withComments(consts.map((c, i) => [`    ${ops.lit(c)},`, `alpha${i} = ${toBig(c)}`])));
+    L.push(...withComments(consts.map((c, i) => [`    ${ops.lit(c)},`, `alpha${i} = ${fpSymmetric(ops.prime, toBig(c))}`])));
     L.push('};');
     L.push('');
     L.push(fnText);
@@ -907,7 +910,12 @@ function emitNode(node, ops, top = false) {
     if (node.tok.startsWith('-')) return ops.neg(ops.wire(node.tok.slice(1)));
     return ops.wire(node.tok);
   }
-  const parts = node.sum.map(({ neg, t }) => ({ neg, v: emitTerm(t, ops) }));
+  // a subtracted constant ("x − 3") in a field with negLit (the primes) is the
+  // added residue of −3: the table stays canonical and the arithmetic add-only
+  const parts = node.sum.map(({ neg, t }) =>
+    (neg && ops.negLit && t.length === 1 && t[0].tok !== undefined && isNum(t[0].tok))
+      ? { neg: false, v: ops.negLit(t[0].tok) }
+      : { neg, v: emitTerm(t, ops) });
   const v = ops.fold(parts);
   return top ? v : [`(${v[0]})`, v[1], false];
 }
@@ -942,7 +950,9 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
   const wireBound = new Map();    // Mersenne: name -> bound (units of the lazy range)
   const litValue = t => {         // literal token -> C initializer + comment
     if (isGF) return { expr: useTable ? G.lit(BigInt(t)) : G.inline(BigInt(t)), comment: t };
-    if (isPrime) return { expr: PRIME_OPS[mode].lit(BigInt(t)), comment: t };
+    // a prime-field token is the chain's signed representative (-3): the table
+    // entry is its residue p - 3, the comment keeps the signed form
+    if (isPrime) return { expr: PRIME_OPS[mode].lit(fpResidue(PRIME_OPS[mode].prime, t)), comment: t };
     if (isCx) {
       const z = parseComplexToken(t);
       if (z) return { expr: complexLiteral(z.re, z.im), comment: '' };
@@ -984,6 +994,7 @@ export function methodChainC(lines, mode, F, { name = 'method', mults = null, cs
     entry = P.entry; finish = P.finish;
     ops = { lit, wire: w => [cIdent(w), wireBound.get(w) ?? (w === 'x' ? P.xBound : P.wireBound), w === 'x'],
       neg: v => [...P.neg(v[0], v[1]), false],
+      negLit: t => lit(t.startsWith('-') ? t.slice(1) : `-${t}`),   // the negated token, keyed by its signed spelling
       mul: P.mul,
       fold: ps => P.fold(ps) };
   } else {

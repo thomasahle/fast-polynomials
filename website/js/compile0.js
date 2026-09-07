@@ -14,7 +14,7 @@ import { GaussRat, gaussCoreField } from './gauss.js';
 import { makeResult, renderAffineChain, chainToText, paperWireNames, gateGroups, renderConstructionsForm } from './chain.js';
 import { buildGraphFromAffineChain } from './graph.js';
 import { char0C } from './cgen.js';
-import { fieldById, ratToDouble, ratToDoubleString, primeName } from './field.js';
+import { fieldById, ratToDouble, ratToDoubleString, primeName, fpSymmetric, fpHeaderCoeffs } from './field.js';
 // the degree above which exact preprocessing is worth a warning: the same number
 // the page shows as its slow threshold (uistate.js SLOW_DEGREE = MAX_DEGREE)
 import { MAX_DEGREE as SLOW_DEGREE, REL_ERROR_WARN } from './methodlist.js';
@@ -46,6 +46,7 @@ export async function compileChar0(src, fieldMode = 'Q') {
 
   // move coefficients into the field
   let cs = rational ? coeffs : coeffs.map(r => field.div(field.coerce(r.n), field.coerce(r.d)));
+  const fieldCoeffs = cs;                              // as read into the field, before the monic scale
 
   // monic normalization
   const lc = cs[n];                                    // display / C form of the leading coefficient
@@ -127,8 +128,12 @@ export async function compileChar0(src, fieldMode = 'Q') {
     scaleStep, note,
   });
   // the C header repeats the rounding figure (ℝ / ℂ) and, for the keyed entry point
-  // of the Mersenne fields, the degree
-  const copts = { scaleBy: scaleStep ? lc : null, poly: polyToString(coeffs), horner: n - 1 + extraMult, maxRelError, degree: n };
+  // of the Mersenne fields, the degree; over GF(p) its P(x) line names the
+  // polynomial as the field sees it — each coefficient reduced mod p and shown as
+  // the symmetric representative, like every constant of the chain (a typed
+  // p − 1 reads −1, a typed 1/3 is its residue)
+  const polyText = polyToString(rational ? coeffs : fpHeaderCoeffs(prime, coeffs));   // the same rule as the comparison rows' headers
+  const copts = { scaleBy: scaleStep ? lc : null, poly: polyText, horner: n - 1 + extraMult, maxRelError, degree: n };
   result.chain = chain;                       // verified PolynomialChain (gate_labels parallel to gates)
   result.fieldId = fd.id;
   result.exact = fd.exact;
@@ -286,9 +291,12 @@ const CDisplay = {
   eq: (a, b) => toGauss(a).eq(toGauss(b)),
   toDisplay: c => toGauss(c).toDisplay(),
 };
+// GF(p): residues in [0, p), displayed as their symmetric representative (field.js
+// fpSymmetric — the same rule Fp.toDisplay applies to the comparison rows), so
+// "x + (p − 1)" reads "x − 1" and the chain renderer's ℚ sign handling carries over
 const fpDisplay = p => ({
   name: primeName(p),
   isZero: c => toBig(c) === 0n, isOne: c => toBig(c) === 1n,
   eq: (a, b) => toBig(a) === toBig(b),
-  toDisplay: c => toBig(c).toString(),
+  toDisplay: c => fpSymmetric(p, toBig(c)).toString(),
 });

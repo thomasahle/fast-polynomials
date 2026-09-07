@@ -403,10 +403,17 @@ export function graphToText(graph) {
   const uses = new Map(graph.nodes.map(n => [n.id, 0]));
   for (const e of graph.edges) { inputs.get(e.to).push(e); uses.set(e.from, uses.get(e.from) + 1); }
   const inline = n => n.wire === undefined && (n.kind === 'add' || n.kind === 'mul') && uses.get(n.id) === 1;
-  const deco = e => (e.neg ? '−' : '') + (e.label ?? '');
+  // one input as text: a negated edge carries '−'; a signed constant (-1/2 over ℚ,
+  // the symmetric representative -3 over GF(p)) folds its sign into the edge's,
+  // so a sum reads "(x − 3)", never "(x + -3)"
+  const term = e => {
+    const r = ref(e.from);
+    const negLit = byId.get(e.from).kind === 'const' && r.startsWith('-');
+    return (!!e.neg !== negLit ? '−' : '') + (e.label ?? '') + (negLit ? r.slice(1) : r);
+  };
   const expr = n => {                        // inline expression for an anonymous node
-    if (n.kind === 'add') return '(' + inputs.get(n.id).map(e => deco(e) + ref(e.from)).join(' + ').replace(/\+ −/g, '− ') + ')';
-    return '(' + inputs.get(n.id).map(e => deco(e) + ref(e.from)).join(' × ') + ')';
+    if (n.kind === 'add') return '(' + inputs.get(n.id).map(term).join(' + ').replace(/\+ −/g, '− ') + ')';
+    return '(' + inputs.get(n.id).map(term).join(' × ') + ')';
   };
   const ref = id => {
     const n = byId.get(id);
@@ -423,7 +430,7 @@ export function graphToText(graph) {
     if (n.kind === 'out' && ins.length === 1 && byId.get(ins[0].from).wire === n.label) continue; // already named
     const lhs = n.wire ?? (n.kind === 'out' ? n.label : n.id);
     w = Math.max(w, lhs.length);
-    rows.push([lhs, `${glyph[n.kind]}  ${ins.map(e => deco(e) + ref(e.from)).join(', ')}`]);
+    rows.push([lhs, `${glyph[n.kind]}  ${ins.map(term).join(', ')}`]);
   }
   const lines = rows.map(([lhs, rhs]) => `${lhs.padEnd(w)}  ${rhs}`);
   const mul = graph.nodes.filter(n => n.kind === 'mul').length;

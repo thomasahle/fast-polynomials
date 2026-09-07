@@ -14,8 +14,11 @@
 //
 // Input validation (one readable page error each, before any compiler runs):
 //   - the parser's own errors, prefixed "cannot read the polynomial over <field>: …"
-//     (this also covers a GF(2^k) literal wider than k bits, a GF(p) denominator
-//     that is 0 mod p, and exponents above polyparse.js MAX_PARSE_DEGREE)
+//     (this also covers a GF(p) denominator that is 0 mod p, and exponents above
+//     polyparse.js MAX_PARSE_DEGREE)
+//   - over GF(2^k) a literal wider than k bits is not an error: it is reduced into
+//     the field (mod the field polynomial), the way GF(p) coefficients are reduced
+//     mod p, and the chain and C header name the reduced element
 //   - over GF(p) a leading coefficient that vanishes mod p lowers the degree
 //   - a constant (degree 0) is rejected in every lane
 //   - the char-0 lane rejects degrees above DEGREE_CEILING[field] (the char-2
@@ -26,7 +29,7 @@
 // safe: strings, numbers, booleans, null, arrays, plain objects only).
 import { parsePoly, polyToString } from './polyparse.js';
 import { DEGREE_CEILING } from './methodlist.js';
-import { resolveField, echo } from './field.js';
+import { resolveField, fpHeaderCoeffs } from './field.js';
 import { compileChar2 } from './compile2.js';
 import { compileChar0 } from './compile0.js';
 import { chainToText } from './chain.js';
@@ -86,7 +89,8 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
   // was read in (the text may have been typed for another one, e.g. a
   // fractional Taylor polynomial switched to GF(2^k), or a GF(2^64) key kept
   // across a switch to GF(2^32)).  Returns
-  //   coeffs     the parsed coefficients (Rat / GaussRat / BigInt bit patterns)
+  //   coeffs     the parsed coefficients (Rat / GaussRat / BigInt bit patterns,
+  //              the latter reduced into GF(2^k))
   //   cmpCoeffs  the same as field elements (residues over GF(p)), and both
   //              trimmed when a leading coefficient vanishes in the field
   //   polyText   the input, canonically printed, for the C headers
@@ -97,11 +101,11 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
       let { coeffs } = parsePoly(src, { char2, complex: !!fd.complex });   // ℂ: every coefficient a GaussRat
       let cmpCoeffs;
       if (char2) {
-        const wide = coeffs.find(c => c >= (1n << BigInt(fd.k)));
-        if (wide !== undefined)
-          throw new Error(`${fd.name} elements are at most ${fd.k} bits, but 0x${echo(wide.toString(16))} has ${wide.toString(2).length} ` +
-            '— choose a wider field or shorten the constant');
-        cmpCoeffs = coeffs.map(c => F.fromInt(c));
+        // a literal wider than k bits is reduced into the field by fromInt (mod the
+        // field polynomial), exactly as a coefficient over GF(p) is reduced mod p;
+        // the chain and the C header then name the reduced element
+        coeffs = coeffs.map(c => F.fromInt(c));
+        cmpCoeffs = coeffs;
       } else {
         cmpCoeffs = coeffs.map(c => F.fromRat(c));   // exact Rats over ℚ and ℝ, GaussRats over ℂ; residues over GF(p)
       }
@@ -111,7 +115,7 @@ export async function handleMessage({ lane, src, fieldMode, part = null, only = 
       while (d > 0 && F.isZero(cmpCoeffs[d])) d--;
       const trimmed = d < cmpCoeffs.length - 1;
       if (trimmed) { coeffs = coeffs.slice(0, d + 1); cmpCoeffs = cmpCoeffs.slice(0, d + 1); }
-      const polyText = polyToString(coeffs, { char2 });
+      const polyText = polyToString(fd.char === 'p' ? fpHeaderCoeffs(fd.prime, coeffs) : coeffs, { char2 });
       return { coeffs, cmpCoeffs, degree: d, polyText, srcText: trimmed ? polyText : src };
     } catch (e) { throw new Error(`cannot read the polynomial over ${fd.name}: ${e?.message ?? e}`); }
   };

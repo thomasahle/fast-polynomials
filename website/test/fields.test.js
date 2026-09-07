@@ -5,7 +5,7 @@
 // decimal coefficients exactly, ℝ is exact rational arithmetic displayed as
 // doubles, ℂ the same over the Gaussian rationals displayed as complex doubles
 // (C99 double complex over ℂ: registry cCode), the worker's input validation
-// (constants, degree ceilings, over-wide GF(2^k) literals, GF(p) denominators
+// (constants, degree ceilings, wide GF(2^k) literals reduced into the field, GF(p) denominators
 // and leading coefficients that vanish mod p), and every backend decodes +
 // renders C for degrees 3..20 (char 2: the odd degrees it has circuits for).
 // Plain node, exit 1 on failure.
@@ -235,22 +235,35 @@ for (const [id, src] of [['Q', 'x^1000000000 + 1'], ['gf64', 'x^9999999999999999
         `exponent cap ${id}: ${msg}`);
   check(Date.now() - t0 < 1000, `exponent cap ${id}: rejected in ${Date.now() - t0} ms`);
 }
-// GF(2^k): a literal wider than k bits is rejected (it used to be reduced silently, so the chain
-// and the header described a different polynomial than the one typed — e.g. a GF(2^64) key kept
-// across a switch to GF(2^32))
+// GF(2^k): a literal wider than k bits is reduced into the field by F.fromInt (mod the field
+// polynomial), exactly as a coefficient over the Mersenne fields is reduced mod p — no error;
+// the chain and the C header then name the reduced element
 {
-  for (const [src, id, lit, bits] of [['0xffffffffffffffff x^3 + 1', 'gf32', 'ffffffffffffffff', 64], ['x^7 + 0x100000000 x + 1', 'gf32', '100000000', 33],
-                                      ['0x10000000000000000 x^5 + x', 'gf64', '10000000000000000', 65], ['x^3 + 4294967296', 'gf32', '100000000', 33]]) {
-    const f = fieldById(id);
-    const msg = await workerError({ lane: 'char2', src, fieldMode: id });
-    check(msg === `cannot read the polynomial over ${f.name}: ${f.name} elements are at most ${f.k} bits, but 0x${lit} has ${bits} — choose a wider field or shorten the constant`,
-          `wide literal over ${id}: ${msg}`);
-    check(await workerError({ lane: 'char2', src, fieldMode: id, part: 'numeric', only: 'Knuth–Eve' }) === msg, `wide literal over ${id}: the numeric part agrees`);
-  }
-  // a pathological literal is elided, so the page's error line stays one readable line
-  const msgWide = await workerError({ lane: 'char2', src: `0x${'f'.repeat(300)} x^3 + 1`, fieldMode: 'gf32' });
-  check(msgWide.includes(`but 0x${'f'.repeat(39)}… has 1200 `) && msgWide.length < 200, `over-wide literal elided: ${msgWide.length} chars`);
-  // exactly k bits is fine, and the header names the input polynomial, not the monic-scaled one
+  const F32 = fieldById('gf32').make(), F64 = fieldById('gf64').make();
+  const hex = e => `0x${e.toString(16)}`;
+  // the same wide literal in hex and in decimal, alone and beside other terms
+  const red32 = F32.fromInt(0x100000000n);                       // 0x100000000 mod x^32+x^7+x^3+x^2+1
+  check(red32 < (1n << 32n) && red32 !== 0x100000000n, `0x100000000 is reduced into GF(2^32): ${hex(red32)}`);
+  const r1 = await handleMessage({ lane: 'char2', src: '0x100000000 x + 1', fieldMode: 'gf32' });
+  check(!r1.oursFailed && r1.cText.includes(`P(x) = ${hex(red32)}*x + 1`) && r1.mathText.includes(hex(red32)) && !r1.mathText.includes('0x100000000'),
+        `wide literal reduced over gf32: ${r1.oursFailed ?? (r1.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+  const dec = await handleMessage({ lane: 'char2', src: `x^7 + ${(1n << 32n).toString()} x + 1`, fieldMode: 'gf32' });
+  const hx = await handleMessage({ lane: 'char2', src: 'x^7 + 0x100000000 x + 1', fieldMode: 'gf32' });
+  check(!dec.oursFailed && dec.cText.includes(`P(x) = x^7 + ${hex(red32)}*x + 1`) && dec.mathText === hx.mathText,
+        `wide decimal literal reduced over gf32: ${dec.oursFailed ?? (dec.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+  check(dec.mathText === (await handleMessage({ lane: 'char2', src: `x^7 + ${hex(red32)} x + 1`, fieldMode: 'gf32' })).mathText,
+        'the reduced literal compiles to the chain of the reduced polynomial');
+  const red64 = F64.fromInt(1n << 64n);
+  const r64 = await handleMessage({ lane: 'char2', src: '0x10000000000000000 x^5 + x', fieldMode: 'gf64' });
+  check(!r64.oursFailed && r64.cText.includes(`P(x) = ${hex(red64)}*x^5 + x`), `wide literal reduced over gf64: ${r64.oursFailed ?? (r64.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+  // a pathological literal reduces like any other (no error, no echoed 1200-bit constant)
+  const wide = `0x${'f'.repeat(300)}`;
+  const rWide = await handleMessage({ lane: 'char2', src: `${wide} x^3 + 1`, fieldMode: 'gf32' });
+  check(!rWide.oursFailed && rWide.cText.includes(`P(x) = ${hex(F32.fromInt(BigInt(wide)))}*x^3 + 1`) && !rWide.cText.includes('f'.repeat(40)),
+        `1200-bit literal reduced over gf32: ${rWide.oursFailed ?? (rWide.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
+  check(await workerError({ lane: 'char2', src: '0x100000000 x + 1', fieldMode: 'gf32', part: 'numeric', only: 'Knuth–Eve' }) === null,
+        'wide literal: the numeric part accepts it too');
+  // exactly k bits is untouched, and the header names the input polynomial, not the monic-scaled one
   const r = await handleMessage({ lane: 'char2', src: '0xffffffff x^3 + 1', fieldMode: 'gf32' });
   check(!r.oursFailed && r.mults === 3 && r.cText.includes('P(x) = 0xffffffff*x^3 + 1'), `32-bit literal over gf32: ${r.oursFailed ?? (r.cText.match(/P\(x\) = .*/) ?? [])[0]}`);
   const r3 = await handleMessage({ lane: 'char2', src: '0x3 x^3 + 1', fieldMode: 'gf64' });
@@ -359,6 +372,52 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
   }
   console.log(`C output for representative degrees 3, 4, 7, 8, 9, 13, 20: ${withC.join(', ')}` +
               (withC.length === FIELDS.length ? ' (every field)' : ''));
+}
+
+// ---------- prime fields: every constant is its symmetric representative ----------
+// (field.js fpSymmetric: c itself when c ≤ (p−1)/2, else c − p) in every view — the
+// math view in both forms, the classical rows, the graph listing, the C comments and
+// header — while the C tables keep the canonical residues in [0, p).
+{
+  const half = p => (p - 1n) / 2n;
+  const intTokens = text => [...String(text ?? '').matchAll(/(?<![\w.\/])-?\d+(?![\w.\/])/g)].map(m => BigInt(m[0]));
+  const symmetric = (text, p) => !/\+ -/.test(String(text ?? '')) && intTokens(text).every(v => (v < 0n ? -v : v) <= half(p));   // signed, folded into the term's sign
+  const tableLits = (cText, tbl) => (new RegExp(`${tbl}\\[\\d+\\] = \\{\\n([\\s\\S]*?)\\n\\};`).exec(cText ?? '')?.[1] ?? '').split('\n');
+  const HEX_LIT = /^\s+(0x[0-9a-f]+U?L*|U128\(0x[0-9a-f]+ULL, 0x[0-9a-f]+ULL\)),\s+\/\/ /;
+  for (const id of ['p61', 'p89', 'p127']) {
+    const p = fieldById(id).prime;
+    const r = await handleMessage({ lane: 'char0', src: 'x^5 - x^3 - 2x - 1', fieldMode: id });
+    check(!r.oursFailed && /^t = \(x − 1\) \* \(z − 2\)$/m.test(r.mathText) && /^P = t − 3$/m.test(r.mathText), `${id}: signed representatives in the math view\n${r.mathText}`);
+    check(/^w   = \(x − 1\) \* \(z − 2\)$/m.test(r.mathTextOriginal) && /^P_5 = w − 3$/m.test(r.mathTextOriginal), `${id}: … and in the constructions form\n${r.mathTextOriginal}`);
+    const horner = r.comparisons.find(c => c.name === 'Horner');
+    check(horner.ok && /f2 − 1$/m.test(horner.mathText) && /\* x − 2$/m.test(horner.mathTextOriginal), `${id}: Horner row subtracts\n${horner.mathText}\n${horner.mathTextOriginal}`);
+    for (const c of r.comparisons.filter(c => c.ok))
+      check(symmetric(c.mathText, p) && symmetric(c.mathTextOriginal, p) && symmetric(c.graphText, p), `${id}: ${c.name} shows no residue above (p−1)/2`);
+    check(symmetric(r.mathText, p) && symmetric(r.graphText, p) && /-3|− 3/.test(r.graphText), `${id}: graph listing carries the signed constants\n${r.graphText}`);
+    // the C: comments and header signed, the tables canonical hex residues
+    check(/alpha\d+ = -1\b/.test(r.cText) && /alpha\d+ = -3\b/.test(r.cText) && /P\(x\) = x\^5 - x\^3 - 2\*x - 1/.test(r.cText), `${id}: C table comments name the signed representatives`);
+    const lits = tableLits(r.cText, 'P_alpha');
+    check(lits.length === 5 && lits.every(l => HEX_LIT.test(l)), `${id}: P_alpha holds hex residues\n${lits.join('\n')}`);
+    for (const c of r.comparisons.filter(c => c.ok)) {
+      const cl = tableLits(c.cText, 'P_c');
+      check(cl.length >= 1 && cl.every(l => HEX_LIT.test(l) && / c\d+ = -?\d+$/.test(l)) && cl.some(l => / = -\d+$/.test(l)), `${id}: ${c.name} P_c canonical, comments signed\n${cl.join('\n')}`);
+      check(!/M\d+ - P_c/.test(c.cText), `${id}: ${c.name} subtracted constants are added residues`);
+    }
+    // a coefficient typed as a huge positive residue: −1 over 2^61−1 (a small positive
+    // residue over the wider primes), in ℚ's form for a negative leading term
+    const big = await handleMessage({ lane: 'char0', src: '2305843009213693950x + 1', fieldMode: id });
+    if (id === 'p61') {
+      check(/^P̃ = x − 1$/m.test(big.mathText) && /^P  = -1 \* P̃/m.test(big.mathText) && /leading coefficient -1$/m.test(big.cText) && /P\(x\) = -x \+ 1/.test(big.cText),
+            `p61: p − 1 reads −1\n${big.mathText}`);
+      check(big.comparisons.every(c => !c.ok || /\(-1\) \* \(x\)/.test(c.mathText)), 'p61: the rows scale by −1');
+    } else check(/2305843009213693950/.test(big.mathText) && symmetric(big.mathText, p), `${id}: 2^61 − 2 is a small residue here`);
+  }
+  // an input with small integer coefficients renders over 2^61−1 exactly as over ℚ
+  // (the chain has the same constants), so the displayed-form counts agree too
+  const q = await handleMessage({ lane: 'char0', src: 'x^5 - x^3 - 2x - 1', fieldMode: 'Q' });
+  const m = await handleMessage({ lane: 'char0', src: 'x^5 - x^3 - 2x - 1', fieldMode: 'p61' });
+  check(q.mathText === m.mathText && q.comparisons.every((c, i) => !c.ok || !m.comparisons[i].ok || c.mathText === m.comparisons[i].mathText) &&
+        m.comparisons.filter(c => c.ok).length === 3, 'p61 renders the small-integer chain exactly as ℚ does (ours and the three classical rows)');
 }
 
 console.log(`${checks} checks, ${fails} failures`);

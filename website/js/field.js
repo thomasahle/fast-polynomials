@@ -126,6 +126,25 @@ export function primeName(p) {
   return ((p + 1n) & p) === 0n ? `GF(2^${(p + 1n).toString(2).length - 1}−1)` : `GF(${p})`;
 }
 
+/** The residue of an integer (or of a signed constant token of chain text) in
+ *  [0, p): the inverse of fpSymmetric, used wherever a displayed constant must
+ *  become a canonical field element again (the C constant tables, evaluators). */
+export const fpResidue = (p, v) => { const a = BigInt(v) % p; return a < 0n ? a + p : a; };
+
+/** The symmetric (least-absolute-value) representative of a residue a ∈ [0, p):
+ *  a itself when a ≤ (p−1)/2, otherwise a − p < 0 — the author's rule "always use
+ *  subtraction when it results in a number with a smaller absolute value".  It is
+ *  the ONE place the display of a prime-field constant is decided: Fp.toDisplay
+ *  (chains, the comparison rows, graph labels, the C comments) and compile0's
+ *  display hook go through it, so every renderer that already handles a negative
+ *  ℚ constant ("x − 1/2", "-2 * y") shows "x − 1", "-2 * y" over GF(p) for free. */
+export const fpSymmetric = (p, a) => (a > (p - 1n) / 2n ? a - p : a);
+
+/** The coefficients a GF(p) C header prints for typed rationals: an integer becomes its
+ *  symmetric residue (2305843009213693950 → −1), a fraction stays as typed (1/3 is the
+ *  smaller way to write its residue).  One rule for our chain and the comparison rows. */
+export const fpHeaderCoeffs = (p, rats) => rats.map(c => (c.isInt() ? new Rat(fpSymmetric(p, fpResidue(p, c.n))) : c));
+
 export function Fp(p) {
   const name = primeName(p);
   const norm = a => ((a % p) + p) % p;
@@ -146,7 +165,8 @@ export function Fp(p) {
     neg: a => norm(-a), inv,
     eq: (a, b) => a === b, isZero: a => a === 0n, isOne: a => a === 1n,
     fromInt: n => norm(BigInt(n)), fromRat,
-    toDisplay: a => a.toString(),
+    // the symmetric representative: every renderer sees "x − 1", never "x + (p − 1)"
+    toDisplay: a => fpSymmetric(p, a).toString(),
   };
 }
 

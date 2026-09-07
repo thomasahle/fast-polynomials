@@ -232,6 +232,10 @@ const isNumTok = t => REAL_TOKEN.test(t) || COMPLEX_TOKEN.test(t);
  *            model, so for chains with `k·w` tokens (n ≥ 13) this footer is
  *            above A_n, and tools/polychain.py `chain n --dag` gives the
  *            paper-convention count of the emitted schedule.
+ * Prime-field constants are signed representatives (field.js fpSymmetric), so
+ * a Mersenne row counts as its ℚ twin: `t − 3` is one addition, `-1 * x` one
+ * scalar multiplication — never a double-and-add chain for a 61-bit residue,
+ * which only a `k·w` token would be.
  * Hidden powers `x^k` (k ≥ 2, as shown in some methods' original form) count
  * one multiplication each (one squaring per ladder step).  Continuation lines
  * of a wrapped right-hand side are joined to their statement; headings and

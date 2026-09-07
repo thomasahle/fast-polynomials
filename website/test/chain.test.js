@@ -4,7 +4,7 @@ import { decode, rationals, GF, compile_paper_params_chain } from '../js/char0/c
 import { renderAffineChain, renderGateChain, chainToText, paperWireNames, gateGroups, wireLetter, countOps,
          formatConstants, toSigDigits, foldConstants, factorize } from '../js/chain.js';
 import { CIRCUITS } from '../js/char2.js';
-import { GF2k } from '../js/field.js';
+import { GF2k, fpSymmetric } from '../js/field.js';
 import { Rat } from '../js/rat.js';
 
 let fails = 0, checks = 0;
@@ -12,7 +12,8 @@ const check = (c, m) => { checks++; if (!c) { fails++; console.error('FAIL: ' + 
 const M61 = (1n << 61n) - 1n;
 const toRat = c => Rat.of(typeof c === 'number' ? BigInt(c) : c);
 const QDisplay = { isZero: c => toRat(c).isZero(), toDisplay: c => toRat(c).toString() };
-const FpDisplay = { isZero: c => BigInt(c) === 0n, toDisplay: c => BigInt(c).toString() };
+// GF(p) constants display as their symmetric representative (as compile0's fpDisplay)
+const FpDisplay = { isZero: c => BigInt(c) === 0n, toDisplay: c => fpSymmetric(M61, BigInt(c)).toString() };
 
 check(wireLetter(0) === 'y' && wireLetter(19) === 'b' && wireLetter(20) === 'g20', 'wireLetter scheme');
 
@@ -45,6 +46,13 @@ for (const [n, useQ] of [[7, true], [9, true], [15, true], [31, true], [27, fals
   check(grp[0].heading === chain.gate_labels[0], `n=${n}: first heading is first label`);
   const txt = chainToText({ lines: grp });
   check(txt.startsWith(`── ${chain.gate_labels[0]} ──\n`), `n=${n}: chainToText prints headings`);
+  // a signed GF(p) constant folds into the sign of its term ("x − 1", never "x + -1"),
+  // and no constant exceeds (p−1)/2 in absolute value
+  if (!useQ) {
+    const ints = [...txt.matchAll(/(?<![\w.\/])-?\d+(?![\w.\/])/g)].map(m => BigInt(m[0]));
+    check(!/\+ -/.test(txt) && ints.every(v => (v < 0n ? -v : v) <= (M61 - 1n) / 2n) && ints.some(v => v < 0n),
+          `n=${n}: GF(2^61−1) constants are signed representatives`);
+  }
   // renaming must not change the right-hand sides beyond wire names
   const rename = paperWireNames(chain);
   const idxToLet = s => s.replace(/\by(\d+)\b/g, (_, k) => rename[Number(k) + 2]);
@@ -128,6 +136,17 @@ check(a.length === spec.gates.length + 1 && a[a.length - 1].lhs === 'P', 'char2 
   check(h.adds === 3 && h.mults === 2 && h.scalar === 0, `countOps hidden powers + integer multiple by double-and-add (hardware variant): ${JSON.stringify(h)}`);
   const q = countOps('P = 4·y + 3·z');
   check(q.adds === 1 + 2 + 2 && q.scalar === 0, `countOps double-and-add for 4 and 3 (hardware variant, not the paper's free multiples): ${JSON.stringify(q)}`);
+  // prime-field constants are signed representatives (field.js fpSymmetric), so a
+  // Mersenne row counts exactly as its ℚ twin — and exactly as the residue form
+  // did: "t − 3" is one addition, "(-1) * (x)" one scalar multiplication (never a
+  // double-and-add chain: only k·w tokens are integer multiples)
+  const pm = countOps('t = (x − 1) * (z − 2)\nP = t − 3');
+  const pr = countOps('t = (x + 2305843009213693950) * (z + 2305843009213693949)\nP = t + 2305843009213693948');
+  check(pm.adds === 3 && pm.mults === 1 && pm.scalar === 0 && pr.adds === 3 && pr.mults === 1 && pr.scalar === 0,
+        `countOps Mersenne signed vs residue form: ${JSON.stringify(pm)} ${JSON.stringify(pr)}`);
+  const sc = countOps('f0 = (-1) * (x)\nP  = f0 + 1'), sr = countOps('f0 = (2305843009213693950) * (x)\nP  = f0 + 1');
+  check(sc.scalar === 1 && sc.adds === 1 && sc.mults === 0 && sr.scalar === 1 && sr.adds === 1 && sr.mults === 0,
+        `countOps scalar by −1 (signed and residue): ${JSON.stringify(sc)} ${JSON.stringify(sr)}`);
   const wrapped = countOps('P = y + w\n      + v + 3');
   check(wrapped.adds === 3 && wrapped.mults === 0, `countOps wrapped continuation: ${JSON.stringify(wrapped)}`);
   check(countOps('').adds === 0 && countOps(undefined).mults === 0, 'countOps empty');

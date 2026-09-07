@@ -12,6 +12,8 @@ let fails = 0, checks = 0;
 const check = (ok, msg) => { checks++; if (!ok) { fails++; console.log(`FAIL: ${msg}`); } };
 const eq = (got, want, msg) => check(got === want, `${msg}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 
+eq(expressionToTex('t − 3'), 't - 3', 'subtracted prime-field constant (signed representative)');
+eq(expressionToTex('-1 * P̃'), '-1 \\mathbin{\\cdot} \\widetilde{P}', 'negative leading-coefficient scale');
 eq(nameToTex('P_7'), 'P_{7}', 'explicit subscript');
 eq(nameToTex('P̃'), '\\widetilde{P}', 'combining tilde');
 eq(nameToTex('H̃_8'), '\\widetilde{H}_{8}', 'tilde before a subscript');
@@ -82,6 +84,16 @@ let equations = 0, complexRows = 0;
 for (const request of CASES) {
   const result = await handleMessage(request);
   if (request.fieldMode === 'C') check(!result.oursFailed && /\(1\+2i\)/.test(result.mathText), `ℂ compiles with complex tokens (${result.oursFailed ?? 'ok'})`);
+  if (request.fieldMode === 'p89') {
+    // GF(p) constants reach the TeX rows as signed representatives: subtracted terms,
+    // no residue above (p−1)/2 (field.js fpSymmetric)
+    const half = ((1n << 89n) - 1n - 1n) / 2n;
+    const ints = [...result.mathText.matchAll(/(?<![\w.\/])-?\d+(?![\w.\/])/g)].map(m => BigInt(m[0]));
+    check(!result.oursFailed && / − /.test(result.mathText) && !/\+ -/.test(result.mathText) && ints.every(v => (v < 0n ? -v : v) <= half),
+          `GF(2^89−1): signed representatives in the chain text\n${result.mathText}`);
+    const row = chainMathRows(result.mathText).find(r => r.kind === 'equation' && / − \d/.test(r.expression));
+    check(!!row && / - (?:\\htmlClass\{math-const\}\{)?\d/.test(row.rhsTex) && !!renderLatex(row.rhsTex), `GF(2^89−1): a subtracted constant typesets as a minus (${row?.expression} -> ${row?.rhsTex})`);
+  }
   const texts = [result.mathText, result.mathTextOriginal,
     ...result.comparisons.flatMap(row => row.ok ? [row.mathText, row.mathTextOriginal] : [])]
     .filter(Boolean);

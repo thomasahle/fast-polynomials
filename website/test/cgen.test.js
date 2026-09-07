@@ -360,6 +360,36 @@ for (const [mode, prime, bits, fmt, edge] of [
   compare(outs, xs.map(x => fmt(chain.eval(field.coerce(x)))), `char0C ${mode} chain`, (a, b) => a === b);
 }
 
+// ---------- prime fields: signed representatives in the text, canonical residues in the tables ----------
+// The chain text shows every GF(p) constant as its symmetric representative
+// ("x − 1", "-1 * x"; field.js fpSymmetric).  The emitter maps those signed tokens
+// back into [0, p) for P_c (fpResidue) — P_alpha is filled from the chain's residues
+// directly — and a subtracted constant becomes the added residue of its negation, so
+// no table entry is negative and no "M61 - P_c[i]" appears.  Compiled and run for
+// ours and every classical row against the exact evaluation.
+for (const [mode, prime, fmt, randX] of [['p61', MERSENNE61, hex16, () => rnd()], ['p89', MERSENNE89, hex128, () => rnd()],
+                                        ['p127', MERSENNE127, hex128, () => (rnd() << 64n) | rnd()]]) {
+  const Fq = Fp(prime);
+  const canonical = (cText, tbl) => (new RegExp(`${tbl}\\[\\d+\\] = \\{\\n([\\s\\S]*?)\\n\\};`).exec(cText)?.[1] ?? 'missing')
+    .split('\n').every(l => l !== 'missing' && !l.split('//')[0].includes('-'));
+  for (const src of ['x^5 - x^3 - 2x - 1', '2305843009213693950x + 1', '3x^6 - 7x^4 + 5x^2 - 11x + 4']) {
+    const cs = parsePoly(src, { char2: false }).coeffs.map(c => Fq.fromRat(c));
+    const r = await compileChar0(src, mode);
+    const xs = [0n, 1n, mode === 'p89' ? (1n << 64n) - 1n : prime - 1n, ...Array.from({ length: 4 }, randX)];
+    const want = xs.map(x => fmt(P.evalAt(Fq, cs, x % prime)));
+    check(!/\+ -/.test(r.mathText) && / − |-1 \* P̃/.test(r.mathText), `ours ${mode} ${src}: signed representatives (${r.mathText.replace(/\n/g, '; ')})`);
+    check(canonical(r.cText, 'P_alpha') && /alpha\d+ = -\d+/.test(r.cText), `ours ${mode} ${src}: P_alpha canonical, comments signed`);
+    compare(buildAndRun(r.cText, mode, xs, `signed_ours_${mode}`), want, `ours ${mode} ${src} (signed text)`, (a, b) => a === b);
+    for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
+      const m = fn(cs, Fq);
+      const c = methodChainC(m.lines, mode, Fq, { name: nm, mults: m.mults, preprocessing: m.preprocessing });
+      const hasNeg = m.lines.some(l => /(?<![\w.\/])-\d/.test(l.rhs) || / − \d/.test(l.rhs));   // a signed constant in the row's text
+      check(canonical(c, 'P_c') && (/ c\d+ = -\d+$/m.test(c) === hasNeg) && !/M\d+ - P_c/.test(c), `${nm} ${mode} ${src}: P_c canonical, comments signed, no subtracted constant`);
+      compare(buildAndRun(c, mode, xs, `signed_${nm}_${mode}`), want, `${nm} ${mode} ${src} (signed text)`, (a, b) => a === b);
+    }
+  }
+}
+
 // ---------- keyed entry point of the hashing fields: the same circuit with a second key ----------
 // eval_P_key(a, x) reads every constant from a[]; eval_P(x) = eval_P_key(P_a / P_alpha, x).
 // A second polynomial of the same degree compiles to the same circuit, so its

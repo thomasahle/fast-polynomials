@@ -92,6 +92,14 @@ for (const [label, msg] of MODES) {
     check(/^(H_2|y|P_\d+)\s+=/.test(rows[0]), `${label}: constructions form starts with a paper name (${rows[0].slice(0, 20)})`);
   }
   if (msg.fieldMode === 'p') check(result.cText.includes('M89') && result.cText.includes('__uint128_t'), `${label}: Mersenne C`);
+  if (msg.fieldMode === 'p') {
+    // GF(p) constants are signed representatives (field.js fpSymmetric): the negative
+    // coefficients of this input show as subtractions, never as residues above (p−1)/2
+    const half = ((1n << 89n) - 2n) / 2n;
+    const ints = [...result.mathText.matchAll(/(?<![\w.\/])-?\d+(?![\w.\/])/g)].map(m => BigInt(m[0]));
+    check(/ − /.test(result.mathText) && !/\+ -/.test(result.mathText) && ints.every(v => (v < 0n ? -v : v) <= half),
+          `${label}: Mersenne constants are symmetric representatives`);
+  }
   if (msg.fieldMode === 'C') check(/\(1\+2i\) \* P̃/.test(result.mathText) && result.exact === false && result.status === '≈ numeric' && typeof result.maxRelError === 'number',
                                    `${label}: complex scale line, ≈ numeric, rounding error`);
   if (msg.lane === 'char2') check(result.cText.includes('lemul') || result.cText.includes('gf64_mul'), `${label}: GF(2^64) C uses the hardware carryless path`);

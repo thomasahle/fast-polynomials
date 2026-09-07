@@ -64,8 +64,10 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   than x, a fraction in a binary field, …); a sign after a sign folds (`x^3 + -1`), whitespace
   inside a number is rejected with a hint, and exponents above `MAX_PARSE_DEGREE` (10 000) are
   refused before anything is allocated. Tested in `test/polyparse.test.js`. `js/worker.js` adds
-  the field-side checks: constants (degree 0) are rejected, GF(2^k) literals wider than k bits
-  and denominators ≡ 0 mod p get named messages, and every field has a degree ceiling
+  the field-side checks: constants (degree 0) are rejected, denominators ≡ 0 mod p get a named
+  message, GF(2^k) literals wider than k bits are reduced into the field (mod the field
+  polynomial, as coefficients over the Mersenne fields are reduced mod p — the chain and the
+  C header then name the reduced element), and every field has a degree ceiling
   (`DEGREE_CEILING` in `js/methodlist.js`: 38 over ℚ / ℝ / ℂ, 255 over the Mersenne primes;
   the char-2 lane's cap is `MAX_DEGREE` = 26 in the same file, enforced in `compile2.js`),
   so a crafted link cannot spin the worker for minutes.
@@ -116,7 +118,10 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   every generated file opens with `cSourceHeader` (cgen.js): provenance, license, the
   polynomial, field, multiplication count, the reference (the paper for ours, the
   literature for each comparison method, with links) and compile line
-- `js/chain.js` — chain rendering: index names or the paper's letter names
+- `js/chain.js` — chain rendering: index names or the paper's letter names; over the
+  Mersenne fields every constant is shown as its symmetric residue (`x − 1`, never
+  `x + 2305843009213693950`; the C tables keep the canonical element so `eval_P_key` stays a
+  bijection on keys), decided once in `fpSymmetric` / `fpHeaderCoeffs` in `js/field.js`
   (y, z, t, u, …) with gadget headings (Q_7, H_2, T-recursion, …)
 - `js/graph.js`, `js/graphview.js` — computational-graph IR (× and + nodes) and its
   layered SVG layout / text listing
