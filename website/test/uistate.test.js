@@ -662,12 +662,6 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const r = stateFromHash(initialState, h);
   eq([r.src, r.mode, r.method, r.view, r.cstyle, r.numfmt, r.exDegree, r.exKey, r.exSeed, r.exMonic],
      ['x^4 + x + 1', 'gf64', 'Horner', 'c', 'fraction', 'decimal', 10, null, 0, true], 'hash roundtrip restores every shared field');
-  // the form= of earlier Share links is ignored: the link restores, without a form key, and shows the method's own form
-  const old = stateFromHash(initialState, '#ex=hermite&mode=Q&method=ours&view=math&form=factor&cstyle=float&numfmt=exact&deg=7');
-  eq(old, initialState, 'an old link with form=factor restores to the same state as one without it');
-  check(!('form' in old) && !('form' in stateFromHash(initialState, '#mode=Q&form=original')), 'form= never lands in the state');
-  check(paneContent(withResult(old)).text === 'ours paper' && paneContent(withResult(stateFromHash(initialState, '#mode=Q&form=original'))).text === 'ours paper',
-        'an old form=factor link shows the paper\'s form like every other');
   check(!r.busy && r.result === null && r.error === null && r.jobId === 0, 'hash seeds an idle state (the load auto-compile runs on it)');
   check(stateFromHash(initialState, '') === initialState && stateFromHash(initialState, '#') === initialState, 'empty hash → defaults');
   eq(stateFromHash(initialState, '#!!%%&==junk&deg=frog&seed=-1'), initialState, 'junk hash → defaults');

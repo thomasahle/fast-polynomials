@@ -1110,8 +1110,7 @@ export const hashFromState = s =>
  * accepted); `ex=` names a chip (an unknown key falls to the field's default
  * example); `src=` carries typed text (and the src= links of earlier Shares);
  * a hash with neither seeds the requested mode's default example at the
- * requested degree, so a mode-only link still compiles something; the `form=`
- * of earlier Share links is ignored (the math view has one form now).  Never
+ * requested degree, so a mode-only link still compiles something.  Never
  * starts a job — the normal first-load auto-compile runs on the returned state.
  */
 export function stateFromHash(base, hash) {

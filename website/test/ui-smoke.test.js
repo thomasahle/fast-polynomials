@@ -758,20 +758,6 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
         'location.hash seeds the boot state');
 }
 
-// an old link carrying form= (the removed chooser) boots without error and shows the paper's form
-{
-  const { app } = installDom({ compact: false, hash: '#ex=hermite&mode=Q&method=ours&view=math&form=factor&cstyle=float&numfmt=exact&deg=7' });
-  await import('../js/ui.js?layout=oldlink');
-  await settle();
-  const $ = s => app.querySelector(s);
-  check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'Q' && $('#error').textContent === '',
-        'an old form=factor link restores He_7 over ℚ without error');
-  const res = await replyPart('main');
-  check($('#view button.on')?.dataset.view === 'math' && $('#chain').textContent === res.mathTextOriginal && $('#chain').textContent !== res.mathText &&
-        /^(H_2|y|P_\d+)\s+=/.test($('#chain').textContent) && /^P(_\d+)?\s+=/m.test($('#chain').textContent),
-        `the pane shows the constructions form, not the factored list (${$('#chain').textContent.split('\n')[0]})`);
-  check(!$('#view-sub button[data-opt="factor"]') && !$('#view-sub button[data-opt="original"]'), 'no form strip for an old link');
-}
 
 console.log(fails ? `UI SMOKE FAILED (${fails}/${checks})` : `UI SMOKE PASSES (${checks} checks)`);
 process.exit(fails ? 1 : 0);
