@@ -6,7 +6,7 @@ import {
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
   compileMessage, comparisonRow, selectedRow, methodTabs, comparisonTable, rowOps, stats,
-  availableSubOptions, subOptionStrips, paneContent, effectiveForm, effectiveCstyle, effectiveNumfmt,
+  availableSubOptions, subOptionStrips, paneContent, effectiveCstyle, effectiveNumfmt,
   defaultMethod, methodAvailable, FIELDS, FIELD_GROUPS, fieldChooser, fieldTitle, tokenizePoly,
 } from '../js/uistate.js';
 import { FIELDS as REGISTRY, FIELD_IDS } from '../js/field.js';
@@ -37,7 +37,7 @@ const RESULT = deepFreeze({
   mathText: 'ours math', mathTextOriginal: 'ours paper', cText: 'ours c', cTextFraction: 'ours frac',
   graph: {}, graphSvg: '<svg>ours</svg>', graphText: '', mults: 4, adds: 7, height: 3,
   fieldName: 'ℚ', note: '', comparisons: [
-    row('Horner'),
+    row('Horner', { mathTextOriginal: 'Horner nested' }),   // its own (nested) form; Estrin / NoC have none
     row('Estrin', { exact: false, cTextFraction: 'estrin frac' }),
     { name: 'Motzkin–Eve', ok: false, note: 'no real roots' },
     row('NoC', { cText: null, graphSvg: null }),
@@ -53,6 +53,15 @@ const FAILED = deepFreeze({
 });
 // a result with real chain text, so the counts are taken on the rendering
 const OURS_TEXT = [
+  'y  = x * (x + 65342529/16384)',
+  'z  = (x + y + 4268043425794177/268435456) * (x − 65301569/16384)',
+  't  = (z + 278709932825554996974785/4398046511104) * x',
+  'u  = (x + z + 278709932164679789204673/4398046511104) * (t + 15899/64)',
+  'P̃ = y + t + u + 87474275/8192',
+  'P  = 1/5040 * P̃   (leading-coefficient scale)',
+].join('\n');
+// the same chain in the paper's constructions form (several products per row, gadget names)
+const OURS_PAPER = [
   'y   = x * (x + 65342529/16384)',
   'z   = (x + y + 4268043425794177/268435456) * (x − 65301569/16384)',
   'w   = (z + 278709932825554996974785/4398046511104) * x',
@@ -62,8 +71,9 @@ const OURS_TEXT = [
 ].join('\n');
 const HORNER_TEXT = 'b5 = (1/5040) * (x)\nb4 = (b5 + 1/720) * (x)\nP  = b4 + 1';
 const COUNTED = deepFreeze({
-  ...RESULT, mathText: OURS_TEXT, mults: 5, adds: 11, height: 3, exact: true, fieldId: 'Q', fieldName: 'ℚ',
-  comparisons: [row('Horner', { mathText: HORNER_TEXT, mults: 2, adds: 2, height: 2 }), row('Estrin', { exact: false, mathText: 'P = 2·x + 4·y' }),
+  ...RESULT, mathText: OURS_TEXT, mathTextOriginal: OURS_PAPER, mults: 5, adds: 11, height: 3, exact: true, fieldId: 'Q', fieldName: 'ℚ',
+  comparisons: [row('Horner', { mathText: HORNER_TEXT, mults: 2, adds: 2, height: 2 }),
+                row('Estrin', { exact: false, mathText: 'P = 2·x + 4·y + 1/3', mathTextOriginal: 'P = 2·x + 4·y + 1/3' }),
                 { name: 'Belaga', ok: false, note: 'needs complex parameters' }],
 });
 const withResult = (state, result = RESULT) => {
@@ -77,10 +87,10 @@ const inMode = mode => reduce(BASE, { type: 'setMode', mode });
 
 // ---- initial state ---------------------------------------------------------
 eq(Object.keys(initialState).sort(),
-   ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys');
-eq([initialState.mode, initialState.view, initialState.form, initialState.cstyle, initialState.numfmt, initialState.method,
+   ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys (no form: the math view has one form per method)');
+eq([initialState.mode, initialState.view, initialState.cstyle, initialState.numfmt, initialState.method,
     initialState.exDegree, initialState.exKey, initialState.exSeed, initialState.exMonic],
-   ['Q', 'math', 'factor', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
+   ['Q', 'math', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
 check(initialState.src === 'x^7 - 21x^5 + 105x^3 - 105x' && initialState.src === examplesFor('Q', 7).find(e => e.key === 'hermite').src,
       'the desktop opens on the Hermite polynomial He_7 over ℚ (small preprocessed constants)');
 eq(examplesFor('Q', 5).find(e => e.key === 'hermite').src, 'x^5 - 10x^3 + 15x', 'He_5');
@@ -123,14 +133,14 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 
 // ---- mode switch -----------------------------------------------------------
 {
-  const s0 = run(withResult(BASE), { type: 'setView', view: 'c' }, { type: 'setForm', form: 'original' }, { type: 'setCstyle', cstyle: 'fraction' });
+  const s0 = run(withResult(BASE), { type: 'setView', view: 'c' }, { type: 'setCstyle', cstyle: 'fraction' });
   const typed = reduce(s0, { type: 'setSrc', src: 'x^3 + 1' });
   const s1 = reduce(typed, { type: 'setMode', mode: 'Q' });
   check(s1.mode === 'Q' && s1.result !== null && s1.error === null && showOutput(s1), 'mode switch keeps the last output visible while recompiling (stale)');
   check(s1.src === 'x^3 + 1', 'mode switch keeps the textarea contents');
   check(s1.busy && s1.jobId === typed.jobId + 1, 'mode switch immediately starts a job for the current source');
   eq(compileMessage(s1), { id: s1.jobId, src: 'x^3 + 1', lane: 'char0', fieldMode: 'Q' }, 'auto-compile message reads the new mode');
-  check(s1.view === 'c' && s1.form === 'original' && s1.cstyle === 'fraction', 'mode switch keeps view preferences');
+  check(s1.view === 'c' && s1.cstyle === 'fraction', 'mode switch keeps view preferences');
   for (const m of MODES) {
     const sm = reduce(typed, { type: 'setMode', mode: m });
     eq(compileMessage(sm), { id: sm.jobId, src: 'x^3 + 1', ...MODE_MSG[m] }, `compile message in ${m} carries the registry worker ids`);
@@ -257,12 +267,12 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(methodTabs(s)[0].label === 'This paper (4)' && methodTabs(s)[1].label === 'Horner (7)' && methodTabs(s)[3].label === 'Motzkin–Eve',
         'chips carry their multiplication counts');
   check(methodTabs(s)[3].title === 'no real roots', 'failed comparison carries its note as title');
-  const h = run(s, { type: 'setMethod', method: 'Horner' }, { type: 'setView', view: 'graph' }, { type: 'setForm', form: 'original' }, { type: 'setCstyle', cstyle: 'fraction' });
+  const h = run(s, { type: 'setMethod', method: 'Horner' }, { type: 'setView', view: 'graph' }, { type: 'setCstyle', cstyle: 'fraction' });
   check(h.method === 'Horner' && selectedRow(h).name === 'Horner' && comparisonRow(h).name === 'Horner', 'comparison selected');
   eq(methodTabs(h).filter(t => t.on).map(t => t.key), ['Horner'], 'exactly one tab is on');
   const h2 = withResult(h);
   check(h2.method === 'Horner', 'new result keeps the chosen method (sticky)');
-  check(h2.view === 'graph' && h2.form === 'original' && h2.cstyle === 'fraction', 'new result keeps view/form/cstyle');
+  check(h2.view === 'graph' && h2.cstyle === 'fraction', 'new result keeps view/cstyle');
   check(reduce(s, { type: 'setMethod', method: 'Motzkin–Eve' }) === s, 'cannot select a failed comparison');
   check(reduce(s, { type: 'setMethod', method: 'Nonexistent' }) === s, 'cannot select an unknown method');
   check(reduce(initialState, { type: 'setMethod', method: 'Horner' }) === initialState, 'cannot select without a result');
@@ -297,15 +307,15 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   eq(comparisonTable(reduce(s, { type: 'setMethod', method: 'Estrin' })).filter(r => r.on).map(r => r.key), ['Estrin'], 'the table highlights the selected method');
   // clicking a row is the chip's action: setMethod (refused for failed rows)
   check(reduce(s, { type: 'setMethod', method: t[3].key }) === s && reduce(s, { type: 'setMethod', method: t[1].key }).method === 'Horner', 'row click = setMethod');
-  // counts are taken on the factored rendering with countOps: scalar multiplications counted, integer multiples as additions
+  // counts are taken on the rendering shown (the method's own form) with countOps: scalar multiplications counted, integer multiples as additions
   const c = withResult(inMode('Q'), COUNTED);
   const ct = comparisonTable(c);
-  const ours = countOps(OURS_TEXT), horner = countOps(HORNER_TEXT), estrin = countOps('P = 2·x + 4·y');
+  const ours = countOps(OURS_TEXT), horner = countOps(HORNER_TEXT), estrin = countOps('P = 2·x + 4·y + 1/3');
   eq([ct[0].mults, ct[0].scalar, ct[0].adds, ct[0].height], [ours.mults + ours.scalar, ours.scalar, ours.adds, 3], 'ours counted on its rendering (4 + 1 scalar)');
   check(ct[0].mults === 5 && ct[0].scalar === 1 && ct[0].adds === 11, `ours: ${ct[0].mults} mults (${ct[0].scalar} scalar), ${ct[0].adds} adds`);
   eq([ct[1].mults, ct[1].scalar, ct[1].adds], [horner.mults + horner.scalar, horner.scalar, horner.adds], 'Horner counted on its rendering');
   eq([ct[2].mults, ct[2].scalar, ct[2].adds], [estrin.mults, 0, estrin.adds], 'integer multiples charged as additions (2·x = 1, 4·y = 2, plus the sum)');
-  check(ct[2].adds === 4 && ct[2].mults === 0, `Estrin fixture: ${ct[2].mults} mults ${ct[2].adds} adds`);
+  check(ct[2].adds === 5 && ct[2].mults === 0, `Estrin fixture: ${ct[2].mults} mults ${ct[2].adds} adds`);
   eq(ct.map(r => r.exact), [true, true, false, null], 'exact column');
   check(ct[3].key === 'Belaga' && ct[3].note === 'needs complex parameters', 'Belaga row reports why it did not run');
   // the chips show the same totals as the table
@@ -356,9 +366,9 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 {
   const q = withResult(inMode('Q'));
   const sub = availableSubOptions(q);
-  check(sub.kind === 'form' && sub.label === 'form:', 'math view shows the form strip first');
-  eq(sub.options.map(o => [o.key, o.on, o.enabled]), [['factor', true, true], ['original', false, true]], 'form options for ours');
-  eq(subOptionStrips(q).map(st => st.kind), ['form', 'numfmt'], 'math view: form + constant-format strips');
+  check(sub.kind === 'numfmt' && sub.label === 'constants:', 'math view shows the constant-format strip first');
+  eq(subOptionStrips(q).map(st => st.kind), ['numfmt'], 'math view: only the constant-format strip (no form chooser)');
+  check(subOptionStrips(q).every(st => st.options.every(o => o.key !== 'factor' && o.key !== 'original')), 'no factor / original option anywhere');
   const c = reduce(q, { type: 'setView', view: 'c' });
   const csub = availableSubOptions(c);
   check(csub.kind === 'constants' && csub.label === 'constants:', 'C view over ℚ shows the constants strip');
@@ -368,15 +378,14 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   for (const m of ['R', 'C', 'p89', 'gf64']) {
     const s = reduce(withResult(inMode(m)), { type: 'setView', view: 'c' });
     check(availableSubOptions(s) === null, `C constants strip hidden in ${m}`);
-    eq(subOptionStrips(reduce(s, { type: 'setView', view: 'math' })).map(st => st.kind), ['form', 'numfmt'], `form + numfmt strips shown in ${m}`);
+    eq(subOptionStrips(reduce(s, { type: 'setView', view: 'math' })).map(st => st.kind), ['numfmt'], `only the numfmt strip shown in ${m}`);
   }
-  const hp = run(q, { type: 'setForm', form: 'original' });
-  eq(availableSubOptions(hp).options.map(o => [o.key, o.on, o.enabled]), [['factor', false, true], ['original', true, true]], 'original selected for ours');
-  const hh = reduce(hp, { type: 'setMethod', method: 'Horner' });
-  eq(availableSubOptions(hh).options.map(o => [o.key, o.on, o.enabled]), [['factor', true, true], ['original', false, false]], 'original unavailable for Horner: factor on, original off');
-  check(effectiveForm(hh) === 'factor' && hh.form === 'original', 'preference kept, effective value falls back');
-  check(paneContent(hh).text === 'Horner math', 'pane falls back to the factored text');
-  check(paneContent(reduce(hh, { type: 'setMethod', method: 'ours' })).text === 'ours paper', 'preference resumes on a row that has original text');
+  // the math pane shows each method in its own form; a row without one shows its factored text
+  check(paneContent(q).text === 'ours paper', "ours shows the paper's constructions form");
+  const hh = reduce(q, { type: 'setMethod', method: 'Horner' });
+  check(paneContent(hh).text === 'Horner nested', 'Horner shows its nested form');
+  check(paneContent(reduce(q, { type: 'setMethod', method: 'Estrin' })).text === 'Estrin math', 'a row without an original form falls back to its one-product-per-line text');
+  check(paneContent(withResult(inMode('Q'), deepFreeze({ ...RESULT, mathTextOriginal: '' }))).text === 'ours math', 'a blank original counts as none');
   const cf = run(c, { type: 'setCstyle', cstyle: 'fraction' });
   eq(availableSubOptions(cf).options.map(o => [o.key, o.on, o.enabled]), [['float', false, true], ['fraction', true, true]], 'fraction on for ours');
   eq(paneContent(cf), { kind: 'c', code: 'ours frac' }, 'fraction C for ours');
@@ -386,60 +395,65 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   eq(paneContent(reduce(cf, { type: 'setMethod', method: 'Estrin' })), { kind: 'c', code: 'estrin frac' }, 'fraction C for a row that has it');
   const mf = run(withResult(inMode('p89')), { type: 'setView', view: 'c' }, { type: 'setCstyle', cstyle: 'fraction' });
   check(effectiveCstyle(mf) === 'float' && paneContent(mf).code === 'ours c', 'fraction ignored outside ℚ');
-  check(reduce(q, { type: 'setSubOption', key: 'original' }).form === 'original', 'setSubOption → form in math view');
   check(reduce(c, { type: 'setSubOption', key: 'fraction' }).cstyle === 'fraction', 'setSubOption → cstyle in C view');
-  check(reduce(hh, { type: 'setSubOption', key: 'original' }) === hh, 'setSubOption ignores a disabled option');
+  check(reduce(cfh, { type: 'setSubOption', key: 'fraction' }) === cfh, 'setSubOption ignores a disabled option');
+  check(reduce(q, { type: 'setSubOption', key: 'original' }) === q && reduce(q, { type: 'setSubOption', key: 'factor' }) === q,
+        'the old form keys are no option (no-op)');
+  const sf = reduce(q, { type: 'setForm', form: 'original' });
+  check(sf === q && !('form' in sf), 'setForm is no action any more (same reference, no form key)');
   const g = reduce(q, { type: 'setView', view: 'graph' });
-  check(reduce(g, { type: 'setSubOption', key: 'original' }) === g, 'setSubOption is a no-op without a strip');
-  check(reduce(q, { type: 'setForm', form: 'bogus' }) === q && reduce(q, { type: 'setCstyle', cstyle: 'bogus' }) === q
-        && reduce(q, { type: 'setNumfmt', numfmt: 'bogus' }) === q, 'invalid sub-option values ignored');
+  check(reduce(g, { type: 'setSubOption', key: 'decimal' }) === g, 'setSubOption is a no-op without a strip');
+  check(reduce(q, { type: 'setCstyle', cstyle: 'bogus' }) === q && reduce(q, { type: 'setNumfmt', numfmt: 'bogus' }) === q, 'invalid sub-option values ignored');
 }
 
 // ---- readable constants (numfmt) -------------------------------------------
 {
   const q = withResult(inMode('Q'), COUNTED);
-  const strip = subOptionStrips(q)[1];
+  const strip = subOptionStrips(q)[0];
   check(strip.kind === 'numfmt' && strip.label === 'constants:', 'constant-format strip on the math row');
   eq(strip.options.map(o => [o.key, o.label, o.on, o.enabled]), [['exact', 'exact', true, true], ['decimal', 'decimal', false, true]], 'ℚ defaults to exact');
-  check(paneContent(q).text === OURS_TEXT && effectiveNumfmt(q) === 'exact', 'exact shows the chain as produced');
+  check(paneContent(q).text === OURS_PAPER && effectiveNumfmt(q) === 'exact', 'exact shows the chain as produced, in the paper\'s form');
   const d = reduce(q, { type: 'setSubOption', key: 'decimal' });
   check(d.numfmt === 'decimal' && effectiveNumfmt(d) === 'decimal', 'setSubOption routes decimal to numfmt');
-  check(paneContent(d).text === formatConstants(OURS_TEXT, 'decimal') && paneContent(d).text.includes('x * (x + 3988.19)')
-        && paneContent(d).text.includes('0.000198413 * P_7'), `decimal pane: ${paneContent(d).text.split('\n')[0]}`);
-  eq(subOptionStrips(d)[1].options.map(o => o.on), [false, true], 'decimal option on');
+  check(paneContent(d).text === formatConstants(OURS_PAPER, 'decimal') && paneContent(d).text.includes('x * (x + 3988.19)')
+        && paneContent(d).text.includes('0.000198413 * P_7') && /^y\s+= /.test(paneContent(d).text),
+        `decimal pane (the readable constants apply to the paper's form): ${paneContent(d).text.split('\n')[0]}`);
+  eq(subOptionStrips(d)[0].options.map(o => o.on), [false, true], 'decimal option on');
   eq(comparisonTable(d).map(r => [r.mults, r.adds]), comparisonTable(q).map(r => [r.mults, r.adds]), 'counts never change with the display format');
   check(d.result === q.result && selectedRow(d).mathText === OURS_TEXT, 'the underlying chain is untouched');
   check(paneContent(reduce(d, { type: 'setView', view: 'c' })).code === 'ours c', 'the C view ignores numfmt');
   const dh = reduce(d, { type: 'setMethod', method: 'Horner' });
-  check(paneContent(dh).text === 'b5 = (0.000198413) * (x)\nb4 = (b5 + 0.00138889) * (x)\nP  = b4 + 1', `decimal applies to comparison rows too: ${paneContent(dh).text}`);
-  // the original form is reformatted as well
-  const dor = reduce(d, { type: 'setForm', form: 'original' });
-  check(paneContent(dor).text === 'ours paper', 'original form without constants passes through');
+  check(paneContent(dh).text === 'b5 = (0.000198413) * (x)\nb4 = (b5 + 0.00138889) * (x)\nP  = b4 + 1',
+        `decimal applies to comparison rows too (a row without an original form: its factored text): ${paneContent(dh).text}`);
+  // phones: the six-digit rule (presentedState) applies to the shown form — a numeric row's own form
+  const de = presentedState(reduce(q, { type: 'setMethod', method: 'Estrin' }), { compact: true });
+  check(de.numfmt === 'decimal' && paneContent(de).text === 'P = 2·x + 4·y + 0.333333', `six-digit constants on the original form: ${paneContent(de).text}`);
   // binary fields: the readable style is hex (every constant a bit pattern)
-  const gfr = deepFreeze({ ...RESULT, mathText: 'y = (x + 5) * (x + 0x1f3a)\nP = y + 1', fieldId: 'gf64', fieldName: 'GF(2^64)' });
+  // (the hex rendering applies to the shown text — the row's own form)
+  const gfr = deepFreeze({ ...RESULT, mathText: 'y = x * x', mathTextOriginal: 'y = (x + 5) * (x + 0x1f3a)\nP = y + 1', fieldId: 'gf64', fieldName: 'GF(2^64)' });
   const g = withResult(inMode('gf64'), gfr);
-  eq(subOptionStrips(g)[1].options.map(o => [o.key, o.label, o.enabled]), [['exact', 'exact', true], ['decimal', 'hex', true]], 'GF(2^k): the readable option is hex');
+  eq(subOptionStrips(g)[0].options.map(o => [o.key, o.label, o.enabled]), [['exact', 'exact', true], ['decimal', 'hex', true]], 'GF(2^k): the readable option is hex');
   check(paneContent(reduce(g, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + 0x5) * (x + 0x1f3a)\nP = y + 0x1', 'hex rendering');
   // Mersenne fields: constants are decimal residues already — the option is offered but disabled
-  const p = withResult(inMode('p89'), deepFreeze({ ...RESULT, mathText: 'y = (x + 309485009821345068724781055) * x\nP = y + 5', fieldId: 'p89' }));
-  const ps = subOptionStrips(p)[1];
+  const p = withResult(inMode('p89'), deepFreeze({ ...RESULT, mathText: 'y = (x + 309485009821345068724781055) * x\nP = y + 5', mathTextOriginal: null, fieldId: 'p89' }));
+  const ps = subOptionStrips(p)[0];
   eq(ps.options.map(o => [o.key, o.on, o.enabled]), [['exact', true, true], ['decimal', false, false]], 'Mersenne: decimal disabled');
   check(/decimal residues/.test(ps.options[1].title), 'Mersenne: the disabled option says why');
   const pd = reduce(p, { type: 'setNumfmt', numfmt: 'decimal' });
   check(effectiveNumfmt(pd) === 'exact' && paneContent(pd).text === selectedRow(pd).mathText, 'a decimal preference has no effect in a Mersenne field');
   check(reduce(p, { type: 'setSubOption', key: 'decimal' }) === p, 'setSubOption refuses the disabled option');
   // ℝ: the constants are doubles; 'full' / 'decimal'
-  const r = withResult(inMode('R'), deepFreeze({ ...RESULT, mathText: 'y = (x + 0.3333333333333333) * x\nP = y + 1', exact: false, fieldId: 'R' }));
-  eq(subOptionStrips(r)[1].options.map(o => o.label), ['full', 'decimal'], 'ℝ labels');
+  const r = withResult(inMode('R'), deepFreeze({ ...RESULT, mathText: 'y = (x + 0.3333333333333333) * x\nP = y + 1', mathTextOriginal: null, exact: false, fieldId: 'R' }));
+  eq(subOptionStrips(r)[0].options.map(o => o.label), ['full', 'decimal'], 'ℝ labels');
   check(paneContent(reduce(r, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + 0.333333) * x\nP = y + 1', 'ℝ decimal rendering');
   // ℂ: complex doubles; 'full' / 'decimal', the complex token rounded as one
-  const cx = withResult(inMode('C'), deepFreeze({ ...RESULT, mathText: 'y = (x + (0.3333333333333333-0.25i)) * x\nP = y + 1', exact: false, fieldId: 'C' }));
-  eq(subOptionStrips(cx)[1].options.map(o => o.label), ['full', 'decimal'], 'ℂ labels');
-  check(/complex-double constants in full/.test(subOptionStrips(cx)[1].options[0].title), 'ℂ full-constants title names complex doubles');
+  const cx = withResult(inMode('C'), deepFreeze({ ...RESULT, mathText: 'y = x * x', mathTextOriginal: 'y = (x + (0.3333333333333333-0.25i)) * x\nP = y + 1', exact: false, fieldId: 'C' }));
+  eq(subOptionStrips(cx)[0].options.map(o => o.label), ['full', 'decimal'], 'ℂ labels');
+  check(/complex-double constants in full/.test(subOptionStrips(cx)[0].options[0].title), 'ℂ full-constants title names complex doubles');
   check(paneContent(reduce(cx, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + (0.333333-0.25i)) * x\nP = y + 1', 'ℂ decimal rendering');
   // a rendering without constants offers nothing to reformat
   const none = withResult(inMode('Q'), deepFreeze({ ...RESULT, mathText: 'y = x * x\nP = y + x' }));
-  check(subOptionStrips(none)[1].options[1].enabled === false && effectiveNumfmt(reduce(none, { type: 'setNumfmt', numfmt: 'decimal' })) === 'exact',
+  check(subOptionStrips(none)[0].options[1].enabled === false && effectiveNumfmt(reduce(none, { type: 'setNumfmt', numfmt: 'decimal' })) === 'exact',
         'decimal disabled when nothing changes');
   // the preference is sticky across methods, views and results
   const back = withResult(run(d, { type: 'setView', view: 'graph' }), COUNTED);
@@ -449,14 +463,13 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 // ---- pane content ----------------------------------------------------------
 {
   const s = withResult(initialState);
-  eq(paneContent(s), { kind: 'math', text: 'ours math' }, 'math pane');
-  eq(paneContent(reduce(s, { type: 'setForm', form: 'original' })), { kind: 'math', text: 'ours paper' }, 'original math pane');
+  eq(paneContent(s), { kind: 'math', text: 'ours paper' }, "math pane: the paper's form of ours");
   eq(paneContent(reduce(s, { type: 'setView', view: 'c' })), { kind: 'c', code: 'ours c' }, 'C pane');
   eq(paneContent(reduce(s, { type: 'setView', view: 'graph' })), { kind: 'graph', svg: '<svg>ours</svg>', dash: false, kx: false }, 'graph pane');
   const noc = run(s, { type: 'setMethod', method: 'NoC' }, { type: 'setView', view: 'c' });
   eq(paneContent(noc), { kind: 'c-missing', text: 'NoC math', note: '/* no C rendering for this method */' }, 'null cText shows the math text with a note line');
   eq(paneContent(reduce(noc, { type: 'setView', view: 'graph' })), { kind: 'graph-missing', note: 'no graph for this method' }, 'null graphSvg');
-  eq(paneContent(reduce(s, { type: 'setMethod', method: 'Horner' })), { kind: 'math', text: 'Horner math' }, 'math pane follows the method');
+  eq(paneContent(reduce(s, { type: 'setMethod', method: 'Horner' })), { kind: 'math', text: 'Horner nested' }, 'math pane follows the method, in its own form');
   // a field without C rendering says so (registry cCode / the reply's cCode)
   const nofield = withResult(initialState, deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cCode: false }));
   check(paneContent(reduce(nofield, { type: 'setView', view: 'c' })).note === '/* no C rendering for this field yet */', 'field-level C note');
@@ -641,18 +654,25 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 // ---- URL-hash sharing (hashFromState / stateFromHash) ----------------------
 {
   const s = run(withResult(inMode('gf64')), { type: 'setMethod', method: 'Horner' }, { type: 'setView', view: 'c' },
-                { type: 'setForm', form: 'original' }, { type: 'setCstyle', cstyle: 'fraction' }, { type: 'setNumfmt', numfmt: 'decimal' });
+                { type: 'setCstyle', cstyle: 'fraction' }, { type: 'setNumfmt', numfmt: 'decimal' });
   const typed = reduce(s, { type: 'setSrc', src: 'x^4 + x + 1' });
   const h = hashFromState(typed);
-  check(h.startsWith('#src=x%5E4') && h.includes('&deg=10') && h.includes('&mode=gf64') && h.includes('&numfmt=decimal') && !h.includes('seed='),
-        'hash encodes src, mode, the clamped degree and the constant format (seed only when used)');
+  check(h.startsWith('#src=x%5E4') && h.includes('&deg=10') && h.includes('&mode=gf64') && h.includes('&numfmt=decimal') && !h.includes('seed=') && !h.includes('form='),
+        'hash encodes src, mode, the clamped degree and the constant format (seed only when used; no form)');
   const r = stateFromHash(initialState, h);
-  eq([r.src, r.mode, r.method, r.view, r.form, r.cstyle, r.numfmt, r.exDegree, r.exKey, r.exSeed, r.exMonic],
-     ['x^4 + x + 1', 'gf64', 'Horner', 'c', 'original', 'fraction', 'decimal', 10, null, 0, true], 'hash roundtrip restores every shared field');
+  eq([r.src, r.mode, r.method, r.view, r.cstyle, r.numfmt, r.exDegree, r.exKey, r.exSeed, r.exMonic],
+     ['x^4 + x + 1', 'gf64', 'Horner', 'c', 'fraction', 'decimal', 10, null, 0, true], 'hash roundtrip restores every shared field');
+  // the form= of earlier Share links is ignored: the link restores, without a form key, and shows the method's own form
+  const old = stateFromHash(initialState, '#ex=hermite&mode=Q&method=ours&view=math&form=factor&cstyle=float&numfmt=exact&deg=7');
+  eq(old, initialState, 'an old link with form=factor restores to the same state as one without it');
+  check(!('form' in old) && !('form' in stateFromHash(initialState, '#mode=Q&form=original')), 'form= never lands in the state');
+  check(paneContent(withResult(old)).text === 'ours paper' && paneContent(withResult(stateFromHash(initialState, '#mode=Q&form=original'))).text === 'ours paper',
+        'an old form=factor link shows the paper\'s form like every other');
   check(!r.busy && r.result === null && r.error === null && r.jobId === 0, 'hash seeds an idle state (the load auto-compile runs on it)');
   check(stateFromHash(initialState, '') === initialState && stateFromHash(initialState, '#') === initialState, 'empty hash → defaults');
   eq(stateFromHash(initialState, '#!!%%&==junk&deg=frog&seed=-1'), initialState, 'junk hash → defaults');
   eq(stateFromHash(initialState, '#mode=klingon&view=x&form=y&cstyle=z&numfmt=w&method='), initialState, 'invalid params ignored');
+  check(!('form' in reduce(withResult(initialState), { type: 'setSubOption', key: 'original' })), 'no path re-introduces a form key');
   check(stateFromHash(initialState, '#mode=Q&deg=99').exDegree === 22, 'deg clamps to the ℚ maximum');
   check(stateFromHash(initialState, '#mode=gf128&deg=14').exDegree === 14 && stateFromHash(initialState, '#mode=gf128&deg=40').exDegree === 26,
         'GF(2^k) deg: even degrees kept, clamped to the largest compiled degree');
@@ -801,7 +821,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
      'exact rational preprocessing — no C rendering: constant Infinity is not representable as a double', 'the ℚ overflow note keeps its C reason');
   // the C pane names the worker's reason for a missing C (result.cMissing, or the reason compile0 leaves in the note)
   const cm = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cMissing: 'an exact constant exceeds the double range, so no double-precision chain exists' }));
-  eq(paneContent(reduce(cm, { type: 'setView', view: 'c' })), { kind: 'c-missing', text: 'ours math', note: '/* no C for this chain: an exact constant exceeds the double range, so no double-precision chain exists */' }, 'cMissing reason in the C pane');
+  eq(paneContent(reduce(cm, { type: 'setView', view: 'c' })), { kind: 'c-missing', text: 'ours paper', note: '/* no C for this chain: an exact constant exceeds the double range, so no double-precision chain exists */' }, 'cMissing reason in the C pane');
   const cn = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, note: 'exact rational preprocessing; verified by re-expansion — no C rendering: constant Infinity is not representable as a double' }));
   eq(paneContent(reduce(cn, { type: 'setView', view: 'c' })).note, '/* no C for this chain: constant Infinity is not representable as a double */', 'the reason is read from the note when cMissing is absent');
   const cf = withResult(inMode('Q'), deepFreeze({ ...RESULT, cText: null, cTextFraction: null, cCode: false, cMissing: 'whatever' }));
@@ -951,7 +971,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(!filled.result.comparisons.some(r => r.pending) && comparisonRow({ ...filled, method: 'Knuth–Eve' })?.exact === false &&
         filled.result.comparisons.find(r => r.name === 'Pan').note === 'degree too low' && filled.result.comparisons[0] === MAIN.comparisons[0],
         'the numeric reply fills the placeholders and keeps the other rows');
-  check(filled.method === 'ours' && paneContent(filled).kind === 'math' && paneContent(filled).text === 'ours math' && selectedRow(filled) === filled.result &&
+  check(filled.method === 'ours' && paneContent(filled).kind === 'math' && paneContent(filled).text === 'ours paper' && selectedRow(filled) === filled.result &&
         methodTabs(filled).find(t => t.on).key === 'ours' && comparisonTable(filled).find(r => r.on).key === 'ours' && !hashFromState(filled).includes('method=Pan'),
         'a method selected while pending that turned out unavailable is deselected: chips, table, pane and Share agree on ours');
   check(comparisonTable(filled).every(r => !(r.on && !r.ok && !r.pending)), 'no failed row is ever the selected one');

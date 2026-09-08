@@ -592,9 +592,12 @@ function PolyInput({ src, invalid = false, onInput, onKeyDown }) {
 
 // ---- the output: view tabs, pane, comparison table ------------------------
 
-/** View tabs (+ the sub-option strips: form and constant format in the math
- *  view, constant style in the ℚ C view) attached to the pane.  Phones hide
- *  the constants strip (presentedState decides the format there).  The tabs
+/** View tabs (+ the sub-option strips: constant format in the math view,
+ *  constant style in the ℚ C view) attached to the pane.  Phones hide the
+ *  math view's constants strip (presentedState decides the format there), so
+ *  the strip container is rendered only when a strip is shown — no empty
+ *  element beside the tabs.  The math pane shows each method in its own form
+ *  (uistate.paneContent); there is no form chooser.  The tabs
  *  are a complete tab widget: each controls the pane (its tabpanel), only the
  *  selected one is in the Tab order, and Left / Right / Home / End move the
  *  selection and the focus (the roving tabindex of the ARIA tabs pattern).
@@ -623,14 +626,14 @@ function Output({ state, shareState = null, dispatch, compact = false }) {
           class=${v === state.view ? 'on' : null}
           onClick=${() => dispatch({ type: 'setView', view: v })}>${labels[v]}</button>`)}
       </div>
-      <div class="subopts" id="view-sub">
+      ${strips.length > 0 && html`<div class="subopts" id="view-sub">
         ${strips.map(sub => html`<span class="strip" key=${sub.kind} data-strip=${sub.kind} role="group" aria-label=${sub.label}>
           <span class="lbl" aria-hidden="true">${sub.label}</span>
           ${sub.options.map(o => html`<button type="button" key=${o.key} data-opt=${o.key} title=${o.title || null}
             aria-pressed=${!!o.on} disabled=${!o.enabled} class=${o.on ? 'on' : null}
             onClick=${o.enabled ? () => dispatch({ type: 'setSubOption', key: o.key }) : null}>${o.label}</button>`)}
         </span>`)}
-      </div>
+      </div>`}
     </div>
     <${Pane} content=${paneContent(state)} state=${state} shareState=${shareState} dispatch=${dispatch} compact=${compact} />
   </div>`;

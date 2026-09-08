@@ -529,7 +529,7 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   eq(latestJob().map(m => m.part), ['main'], 'a GF(2^k) job posts no numeric part');
 
   // a real result through the worker: the output, its tabs and the table appear
-  await replyToLatest();
+  const gfResult = await replyToLatest();
   check($('#out') && $$('#view button').length === 3 && $('#view button.on')?.dataset.view === 'math' && $('#chain'),
         'a compile reply mounts the output with the math view');
   check($$('#methods button').length >= 4 && $('#methods button.on')?.dataset.m === 'ours' && $$('#compare tbody tr').length >= 4,
@@ -587,11 +587,29 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   $('#view button[data-view="math"]').click(); await settle();
   check($$('#view-sub .strip').every(st => st.getAttribute('role') === 'group' && st.getAttribute('aria-label')) &&
         $$('#view-sub button').every(b => b.getAttribute('type') === 'button' && /^(true|false)$/.test(b.getAttribute('aria-pressed'))) &&
-        $('#view-sub button[data-opt="factor"]').getAttribute('aria-pressed') === 'true',
+        $('#view-sub button[data-opt="exact"]').getAttribute('aria-pressed') === 'true',
         'sub-option strips are labelled groups of buttons with aria-pressed');
-  $('#view-sub button[data-opt="original"]').click(); await settle();
-  check($('#view-sub button[data-opt="original"]').classList.contains('on') && $('#view-sub button[data-opt="original"]').getAttribute('aria-pressed') === 'true' &&
-        $('#view-sub button[data-opt="factor"]').getAttribute('aria-pressed') === 'false', 'a sub-option toggles (class and aria-pressed)');
+  // no form chooser: the only math-view strip is the constant format, and the pane shows the method's own form
+  eq($$('#view-sub .strip').map(st => st.dataset.strip), ['numfmt'], 'the math view has one strip (constants); no form strip');
+  check(!$('#view-sub button[data-opt="factor"]') && !$('#view-sub button[data-opt="original"]'), 'no factor / original buttons');
+  const shownRow = name => (name === 'ours' ? gfResult : gfResult.comparisons.find(c => c.name === name));
+  check($('#methods button.on')?.dataset.m === 'Estrin' && $('#chain').textContent === shownRow('Estrin').mathTextOriginal &&
+        $('#chain').textContent !== shownRow('Estrin').mathText, "the math pane shows Estrin's own (tree) form, not the factored list");
+  $('#methods button[data-m="ours"]').click(); await settle();
+  check($('#chain').textContent === gfResult.mathTextOriginal && /^y\s*=/.test($('#chain').textContent),
+        "the math pane shows our chain in the paper's form (appendix letter names)");
+  $('#methods button[data-m="Horner"]').click(); await settle();
+  check($('#chain').textContent === shownRow('Horner').mathTextOriginal, "the math pane shows Horner's nested form");
+  $('#methods button[data-m="Estrin"]').click(); await settle();
+  // the constants strip toggles: hex is enabled when the shown text has a constant to reformat, else disabled and inert
+  const hexBtn = $('#view-sub button[data-opt="decimal"]');
+  check(hexBtn && hexBtn.textContent === 'hex', 'GF(2^k): the readable option is hex');
+  if (!hexBtn.disabled) {
+    hexBtn.click(); await settle();
+    check(hexBtn.classList.contains('on') && hexBtn.getAttribute('aria-pressed') === 'true' &&
+          $('#view-sub button[data-opt="exact"]').getAttribute('aria-pressed') === 'false', 'a sub-option toggles (class and aria-pressed)');
+    $('#view-sub button[data-opt="exact"]').click(); await settle();
+  }
   $('#share').click(); await settle();
   check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied') &&
         shimHistory.entries === 0,
@@ -692,7 +710,13 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(shown.includes('−') && copiedText === shown.replace(/−/g, '-').replace(/·/g, '*') && !/[−·]/.test(copiedText),
         'Copy in the math view writes an ASCII minus and asterisk');
   delete globalThis.navigator.clipboard;
-  eq($$('#view-sub .strip').map(s => s.dataset.strip), ['form'], 'phones hide the constants strip');
+  // phones: no sub-option strip in the math view (the constants strip is presentedState's job) — and no empty container
+  check(!$('#view-sub') && $$('#view-sub .strip').length === 0 && $('.viewbar') && $('#view'),
+        'the phone view bar has no (empty) sub-option element in the math view');
+  $('#view button[data-view="c"]').click(); await settle();
+  eq($$('#view-sub .strip').map(s => s.dataset.strip), ['constants'], 'the ℚ C view keeps its constants strip on phones');
+  $('#view button[data-view="math"]').click(); await settle();
+  check(!$('#view-sub'), 'back in the math view the strip container is gone again');
   const msel = $('#method-select'); msel.value = 'Knuth–Eve'; msel.dispatch('change'); await settle();
   check($('#compare tr.on')?.dataset.m === 'Knuth–Eve' && /\d\.\d{2,5}\b/.test($('#chain').textContent) && !/\d\.\d{7,}/.test($('#chain').textContent),
         'the method dropdown selects a method; a numeric row shows six-digit constants on phones');
@@ -732,6 +756,21 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   await settle();
   check(app.querySelector('#mode-select').value === 'p89' && app.querySelector('#poly-in').value === defaultExample('p89', 7, 0, true).src,
         'location.hash seeds the boot state');
+}
+
+// an old link carrying form= (the removed chooser) boots without error and shows the paper's form
+{
+  const { app } = installDom({ compact: false, hash: '#ex=hermite&mode=Q&method=ours&view=math&form=factor&cstyle=float&numfmt=exact&deg=7' });
+  await import('../js/ui.js?layout=oldlink');
+  await settle();
+  const $ = s => app.querySelector(s);
+  check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'Q' && $('#error').textContent === '',
+        'an old form=factor link restores He_7 over ℚ without error');
+  const res = await replyPart('main');
+  check($('#view button.on')?.dataset.view === 'math' && $('#chain').textContent === res.mathTextOriginal && $('#chain').textContent !== res.mathText &&
+        /^(H_2|y|P_\d+)\s+=/.test($('#chain').textContent) && /^P(_\d+)?\s+=/m.test($('#chain').textContent),
+        `the pane shows the constructions form, not the factored list (${$('#chain').textContent.split('\n')[0]})`);
+  check(!$('#view-sub button[data-opt="factor"]') && !$('#view-sub button[data-opt="original"]'), 'no form strip for an old link');
 }
 
 console.log(fails ? `UI SMOKE FAILED (${fails}/${checks})` : `UI SMOKE PASSES (${checks} checks)`);
