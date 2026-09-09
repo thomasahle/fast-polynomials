@@ -154,7 +154,8 @@ for (const f of FIELDS) {
     check(toks.length > 0 && toks.every(tok => COMPLEX_TOKEN.test(tok)), `ℂ complex input: canonical complex tokens (${toks.slice(0, 3).join(' ')})`);
     check(!BARE_I.test(t.replace(cx, '')), `ℂ complex input: no bare i outside the tokens in ${t.split('\n')[0]}`);
   }
-  check(/\(1\+2i\) \* P̃/.test(r.mathText) && typeof r.maxRelError === 'number' && r.maxRelError < 1e-12, `ℂ complex input: scale line and rounding error ${r.maxRelError}`);
+  check(/\(1\+2i\) \* P_\d+/.test(r.mathTextOriginal) && /^P = \(1\+2i\) \* \w+ /m.test(r.mathText) && typeof r.maxRelError === 'number' && r.maxRelError < 1e-12,
+        `ℂ complex input: scale line (the paper's form; folded in the factor form) and rounding error ${r.maxRelError}`);
   check(r.comparisons.filter(c => c.ok).map(c => c.name).join(',') === 'Horner,Estrin,Rabin–Winograd,Knuth–Eve,Belaga' && r.comparisons.every(c => c.ok || (c.name === 'Pan' && /degree 11/.test(c.note))),
         `ℂ complex input: rows ${r.comparisons.map(c => `${c.name}${c.ok ? '' : '✗'}`).join(',')}`);
   for (const nm of ['Knuth–Eve', 'Belaga']) {
@@ -407,8 +408,9 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
     // residue over the wider primes), in ℚ's form for a negative leading term
     const big = await handleMessage({ lane: 'char0', src: '2305843009213693950x + 1', fieldMode: id });
     if (id === 'p61') {
-      check(/^P̃ = x − 1$/m.test(big.mathText) && /^P  = -1 \* P̃/m.test(big.mathText) && /leading coefficient -1$/m.test(big.cText) && /P\(x\) = -x \+ 1/.test(big.cText),
-            `p61: p − 1 reads −1\n${big.mathText}`);
+      check(/^P_1 = x − 1$/m.test(big.mathTextOriginal) && /^P += -1 \* P_1/m.test(big.mathTextOriginal) && /^P = -x \+ 1$/m.test(big.mathText) &&
+            /leading coefficient -1$/m.test(big.cText) && /P\(x\) = -x \+ 1/.test(big.cText),
+            `p61: p − 1 reads −1\n${big.mathTextOriginal}\n${big.mathText}`);
       // the factored rows fold the −1 into a sign: (-x) * (x), or a negated final sum
       check(big.comparisons.every(c => !c.ok || /-x\b|-w0\b/.test(c.mathText)), `p61: the rows scale by −1 as a sign\n${big.comparisons.map(c => c.mathText).join('\n')}`);
     } else check(/2305843009213693950/.test(big.mathText) && symmetric(big.mathText, p), `${id}: 2^61 − 2 is a small residue here`);

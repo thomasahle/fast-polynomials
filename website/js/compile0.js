@@ -11,7 +11,7 @@
 import { parsePoly, polyToString } from './polyparse.js';
 import { Rat } from './rat.js';
 import { GaussRat, gaussCoreField } from './gauss.js';
-import { makeResult, renderAffineChain, chainToText, paperWireNames, gateGroups, renderConstructionsForm } from './chain.js';
+import { makeResult, renderAffineChain, factoredText, paperWireNames, gateGroups, renderConstructionsForm } from './chain.js';
 import { buildGraphFromAffineChain } from './graph.js';
 import { char0C } from './cgen.js';
 import { fieldById, ratToDouble, ratToDoubleString, primeName, fpSymmetric, fpHeaderCoeffs } from './field.js';
@@ -139,7 +139,7 @@ export async function compileChar0(src, fieldMode = 'Q') {
   result.exact = fd.exact;
   result.status = fd.status;
   result.maxRelError = maxRelError;
-  result.mathText = chainToText(result);      // letter names (y, z, t, …), as in the C and the graph
+  result.mathText = factoredText(result, fd.make());   // the factor form: letter names (y, z, t, …) as in the C and the graph, the scale step folded
   result.linesPaper = scaleStep ? [...linesPaper, scaleStep] : linesPaper;
   result.mathTextOriginal = renderConstructionsForm(F, chain, scaleStep);  // rows as in sections/constructions
   // C rendering is optional: over Q / R the exact chain constants can exceed the

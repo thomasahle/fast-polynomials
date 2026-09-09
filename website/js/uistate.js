@@ -37,7 +37,8 @@
 //                                      factored list silently) or the one-product-per-line
 //                                      gate list (mathText)
 //     cstyle    'float' | 'fraction'   C view over ℚ: constant rendering
-//     numfmt    'exact' | 'decimal'    math view: constants as produced, or readable
+//     numfmt    'auto' | 'exact' | 'decimal'
+//                                      math view: constants as produced, or readable
 //                                      (≈6 significant digits over ℚ/ℝ/ℂ, hex over GF(2^k));
 //                                      display only — counts stay on the exact text
 //
@@ -87,7 +88,7 @@ import { numericMethodsFor, needsNumericWorker, methodNamesFor, MAX_DEGREE } fro
 export const VIEWS = ['math', 'c', 'graph'];
 export const FORMS = ['original', 'factor'];
 export const CSTYLES = ['float', 'fraction'];
-export const NUMFMTS = ['exact', 'decimal'];
+export const NUMFMTS = ['auto', 'exact', 'decimal'];   // auto: readable on numeric rows (the phone default)
 
 // ---- field registry --------------------------------------------------------
 // The field chooser is rendered from js/field.js FIELDS: one entry per field,
@@ -514,13 +515,14 @@ export const initialState = Object.freeze({
 /** Boot state per layout.  Phones (`compact`) open on ℚ with the e^x chip at
  *  COMPACT_DEGREE, monic (the degree-4 Taylor polynomial plus x^5): a chain
  *  with small constants that fits a narrow screen; there is no degree stepper
- *  there.  Desktop keeps initialState. */
+ *  there — and with numfmt 'auto': numeric rows show readable constants until
+ *  the display menu says otherwise.  Desktop keeps initialState. */
 export const COMPACT_MODE = 'Q';
 export const COMPACT_DEGREE = 5;
 export function initialStateFor({ compact = false } = {}) {
   if (!compact) return initialState;
   const ex = defaultExample(COMPACT_MODE, COMPACT_DEGREE, initialState.exSeed, true);
-  return Object.freeze({ ...initialState, mode: COMPACT_MODE, exDegree: COMPACT_DEGREE, exMonic: true, src: ex.src, exKey: ex.key });
+  return Object.freeze({ ...initialState, mode: COMPACT_MODE, exDegree: COMPACT_DEGREE, exMonic: true, src: ex.src, exKey: ex.key, numfmt: 'auto' });
 }
 
 // ---- reducer ---------------------------------------------------------------
@@ -832,19 +834,23 @@ export function rowOps(row, text = row?.mathTextOriginal || row?.mathText) {
   }
   return o;
 }
-const withCount = (name, row) => { const o = rowOps(row); return o === null ? name : `${name} (${o.mults + o.scalar})`; };
+/** The text a row's counts are taken on — the form the math view shows for
+ *  it: the factored list under the factor form, else the method's own form
+ *  (its factored list when it has none). */
+const countedText = (row, state) => (state.form === 'factor' ? row.mathText : row.mathTextOriginal || row.mathText);
+const withCount = (name, row, state) => { const o = rowOps(row, countedText(row, state)); return o === null ? name : `${name} (${o.mults + o.scalar})`; };
 
 /** Method chips: [{ key, label, enabled, title, on }] — names with their total
- *  multiplication count (counted on the method's own form, like the table). */
+ *  multiplication count (counted on the form shown, like the table). */
 export function methodTabs(state) {
   const r = state.result;
   if (!r) return [];
   const tabs = [{
-    key: 'ours', label: r.oursFailed ? 'This paper' : withCount('This paper', r),
+    key: 'ours', label: r.oursFailed ? 'This paper' : withCount('This paper', r, state),
     enabled: !r.oursFailed, pending: false, title: r.oursFailed ? String(r.oursFailed) : '',
   }];
   for (const c of r.comparisons ?? [])
-    tabs.push({ key: c.name, label: c.ok ? withCount(c.name, c) : c.name, enabled: !!c.ok || !!c.pending,
+    tabs.push({ key: c.name, label: c.ok ? withCount(c.name, c, state) : c.name, enabled: !!c.ok || !!c.pending,
       pending: !!c.pending, title: c.ok ? '' : String(c.note ?? '') });
   return tabs.map(t => ({ ...t, on: t.key === state.method }));
 }
@@ -853,7 +859,8 @@ export function methodTabs(state) {
  * The comparison table under the output pane, one row per method in worker
  * order (This paper, Horner, Estrin, Rabin–Winograd, Knuth–Eve, Pan; Belaga over ℂ):
  *   [{ key, name, ok, on, mults, scalar, adds, height, exact, exactNote, maxRelError, note }]
- * Counts come from rowOps on each method's own rendering, the math view's default text (mults = the
+ * Counts come from rowOps on the form shown (countedText: the method's own rendering, or every
+ * row's factored list under the factor form) (mults = the
  * total, scalar = how many of them are by a constant); a method that did not
  * run has ok: false, null counts and its reason in `note`; a method that ran
  * carries its own note (the worker's description of what it did) there, so
@@ -873,7 +880,7 @@ export function comparisonTable(state) {
   for (const c of r.comparisons ?? [])
     entries.push({ key: c.name, name: c.name, ok: !!c.ok, pending: !!c.pending, exact: !!c.exact, note: displayNote(c.note), row: c });
   return entries.map(({ row, ...e }) => {
-    const o = e.ok ? rowOps(row) : null;
+    const o = e.ok ? rowOps(row, countedText(row, state)) : null;
     return { ...e, pending: !!e.pending, on: e.key === state.method, ref: referenceFor(e.name),
       mults: o ? o.mults + o.scalar : null, scalar: o ? o.scalar : 0,
       adds: o ? o.adds : null, height: e.ok ? row.height ?? null : null, exact: e.ok ? e.exact : null,
@@ -926,13 +933,12 @@ function numericNote(row, f = null) {
   return err ? `${pre}, ${err[0]}` : pre;
 }
 
-/** Stat tiles for the selected row, counted on the form actually shown (the
- *  chips and the table count the method's own form): [{ label, value }]
- *  (empty when the row has no counts). */
+/** Stat tiles for the selected row, counted on the form actually shown, like
+ *  the chips and the table: [{ label, value }] (empty when the row has no counts). */
 export function stats(state) {
   const src = selectedRow(state);
   if (!src) return [];
-  const ops = rowOps(src, effectiveForm(state) === 'factor' ? src.mathText : src.mathTextOriginal);
+  const ops = rowOps(src, countedText(src, state));
   if (ops === null) return [];
   const row = shownRow(state);
   return [
@@ -993,20 +999,20 @@ function readableRendering(state) {
   return out === text ? null : { style, text: out };
 }
 
-/** Constant format actually shown in the math view ('exact' unless the readable one applies). */
-export function effectiveNumfmt(state) {
-  return state.numfmt === 'decimal' && state.view === 'math' && selectedRow(state) && readableRendering(state) ? 'decimal' : 'exact';
+/** A numeric row: everything over ℝ / ℂ, and a numerically preprocessed
+ *  method (Knuth–Eve, Pan) over ℚ — the rows numfmt 'auto' shows readable. */
+export function numericRow(state) {
+  if (!state.result) return false;
+  const row = shownRow(state);
+  return inexactChar0(fieldOf(state.mode)) || (row ? row.exact === false : state.result.exact === false);
 }
 
-/** The state the output panes render from.  On phones the constants group of
- *  the display menu is hidden, and numeric rows — everything over ℝ / ℂ, and the numerically
- *  preprocessed methods (Knuth–Eve, Pan) over ℚ — show their constants to six
- *  significant digits (the readable rendering); exact fractions are left alone. */
-export function presentedState(state, { compact = false } = {}) {
-  if (!compact || state.numfmt === 'decimal' || !state.result) return state;
-  const row = shownRow(state);
-  const numeric = inexactChar0(fieldOf(state.mode)) || (row ? row.exact === false : state.result.exact === false);
-  return numeric ? { ...state, numfmt: 'decimal' } : state;
+/** Constant format actually shown in the math view: 'decimal' when chosen, or
+ *  under 'auto' on a numeric row (six significant digits; exact fractions are
+ *  left alone) — and only where the readable rendering applies; else 'exact'. */
+export function effectiveNumfmt(state) {
+  const wants = state.numfmt === 'decimal' || (state.numfmt === 'auto' && numericRow(state));
+  return wants && state.view === 'math' && selectedRow(state) && readableRendering(state) ? 'decimal' : 'exact';
 }
 
 /**
@@ -1094,7 +1100,7 @@ export function paneContent(state) {
     return null;
   }
   if (state.view === 'math') {
-    const readable = state.numfmt === 'decimal' ? readableRendering(state) : null;
+    const readable = effectiveNumfmt(state) === 'decimal' ? readableRendering(state) : null;
     return { kind: 'math', text: readable ? readable.text : exactMathText(state) };
   }
   if (state.view === 'c') {

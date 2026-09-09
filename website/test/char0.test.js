@@ -353,13 +353,16 @@ async function testCompilePipeline() {
   // R: decimal inputs are parsed exactly (0.5 = 1/2, 1.5e-1 = 3/20) and rendered
   // back as doubles; the leading-coefficient scale shows the double
   const r = await compileChar0('0.5x^7 + 0.25x^5 - 1.5e-1x^3 + 2x - 0.125', 'R');
-  check(r.mults === expectedMulCount(7) + 1 && /P̃/.test(r.mathText) && r.maxRelError < 1e-12, 'compileChar0 R: decimal, non-monic input');
-  check(/0\.5 \* P̃/.test(r.mathText) && !/\d\/\d/.test(r.mathText), 'compileChar0 R: double constants in the math view');
+  check(r.mults === expectedMulCount(7) + 1 && /leading-coefficient scale/.test(r.mathTextOriginal) && r.maxRelError < 1e-12, 'compileChar0 R: decimal, non-monic input');
+  // the paper's form keeps the scale row; the factor form folds it into the last linear combination
+  check(/0\.5 \* P_7/.test(r.mathTextOriginal) && /^P = 0\.5 \* \w+ /m.test(r.mathText) && !/\d\/\d/.test(r.mathText) && !/P̃|P_7/.test(r.mathText),
+        `compileChar0 R: double constants in the math view (${r.mathText.split('\n').pop()})`);
   const q = await compileChar0('0.5x^7 + 0.25x^5 - 1.5e-1x^3 + 2x - 0.125', 'Q');
-  check(/1\/2 \* P̃/.test(q.mathText) && q.mults === r.mults, 'compileChar0 Q: the same input shows exact fractions');
+  check(/1\/2 \* P_7/.test(q.mathTextOriginal) && /^P = 1\/2 \* \w+ /m.test(q.mathText) && q.mults === r.mults, 'compileChar0 Q: the same input shows exact fractions');
   // shortest round-trip decimals, scientific notation when needed
   const tiny = await compileChar0('0.0000001x^5 + x^3 + 0.5x + 3', 'R');
-  check(/1e-7 \* P̃/.test(tiny.mathText) && /return P \* 1e-7;/.test(tiny.cText) && /10000001/.test(tiny.mathText), 'compileChar0 R: 1e-7 rendering');
+  check(/1e-7 \* P_5/.test(tiny.mathTextOriginal) && /^P = 1e-7 \* \w+ /m.test(tiny.mathText) && /return P \* 1e-7;/.test(tiny.cText) && /10000001/.test(tiny.mathText),
+        'compileChar0 R: 1e-7 rendering');
   const tiny2 = await compileChar0('x^5 + 0.0000001x + 3', 'R');
   check(/1\.0000001/.test(tiny2.mathText) && /1\.0000001/.test(tiny2.cText) && !/\d\/\d/.test(tiny2.mathText), 'compileChar0 R: 1.0000001 rendering');
   // C: complex coefficients parse (i, 2i, (1+2i), (1/2-3/4i)), every non-real
@@ -368,7 +371,8 @@ async function testCompilePipeline() {
   {
     const src = '(1+2i)x^5 + ix^3 - 2x + (1/2-3/4i)';
     const c = await compileChar0(src, 'C');
-    check(c.mults === expectedMulCount(5) + 1 && /\(1\+2i\) \* P̃/.test(c.mathText) && c.maxRelError < 1e-12, `compileChar0 C: complex non-monic input (${c.mults}, ${c.maxRelError})`);
+    check(c.mults === expectedMulCount(5) + 1 && /\(1\+2i\) \* P_5/.test(c.mathTextOriginal) && /^P = \(1\+2i\) \* \w+ /m.test(c.mathText) && c.maxRelError < 1e-12,
+          `compileChar0 C: complex non-monic input (${c.mults}, ${c.maxRelError})`);
     const toks = c.mathText.match(new RegExp(COMPLEX_SRC, 'g')) ?? [];
     check(toks.length >= 2 && toks.every(t => COMPLEX_TOKEN.test(t)) && !/[\d+\-−(]\s*i\b/.test(c.mathText.replace(new RegExp(COMPLEX_SRC, 'g'), '')),
       `compileChar0 C: canonical complex tokens only (${toks.join(' ')})`);

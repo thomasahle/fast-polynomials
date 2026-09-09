@@ -62,7 +62,7 @@ import { fetchStars } from './github-stars.js';
 import { toggleTheme, label as labelThemeToggle } from './theme.js';
 import { chainMathRows, renderLatex } from './mathview.js';
 import {
-  reduce, initialStateFor, presentedState, stateFromHash, hashFromState, VIEWS, examplesFor,
+  reduce, initialStateFor, stateFromHash, hashFromState, VIEWS, examplesFor,
   exampleDegree, stepDegree, showOutput, compileMessages, methodTabs, comparisonTable,
   subOptionStrips, paneContent, fieldChooser, tokenizePoly, stats, staleRow, isStale, inputHint,
   hasPending,
@@ -332,15 +332,13 @@ function CompactLayout({ state, dispatch, actions }) {
   const out = showOutput(state);
   const stale = isStale(state);
   const chips = examplesFor(state.mode, state.exDegree, state.exSeed, state.exMonic).slice(0, COMPACT_CHIPS);
-  // the output renders the presented state (readable constants); Share links
-  // the state as chosen, so a presentation-only format never travels in a link
   return html`<${CompactIntro} />
     <${InputCard} state=${state} actions=${actions} chips=${chips}>
       <${FieldMethodPickers} state=${state} tabs=${tabs} stale=${stale} setMode=${actions.setMode} dispatch=${dispatch} />
       <${Status} state=${state} dispatch=${dispatch} />
     <//>
     ${out && html`<div class="card out-card">
-      <${Output} key="out" state=${presentedState(state, { compact: true })} shareState=${state} dispatch=${dispatch} compact />
+      <${Output} key="out" state=${state} dispatch=${dispatch} compact />
       <div class=${stale ? 'stats-line stale' : 'stats-line'} id="stats-line">${statsLine(state)}</div>
     </div>`}
     ${out && html`<details class="card cmp-card" id="cmp-card"><summary>Compare methods</summary>
@@ -646,15 +644,13 @@ function DisplayMenu({ groups, dispatch }) {
 
 /** View tabs (+ the display menu: a gear opening the form and constant-format
  *  groups in the math view, the constant-style group in the ℚ C view)
- *  attached to the pane.  Phones drop the math view's constants group
- *  (presentedState decides the format there); the gear is rendered only when
- *  a group is shown — no empty element beside the tabs.  The tabs
+ *  attached to the pane.  The gear is rendered only when a group is shown —
+ *  no empty element beside the tabs.  The tabs
  *  are a complete tab widget: each controls the pane (its tabpanel), only the
  *  selected one is in the Tab order, and Left / Right / Home / End move the
- *  selection and the focus (the roving tabindex of the ARIA tabs pattern).
- *  `shareState` is the state Share links — the un-presented one on phones. */
-function Output({ state, shareState = null, dispatch, compact = false }) {
-  const groups = subOptionStrips(state).filter(sub => !compact || sub.kind !== 'numfmt');
+ *  selection and the focus (the roving tabindex of the ARIA tabs pattern). */
+function Output({ state, dispatch, compact = false }) {
+  const groups = subOptionStrips(state);
   const labels = compact ? VIEW_LABEL_COMPACT : VIEW_LABEL;
   const tabsRef = useRef(null);
   const onTabKey = e => {
@@ -679,7 +675,7 @@ function Output({ state, shareState = null, dispatch, compact = false }) {
       </div>
       ${groups.length > 0 && html`<${DisplayMenu} key=${state.view} groups=${groups} dispatch=${dispatch} />`}
     </div>
-    <${Pane} content=${paneContent(state)} state=${state} shareState=${shareState} dispatch=${dispatch} compact=${compact} />
+    <${Pane} content=${paneContent(state)} state=${state} dispatch=${dispatch} compact=${compact} />
   </div>`;
 }
 
@@ -776,7 +772,7 @@ function DownloadButton({ state }) {
  *  so switching kinds remounts the element.  Download is withheld while the
  *  pane shows a numeric method's previous chain (staleRow): the archive is
  *  built from the current result, and a stale selected.c would not match it. */
-function Pane({ content, state, shareState = null, dispatch, compact }) {
+function Pane({ content, state, dispatch, compact }) {
   // Copy receives ASCII for the chain grammar (asciiChain); the C source already is
   const text = content?.kind === 'math' ? asciiChain(content.text)
     : content?.kind === 'c' ? content.code
@@ -788,7 +784,7 @@ function Pane({ content, state, shareState = null, dispatch, compact }) {
       ${state.busy && html`<${CancelButton} dispatch=${dispatch} />`}
       ${text !== null && html`<${CopyButton} text=${text} />`}
       ${!compact && hasCBundle(state) && staleRow(state) === null && !hasPending(state.result) && html`<${DownloadButton} state=${state} />`}
-      ${compact && html`<${ShareButton} state=${shareState ?? state} />`}
+      ${compact && html`<${ShareButton} state=${state} />`}
     </div>`}
     ${paneBody(content)}
   </div>`;

@@ -3,7 +3,7 @@
 import { compileHorner } from './methods/horner.js';
 import { compileEstrin } from './methods/estrin.js';
 import { compileRW } from './methods/rw.js';
-import { chainToText, factorize } from './chain.js';
+import { chainToText, factoredText } from './chain.js';
 import { methodChainC } from './cgen.js';
 import { compileKnuthEve, verifyLinesComplex } from './methods/motzkin.js';
 import { compilePan1978Real } from './methods/pan1978real.js';
@@ -84,7 +84,7 @@ export function buildClassical(coeffs, F, mode, { poly = null } = {}) {
         name, ok: true, mults: r.mults, adds: r.adds, height: r.height,
         preprocessing: numericField && r.preprocessing !== 'none' ? 'numeric' : r.preprocessing,
         exact: numericField ? r.preprocessing === 'none' : r.exact,
-        mathText: chainToText({ lines: factorize(r.lines, F) }), mathTextOriginal: chainToText(r), cText, cTextFraction,
+        mathText: factoredText(r, F), mathTextOriginal: chainToText(r), cText, cTextFraction,
         graph: graphOf(r.lines), note: r.note ?? '',
       });
     } catch (e) {
@@ -172,7 +172,7 @@ function numericRow(name, compile, coeffs, F, mode = 'Q', { preserveLeading = fa
       name, ok: true, mults: r.mults, adds: r.adds, height: r.height,
       preprocessing: r.preprocessingLabel ?? (r.preprocessing === 'complex' ? 'complex roots' : 'real roots (numeric)'),
       exact: false,
-      mathText: chainToText({ lines: factorize(r.lines, F) }),
+      mathText: factoredText(r, F),
       mathTextOriginal: chainToText(r), cText, cTextFraction: cText,
       graph: graphOf(r.lines),
       ...(r.radixExponent === undefined ? {} : {

@@ -14,7 +14,7 @@ import * as P from './poly.js';
 import { CIRCUITS, evalCircuit, decodeChar2, circuitStats, SUPPORTED_DEGREES, MAX_DEGREE,
          baseDegree } from './char2.js';
 import { DEGREE_CEILING } from './methodlist.js';   // the Mersenne ceiling this message points at
-import { renderGateChain, makeResult, chainToText } from './chain.js';
+import { renderGateChain, makeResult, chainToText, factoredText } from './chain.js';
 import { char2C } from './cgen.js';
 import { polyToString } from './polyparse.js';
 import { buildGraphFromLines } from './graph.js';
@@ -107,7 +107,7 @@ export function compileChar2(coeffs, F) {
   });
   result.baseDegree = m;
   result.liftStep = liftStep;
-  result.mathText = chainToText(result);
+  result.mathText = factoredText(result, F);   // the factor form (the lift and scale rows folded into the last)
   result.linesPaper = scaleStep ? [...linesPaper, scaleStep] : linesPaper;
   result.mathTextOriginal = chainToText({ lines: result.linesPaper });
   // C is emitted for GF(2^32), GF(2^64) (the paper's field) and GF(2^128) with

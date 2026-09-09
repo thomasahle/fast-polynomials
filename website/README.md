@@ -156,7 +156,7 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   while compiling;
   `App` → `DesktopLayout` | `CompactLayout` over shared pieces (`InputCard`, `FieldPills`,
   `MethodPills`, `FieldMethodPickers`, `Output`, `FooterBar`); the phone boot state and the
-  six-digit rule for numeric rows are `initialStateFor` / `presentedState` in `uistate.js`
+  six-digit default for numeric rows (numfmt `auto`) are `initialStateFor` / `effectiveNumfmt` in `uistate.js`
 - `js/worker.js` — the Web Worker that keeps unbounded exact-rational preprocessing
   off the UI thread; it posts every view (math, paper-format math, C, fraction-C,
   graph IR + SVG) for ours and each comparison method so switching views never recompiles.

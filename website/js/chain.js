@@ -481,7 +481,9 @@ function mulConstTok(a, b, F = null) {
   }
   const neg = t => t.startsWith('-'), abs = t => (neg(t) ? t.slice(1) : t);
   const u = numTokenValue(abs(a)), v = numTokenValue(abs(b)), sign = neg(a) !== neg(b) ? -1 : 1;
-  return complexToken(sign * (u.re * v.re - u.im * v.im), sign * (u.re * v.im + u.im * v.re), 13);
+  const re = sign * (u.re * v.re - u.im * v.im), im = sign * (u.re * v.im + u.im * v.re);
+  if (!Number.isFinite(re) || !Number.isFinite(im)) throw new RangeError(`constant product ${a} * ${b} beyond the double range`);
+  return complexToken(re, im, 13);
 }
 const negTok = t => (t.startsWith('-') ? t.slice(1) : `-${t}`);
 /** A constant factor — a numeric token or a parenthesised constant sum such as
@@ -511,6 +513,14 @@ function scaledTerm(c, rest) {
   const neg = c.startsWith('-'), abs = neg ? c.slice(1) : c;
   return { neg, t: abs === '1' && rest.length ? rest : [{ tok: abs }, ...rest] };
 }
+/** The factored form (factorize) of a result's lines as text — or the plain
+ *  rows when the pass cannot fold a constant (a product of doubles beyond
+ *  the double range: the math view survives with the chain as rendered). */
+export function factoredText(result, F = null) {
+  try { return chainToText({ lines: factorize(result.lines, F) }); }
+  catch (e) { return chainToText(result); }
+}
+
 /**
  * The factored form of a method's chain: every row a product of two linear
  * combinations of the wires before it (and x), the last row one linear

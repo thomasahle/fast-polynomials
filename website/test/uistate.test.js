@@ -1,7 +1,7 @@
 // uistate.test.js — invariants of the page's pure state (js/uistate.js): the
 // reducer and the selectors the Preact UI renders from.  No DOM, no worker.
 import {
-  initialStateFor, presentedState, COMPACT_MODE, COMPACT_DEGREE, compileMessages, pendingRow, staleRow, isStale,
+  initialStateFor, numericRow, COMPACT_MODE, COMPACT_DEGREE, compileMessages, pendingRow, staleRow, isStale,
   inputHint, estimatedDegree, SLOW_DEGREE, displayNote, CHAR0_EXAMPLE_MAX,
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
@@ -439,9 +439,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const dh = reduce(d, { type: 'setMethod', method: 'Horner' });
   check(paneContent(dh).text === 'b5 = (0.000198413) * (x)\nb4 = (b5 + 0.00138889) * (x)\nP  = b4 + 1',
         `decimal applies to comparison rows too (a row without an original form: its factored text): ${paneContent(dh).text}`);
-  // phones: the six-digit rule (presentedState) applies to the shown form — a numeric row's own form
-  const de = presentedState(reduce(q, { type: 'setMethod', method: 'Estrin' }), { compact: true });
-  check(de.numfmt === 'decimal' && paneContent(de).text === 'P = 2·x + 4·y + 0.333333', `six-digit constants on the original form: ${paneContent(de).text}`);
+  // numfmt 'auto' (the phone default): the six-digit rule applies to a numeric row's shown form
+  const de = { ...reduce(q, { type: 'setMethod', method: 'Estrin' }), numfmt: 'auto' };
+  check(effectiveNumfmt(de) === 'decimal' && paneContent(de).text === 'P = 2·x + 4·y + 0.333333', `six-digit constants on the original form: ${paneContent(de).text}`);
+  check(subOptionStrips(de)[1].options.map(o => o.on).join() === 'false,true', 'the constants group marks the readable option under auto');
   // binary fields: the readable style is hex (every constant a bit pattern)
   // (the hex rendering applies to the shown text — the row's own form)
   const gfr = deepFreeze({ ...RESULT, mathText: 'y = x * x', mathTextOriginal: 'y = (x + 5) * (x + 0x1f3a)\nP = y + 1', fieldId: 'gf64', fieldName: 'GF(2^64)' });
@@ -1102,17 +1103,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         c.src === defaultExample(COMPACT_MODE, COMPACT_DEGREE, 0, true).src && Object.isFrozen(c),
         'phones boot on the ℚ e^x example at the compact degree, monic');
   check(exampleHeld(c) && c.result === null && !c.busy && c.view === 'math', 'the compact boot state is a held example with the default view');
-  const q = { ...withResult(initialState), mode: 'Q' };
-  check(presentedState(q) === q && presentedState(q, { compact: true }) === q, 'exact rows are presented as they are');
-  const ke = reduce(q, { type: 'setMethod', method: 'Estrin' });     // the fixture's inexact row
-  check(presentedState(ke, { compact: true }).numfmt === 'decimal' && presentedState(ke).numfmt === 'exact',
-        'phones present an inexact row with readable constants; desktop does not');
-  const r = { ...q, mode: 'R' };
-  check(presentedState(r, { compact: true }).numfmt === 'decimal', 'phones present ℝ with readable constants');
-  const cx = { ...q, mode: 'C' };
-  check(presentedState(cx, { compact: true }).numfmt === 'decimal' && presentedState(cx).numfmt === 'exact', 'phones present ℂ with readable constants; desktop does not');
-  const already = { ...ke, numfmt: 'decimal' };
-  check(presentedState(already, { compact: true }) === already, 'an explicit readable choice is left alone');
+  check(c.numfmt === 'auto' && initialState.numfmt === 'exact', 'phones boot with numfmt auto; desktop exact');
+  // numfmt 'auto': readable constants on numeric rows only — the phone default, a choice anywhere
+  const q = { ...withResult(initialState), mode: 'Q', numfmt: 'auto' };
+  check(!numericRow(q) && effectiveNumfmt(q) === 'exact', 'auto leaves an exact row exact');
+  const ke = { ...reduce(withResult(inMode('Q'), COUNTED), { type: 'setMethod', method: 'Estrin' }), numfmt: 'auto' };   // the inexact row with a constant
+  check(numericRow(ke) && effectiveNumfmt(ke) === 'decimal' && effectiveNumfmt({ ...ke, numfmt: 'exact' }) === 'exact',
+        `auto shows an inexact row readable; an explicit exact does not (${numericRow(ke)} ${effectiveNumfmt(ke)})`);
+  check(numericRow({ ...q, mode: 'R' }) && numericRow({ ...q, mode: 'C' }), 'ℝ and ℂ rows are numeric');
+  check(reduce(ke, { type: 'setSubOption', key: 'exact' }).numfmt === 'exact' && reduce(ke, { type: 'setNumfmt', numfmt: 'auto' }) === ke,
+        'a choice in the constants group replaces auto');
+  check(stateFromHash(initialState, '#mode=Q&numfmt=auto').numfmt === 'auto' && hashFromState(q).includes('numfmt=auto'), 'auto travels in Share links');
 }
 
 {

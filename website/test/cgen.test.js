@@ -377,7 +377,8 @@ for (const [mode, prime, fmt, randX] of [['p61', MERSENNE61, hex16, () => rnd()]
     const r = await compileChar0(src, mode);
     const xs = [0n, 1n, mode === 'p89' ? (1n << 64n) - 1n : prime - 1n, ...Array.from({ length: 4 }, randX)];
     const want = xs.map(x => fmt(P.evalAt(Fq, cs, x % prime)));
-    check(!/\+ -/.test(r.mathText) && / − |-1 \* P̃/.test(r.mathText), `ours ${mode} ${src}: signed representatives (${r.mathText.replace(/\n/g, '; ')})`);
+    check(!/\+ -/.test(r.mathText) && !/\+ -/.test(r.mathTextOriginal) && / − |-1 \* P_/.test(r.mathTextOriginal),
+          `ours ${mode} ${src}: signed representatives (${r.mathText.replace(/\n/g, '; ')})`);
     check(canonical(r.cText, 'P_alpha') && /alpha\d+ = -\d+/.test(r.cText), `ours ${mode} ${src}: P_alpha canonical, comments signed`);
     compare(buildAndRun(r.cText, mode, xs, `signed_ours_${mode}`), want, `ours ${mode} ${src} (signed text)`, (a, b) => a === b);
     for (const [nm, fn] of [['Horner', compileHorner], ['RW', compileRW], ['Estrin', compileEstrin]]) {
@@ -490,7 +491,8 @@ for (const [mode, prime, fmt, randX] of [['p61', MERSENNE61, hex16, () => rnd()]
   // small magnitudes: shortest round-trip decimals, scientific when needed (1e-7),
   // in the C and in the math view; the chain itself stays exact
   const tiny = await compileChar0('0.0000001x^5 + x^3 + 0.5x + 3', 'R');
-  check(/return P \* 1e-7;/.test(tiny.cText) && /1e-7 \* P̃/.test(tiny.mathText), 'R: tiny constant rendering');
+  check(/return P \* 1e-7;/.test(tiny.cText) && /1e-7 \* P_5/.test(tiny.mathTextOriginal) && /1e-7 \* t \+ 4\.5000001/.test(tiny.mathText),
+        `R: tiny constant rendering (${tiny.mathText.split('\n').pop()})`);
   compare(buildAndRun(tiny.cText, 'R', xs, 'tinyR'), xs.map(x => 1e-7 * x ** 5 + x ** 3 + 0.5 * x + 3), 'tiny R', (a, b) => relClose(Number(a), b));
   const tiny2 = await compileChar0('x^5 + 0.0000001x^3 + 0.5x + 3', 'R');
   check(/1\.0000001,/.test(tiny2.cText) && tiny2.mathText.includes('1.0000001'), 'R: 1 + 1e-7 rendering');

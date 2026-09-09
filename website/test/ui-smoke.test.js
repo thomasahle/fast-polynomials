@@ -100,8 +100,9 @@ for (const [label, msg] of MODES) {
     check(/ − /.test(result.mathText) && !/\+ -/.test(result.mathText) && ints.every(v => (v < 0n ? -v : v) <= half),
           `${label}: Mersenne constants are symmetric representatives`);
   }
-  if (msg.fieldMode === 'C') check(/\(1\+2i\) \* P̃/.test(result.mathText) && result.exact === false && result.status === '≈ numeric' && typeof result.maxRelError === 'number',
-                                   `${label}: complex scale line, ≈ numeric, rounding error`);
+  if (msg.fieldMode === 'C') check(/\(1\+2i\) \* P_\d+/.test(result.mathTextOriginal) && /^P += \(1\+2i\) \* \w+ /m.test(result.mathText) &&
+                                   result.exact === false && result.status === '≈ numeric' && typeof result.maxRelError === 'number',
+                                   `${label}: complex scale line (the paper's form; folded in the factor form), ≈ numeric, rounding error`);
   if (msg.lane === 'char2') check(result.cText.includes('lemul') || result.cText.includes('gf64_mul'), `${label}: GF(2^64) C uses the hardware carryless path`);
   if (isQ) {
     check(result.cTextFraction.includes('(double)'), `${label}: fraction C uses (double)NUM/DEN`);
@@ -155,12 +156,13 @@ for (const [src, n] of [['x^27 + x + 1', 27], ['x^30 + 1', 30]]) {
   check(r.mults === 3 && r.hornerMults === 4 && !r.oursFailed, 'char 2 degree 5 compiles with 3 multiplications');
   const r4 = await handleMessage({ lane: 'char2', src: 'x^4 + 3x + 1', fieldMode: null });
   check(r4.mults === 3 && r4.hornerMults === 3 && !r4.oursFailed, 'char 2 degree 4 compiles with 3 multiplications');
-  check(/^P_3 = /m.test(r4.mathText) && /^P +=\s+x \* P_3 \+ 1   \(even-degree lift\)$/m.test(r4.mathText), 'char 2 degree 4: lift row P = x * P_3 + c0');
+  check(/^P_3 += /m.test(r4.mathTextOriginal) && /^P +=\s+x \* P_3 \+ 1   \(even-degree lift\)$/m.test(r4.mathTextOriginal), 'char 2 degree 4: lift row P = x * P_3 + c0 in the paper\'s form');
+  check(!/P_3|even-degree lift/.test(r4.mathText) && /^P += \w+ \+ 1$/m.test(r4.mathText), `char 2 degree 4: the factor form folds the lift (${r4.mathText.replace(/\n/g, '; ')})`);
   check(r4.cText.includes('even-degree lift') && graphStats(r4.graph).mul === 3, 'char 2 degree 4: lift in the C and graph views');
   const r1 = await handleMessage({ lane: 'char2', src: 'x + 1', fieldMode: null });
   check(r1.mults === 0 && r1.hornerMults === 0 && /^P = x \+ 1$/m.test(r1.mathText) && graphStats(r1.graph).mul === 0, 'char 2 degree 1: P = x + 1, no multiplication');
   const r2 = await handleMessage({ lane: 'char2', src: 'x^2 + 3x + 1', fieldMode: null });
-  check(r2.mults === 1 && /^y = x \* \(x \+ 0x3\)$/m.test(r2.mathText) && /^P = y \+ 1$/m.test(r2.mathText), 'char 2 degree 2: y = x * (x + 0x3), P = y + 1');
+  check(r2.mults === 1 && /^y = \(x\) \* \(x \+ 0x3\)$/m.test(r2.mathText) && /^P = y \+ 1$/m.test(r2.mathText), `char 2 degree 2: y = (x) * (x + 0x3), P = y + 1 (${r2.mathText.replace(/\n/g, '; ')})`);
   const r26 = await handleMessage({ lane: 'char2', src: 'x^26 + 0x1fx^13 + x + 1', fieldMode: null });
   check(r26.mults === 14 && r26.hornerMults === 25 && /P_25/.test(r26.mathTextOriginal), 'char 2 degree 26 compiles with 14 multiplications (degree-25 circuit + lift)');
 }
@@ -735,10 +737,11 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(shown.includes('−') && copiedText === shown.replace(/−/g, '-').replace(/·/g, '*') && !/[−·]/.test(copiedText),
         'Copy in the math view writes an ASCII minus and asterisk');
   delete globalThis.navigator.clipboard;
-  // phones: the gear's math-view menu holds the form group only (the constants group is presentedState's job)
+  // phones: the gear's math-view menu holds the form and constants groups (constants boot on auto: readable on numeric rows)
   check($('#view-sub #view-gear') && !$('#view-menu') && $('.viewbar') && $('#view'), 'the phone view bar carries the closed gear');
   $('#view-gear').click(); await settle();
-  eq($$('#view-menu .strip').map(s => s.dataset.strip), ['form'], 'the phone math-view menu has the form group only');
+  eq($$('#view-menu .strip').map(s => s.dataset.strip), ['form', 'numfmt'], 'the phone math-view menu has the form and constants groups');
+  check($('#view-menu button[data-opt="exact"]').getAttribute('aria-checked') === 'true', 'an exact ℚ row shows exact under auto');
   $('#view button[data-view="c"]').click(); await settle();
   check(!$('#view-menu'), 'a view change closes the menu');
   $('#view-gear').click(); await settle();
@@ -749,10 +752,17 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check($('#compare tr.on')?.dataset.m === 'Knuth–Eve' && /\d\.\d{2,5}\b/.test($('#chain').textContent) && !/\d\.\d{7,}/.test($('#chain').textContent),
         'the method dropdown selects a method; a numeric row shows six-digit constants on phones');
   check(/· ≈ real roots \(numeric\)$/.test($('#stats-line').textContent), `the stats line ends with the row's own inexact reason (${$('#stats-line').textContent})`);
-  // Share links the state as chosen: the phone's readable-constants presentation (numfmt=decimal) never travels in the link
+  // Share links the state as chosen: the phone's auto format travels as numfmt=auto, not as the decimal it resolved to
   $('.pane-actions #share').click(); await settle();
-  check(location.hash.includes('method=Knuth%E2%80%93Eve') && location.hash.includes('numfmt=exact') && !location.hash.includes('numfmt=decimal'),
-        `phone Share writes the un-presented state (${location.hash})`);
+  check(location.hash.includes('method=Knuth%E2%80%93Eve') && location.hash.includes('numfmt=auto') && !location.hash.includes('numfmt=decimal'),
+        `phone Share writes numfmt=auto (${location.hash})`);
+  // the constants group overrides auto: choosing exact shows the numeric row's full constants
+  $('#view-gear').click(); await settle();
+  check($('#view-menu button[data-opt="decimal"]').getAttribute('aria-checked') === 'true', 'the numeric row shows decimal as chosen under auto');
+  $('#view-menu button[data-opt="exact"]').click(); await settle();
+  check(/\d\.\d{7,}/.test($('#chain').textContent), 'choosing exact shows the full doubles on a phone');
+  $('#view-gear').click(); await settle();
+  $('#view-menu button[data-opt="decimal"]').click(); await settle();
   // while a job runs the phone's other views of the result dim with the pane
   $('#poly-in').dispatch('keydown', { key: 'Enter', metaKey: true }); await settle();
   check($('#out').classList.contains('stale') && $('#stats-line').classList.contains('stale') && $('#method-picker').classList.contains('stale'),

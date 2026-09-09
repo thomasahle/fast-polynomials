@@ -508,9 +508,9 @@ button.share:hover { border-color: var(--accent); }
    icons (the desktop intro and paper card are hidden).  Input card: label +
    three example chips on one line, the auto-growing input, then Field and
    Method as two dropdowns.  Output card: underline tabs with the display-menu
-   gear at the right (the form group in the math view — the constants group is
-   presentedState's job on phones — and the ℚ C view's constants group; ui.js
-   mounts no gear without a group) — then a static right-aligned
+   gear at the right (the form and constants groups in the math view — constants
+   boot on 'auto': readable on numeric rows — and the ℚ C view's constants group;
+   ui.js mounts no gear without a group) — then a static right-aligned
    Copy + Share row at the top of the pane — not floating: a floated corner
    covered the end of mid-width equation rows, which do not scroll — and the
    pane body (rows wider than the pane scroll sideways, as in the C and graph
