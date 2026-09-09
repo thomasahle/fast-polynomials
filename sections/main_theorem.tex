@@ -156,7 +156,9 @@ These closure properties are what lets us scale the warm-up decoding argument be
 
 \paragraph{Recursion: filling coefficients with a BRW-style structure.}
 At a high level, we build a decodable family $Q_{2^k-1}(x;\alpha)$ of monic degree $(2^k-1)$ polynomials using a divide-and-conquer pattern reminiscent of Rabin--Winograd / Bernstein constructions~\cite{rabin1972number}:
-we keep a ladder of known-power gadgets $H_2,H_4,\dots,H_{2^{k-1}}$ (computed once and reused),
+we keep a ladder of known-power gadgets $H_2,H_4,\dots,H_{2^{k-1}}$ (computed once and reused;
+each rung is one product, $H_{2^{i+1}}=H_{2^i}^2+\text{lower terms}$, built by the $T$ recursion of
+\Cref{sec:splittable-4k+1} and spelled out at the start of \Cref{sec:peeled-Q}),
 and we recursively ``fill'' disjoint coefficient windows by multiplying previously constructed pieces by the appropriate $H_{2^i}$ and adding a fresh low-degree correction.
 The compatibility invariant guarantees that each recursive layer introduces new parameters that remain decodable from the top coefficients, despite coefficient mixing in intermediate multiplications.
 The resulting circuits use $\Theta(2^{k-1})$ multiplications for degree $\Theta(2^k)$, i.e.\ about half the multiplications of Horner.

@@ -7,7 +7,13 @@ newest entry first, and acknowledges consumed messages in its own section; the f
 handoffs, interface questions and status, never proofs. `FastPoly/ROADMAP.md` remains the
 authority for formalization status; git history for what landed.
 
-## Division of labour (2026-09-05)
+## Division of labour (2026-09-09: Claude is the only agent now)
+
+Since 2026-09-09 Claude works alone on the repository; the split below is history, and the
+Codex lanes (constructions LaTeX, Lean `Cost/` / `Examples/`, the degree-27 lane) are open to
+Claude without coordination. `AGENTS.md` rule 5 is the current statement.
+
+## Division of labour (2026-09-05, historical)
 
 - **Codex**: LaTeX of `sections/constructions.tex` and `sections/constructions/*.tex` (+ the
   `figures/*.tex` they input); Lean lanes `Cost/`, `Examples/`, and the current refactor of the
