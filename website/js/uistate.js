@@ -184,7 +184,7 @@ export function tokenizePoly(src) {
 // [{ key, label, labelTex?, title, src, reseed? }] with the polynomial regenerated
 // at the chosen degree (clamped per field). Characteristic 0 (ℚ, ℝ): Taylor
 // polynomials whose labels are typeset by KaTeX; ℂ: the e^{ix} series with
-// Gaussian coefficients i^k/k!, x^n − 1, e^x and He_n. Hashing fields
+// Gaussian coefficients i^k/k!, x^n − 1, e^x and θ_n. Hashing fields
 // (Mersenne primes, GF(2^k)): a uniformly random key polynomial (a fresh draw per
 // click: `reseed`), a sparse and a dense small-coefficient polynomial, and one
 // fixed full-width key that is the same on every visit.
@@ -423,9 +423,9 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   const seriesTitle = fn => monic
     ? `degree-${n - 1} Taylor polynomial of ${fn} plus x^${n} (monic)`
     : `Taylor polynomial of ${fn}, degree ${n}`;
-  const hermite = { key: 'hermite', label: `He_${n}`, labelTex: `\\mathrm{He}_{${n}}`,
-    title: `the probabilists' Hermite polynomial He_${n} (monic with integer coefficients at every degree)`,
-    src: ratPolyToSrc(hermiteCoeffs(n)) };
+  const bessel = { key: 'bessel', label: `θ_${n}`, labelTex: `\\theta_{${n}}`,
+    title: `the reverse Bessel polynomial θ_${n} — the denominator of the degree-${n} Bessel filter (monic with integer coefficients at every degree)`,
+    src: ratPolyToSrc(besselCoeffs(n)) };
   // ℂ: every chip has genuinely complex coefficients — the Taylor series of
   // e^{ix} (i^k/k!) and e^{(1+i)x} ((1+i)^k/k!), the expanded binomial (x+i)^n,
   // and a reseeding random polynomial over the Gaussian integers
@@ -447,7 +447,7 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
     { key: 'exp',  label: 'e^x', labelTex: 'e^x', title: seriesTitle('eˣ'), src: seriesSrc('exp') },
     { key: 'ln',   label: 'ln(1+x)', labelTex: '\\ln(1+x)', title: seriesTitle('ln(1+x)'), src: seriesSrc('ln') },
     { key: 'sqrt', label: '√(1+x)', labelTex: '\\sqrt{1+x}', title: seriesTitle('√(1+x)'), src: seriesSrc('sqrt') },
-    hermite,
+    bessel,
   ];
   const k = n + 1;
   return [
@@ -467,18 +467,17 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
   ];
 }
 
-/** Probabilists' Hermite polynomial He_n: He_0 = 1, He_1 = x, He_{n+1} = x·He_n − n·He_{n−1}
- *  (monic, integer coefficients; the desktop's opening example at degree 7). */
-function hermiteCoeffs(n) {
-  let prev = [1n], cur = [0n, 1n];
-  if (n === 0) return prev.map(c => new Rat(c));
-  for (let k = 1; k < n; k++) {
-    const next = Array(k + 2).fill(0n);
-    cur.forEach((c, i) => { next[i + 1] += c; });
-    prev.forEach((c, i) => { next[i] -= BigInt(k) * c; });
-    [prev, cur] = [cur, next];
-  }
-  return cur.map(c => new Rat(c));
+/** Reverse Bessel polynomial θ_n(x) = x^n y_n(1/x) = Σ_k (n+k)! / ((n−k)! k! 2^k) x^{n−k}
+ *  (Krall–Frink; θ_0 = 1, θ_1 = x + 1, θ_n = (2n−1) θ_{n−1} + x² θ_{n−2}): monic with
+ *  integer coefficients at every degree, every coefficient nonzero, no parity — unlike
+ *  the Hermite / Chebyshev / Legendre families, whose even-odd symmetry already gives a
+ *  ⌊n/2⌋+1-multiplication evaluation in x² without any preprocessing.  The desktop's
+ *  opening example at degree 9. */
+function besselCoeffs(n) {
+  const fact = m => { let r = 1n; for (let i = 2n; i <= BigInt(m); i++) r *= i; return r; };
+  const cs = Array(n + 1).fill(0n);
+  for (let k = 0; k <= n; k++) cs[n - k] = fact(n + k) / (fact(n - k) * fact(k) * (1n << BigInt(k)));
+  return cs.map(c => new Rat(c));
 }
 
 /** The example a mode opens with (the dense polynomial; the first chip in char 0). */
@@ -487,14 +486,17 @@ export function defaultExample(mode, degree, seed = 0, monic = false) {
   return exs.find(e => e.key === 'dense') ?? exs[0] ?? null;
 }
 
-// The desktop opens on ℚ with He_7: four multiplications against Horner's six,
-// and preprocessed constants of at most seven digits (the Taylor chips at
-// degree 7 have constants of a hundred digits).  Phones: initialStateFor.
-const OPENING = examplesFor('Q', 7, 0, true).find(e => e.key === 'hermite');
+// The desktop opens on ℚ with the reverse Bessel polynomial θ_9: five
+// multiplications against Horner's eight, the paper's tower H_2, H_4, H_8 in
+// the original form, and preprocessed constants that are integers or halves
+// (the Taylor chips at degree 9 have constants of hundreds of digits; at degree
+// 7 every dense family without parity gets ten-digit constants from the septic
+// base).  Phones: initialStateFor.
+const OPENING = examplesFor('Q', 9, 0, true).find(e => e.key === 'bessel');
 export const initialState = Object.freeze({
   mode: 'Q',
   src: OPENING.src,
-  exDegree: 7,
+  exDegree: 9,
   exKey: OPENING.key,
   exSeed: 0,
   exMonic: true,

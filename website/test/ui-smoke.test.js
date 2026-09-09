@@ -363,8 +363,8 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   await settle();
   const $ = s => app.querySelector(s), $$ = s => app.querySelectorAll(s);
   check($('#poly-in').value === initialState.src && $('#mode button.on')?.dataset.mode === 'Q',
-        'desktop boots on the initial example (He_7 over ℚ) with its field pill on');
-  eq($$('#examples button.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'hermite'], 'desktop shows every chip');
+        'desktop boots on the initial example (θ_9 over ℚ) with its field pill on');
+  eq($$('#examples button.chip').map(c => c.dataset.ex), ['exp', 'ln', 'sqrt', 'bessel'], 'desktop shows every chip');
   check($$('#examples .chip').every(c => c.localName === 'button' && c.getAttribute('type') === 'button') &&
         $('#examples').getAttribute('role') === 'group', 'example chips are real buttons (keyboard reachable) in a labelled group');
   // ARIA state on the pill rows and the stepper (screen readers hear which is on)
@@ -386,7 +386,7 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(ShimWorker.instances.length === 2 && messageCount() === 1 && allMessages().length === 2 &&
         ShimWorker.instances.map(w => w.messages[0].part).join(',') === 'main,numeric' &&
         JSON.stringify(ShimWorker.instances[0].messages[0]) === JSON.stringify({ id: 1, src: initialState.src, lane: 'char0', fieldMode: 'Q', part: 'main' }),
-        'the first load over ℚ compiles the initial example through a main and a numeric worker');
+        `the first load over ℚ compiles the initial example through a main and a numeric worker (${ShimWorker.instances.length} workers, ${messageCount()} msgs, ${allMessages().length} all, first=${String(JSON.stringify(ShimWorker.instances[0]?.messages[0])).slice(0, 120)})`);
   check($('#busy') && $('#busy #cancel') && !$('#out'), 'while the first job runs with nothing to show, a busy row offers Cancel');
   check($('#job-status').getAttribute('role') === 'status' && $('#job-status').getAttribute('aria-live') === 'polite' && $('#job-status #busy') &&
         $('#busy').getAttribute('role') === null && $('#busy .spinner').getAttribute('aria-hidden') === 'true' && $('#busy').textContent.includes('compiling'),
@@ -398,16 +398,16 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
         'a no-op click while a job runs leaves its workers running (no stuck stale page)');
   $('button.chip[data-ex="ln"]').click(); await settle();
   check(firstWorkers.every(w => w.terminated) && ShimWorker.instances.length === 4, 'a new job while one runs terminates its workers and starts fresh ones');
-  check($('#poly-in').value === examplesFor('Q', 7, 0, true).find(e => e.key === 'ln').src &&
+  check($('#poly-in').value === examplesFor('Q', 9, 0, true).find(e => e.key === 'ln').src &&
         lastMessage()?.src === $('#poly-in').value, 'a chip fills the input and compiles it');
   const before = messageCount();
   $('#deg-plus').click(); await settle();
-  check($('.deg-n').textContent === 'degree 8' && messageCount() === before + 1 &&
-        lastMessage().src === examplesFor('Q', 8, 0, true).find(e => e.key === 'ln').src,
+  check($('.deg-n').textContent === 'degree 10' && messageCount() === before + 1 &&
+        lastMessage().src === examplesFor('Q', 10, 0, true).find(e => e.key === 'ln').src,
         'the degree stepper regenerates the held chip and compiles');
   // the stepper's ends: at degree 3 the − button is aria-disabled (dimmed, still focusable so its tooltip says why) and inert
   check($('#deg-minus').getAttribute('aria-disabled') === 'false' && $('#deg-plus').getAttribute('aria-disabled') === 'false', 'mid-range both stepper buttons are live');
-  for (let i = 0; i < 5; i++) { $('#deg-minus').click(); await settle(); }
+  for (let i = 0; i < 7; i++) { $('#deg-minus').click(); await settle(); }
   const atMin = messageCount();
   check($('.deg-n').textContent === 'degree 3' && $('#deg-minus').getAttribute('aria-disabled') === 'true' && $('#deg-plus').getAttribute('aria-disabled') === 'false' &&
         /smallest/.test($('#deg-minus').getAttribute('title')), 'at the smallest degree the − button is aria-disabled and says so');

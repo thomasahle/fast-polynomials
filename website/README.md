@@ -12,9 +12,11 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
 
 - `index.html`, `style.css` — the page (no build step; Preact + htm and KaTeX vendored). One card:
   example chips (over ℚ/ℝ: Taylor polynomials — with monic on, the degree-(n−1) Taylor
-  polynomial plus xⁿ, so the series' coefficients stay recognisable — and the probabilists'
-  Hermite polynomial Heₙ, monic with integer coefficients at every degree; the desktop opens
-  on He₇, whose chain has four multiplications and constants of at most seven digits;
+  polynomial plus xⁿ, so the series' coefficients stay recognisable — and the reverse Bessel
+  polynomial θₙ, the Bessel filter's denominator: monic with integer coefficients at every
+  degree and no even-odd symmetry (a symmetric family such as Heₙ is a polynomial in x²,
+  which Horner in x² already evaluates in ⌊n/2⌋+1 multiplications); the desktop opens on θ₉,
+  whose chain shows the paper's tower H₂, H₄, H₈ with integer and half-integer constants;
   over ℂ four chips with genuinely complex coefficients — the e^{ix} series (iᵏ/k!,
   written `(0+1/6i)x^3`), the expanded binomial (x+i)ⁿ (Gaussian integers, monic), the
   e^{(1+i)x} series ((1+i)ᵏ/k!) and a reseeding random polynomial over the Gaussian

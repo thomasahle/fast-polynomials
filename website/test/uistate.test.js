@@ -90,13 +90,16 @@ eq(Object.keys(initialState).sort(),
    ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys');
 eq([initialState.mode, initialState.view, initialState.cstyle, initialState.numfmt, initialState.method,
     initialState.exDegree, initialState.exKey, initialState.exSeed, initialState.exMonic],
-   ['Q', 'math', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
-check(initialState.src === 'x^7 - 21x^5 + 105x^3 - 105x' && initialState.src === examplesFor('Q', 7).find(e => e.key === 'hermite').src,
-      'the desktop opens on the Hermite polynomial He_7 over ℚ (small preprocessed constants)');
-eq(examplesFor('Q', 5).find(e => e.key === 'hermite').src, 'x^5 - 10x^3 + 15x', 'He_5');
-eq(examplesFor('Q', 3).find(e => e.key === 'hermite').src, 'x^3 - 3x', 'He_3');
-check(examplesFor('R', 8).find(e => e.key === 'hermite').src.startsWith('x^8 - 28x^6') && examplesFor('R', 8).find(e => e.key === 'hermite').labelTex === '\\mathrm{He}_{8}',
-      'Hermite chips are monic at every degree, over ℝ too');
+   ['Q', 'math', 'float', 'exact', 'ours', 9, 'bessel', 0, true], 'initial selections');
+check(initialState.src === 'x^9 + 45x^8 + 990x^7 + 13860x^6 + 135135x^5 + 945945x^4 + 4729725x^3 + 16216200x^2 + 34459425x + 34459425' && initialState.src === examplesFor('Q', 9).find(e => e.key === 'bessel').src,
+      'the desktop opens on the reverse Bessel polynomial θ_9 over ℚ (the tower H_2, H_4, H_8 with integer / half-integer constants)');
+eq(examplesFor('Q', 5).find(e => e.key === 'bessel').src, 'x^5 + 15x^4 + 105x^3 + 420x^2 + 945x + 945', 'θ_5');
+eq(examplesFor('Q', 3).find(e => e.key === 'bessel').src, 'x^3 + 6x^2 + 15x + 15', 'θ_3');
+check(examplesFor('R', 8).find(e => e.key === 'bessel').src.startsWith('x^8 + 36x^7') && examplesFor('R', 8).find(e => e.key === 'bessel').labelTex === '\\theta_{8}',
+      'Bessel chips are monic at every degree, over ℝ too');
+// no chip family with an even-odd symmetry: He_n, T_n, P_n are polynomials in x² (times x), which Horner in x²
+// evaluates with ⌊n/2⌋+1 multiplications without any preprocessing — a poor showcase
+check(examplesFor('Q', 9).every(e => !/^x\^9( [+-] \d+x\^[75])* [+-] \d+x$/.test(e.src)), 'no example chip is an odd polynomial');
 check(!initialState.busy && initialState.jobId === 0 && initialState.result === null && initialState.error === null, 'initial idle');
 check(!showOutput(initialState) && paneContent(initialState) === null && availableSubOptions(initialState) === null
       && selectedRow(initialState) === null && methodTabs(initialState).length === 0 && stats(initialState).length === 0
@@ -153,8 +156,8 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const noM = { ...RESULT, comparisons: RESULT.comparisons.filter(r => r.name !== 'Horner') };
   const shf = reduce(sh, { type: 'reply', id: sh.jobId, ok: true, result: noM });
   check(shf.method === 'ours', 'reply falls back when the chosen method is unavailable');
-  eq(examplesFor('Q', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'hermite'], 'ℚ example chips');
-  eq(examplesFor('R', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'hermite'], 'ℝ example chips (the same polynomials)');
+  eq(examplesFor('Q', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'bessel'], 'ℚ example chips');
+  eq(examplesFor('R', 10).map(e => e.key), ['exp', 'ln', 'sqrt', 'bessel'], 'ℝ example chips (the same polynomials)');
   eq(examplesFor('C', 10).map(e => e.key), ['expi', 'binomi', 'exp1i', 'gauss'], 'ℂ example chips: e^{ix}, (x+i)^n, e^{(1+i)x}, random ℤ[i] — all with complex coefficients');
   eq(examplesFor('C', 10).map(e => e.labelTex), ['e^{ix}', '(x+i)^{10}', 'e^{(1+i)x}', '\\text{random }\\mathbb{Z}[i]'], 'ℂ example chips carry TeX labels');
   check(defaultExample('C', 10).key === 'expi', 'ℂ opens on the e^{ix} chip');
@@ -166,7 +169,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const heldI = reduce(inMode('C'), { type: 'example', key: 'expi' });
   check(heldI.exKey === 'expi' && reduce(heldI, { type: 'setMode', mode: 'Q' }).exKey === 'exp' && reduce(heldI, { type: 'setMode', mode: 'R' }).src === defaultExample('R', 10, 0, true).src,
         'a held e^{ix} chip falls to the ℚ / ℝ default (e^x) where ℂ\'s chip does not exist');
-  eq(examplesFor('Q', 10).map(e => e.labelTex), ['e^x', '\\ln(1+x)', '\\sqrt{1+x}', '\\mathrm{He}_{10}'],
+  eq(examplesFor('Q', 10).map(e => e.labelTex), ['e^x', '\\ln(1+x)', '\\sqrt{1+x}', '\\theta_{10}'],
     'ℚ example chips carry TeX labels');
   for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128'])
     eq(examplesFor(m, 10).map(e => e.key), ['random', 'sparse', 'dense', 'fixed'], `${m} hashing example chips`);
@@ -187,10 +190,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(reduce(err, { type: 'setMode', mode: 'gf32' }).error === null, 'mode switch clears the error');
   // a held example follows the field; typed text does not
   const heldG = reduce(initialState, { type: 'setMode', mode: 'gf64' });
-  check(heldG.src === defaultExample('gf64', 7, 0, true).src && heldG.exKey === 'dense' && heldG.busy,
-        'mode switch regenerates a held example in the new field (ℚ He_7 → gf64 dense)');
+  check(heldG.src === defaultExample('gf64', 9, 0, true).src && heldG.exKey === 'dense' && heldG.busy,
+        'mode switch regenerates a held example in the new field (ℚ θ_9 → gf64 dense)');
   const heldBack = reduce(heldG, { type: 'setMode', mode: 'Q' });
-  check(heldBack.src === defaultExample('Q', 7, 0, true).src && heldBack.exKey === 'exp', 'and back (gf64 dense → the ℚ default, e^x)');
+  check(heldBack.src === defaultExample('Q', 9, 0, true).src && heldBack.exKey === 'exp', 'and back (gf64 dense → the ℚ default, e^x)');
   const sparse = reduce(inMode('gf64'), { type: 'example', key: 'sparse' });
   check(reduce(sparse, { type: 'setMode', mode: 'p89' }).exKey === 'sparse', 'the same chip is kept when the new field has it');
   check(reduce(typed, { type: 'setMode', mode: 'gf32' }).src === 'x^3 + 1', 'typed text survives a mode switch unchanged');
@@ -598,19 +601,19 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 
 // ---- degree chooser (setExDegree) ------------------------------------------
 {
-  const hermite = (n, monic = true) => examplesFor('Q', n, 0, monic).find(e => e.key === 'hermite').src;
-  check(exampleDegree(initialState) === 7, 'the ℚ default exDegree 7 is compiled as is');
+  const bessel = (n, monic = true) => examplesFor('Q', n, 0, monic).find(e => e.key === 'bessel').src;
+  check(exampleDegree(initialState) === 9, 'the ℚ default exDegree 9 is compiled as is');
   const up = reduce(initialState, { type: 'setExDegree', delta: 1 });
-  check(up.exDegree === 8 && up.exKey === 'hermite' && up.busy && up.jobId === initialState.jobId + 1
-        && up.src === hermite(8), 'stepping + regenerates the held example and compiles');
+  check(up.exDegree === 10 && up.exKey === 'bessel' && up.busy && up.jobId === initialState.jobId + 1
+        && up.src === bessel(10), 'stepping + regenerates the held example and compiles');
   const down = reduce(up, { type: 'setExDegree', delta: -1 });
-  check(down.exDegree === 7 && down.src === initialState.src && down.jobId === up.jobId + 1, 'stepping − regenerates back');
+  check(down.exDegree === 9 && down.src === initialState.src && down.jobId === up.jobId + 1, 'stepping − regenerates back');
   const lowest = { ...initialState, exDegree: 1 };
   check(reduce(lowest, { type: 'setExDegree', delta: -1 }) === lowest, 'stepping below the smallest supported degree is a no-op');
   check(reduce(up, { type: 'setExDegree' }) === up && reduce(up, { type: 'setExDegree', degree: 'x' }) === up,
         'setExDegree without a valid target is a no-op');
   const abs = reduce(initialState, { type: 'setExDegree', degree: 99 });
-  check(abs.exDegree === 22 && abs.src === hermite(22) && abs.busy, 'absolute degree clamps (ℚ: 22) and regenerates');
+  check(abs.exDegree === 22 && abs.src === bessel(22) && abs.busy, 'absolute degree clamps (ℚ: 22) and regenerates');
   // every example (random key included) regenerates when the stepper moves, in every field
   for (const m of MODES) for (const ex of examplesFor(m, 10)) {
     const s = reduce(inMode(m), { type: 'example', key: ex.key });
@@ -633,16 +636,16 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const typed = reduce(initialState, { type: 'setSrc', src: 'x^13 + x + 1' });
   check(typed.exKey === null && !exampleHeld(typed), 'setSrc clears exKey');
   const t2 = reduce(typed, { type: 'setExDegree', delta: 1 });
-  check(t2.exDegree === 8 && t2.src === 'x^13 + x + 1' && !t2.busy && t2.jobId === typed.jobId,
+  check(t2.exDegree === 10 && t2.src === 'x^13 + x + 1' && !t2.busy && t2.jobId === typed.jobId,
         'stepping over custom text only changes the setting');
   const back = reduce(t2, { type: 'example', key: 'exp' });
-  check(back.src === defaultExample('Q', 8, 0, true).src && back.exKey === 'exp' && back.busy,
+  check(back.src === defaultExample('Q', 10, 0, true).src && back.exKey === 'exp' && back.busy,
         'chip click regenerates at the current degree');
   check(reduce(t2, { type: 'example', key: 'nope' }) === t2, 'unknown example key ignored');
   // after a mode switch with typed text the textarea holds foreign text: stepping must not overwrite it
   const sw = reduce(reduce(initialState, { type: 'setSrc', src: 'x^3 + 1' }), { type: 'setMode', mode: 'p89' });
   const st = reduce(sw, { type: 'setExDegree', delta: 1 });
-  check(st.exDegree === 8 && st.src === sw.src && st.jobId === sw.jobId,
+  check(st.exDegree === 10 && st.src === sw.src && st.jobId === sw.jobId,
         "stepping after a mode switch doesn't overwrite typed text");
   // ... whereas a held example was regenerated in the new field, so stepping regenerates it again
   const swHeld = inMode('p89');
@@ -692,7 +695,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
     check(stateFromHash(initialState, `#mode=${legacy}&deg=20`).mode === id, `legacy mode ${legacy} → ${id}`);
   check(stateFromHash(initialState, '#mode=mersenne&src=x%5E3%2B1').src === 'x^3+1', 'legacy Mersenne link keeps its source');
   const g = stateFromHash(initialState, hashFromState(reduce(initialState, { type: 'setExDegree', delta: 1 })));
-  check(g.exDegree === 8 && g.exKey === 'hermite' && g.src === examplesFor('Q', 8).find(e => e.key === 'hermite').src, 'shared example round-trips with exKey');
+  check(g.exDegree === 10 && g.exKey === 'bessel' && g.src === examplesFor('Q', 10).find(e => e.key === 'bessel').src, 'shared example round-trips with exKey');
   // a shared random key carries its seed, so the stepper still regenerates it
   const rk = run(inMode('p89'), { type: 'example', key: 'random' }, { type: 'example', key: 'random' }, { type: 'example', key: 'random' });
   const rh = hashFromState(rk);
@@ -705,7 +708,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const ur = stateFromHash(initialState, hashFromState(unmonic));
   check(!ur.exMonic && hashFromState(unmonic).includes('&monic=0'), 'Share links preserve an unselected monic toggle');
   // a held chip is shared by its key (ex=), not its text: every chip in every mode round-trips
-  check(hashFromState(initialState).startsWith('#ex=hermite&mode=Q&'), `the boot state shares its chip: ${hashFromState(initialState)}`);
+  check(hashFromState(initialState).startsWith('#ex=bessel&mode=Q&'), `the boot state shares its chip: ${hashFromState(initialState)}`);
   check(hashFromState(rk).startsWith('#ex=random&') && hashFromState(rk).length < 120, `a random key is shared by key + seed (${hashFromState(rk).length} chars)`);
   let longest = 0;
   for (const m of MODES) for (const monic of [true, false]) for (const deg of [3, 10, clampDegree(m, 26)]) for (const seed of [0, 2])
@@ -750,7 +753,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   const restoredC = reduce(initialState, { type: 'restore', hash: '#mode=R&deg=9', compact: true });
   check(restoredC.mode === 'R' && restoredC.exDegree === 9 && restoredC.busy && restoredC.jobId === 1, 'restore on a phone rebuilds from the compact boot state');
   const restoredBlank = reduce(running, { type: 'restore', hash: '#src=%20%20&mode=Q', compact: false });
-  check(restoredBlank.busy && restoredBlank.jobId === running.jobId + 1 && restoredBlank.mode === 'Q' && restoredBlank.exKey === 'hermite' && restoredBlank.src === initialState.src,
+  check(restoredBlank.busy && restoredBlank.jobId === running.jobId + 1 && restoredBlank.mode === 'Q' && restoredBlank.exKey === 'bessel' && restoredBlank.src === initialState.src,
         'a blank src= param is ignored: restore compiles the boot state\'s example');
 }
 
@@ -767,7 +770,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128']) check(inputHint({ ...typed, mode: m }) === null, `no hint over ${m}`);
   check(inputHint(reduce(initialState, { type: 'setSrc', src: 'x^26 + x + 1' })) === null && inputHint(reduce(initialState, { type: 'setSrc', src: 'x^3 + 1' })) === null,
         'no hint up to degree 26');
-  check(inputHint({ ...initialState, exDegree: 22, exKey: 'hermite', src: examplesFor('Q', 22).find(e => e.key === 'hermite').src }) === null, 'chips never trigger it (they stop at 22)');
+  check(inputHint({ ...initialState, exDegree: 22, exKey: 'bessel', src: examplesFor('Q', 22).find(e => e.key === 'bessel').src }) === null, 'chips never trigger it (they stop at 22)');
   check(inputHint(reduce(initialState, { type: 'setSrc', src: '' })) === null, 'blank input: no hint');
   // degrees the worker refuses at once (above DEGREE_CEILING) get no hint — the error line says so; the
   // estimate is always finite (a runaway exponent counts as one past the parser's own cap)
@@ -879,7 +882,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(/≈ numeric/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))) && /Gaussian rationals/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))) && /complex doubles/.test(fieldTitle(REGISTRY.find(f => f.id === 'C'))),
         'ℂ title: exact preprocessing over ℚ(i), complex doubles, reported as ≈ numeric');
   eq(fieldChooser(inMode('C')).flatMap(g => g.fields).filter(f => f.on).map(f => f.id), ['C'], 'ℂ is selectable inside the exact group');
-  eq(compileMessage(reduce(initialState, { type: 'setMode', mode: 'C' })), { id: 1, src: defaultExample('C', 7, 0, true).src, lane: 'char0', fieldMode: 'C' }, 'ℂ compile message (the held ℚ chip falls to the ℂ default e^{ix})');
+  eq(compileMessage(reduce(initialState, { type: 'setMode', mode: 'C' })), { id: 1, src: defaultExample('C', 9, 0, true).src, lane: 'char0', fieldMode: 'C' }, 'ℂ compile message (the held ℚ chip falls to the ℂ default e^{ix})');
   check((() => { try { fieldChooser(deepFreeze({ ...initialState })); return true; } catch { return false; } })(), 'fieldChooser is pure');
 }
 
@@ -890,8 +893,8 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   for (const ex of examplesFor('Q', 10)) {
     let msg = null;
     try { parsePoly(ex.src, { char2: true }); } catch (e) { msg = e.message; }
-    if (ex.key === 'hermite')       // integers with signs: the objection is the minus, not a fraction
-      check(msg !== null && /no negatives/.test(msg), `${ex.key} over GF(2^k): readable message (${msg})`);
+    if (ex.key === 'bessel')        // positive integers: a valid binary-field polynomial as it stands
+      check(msg === null, `${ex.key} over GF(2^k): parses (${msg})`);
     else
     check(msg !== null && !/BigInt|Cannot convert/.test(msg) && /fraction/.test(msg) && /ℚ/.test(msg) && /bit pattern/.test(msg) && /"\d+\/\d+"/.test(msg),
           `${ex.key} over GF(2^k): readable message (${msg})`);
