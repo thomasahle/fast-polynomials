@@ -21,11 +21,19 @@ const SMALL_RANDOM_TRIALS = STRESS ? 2000 : 250;
 const PACKED_CROSS_TRIALS = STRESS ? 300 : 60;
 const LARGE_RANDOM_TRIALS = STRESS
   ? [[64, 2000], [8, 20000]]
-  : [[64, 200], [8, 2000]];
+  : [[64, 40], [8, 400]];              // the fast suite: enough to catch a broken pivot, under 10 s
+// FAST_POLY_PART splits the file for CI: 'decode' (structure, roundtrips, the GF(4)
+// sweeps and the certificates) or 'pipeline' (the site's compiler over the registry
+// fields and every degree); unset runs everything
+const PART = process.env.FAST_POLY_PART ?? 'all';
+const runs = part => PART === 'all' || PART === part;
 const PIPELINE_MONIC_TRIALS = STRESS ? 100 : 16;
 const PIPELINE_NON_MONIC_TRIALS = STRESS ? 20 : 4;
 console.log(`characteristic-2 ${STRESS ? 'stress' : 'fast'} suite`);
 
+const F64 = GF2k(64);
+const wantMults = n => (n <= 2 ? n - 1 : Math.floor(n / 2) + 1);
+if (runs('decode')) {
 // ---------- structure: one circuit per odd degree, floor(n/2)+1 multiplications ----------
 const ODD = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25];
 if (JSON.stringify(CIRCUIT_DEGREES) !== JSON.stringify(ODD)) fail(`circuit degrees ${CIRCUIT_DEGREES}`);
@@ -95,7 +103,6 @@ for (const n of CIRCUIT_DEGREES) {
 }
 
 // ---------- small degrees: randomized monic polynomials over GF(2^64) ----------
-const F64 = GF2k(64);
 const SMALL = [3, 5, 7, 9, 11];
 for (const n of SMALL) {
   const spec = CIRCUITS[n];
@@ -230,9 +237,11 @@ for (const n of [23, 25]) {
 
 // multiplications: floor(n/2)+1 from degree 3 on; degrees 1 and 2 are P = x + c0 and
 // P = x (x + c1) + c0 (Horner-optimal: 0 and 1); a non-monic input adds the scale row
-const wantMults = n => (n <= 2 ? n - 1 : Math.floor(n / 2) + 1);
+
+}   // runs('decode')
 
 // ---------- the site's pipeline over every registry field: GF(2^32), GF(2^64), GF(2^128) ----------
+if (runs('pipeline')) {
 // decode -> exact re-expansion check -> chain + C (gfK_mul); non-monic input adds the scale gate
 for (const F of [GF2k(32), GF2k(64), GF2k(128)]) {
   let bad = 0;
@@ -361,5 +370,6 @@ for (const [F, coeffs, want] of [[F64, [1n, 0n, 0n, 3n], 'P(x) = 0x3*x^3 + 1'],
   if (r.cMissing !== undefined) fail(`${F.name}: cMissing set although C was rendered`);
 }
 
+}   // runs('pipeline')
 if (fails) { console.log(`${fails} FAILURES`); process.exit(1); }
-console.log(`ALL CHAR2 ROUNDTRIPS PASS (${since()})`);
+console.log(`ALL CHAR2 ROUNDTRIPS PASS (${PART === 'all' ? '' : PART + ' part, '}${since()})`);

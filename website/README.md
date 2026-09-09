@@ -188,8 +188,11 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
     npm test
 
 The ordinary suite uses deterministic, bounded randomized checks and is split into
-parallel jobs in GitHub Actions. The original high-volume characteristic-two checks
-remain available with `npm run test:stress`; CI runs them weekly and on manual request.
+parallel jobs in GitHub Actions (`test/run-tests.js <group>`; the long files run in
+parts — `FAST_POLY_PART=core|pipeline` for `char0.test.js`, `decode|pipeline` for
+`char2.test.js` — so every job finishes in about a minute). The original high-volume
+characteristic-two checks remain available with `npm run test:stress`; CI runs them
+weekly and on manual request.
 
 ## Local preview
 

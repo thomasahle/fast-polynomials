@@ -386,19 +386,24 @@ async function testCompilePipeline() {
       check(d2.mults === 1 && /P_1|P/.test(d2.mathTextOriginal ?? '') && typeof d2.mathText === 'string', `compileChar0 ${mode2} degree 2 (${src2}): ${d2.mults} mults, original form renders`);
     }
     const c2 = await compileChar0('2ix^4 + x + 1', 'C');
-    check(/\(0\+2i\) \* P̃/.test(c2.mathText) && /\(0-0\.5i\)/.test(c2.mathText) && /double complex/.test(c2.cText ?? ''),
+    check(/\(0\+2i\) \* P_4/.test(c2.mathTextOriginal) && /\(0-0\.5i\)/.test(c2.mathTextOriginal) && /\(0\+2i\) \* /.test(c2.mathText) && /double complex/.test(c2.cText ?? ''),
       'compileChar0 C: purely imaginary constants print as (0±bi), and the C99 rendering exists');
   }
   console.log('compileChar0 pipeline checks done (p61, p127, Q, R, C; n = 3..20, 23, 31)');
 }
 
-testGolden();
-testRoundTripQ();
-testRoundTripGF();
-testChainGF();
-testChainQ();
-testRoundTripGF127();
-await testCompilePipeline();
+// FAST_POLY_PART splits the file for CI: 'core' (the decoder's golden values, round
+// trips and chains) or 'pipeline' (compileChar0 over every field); unset runs everything
+const PART = process.env.FAST_POLY_PART ?? 'all';
+if (PART === 'all' || PART === 'core') {
+  testGolden();
+  testRoundTripQ();
+  testRoundTripGF();
+  testChainGF();
+  testChainQ();
+  testRoundTripGF127();
+}
+if (PART === 'all' || PART === 'pipeline') await testCompilePipeline();
 
 if (failures > 0) {
   console.error(`\n${failures} failure(s) out of ${checks} checks`);

@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [core, fields, char0, char2, cgen, belaga, motzkin, knutheve-complex, methods, pan-complex, pan-real]
+        group: [core, ui, fields, char0-core, char0-pipeline, char2-decode, char2-pipeline, cgen, belaga, motzkin, knutheve-complex, methods, pan-complex, pan-real]
     defaults:
       run:
         working-directory: website
