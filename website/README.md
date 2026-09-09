@@ -33,8 +33,10 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   → method chips → view tabs attached to the output pane, with a gear opening the display
   menu (mathematical — form: original, every method in its own form: the paper's gadget
   rows H₂, Q₇, T⁽¹⁾ … for ours, Horner's nesting, Estrin's tree, Rabin–Winograd's splits,
-  Knuth–Eve's peels, a row without one shows its factored text / factor, one product per
-  line — and exact/decimal (hex) constants, a display-only rewrite ·
+  Knuth–Eve's peels, a row without one shows its factored text / factor, every row a
+  product of two linear combinations of the wires before it, scalar multiplications folded
+  into the coefficients, the last row one linear combination — and exact/decimal (hex)
+  constants, a display-only rewrite ·
   C code with float/fraction constants over ℚ, C99 `double complex` over ℂ · graph) → the comparison table (one row
   per method: multiplications with the scalar count, additions, multiplicative depth,
   exact or ≈ numeric; clicking a row selects the method; each method name links to its

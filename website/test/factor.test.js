@@ -6,7 +6,7 @@ import { compileEstrin } from '../js/methods/estrin.js';
 import { compileRW } from '../js/methods/rw.js';
 import { compileMotzkin, compileKnuthEve } from '../js/methods/motzkin.js';
 import { compilePan1978Real } from '../js/methods/pan1978real.js';
-import { factorize } from '../js/chain.js';
+import { factorize, countOps } from '../js/chain.js';
 import { parseRhs } from '../js/cgen.js';
 import { REAL_TOKEN, COMPLEX_TOKEN, numTokenValue } from '../js/tokens.js';
 // exact evaluator over a field for line chains (handles the ' − ' minus and negated atoms);
@@ -38,7 +38,11 @@ const coeffsQ = [new Rat(3n,2n), new Rat(-2n), new Rat(7n), new Rat(1n,4n), new 
 for (const [nm, fn] of [['horner', compileHorner], ['estrin', compileEstrin], ['rw', compileRW]]) {
   const r = fn(coeffsQ, Q); const fl = factorize(r.lines);
   const nprod = fl.filter(l => l.mul).length;
-  if (nprod !== r.mults) { console.log(`FAIL ${nm}: ${nprod} product rows vs ${r.mults} mults`); fails++; }
+  const ops = countOps(fl.map(l => `${l.lhs} = ${l.rhs}`).join('\n')), raw = countOps(r.lines.map(l => `${l.lhs} = ${l.rhs}`).join('\n'));
+  // scalar multiplications are coefficients of the linear combinations, not rows: the product rows are the
+  // chain's non-scalar multiplications (a scalar distributed over a sum may count more than once)
+  if (ops.mults !== nprod || nprod !== raw.mults || nprod + raw.scalar !== r.mults) { console.log(`FAIL ${nm}: ${nprod} product rows vs ${raw.mults} non-scalar (${r.mults} total)`); fails++; }
+  for (const l of fl) if (/\(\s*-?[\d./eE]+\s*\) \* \(/.test(`${l.lhs} = ${l.rhs}`)) { console.log(`FAIL ${nm}: a scalar multiplication as a row: ${l.lhs} = ${l.rhs}`); fails++; }
   for (const l of fl.slice(0, -1)) if (!PURE.test(`${l.lhs} = ${l.rhs}`)) { console.log(`FAIL ${nm}: not pure product: ${l.lhs} = ${l.rhs}`); fails++; }
   if (fl[fl.length - 1].mul) { console.log(`FAIL ${nm}: last row must be affine`); fails++; }
   for (const t of [1, 2, 3]) { const x = new Rat(BigInt(2 * t - 3), 2n);

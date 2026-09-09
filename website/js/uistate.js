@@ -1032,7 +1032,8 @@ export function subOptionStrips(state) {
           { key: 'original', label: 'original', on: effF === 'original', enabled: hasOriginal,
             title: hasOriginal ? 'the method\'s own form: the paper\'s gadget rows, Horner\'s nested form, Estrin\'s tree, …'
                                : 'no original form for this row (its factored list is shown)' },
-          { key: 'factor', label: 'factor', on: effF === 'factor', enabled: true, title: 'one product per line' },
+          { key: 'factor', label: 'factor', on: effF === 'factor', enabled: true,
+            title: 'every row a product of two linear combinations of the wires before it; the last row one linear combination' },
         ] },
       { kind: 'numfmt', label: 'constants:',
         options: [

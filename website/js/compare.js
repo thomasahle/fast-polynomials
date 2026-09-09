@@ -84,7 +84,7 @@ export function buildClassical(coeffs, F, mode, { poly = null } = {}) {
         name, ok: true, mults: r.mults, adds: r.adds, height: r.height,
         preprocessing: numericField && r.preprocessing !== 'none' ? 'numeric' : r.preprocessing,
         exact: numericField ? r.preprocessing === 'none' : r.exact,
-        mathText: chainToText({ lines: factorize(r.lines) }), mathTextOriginal: chainToText(r), cText, cTextFraction,
+        mathText: chainToText({ lines: factorize(r.lines, F) }), mathTextOriginal: chainToText(r), cText, cTextFraction,
         graph: graphOf(r.lines), note: r.note ?? '',
       });
     } catch (e) {
@@ -172,7 +172,7 @@ function numericRow(name, compile, coeffs, F, mode = 'Q', { preserveLeading = fa
       name, ok: true, mults: r.mults, adds: r.adds, height: r.height,
       preprocessing: r.preprocessingLabel ?? (r.preprocessing === 'complex' ? 'complex roots' : 'real roots (numeric)'),
       exact: false,
-      mathText: chainToText({ lines: factorize(r.lines) }),
+      mathText: chainToText({ lines: factorize(r.lines, F) }),
       mathTextOriginal: chainToText(r), cText, cTextFraction: cText,
       graph: graphOf(r.lines),
       ...(r.radixExponent === undefined ? {} : {

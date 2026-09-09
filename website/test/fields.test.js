@@ -409,7 +409,8 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
     if (id === 'p61') {
       check(/^P̃ = x − 1$/m.test(big.mathText) && /^P  = -1 \* P̃/m.test(big.mathText) && /leading coefficient -1$/m.test(big.cText) && /P\(x\) = -x \+ 1/.test(big.cText),
             `p61: p − 1 reads −1\n${big.mathText}`);
-      check(big.comparisons.every(c => !c.ok || /\(-1\) \* \(x\)/.test(c.mathText)), 'p61: the rows scale by −1');
+      // the factored rows fold the −1 into a sign: (-x) * (x), or a negated final sum
+      check(big.comparisons.every(c => !c.ok || /-x\b|-w0\b/.test(c.mathText)), `p61: the rows scale by −1 as a sign\n${big.comparisons.map(c => c.mathText).join('\n')}`);
     } else check(/2305843009213693950/.test(big.mathText) && symmetric(big.mathText, p), `${id}: 2^61 − 2 is a small residue here`);
   }
   // an input with small integer coefficients renders over 2^61−1 exactly as over ℚ

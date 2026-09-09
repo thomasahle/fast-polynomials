@@ -298,7 +298,7 @@ export function countOps(text) {
 //   'decimal'  rationals a/b, integers and doubles → about six significant digits,
 //              scientific notation (1.59e7, 2.5e-7) when the exponent is far out
 //   'hex'      every field constant as a 0x… bit pattern (binary fields)
-import { ratToDouble } from './field.js';
+import { ratToDouble, Q } from './field.js';
 // A complex literal (re±imi) is one token: both parts are rounded together
 // and the literal is re-printed in its canonical form (never split apart).
 const CONST_TOKEN_RE = new RegExp(
@@ -409,15 +409,15 @@ const paren = s => (s.startsWith('(') && s.endsWith(')') ? s : `(${s})`);
  * spliced into its parent (sign-aware), recursively — so factors and affine
  * rows never carry redundant inner brackets like (w2 + (x − 61)) — and fold
  * the constant terms a splice brings together into one (x + 3/2 − 1/2 → x + 1). */
-function flattenSum(sum) {
+function flattenSum(sum, F = null) {
   const out = [];
   for (const term of sum) {
-    const t = term.t.map(f => (f.sum !== undefined ? { sum: flattenSum(f.sum) } : f));
+    const t = term.t.map(f => (f.sum !== undefined ? { sum: flattenSum(f.sum, F) } : f));
     if (t.length === 1 && t[0].sum !== undefined) {
       for (const inner of t[0].sum) out.push(term.neg ? negTerm(inner) : inner);
     } else out.push({ neg: term.neg, t });
   }
-  return foldConstants(out);
+  return foldConstants(out, F);
 }
 /** One constant term per sum: exact literals (integers, fractions) add as
  *  rationals; once a decimal is involved the sum is a double printed to 13
@@ -425,21 +425,23 @@ function flattenSum(sum) {
  *  literal is involved both parts are summed as doubles and the result is
  *  re-printed as one canonical (re±imi) token (a real result becomes a plain
  *  real token).  The folded constant goes last, where the rows keep their
- *  constants. */
-export function foldConstants(sum) {
+ *  constants.  Exact constants add in the field `F` when given (a prime
+ *  field's residues reduce to the symmetric representative, GF(2^k) hex
+ *  patterns xor); without one, as rationals. */
+export function foldConstants(sum, F = null) {
   const isConst = term => term.t.length === 1 && term.t[0].tok !== undefined && isNumTok(term.t[0].tok);
   const consts = sum.filter(isConst), rest = sum.filter(t => !isConst(t));
   if (consts.length < 2) return sum;
-  const exact = consts.every(({ t }) => !/[.eEi]/.test(t[0].tok));
+  const exact = consts.every(({ t }) => isExactTok(t[0].tok));
   let tok;
   if (exact) {
-    let acc = new Rat(0n);
+    const E = exactField(F);
+    let acc = E.zero;
     for (const { neg, t } of consts) {
-      const [a, b] = t[0].tok.split('/');
-      const r = new Rat(BigInt(a), b ? BigInt(b) : 1n);
-      acc = acc.add(neg ? r.neg() : r);
+      const v = parseExact(t[0].tok, E);
+      acc = E.add(acc, neg ? E.neg(v) : v);
     }
-    tok = acc.toString();
+    tok = E.toDisplay(acc);
   } else {
     let re = 0, im = 0;
     for (const { neg, t } of consts) {
@@ -453,28 +455,121 @@ export function foldConstants(sum) {
   const neg = tok.startsWith('-');                 // a complex token keeps its sign inside the literal
   return [...rest, { neg, t: [{ tok: neg ? tok.slice(1) : tok }] }];
 }
-export function factorize(lines) {
-  const subst = new Map();                       // eliminated wire -> sum AST (unexpanded)
+
+// ---- exact constant arithmetic for the folding passes ----------------------
+// Tokens are turned into elements of the exact field (ℚ, a prime field,
+// GF(2^k)) and printed back with its display rule, so a folded constant looks
+// like every other constant of the chain.  ℝ / ℂ chains (doubles) and chains
+// without a field use rationals for their exact tokens.
+// (Hex bit patterns are no numeric token here — isNumTok — so nothing folds in
+// GF(2^k), where a constant times a wire is a real carry-less multiplication
+// and keeps its row.)
+const EXACT_TOKEN = /^-?\d+(?:\/\d+)?$/;
+const isExactTok = t => EXACT_TOKEN.test(t);
+const exactField = F => (F && !F.real && !F.complex ? F : Q);
+function parseExact(tok, E) {
+  const neg = tok.startsWith('-'), base = neg ? tok.slice(1) : tok;
+  const v = base.includes('/') ? E.fromRat(new Rat(...base.split('/').map(BigInt))) : E.fromInt(BigInt(base));
+  return neg ? E.neg(v) : v;
+}
+/** Product of two signed constant tokens: exactly in the field, otherwise as
+ *  (complex) doubles printed to 13 significant digits, like foldConstants. */
+function mulConstTok(a, b, F = null) {
+  if (isExactTok(a) && isExactTok(b)) {
+    const E = exactField(F);
+    return E.toDisplay(E.mul(parseExact(a, E), parseExact(b, E)));
+  }
+  const neg = t => t.startsWith('-'), abs = t => (neg(t) ? t.slice(1) : t);
+  const u = numTokenValue(abs(a)), v = numTokenValue(abs(b)), sign = neg(a) !== neg(b) ? -1 : 1;
+  return complexToken(sign * (u.re * v.re - u.im * v.im), sign * (u.re * v.im + u.im * v.re), 13);
+}
+const negTok = t => (t.startsWith('-') ? t.slice(1) : `-${t}`);
+/** A constant factor — a numeric token or a parenthesised constant sum such as
+ *  (1/5040) — as a signed token, or null for a wire / a genuine sum. */
+function constFactor(f) {
+  if (f.tok !== undefined) return isNumTok(f.tok) ? f.tok : null;
+  if (f.sum.length === 1 && f.sum[0].t.length === 1) {
+    const c = constFactor(f.sum[0].t[0]);
+    return c === null ? null : f.sum[0].neg ? negTok(c) : c;
+  }
+  return null;
+}
+/** A term's factors as { c, rest }: the product of its constants (a signed
+ *  token; the term's own sign folded in) and the non-constant factors. */
+function splitTerm({ neg, t }, F = null) {
+  let c = neg ? '-1' : '1';
+  const rest = [];
+  for (const f of t) {
+    const k = constFactor(f);
+    if (k !== null) c = mulConstTok(c, k, F);
+    else rest.push(f);
+  }
+  return { c, rest };
+}
+/** A sum term c * w (w a wire) / c alone, with an unsigned token and the sign in `neg`. */
+function scaledTerm(c, rest) {
+  const neg = c.startsWith('-'), abs = neg ? c.slice(1) : c;
+  return { neg, t: abs === '1' && rest.length ? rest : [{ tok: abs }, ...rest] };
+}
+/**
+ * The factored form of a method's chain: every row a product of two linear
+ * combinations of the wires before it (and x), the last row one linear
+ * combination.  Affine wires are inlined (sign-aware, their constants folded),
+ * a product of ≥ 3 factors becomes a chain of rows, and a multiplication by a
+ * scalar constant is no row at all: the constant becomes a coefficient of
+ * the linear combination it scales (105 * x, or distributed over an affine
+ * wire's terms — 3 * (x + 2) → 3 * x + 6).  The first row of a product
+ * carries the term's coefficient in its first factor: (105 * x) * (x2).
+ * A trailing note on a row (`  (even-degree lift)`) is dropped.  `F`, the
+ * chain's field, does the constant arithmetic (residues reduce, GF(2^k)
+ * patterns multiply carry-less); without one, rationals / doubles.
+ */
+export function factorize(lines, F = null) {
+  const subst = new Map();                       // eliminated wire -> normalized sum (terms c * w, products as fresh wires)
   const out = [];
   let tmp = 0;
   const fresh = () => `f${tmp++}`;
-  const emitProduct = (name, factors) => {       // factors: expanded factor nodes (>= 2)
-    let acc = factors[0];
+  const stripNote = rhs => rhs.replace(/\s{2,}\([A-Za-z][A-Za-z -]*\)\s*$/, '');
+  // a sum scaled by a signed constant token, distributed over its terms
+  const scaleSum = (sum, c) => {
+    if (c === '1') return sum;
+    const terms = sum.map(term => { const { c: k, rest } = splitTerm(term, F); return scaledTerm(mulConstTok(k, c, F), rest); })
+      .filter(term => !(term.t[0]?.tok === '0' && term.t.length > 1));   // a zero coefficient drops its term
+    return foldConstants(terms.length ? terms : [{ neg: false, t: [{ tok: '0' }] }], F);
+  };
+  const asSum = f => (f.sum !== undefined ? f.sum : [{ neg: false, t: [f] }]);
+  // rows for a product of ≥ 2 non-constant factors (the coefficient c in the first);
+  // the last row is named `name`, the rest fresh
+  const emitProduct = (name, factors, c) => {
+    let acc = c === '1' ? factors[0] : { sum: scaleSum(asSum(factors[0]), c) };
     for (let i = 1; i < factors.length; i++) {
       const nm = i === factors.length - 1 ? name : fresh();
-      const flat = f => (f.sum !== undefined ? { sum: flattenSum(f.sum) } : f);
-      out.push({ lhs: nm, rhs: `${paren(factorStr(flat(acc)))} * ${paren(factorStr(flat(factors[i])))}`, mul: true });
+      out.push({ lhs: nm, rhs: `${paren(factorStr(acc))} * ${paren(factorStr(factors[i]))}`, mul: true });
       acc = { tok: nm };
     }
   };
+  // a term → its normalized terms: a constant, c * w, an affine wire's scaled
+  // terms (spliced), or a fresh product wire (rows emitted; `name` names the
+  // product's row instead when given — returns null then, the row is the line)
+  const normTerm = (term, name = null) => {
+    const { c, rest } = splitTerm({ neg: term.neg, t: term.t.map(f => (f.sum !== undefined ? { sum: normSum(f.sum) } : f)) }, F);
+    if (c === '0') return [];
+    if (rest.length === 0) return [scaledTerm(c, [])];
+    if (rest.length === 1) return rest[0].sum !== undefined ? scaleSum(rest[0].sum, c) : [scaledTerm(c, rest)];
+    if (name !== null) { emitProduct(name, rest, c); return null; }
+    const nm = fresh();
+    emitProduct(nm, rest, c);
+    return [{ neg: false, t: [{ tok: nm }] }];
+  };
+  const normSum = sum => {
+    const terms = flattenSum(sum, F).flatMap(term => normTerm(term));
+    return foldConstants(terms.length ? terms : [{ neg: false, t: [{ tok: '0' }] }], F);
+  };
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i], last = i === lines.length - 1;
-    const terms = flattenSum(expandSum(parseRhs(l.rhs).sum, subst));
-    if (!last && terms.length === 1 && terms[0].t.length >= 2 && !terms[0].neg) { emitProduct(l.lhs, terms[0].t); continue; }
-    const parts = terms.map(({ neg, t }) => {
-      if (t.length >= 2) { const nm = fresh(); emitProduct(nm, t); return { neg, t: [{ tok: nm }] }; }
-      return { neg, t };
-    });
+    const terms = flattenSum(expandSum(parseRhs(stripNote(l.rhs)).sum, subst), F);
+    if (!last && terms.length === 1 && normTerm(terms[0], l.lhs) === null) continue;   // the line is one product: its own row
+    const parts = normSum(terms);
     if (last) out.push({ lhs: l.lhs, rhs: sumStr(parts), mul: false });
     else subst.set(l.lhs, parts);
   }
