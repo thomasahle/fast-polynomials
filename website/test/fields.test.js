@@ -328,7 +328,8 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
 // re-expansion, plus an exact chain.eval vs Horner check here; char 2: the odd
 // degrees with circuits, compileChar2 verifies by exact re-expansion.)
 {
-  const expectedMults = n => (n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1);
+  const expectedMults = n => (n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1);   // char 2: a lower bound
+  const expectedMults0 = n => (n === 4 ? 2 : expectedMults(n));                       // char 0: Motzkin's quartic at degree 4
   const MUL = { Q: 'double eval_P(double x)', R: 'double eval_P(double x)', C: 'double complex eval_P(double complex x)', p61: 'mul61(', p89: 'mult_mod', p127: 'mul127(',
                 gf32: 'gf32_mul(', gf64: 'gf64_mul(', gf128: 'gf128_mul(' };
   let seed = 0x2545F4914F6CDD1Dn;
@@ -355,7 +356,7 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
           allC &&= typeof r.cText === 'string' && r.cText.includes('eval_P') && r.cText.includes(MUL[f.id]);
         } else {
           const r = await compileChar0(intSrc(n), f.id);
-          check(r.mults === expectedMults(n) && r.fieldId === f.id && r.exact === f.exact && r.status === f.status, `${tag}: result`);
+          check(r.mults === expectedMults0(n) && r.fieldId === f.id && r.exact === f.exact && r.status === f.status, `${tag}: result`);
           const field = r.chain.field, cs = parsePoly(intSrc(n)).coeffs.map(c => (field.modulus === null ? c : field.coerce(c.n)));
           for (const x of [7n, -12345n]) {
             const x0 = field.coerce(x);

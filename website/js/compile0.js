@@ -28,6 +28,36 @@ const loadCore = () => (corePromise ??= import('./char0/core.js').catch(() => {
     'or reload in a bit.');
 }));
 
+/** Motzkin's quartic scheme (Knuth, TAOCP 4.6.4, eq. (9)): a monic quartic
+ *  x⁴ + c₃x³ + c₂x² + c₁x + c₀ as
+ *      y = (x + α₀)·x + α₁,        P₄ = (y + x + α₂)·y + α₃
+ *  with two multiplications, where the paper's even lift x·P₃ + c₀ uses three.  The
+ *  decoder is polynomial in the coefficients up to one division by 2, so it is rational
+ *  preprocessing over every field of characteristic ≠ 2:
+ *      α₀ = (c₃ − 1)/2,  β = c₂ − α₀(α₀ + 1),  α₁ = c₁ − α₀β,  α₂ = β − 2α₁,
+ *      α₃ = c₀ − α₁(α₁ + α₂).
+ *  A non-monic quartic gets the leading-coefficient scale like every other degree
+ *  (three multiplications in all, Motzkin's count for a general quartic). */
+function motzkinQuartic(core, F, cs) {
+  const one = F.one(), two = F.add(one, one);
+  const a0 = F.div(F.sub(cs[3], one), two);
+  const beta = F.sub(cs[2], F.mul(a0, F.add(a0, one)));
+  const a1 = F.sub(cs[1], F.mul(a0, beta));
+  const a2 = F.sub(beta, F.mul(two, a1));
+  const a3 = F.sub(cs[0], F.mul(a1, F.add(a1, a2)));
+  const b = new core.ChainBuilder(F);
+  const x = b.x;
+  const yL = x.add_const(a0, F);
+  const yp = b.withLabel('P_4 Motzkin quartic', () => b.mul(yL, x));
+  const y = yp.add_const(a1, F);
+  b.prow('y', y, { L: yL, R: x, prod: yp });
+  const pL = y.add(x, F).add_const(a2, F);
+  const pp = b.withLabel('P_4 Motzkin quartic', () => b.mul(pL, y));
+  const P = pp.add_const(a3, F);
+  b.prow('P_4', P, { L: pL, R: y, prod: pp }, { prefer: [y] });
+  return b.finalize(P);
+}
+
 /** The paper-notation rows of a chain as text, followed by the leading-coefficient
  *  scale row of a non-monic input (`P = c * P_n   (leading-coefficient scale)`). */
 function paperFormText(F, chain, scaleStep, core) {
@@ -72,8 +102,10 @@ export async function compileChar0(src, fieldMode = 'Q') {
     extraMult = 1;
   }
 
-  const params = core.decode(n, cs, field);         // self-verifying (re-expansion check)
-  const chain = core.compile_paper_params_chain(params, isC ? field : rational ? null : prime);
+  // degree 4: Motzkin's quartic scheme (two products for a monic quartic; the paper's even
+  // lift would use three) — the rest: the paper's construction from the decoded parameters
+  const chain = n === 4 ? motzkinQuartic(core, field, cs)
+    : core.compile_paper_params_chain(core.decode(n, cs, field), isC ? field : rational ? null : prime);   // decode is self-verifying (re-expansion check)
   chain.validate?.();
 
   // independent verification: exact chain.eval at random points vs Horner

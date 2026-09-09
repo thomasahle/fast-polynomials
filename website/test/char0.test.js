@@ -168,7 +168,8 @@ function testRoundTripGF() {
 //     (over GF(p); over Q for n <= 20).
 // =====================================================================
 function expectedMulCount(n) {
-  return n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1;
+  // degree 4: Motzkin's quartic scheme, two products for a monic quartic (the paper's lift would use three)
+  return n <= 1 ? 0 : n === 2 ? 1 : n === 4 ? 2 : Math.floor(n / 2) + 1;
 }
 
 function testChainGF() {
@@ -386,8 +387,11 @@ async function testCompilePipeline() {
       check(d2.mults === 1 && /P_1|P/.test(d2.mathTextOriginal ?? '') && typeof d2.mathText === 'string', `compileChar0 ${mode2} degree 2 (${src2}): ${d2.mults} mults, original form renders`);
     }
     const c2 = await compileChar0('2ix^4 + x + 1', 'C');
-    check(/\(0\+2i\) \* P_4/.test(c2.mathTextOriginal) && /\(0-0\.5i\)/.test(c2.mathTextOriginal) && /\(0\+2i\) \* /.test(c2.mathText) && /double complex/.test(c2.cText ?? ''),
+    check(/\(0\+2i\) \* P_4/.test(c2.mathTextOriginal) && /\(0\+1i\)/.test(c2.mathTextOriginal) && /\(0\+2i\) \* /.test(c2.mathText) && /double complex/.test(c2.cText ?? ''),
       'compileChar0 C: purely imaginary constants print as (0±bi), and the C99 rendering exists');
+    // degree 4 is Motzkin's quartic: y = (x + α0)·x + α1, P_4 = (y + x + α2)·y + α3 — two products, three with the scale
+    check(c2.mults === 3 && /^y += \(x .*\) \* x /m.test(c2.mathTextOriginal) && /^P_4 = \(y \+ x .*\) \* y /m.test(c2.mathTextOriginal),
+      `compileChar0 C: Motzkin's quartic rows (${c2.mults} mults)\n${c2.mathTextOriginal}`);
   }
   console.log('compileChar0 pipeline checks done (p61, p127, Q, R, C; n = 3..20, 23, 31)');
 }

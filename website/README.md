@@ -87,7 +87,10 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
 - `js/char0/core.js`, `js/compile0.js` — the char-0 construction at any degree:
   a line-by-line port (byte-identical to the Python reference in tests) of `tools/polychain.py` + `tools/poly_schedule.py`
   (exact ℚ, or GF(2^89−1) for fast large-degree preprocessing); `js/char0/*.frag.js`
-  are the reviewable per-function-group fragments `core.js` is assembled from
+  are the reviewable per-function-group fragments `core.js` is assembled from.  Degree 4
+  is the one exception to the paper's construction: `compile0.js` uses Motzkin's quartic
+  scheme, y = (x + α₀)x + α₁, P₄ = (y + x + α₂)y + α₃ — two products for a monic quartic
+  where the even lift would use three, still rational preprocessing (one division by 2)
 - `js/methods/` — the comparison methods. The UI shows Horner, Estrin,
   Rabin–Winograd, Knuth–Eve with numeric real-root preprocessing, and Pan's
   real degree-8 / general degree-≥9 schemes solved numerically from their
