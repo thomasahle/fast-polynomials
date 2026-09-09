@@ -59,9 +59,9 @@ We compare the following evaluation methods, all operating over $\mathbb{F}_{2^{
 Each algorithm was benchmarked by hashing $10^6$ random 64-bit integers per
 repetition.  The harness behind \Cref{tab:kwise_both,tab:injective,tab:injective:universal}
 and the tabulation comparison (\texttt{test\_speed\_function64} in
-\texttt{tools/\allowbreak bench/\allowbreak carryless\_arm.cpp} and
-\texttt{tools/\allowbreak bench/\allowbreak carryless.cpp};
-\texttt{tools/\allowbreak bench/\allowbreak bench\_tabrows.cpp} times every row of the tabulation comparison, the non-polynomial hashes included, under the same wrapper)
+\texttt{tools/bench/\allowbreak carryless\_arm.cpp} and
+\texttt{tools/bench/\allowbreak carryless.cpp};
+\texttt{tools/bench/\allowbreak bench\_tabrows.cpp} times every row of the tabulation comparison, the non-polynomial hashes included, under the same wrapper)
 runs $200$ repetitions, sorts them, keeps the fastest $100$ and reports their
 mean and population standard deviation.  Every ``mean$\pm$std'' in those
 tables, and every error bar in the figures, is of that selected half: the
@@ -132,11 +132,11 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \bottomrule
 \endlastfoot
 \raggedright $\F_{2^{64}}$, $k=3$ (\Cref{tab:kwise_both}, \Cref{sec:experiments:tabulation}) &
-\raggedright \texttt{smartcl\_64::\allowbreak mult3} in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h} &
+\raggedright \texttt{smartcl\_64::\allowbreak mult3} in \texttt{tools/bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h} &
 \raggedright the cubic $Q_3$ of \Cref{sec:main-theorem:outline} with $H_2=x^2$ &
 \raggedright triangular decoder given there, every characteristic; $10^6$ uniform inputs, uniform keys \tabularnewline
 \raggedright $\F_{2^{64}}$ and $\F_{2^{61}-1}$, $k=4$ (\Cref{sec:experiments:tabulation}) &
-\raggedright \texttt{quartic2\_64} (Motzkin's two-multiplication quartic), \texttt{quartic3\_64} (the three-multiplication lift $x\,Q_3(x)+c_0$) and \texttt{motzkin\_61} (Motzkin's quartic over $2^{61}-1$) in \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h}; \texttt{mult4} is the first on ARM and the second on x86 &
+\raggedright \texttt{quartic2\_64} (Motzkin's two-multiplication quartic), \texttt{quartic3\_64} (the three-multiplication lift $x\,Q_3(x)+c_0$) and \texttt{motzkin\_61} (Motzkin's quartic over $2^{61}-1$) in \texttt{tools/bench/\allowbreak framework/\allowbreak fast\_hashing\_arm.h} and \texttt{fast\_hashing.h}; \texttt{mult4} is the first on ARM and the second on x86 &
 \raggedright footnote in \Cref{sec:experiments:kwise}; \Cref{sec:experiments:tabulation} &
 \raggedright Motzkin over $\F_{2^{64}}$: $3$-wise only (footnote); lift: bijective, hence $4$-wise; Motzkin over $\F_{2^{61}-1}$: bijective onto the monic quartics, hence $4$-wise on $[p]$ \tabularnewline
 \raggedright $\F_{2^{64}}$, $k=5$ &
@@ -152,7 +152,7 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \raggedright not displayed; differs from both degree-$9$ circuits of \Cref{appendix:polynomials} &
 \raggedright timing only \tabularnewline
 \raggedright $\F_{2^{64}}$, degrees $7$--$25$ (nanosecond timings in \Cref{appendix:polynomials}) &
-\raggedright \texttt{tools/\allowbreak bench/\allowbreak appendix\_char2\_\allowbreak circuits\_arm.cpp} &
+\raggedright \texttt{tools/bench/\allowbreak appendix\_char2\_\allowbreak circuits\_arm.cpp} &
 \raggedright the displayed circuits &
 \raggedright inverses for $7,15,17,19,21,23,25$; the displayed $9,11,13$ are search candidates and their certified alternatives (A.0) are not timed \tabularnewline
 \raggedright $\F_{2^{89}-1}$, $k=3$--$9$ (\Cref{fig:bench_all}) &
@@ -164,11 +164,11 @@ Family (field, degree) & Implementation & Circuit & Proof; data \\
 \raggedright not displayed (the degree-$13$ chain is the degree-$13$ alternative of (A.0)) &
 \raggedright timing only: no inverse over $\F_p$ (the (A.0) certificate is for characteristic~$2$); points $x_i=i$ or uniform \tabularnewline
 \raggedright injective recurrence, $\F_{2^{64}}$ (\Cref{tab:injective,tab:injective:universal,tab:injective:adversarial}) &
-\raggedright \texttt{tools/\allowbreak bench/\allowbreak framework/\allowbreak injective\_hashing.h}; vector-resident rows: \texttt{tools/\allowbreak bench/\allowbreak adversarial/} &
+\raggedright \texttt{tools/bench/\allowbreak framework/\allowbreak injective\_hashing.h}; vector-resident rows: \texttt{tools/bench/\allowbreak adversarial/} &
 \raggedright \eqref{eq:injective-single-key} and \Cref{def:injective:recurrence} &
 \raggedright \Cref{lem:injective:coeffmap} with Schwartz--Zippel; uniform random messages \tabularnewline
 \raggedright ChainHash (\Cref{tab:injective:adversarial}) &
-\raggedright \texttt{tools/\allowbreak bench/\allowbreak chainhash/\allowbreak chainhash.h} &
+\raggedright \texttt{tools/bench/\allowbreak chainhash/\allowbreak chainhash.h} &
 \raggedright \Cref{def:ph:hash} &
 \raggedright \Cref{thm:ph:collision,thm:ph:kwise} for the ideal key; the seeded implementation is outside the theorems (\Cref{rem:ph:gaps}); SMHasher3 and \Cref{app:adversarial} \tabularnewline
 \end{longtable}
@@ -253,8 +253,8 @@ ns/update & 5.31 & 4.84 & \textbf{4.16} & 16.2 & 9.64 & \textbf{7.35}
 \end{center}
 On ARM, our method achieves $1.28\times$ speedup over Horner.
 On x86, the speedup is $2.20\times$, reflecting the larger benefit from reducing multiplications.
-The benchmark is implemented in \texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak arm.cpp} (ARM) and
-\texttt{tools/\allowbreak bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak x86.cpp} (x86).
+The benchmark is implemented in \texttt{tools/bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak arm.cpp} (ARM) and
+\texttt{tools/bench/\allowbreak app\_\allowbreak countsketch\_\allowbreak x86.cpp} (x86).
 
 \subsection{Application-Level Throughput: Hash Tables}
 \label{sec:experiments:hashtable}
@@ -336,12 +336,12 @@ universal hashing keyed by the coefficients.
 
 On an Apple M2 Pro, we observe consistent $2.0\times$--$2.5\times$ speedups over full-field Horner
 evaluation for degrees $13$--$21$ in both regimes; see the benchmark implementation in
-\texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne.cpp}.
+\texttt{tools/bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne.cpp}.
 Including the cost of writing shares to memory gives essentially the same speedups; see
-\texttt{tools/\allowbreak bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne\_\allowbreak store.cpp}.
+\texttt{tools/bench/\allowbreak shamir\_\allowbreak sharegen\_\allowbreak mersenne\_\allowbreak store.cpp}.
 The x86 rows of the two tables below are the Xeon 8375C and the ARM rows
 the Apple M2 Pro; the logs of these runs are in
-\texttt{tools/\allowbreak bench/\allowbreak results/}.
+\texttt{tools/bench/\allowbreak results/}.
 
 \begin{center}
 \begin{tabular}{c|ccccc}
