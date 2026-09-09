@@ -167,10 +167,11 @@ function testRoundTripGF() {
 //     chain.eval(x0) == Horner(original coeffs, x0) at 5 random points
 //     (over GF(p); over Q for n <= 20).
 // =====================================================================
-function expectedMulCount(n) {
-  // degree 4: Motzkin's quartic scheme, two products for a monic quartic (the paper's lift would use three)
-  return n <= 1 ? 0 : n === 2 ? 1 : n === 4 ? 2 : Math.floor(n / 2) + 1;
+function expectedMulCount(n) {                 // the paper's construction (core's chain)
+  return n <= 1 ? 0 : n === 2 ? 1 : Math.floor(n / 2) + 1;
 }
+// the site's compiler: degree 4 is Motzkin's quartic, two products for a monic quartic
+const expectedSiteMulCount = n => (n === 4 ? 2 : expectedMulCount(n));
 
 function testChainGF() {
   const field = GF(MERSENNE61);
@@ -291,7 +292,7 @@ async function testCompilePipeline() {
       try { r = await compileChar0(src, mode); }
       catch (e) { failures += 1; console.error(`FAIL: compileChar0 ${mode} n=${n}: threw: ${e.message}`); continue; }
       results[mode] = r;
-      check(r.mults === expectedMulCount(n), `compileChar0 ${mode} n=${n}: mults ${r.mults} != ${expectedMulCount(n)}`);
+      check(r.mults === expectedSiteMulCount(n), `compileChar0 ${mode} n=${n}: mults ${r.mults} != ${expectedSiteMulCount(n)}`);
       const fd = fieldById(mode), exact = fd.exact;
       check(r.fieldId === mode && r.exact === exact && r.status === (exact ? 'exact' : '≈ numeric') &&
             r.field.name === { p61: 'GF(2^61−1)', p127: 'GF(2^127−1)', Q: 'ℚ', R: 'ℝ', C: 'ℂ' }[mode],
