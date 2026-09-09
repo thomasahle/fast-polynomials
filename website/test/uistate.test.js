@@ -6,7 +6,7 @@ import {
   reduce, initialState, examplesFor, defaultExample, exampleHeld, clampDegree, stepDegree, exampleDegree,
   hashFromState, stateFromHash, MODE_MSG, MODES, LEGACY_MODES, VIEWS, showOutput,
   compileMessage, comparisonRow, selectedRow, methodTabs, comparisonTable, rowOps, stats,
-  availableSubOptions, subOptionStrips, paneContent, effectiveCstyle, effectiveNumfmt,
+  availableSubOptions, subOptionStrips, paneContent, effectiveCstyle, effectiveNumfmt, effectiveForm,
   defaultMethod, methodAvailable, FIELDS, FIELD_GROUPS, fieldChooser, fieldTitle, tokenizePoly,
 } from '../js/uistate.js';
 import { FIELDS as REGISTRY, FIELD_IDS } from '../js/field.js';
@@ -87,7 +87,7 @@ const inMode = mode => reduce(BASE, { type: 'setMode', mode });
 
 // ---- initial state ---------------------------------------------------------
 eq(Object.keys(initialState).sort(),
-   ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys (no form: the math view has one form per method)');
+   ['busy', 'cancelled', 'cstyle', 'error', 'exDegree', 'exKey', 'exMonic', 'exSeed', 'form', 'jobId', 'lateNumeric', 'method', 'mode', 'numfmt', 'prevResult', 'result', 'src', 'view'], 'state keys');
 eq([initialState.mode, initialState.view, initialState.cstyle, initialState.numfmt, initialState.method,
     initialState.exDegree, initialState.exKey, initialState.exSeed, initialState.exMonic],
    ['Q', 'math', 'float', 'exact', 'ours', 7, 'hermite', 0, true], 'initial selections');
@@ -366,9 +366,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 {
   const q = withResult(inMode('Q'));
   const sub = availableSubOptions(q);
-  check(sub.kind === 'numfmt' && sub.label === 'constants:', 'math view shows the constant-format strip first');
-  eq(subOptionStrips(q).map(st => st.kind), ['numfmt'], 'math view: only the constant-format strip (no form chooser)');
-  check(subOptionStrips(q).every(st => st.options.every(o => o.key !== 'factor' && o.key !== 'original')), 'no factor / original option anywhere');
+  check(sub.kind === 'form' && sub.label === 'form:', 'math view shows the form group first');
+  eq(subOptionStrips(q).map(st => st.kind), ['form', 'numfmt'], 'math view: the form and constant-format groups');
+  eq(sub.options.map(o => [o.key, o.label, o.on, o.enabled]), [['original', 'original', true, true], ['factor', 'factor', false, true]],
+     'form defaults to original when the row has one');
   const c = reduce(q, { type: 'setView', view: 'c' });
   const csub = availableSubOptions(c);
   check(csub.kind === 'constants' && csub.label === 'constants:', 'C view over ℚ shows the constants strip');
@@ -378,14 +379,28 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   for (const m of ['R', 'C', 'p89', 'gf64']) {
     const s = reduce(withResult(inMode(m)), { type: 'setView', view: 'c' });
     check(availableSubOptions(s) === null, `C constants strip hidden in ${m}`);
-    eq(subOptionStrips(reduce(s, { type: 'setView', view: 'math' })).map(st => st.kind), ['numfmt'], `only the numfmt strip shown in ${m}`);
+    eq(subOptionStrips(reduce(s, { type: 'setView', view: 'math' })).map(st => st.kind), ['form', 'numfmt'], `the form and numfmt groups shown in ${m}`);
   }
-  // the math pane shows each method in its own form; a row without one shows its factored text
-  check(paneContent(q).text === 'ours paper', "ours shows the paper's constructions form");
+  // the math pane shows each method in its own form by default; a row without one shows its factored text
+  check(paneContent(q).text === 'ours paper' && effectiveForm(q) === 'original', "ours shows the paper's constructions form");
   const hh = reduce(q, { type: 'setMethod', method: 'Horner' });
   check(paneContent(hh).text === 'Horner nested', 'Horner shows its nested form');
-  check(paneContent(reduce(q, { type: 'setMethod', method: 'Estrin' })).text === 'Estrin math', 'a row without an original form falls back to its one-product-per-line text');
+  const he = reduce(q, { type: 'setMethod', method: 'Estrin' });
+  check(paneContent(he).text === 'Estrin math' && effectiveForm(he) === 'factor', 'a row without an original form falls back to its one-product-per-line text');
+  eq(availableSubOptions(he).options.map(o => [o.key, o.on, o.enabled]), [['original', false, false], ['factor', true, true]],
+     'original is disabled (and factor shown as on) for a row without one');
+  check(/no original form/.test(availableSubOptions(he).options[0].title), 'the disabled option says why');
   check(paneContent(withResult(inMode('Q'), deepFreeze({ ...RESULT, mathTextOriginal: '' }))).text === 'ours math', 'a blank original counts as none');
+  // the factor choice shows the one-product-per-line list, sticks across methods and only in the math view
+  const qf = reduce(q, { type: 'setForm', form: 'factor' });
+  check(qf.form === 'factor' && effectiveForm(qf) === 'factor' && paneContent(qf).text === 'ours math', 'factor shows the gate list');
+  eq(availableSubOptions(qf).options.map(o => [o.key, o.on]), [['original', false], ['factor', true]], 'factor on');
+  check(paneContent(reduce(qf, { type: 'setMethod', method: 'Horner' })).text === 'Horner math', 'factor sticks across methods');
+  check(paneContent(reduce(qf, { type: 'setView', view: 'c' })).code === 'ours c', 'the C view ignores the form');
+  check(reduce(q, { type: 'setSubOption', key: 'factor' }).form === 'factor' && reduce(qf, { type: 'setSubOption', key: 'original' }).form === 'original',
+        'setSubOption routes original / factor to the form');
+  check(reduce(he, { type: 'setSubOption', key: 'original' }) === he, 'setSubOption ignores the disabled original');
+  check(reduce(q, { type: 'setForm', form: 'original' }) === q && reduce(q, { type: 'setForm', form: 'bogus' }) === q, 'setForm no-ops');
   const cf = run(c, { type: 'setCstyle', cstyle: 'fraction' });
   eq(availableSubOptions(cf).options.map(o => [o.key, o.on, o.enabled]), [['float', false, true], ['fraction', true, true]], 'fraction on for ours');
   eq(paneContent(cf), { kind: 'c', code: 'ours frac' }, 'fraction C for ours');
@@ -397,20 +412,17 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(effectiveCstyle(mf) === 'float' && paneContent(mf).code === 'ours c', 'fraction ignored outside ℚ');
   check(reduce(c, { type: 'setSubOption', key: 'fraction' }).cstyle === 'fraction', 'setSubOption → cstyle in C view');
   check(reduce(cfh, { type: 'setSubOption', key: 'fraction' }) === cfh, 'setSubOption ignores a disabled option');
-  check(reduce(q, { type: 'setSubOption', key: 'original' }) === q && reduce(q, { type: 'setSubOption', key: 'factor' }) === q,
-        'the old form keys are no option (no-op)');
-  const sf = reduce(q, { type: 'setForm', form: 'original' });
-  check(sf === q && !('form' in sf), 'setForm is no action any more (same reference, no form key)');
   const g = reduce(q, { type: 'setView', view: 'graph' });
-  check(reduce(g, { type: 'setSubOption', key: 'decimal' }) === g, 'setSubOption is a no-op without a strip');
+  check(reduce(g, { type: 'setSubOption', key: 'decimal' }) === g && reduce(g, { type: 'setSubOption', key: 'factor' }) === g,
+        'setSubOption is a no-op without a group');
   check(reduce(q, { type: 'setCstyle', cstyle: 'bogus' }) === q && reduce(q, { type: 'setNumfmt', numfmt: 'bogus' }) === q, 'invalid sub-option values ignored');
 }
 
 // ---- readable constants (numfmt) -------------------------------------------
 {
   const q = withResult(inMode('Q'), COUNTED);
-  const strip = subOptionStrips(q)[0];
-  check(strip.kind === 'numfmt' && strip.label === 'constants:', 'constant-format strip on the math row');
+  const strip = subOptionStrips(q)[1];
+  check(strip.kind === 'numfmt' && strip.label === 'constants:', 'constant-format group after the form group');
   eq(strip.options.map(o => [o.key, o.label, o.on, o.enabled]), [['exact', 'exact', true, true], ['decimal', 'decimal', false, true]], 'ℚ defaults to exact');
   check(paneContent(q).text === OURS_PAPER && effectiveNumfmt(q) === 'exact', 'exact shows the chain as produced, in the paper\'s form');
   const d = reduce(q, { type: 'setSubOption', key: 'decimal' });
@@ -418,7 +430,9 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(paneContent(d).text === formatConstants(OURS_PAPER, 'decimal') && paneContent(d).text.includes('x * (x + 3988.19)')
         && paneContent(d).text.includes('0.000198413 * P_7') && /^y\s+= /.test(paneContent(d).text),
         `decimal pane (the readable constants apply to the paper's form): ${paneContent(d).text.split('\n')[0]}`);
-  eq(subOptionStrips(d)[0].options.map(o => o.on), [false, true], 'decimal option on');
+  eq(subOptionStrips(d)[1].options.map(o => o.on), [false, true], 'decimal option on');
+  check(paneContent(reduce(d, { type: 'setForm', form: 'factor' })).text === formatConstants(OURS_TEXT, 'decimal'),
+        'the readable constants apply to the factored list too');
   eq(comparisonTable(d).map(r => [r.mults, r.adds]), comparisonTable(q).map(r => [r.mults, r.adds]), 'counts never change with the display format');
   check(d.result === q.result && selectedRow(d).mathText === OURS_TEXT, 'the underlying chain is untouched');
   check(paneContent(reduce(d, { type: 'setView', view: 'c' })).code === 'ours c', 'the C view ignores numfmt');
@@ -432,11 +446,11 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   // (the hex rendering applies to the shown text — the row's own form)
   const gfr = deepFreeze({ ...RESULT, mathText: 'y = x * x', mathTextOriginal: 'y = (x + 5) * (x + 0x1f3a)\nP = y + 1', fieldId: 'gf64', fieldName: 'GF(2^64)' });
   const g = withResult(inMode('gf64'), gfr);
-  eq(subOptionStrips(g)[0].options.map(o => [o.key, o.label, o.enabled]), [['exact', 'exact', true], ['decimal', 'hex', true]], 'GF(2^k): the readable option is hex');
+  eq(subOptionStrips(g)[1].options.map(o => [o.key, o.label, o.enabled]), [['exact', 'exact', true], ['decimal', 'hex', true]], 'GF(2^k): the readable option is hex');
   check(paneContent(reduce(g, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + 0x5) * (x + 0x1f3a)\nP = y + 0x1', 'hex rendering');
   // Mersenne fields: constants are decimal residues already — the option is offered but disabled
   const p = withResult(inMode('p89'), deepFreeze({ ...RESULT, mathText: 'y = (x + 309485009821345068724781055) * x\nP = y + 5', mathTextOriginal: null, fieldId: 'p89' }));
-  const ps = subOptionStrips(p)[0];
+  const ps = subOptionStrips(p)[1];
   eq(ps.options.map(o => [o.key, o.on, o.enabled]), [['exact', true, true], ['decimal', false, false]], 'Mersenne: decimal disabled');
   check(/decimal residues/.test(ps.options[1].title), 'Mersenne: the disabled option says why');
   const pd = reduce(p, { type: 'setNumfmt', numfmt: 'decimal' });
@@ -444,16 +458,16 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   check(reduce(p, { type: 'setSubOption', key: 'decimal' }) === p, 'setSubOption refuses the disabled option');
   // ℝ: the constants are doubles; 'full' / 'decimal'
   const r = withResult(inMode('R'), deepFreeze({ ...RESULT, mathText: 'y = (x + 0.3333333333333333) * x\nP = y + 1', mathTextOriginal: null, exact: false, fieldId: 'R' }));
-  eq(subOptionStrips(r)[0].options.map(o => o.label), ['full', 'decimal'], 'ℝ labels');
+  eq(subOptionStrips(r)[1].options.map(o => o.label), ['full', 'decimal'], 'ℝ labels');
   check(paneContent(reduce(r, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + 0.333333) * x\nP = y + 1', 'ℝ decimal rendering');
   // ℂ: complex doubles; 'full' / 'decimal', the complex token rounded as one
   const cx = withResult(inMode('C'), deepFreeze({ ...RESULT, mathText: 'y = x * x', mathTextOriginal: 'y = (x + (0.3333333333333333-0.25i)) * x\nP = y + 1', exact: false, fieldId: 'C' }));
-  eq(subOptionStrips(cx)[0].options.map(o => o.label), ['full', 'decimal'], 'ℂ labels');
-  check(/complex-double constants in full/.test(subOptionStrips(cx)[0].options[0].title), 'ℂ full-constants title names complex doubles');
+  eq(subOptionStrips(cx)[1].options.map(o => o.label), ['full', 'decimal'], 'ℂ labels');
+  check(/complex-double constants in full/.test(subOptionStrips(cx)[1].options[0].title), 'ℂ full-constants title names complex doubles');
   check(paneContent(reduce(cx, { type: 'setNumfmt', numfmt: 'decimal' })).text === 'y = (x + (0.333333-0.25i)) * x\nP = y + 1', 'ℂ decimal rendering');
   // a rendering without constants offers nothing to reformat
   const none = withResult(inMode('Q'), deepFreeze({ ...RESULT, mathText: 'y = x * x\nP = y + x' }));
-  check(subOptionStrips(none)[0].options[1].enabled === false && effectiveNumfmt(reduce(none, { type: 'setNumfmt', numfmt: 'decimal' })) === 'exact',
+  check(subOptionStrips(none)[1].options[1].enabled === false && effectiveNumfmt(reduce(none, { type: 'setNumfmt', numfmt: 'decimal' })) === 'exact',
         'decimal disabled when nothing changes');
   // the preference is sticky across methods, views and results
   const back = withResult(run(d, { type: 'setView', view: 'graph' }), COUNTED);
@@ -654,19 +668,19 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
 // ---- URL-hash sharing (hashFromState / stateFromHash) ----------------------
 {
   const s = run(withResult(inMode('gf64')), { type: 'setMethod', method: 'Horner' }, { type: 'setView', view: 'c' },
-                { type: 'setCstyle', cstyle: 'fraction' }, { type: 'setNumfmt', numfmt: 'decimal' });
+                { type: 'setCstyle', cstyle: 'fraction' }, { type: 'setNumfmt', numfmt: 'decimal' }, { type: 'setForm', form: 'factor' });
   const typed = reduce(s, { type: 'setSrc', src: 'x^4 + x + 1' });
   const h = hashFromState(typed);
-  check(h.startsWith('#src=x%5E4') && h.includes('&deg=10') && h.includes('&mode=gf64') && h.includes('&numfmt=decimal') && !h.includes('seed=') && !h.includes('form='),
-        'hash encodes src, mode, the clamped degree and the constant format (seed only when used; no form)');
+  check(h.startsWith('#src=x%5E4') && h.includes('&deg=10') && h.includes('&mode=gf64') && h.includes('&numfmt=decimal') && h.includes('&form=factor') && !h.includes('seed='),
+        'hash encodes src, mode, the clamped degree, the form and the constant format (seed only when used)');
   const r = stateFromHash(initialState, h);
-  eq([r.src, r.mode, r.method, r.view, r.cstyle, r.numfmt, r.exDegree, r.exKey, r.exSeed, r.exMonic],
-     ['x^4 + x + 1', 'gf64', 'Horner', 'c', 'fraction', 'decimal', 10, null, 0, true], 'hash roundtrip restores every shared field');
+  eq([r.src, r.mode, r.method, r.view, r.form, r.cstyle, r.numfmt, r.exDegree, r.exKey, r.exSeed, r.exMonic],
+     ['x^4 + x + 1', 'gf64', 'Horner', 'c', 'factor', 'fraction', 'decimal', 10, null, 0, true], 'hash roundtrip restores every shared field');
   check(!r.busy && r.result === null && r.error === null && r.jobId === 0, 'hash seeds an idle state (the load auto-compile runs on it)');
   check(stateFromHash(initialState, '') === initialState && stateFromHash(initialState, '#') === initialState, 'empty hash → defaults');
   eq(stateFromHash(initialState, '#!!%%&==junk&deg=frog&seed=-1'), initialState, 'junk hash → defaults');
   eq(stateFromHash(initialState, '#mode=klingon&view=x&form=y&cstyle=z&numfmt=w&method='), initialState, 'invalid params ignored');
-  check(!('form' in reduce(withResult(initialState), { type: 'setSubOption', key: 'original' })), 'no path re-introduces a form key');
+  check(stateFromHash(initialState, '#mode=Q&form=original').form === 'original' && initialState.form === 'original', 'form= restores; original is the default');
   check(stateFromHash(initialState, '#mode=Q&deg=99').exDegree === 22, 'deg clamps to the ℚ maximum');
   check(stateFromHash(initialState, '#mode=gf128&deg=14').exDegree === 14 && stateFromHash(initialState, '#mode=gf128&deg=40').exDegree === 26,
         'GF(2^k) deg: even degrees kept, clamped to the largest compiled degree');

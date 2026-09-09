@@ -585,31 +585,56 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check($('#graph') && $('#graph-legend') && $('.graph-pane-wrap #graph') && !$('#graph-scroll-cue'),
         'the graph tab shows the SVG pane and legend (no scroll cue without a layout to measure)');
   $('#view button[data-view="math"]').click(); await settle();
-  check($$('#view-sub .strip').every(st => st.getAttribute('role') === 'group' && st.getAttribute('aria-label')) &&
-        $$('#view-sub button').every(b => b.getAttribute('type') === 'button' && /^(true|false)$/.test(b.getAttribute('aria-pressed'))) &&
-        $('#view-sub button[data-opt="exact"]').getAttribute('aria-pressed') === 'true',
-        'sub-option strips are labelled groups of buttons with aria-pressed');
-  // no form chooser: the only math-view strip is the constant format, and the pane shows the method's own form
-  eq($$('#view-sub .strip').map(st => st.dataset.strip), ['numfmt'], 'the math view has one strip (constants); no form strip');
-  check(!$('#view-sub button[data-opt="factor"]') && !$('#view-sub button[data-opt="original"]'), 'no factor / original buttons');
+  // the display menu: a gear beside the tabs; its dropdown (closed until pressed) holds the form and constants groups
+  const gear = $('#view-sub #view-gear');
+  check(gear && gear.getAttribute('aria-haspopup') === 'menu' && gear.getAttribute('aria-expanded') === 'false' && !$('#view-menu') &&
+        $('#view-sub').children.length === 1, 'the view bar carries a closed gear and nothing else');
+  gear.click(); await settle();
+  check(gear.getAttribute('aria-expanded') === 'true' && $('#view-menu')?.getAttribute('role') === 'menu', 'the gear opens the display menu');
+  check($$('#view-menu .strip').every(st => st.getAttribute('role') === 'group' && st.getAttribute('aria-label') && st.querySelector('.lbl')?.textContent) &&
+        $$('#view-menu button').every(b => b.getAttribute('type') === 'button' && b.getAttribute('role') === 'menuitemradio' &&
+                                           /^(true|false)$/.test(b.getAttribute('aria-checked'))) &&
+        $('#view-menu button[data-opt="exact"]').getAttribute('aria-checked') === 'true',
+        'the menu holds labelled groups of menuitemradio buttons with aria-checked');
+  eq($$('#view-menu .strip').map(st => st.dataset.strip), ['form', 'numfmt'], 'the math view menu has the form and constants groups');
+  eq($$('#view-menu .strip[data-strip="form"] button').map(b => [b.dataset.opt, b.getAttribute('aria-checked'), b.disabled]),
+     [['original', 'true', false], ['factor', 'false', false]], 'the form group: original (on) and factor');
   const shownRow = name => (name === 'ours' ? gfResult : gfResult.comparisons.find(c => c.name === name));
   check($('#methods button.on')?.dataset.m === 'Estrin' && $('#chain').textContent === shownRow('Estrin').mathTextOriginal &&
         $('#chain').textContent !== shownRow('Estrin').mathText, "the math pane shows Estrin's own (tree) form, not the factored list");
+  // a choice closes the menu and switches the pane; the choice sticks across methods
+  $('#view-menu button[data-opt="factor"]').click(); await settle();
+  check(!$('#view-menu') && gear.getAttribute('aria-expanded') === 'false', 'a choice closes the menu');
+  check($('#chain').textContent === shownRow('Estrin').mathText, 'factor shows the one-product-per-line list');
   $('#methods button[data-m="ours"]').click(); await settle();
+  check($('#chain').textContent === gfResult.mathText, 'factor sticks across methods (our factored list)');
+  gear.click(); await settle();
+  check($('#view-menu button[data-opt="factor"]').getAttribute('aria-checked') === 'true' && $('#view-menu button[data-opt="factor"]').classList.contains('on'),
+        'the chosen form is marked in the menu');
+  $('#view-sub').dispatch('keydown', { key: 'Escape' }); await settle();
+  check(!$('#view-menu'), 'Escape closes the menu');
+  gear.click(); await settle();
+  $('#view-menu button[data-opt="original"]').click(); await settle();
   check($('#chain').textContent === gfResult.mathTextOriginal && /^y\s*=/.test($('#chain').textContent),
-        "the math pane shows our chain in the paper's form (appendix letter names)");
+        "back to original: the math pane shows our chain in the paper's form (appendix letter names)");
   $('#methods button[data-m="Horner"]').click(); await settle();
   check($('#chain').textContent === shownRow('Horner').mathTextOriginal, "the math pane shows Horner's nested form");
   $('#methods button[data-m="Estrin"]').click(); await settle();
-  // the constants strip toggles: hex is enabled when the shown text has a constant to reformat, else disabled and inert
-  const hexBtn = $('#view-sub button[data-opt="decimal"]');
+  // the constants group toggles: hex is enabled when the shown text has a constant to reformat, else disabled and inert
+  gear.click(); await settle();
+  const hexBtn = $('#view-menu button[data-opt="decimal"]');
   check(hexBtn && hexBtn.textContent === 'hex', 'GF(2^k): the readable option is hex');
   if (!hexBtn.disabled) {
     hexBtn.click(); await settle();
-    check(hexBtn.classList.contains('on') && hexBtn.getAttribute('aria-pressed') === 'true' &&
-          $('#view-sub button[data-opt="exact"]').getAttribute('aria-pressed') === 'false', 'a sub-option toggles (class and aria-pressed)');
-    $('#view-sub button[data-opt="exact"]').click(); await settle();
-  }
+    gear.click(); await settle();
+    check($('#view-menu button[data-opt="decimal"]').classList.contains('on') && $('#view-menu button[data-opt="decimal"]').getAttribute('aria-checked') === 'true' &&
+          $('#view-menu button[data-opt="exact"]').getAttribute('aria-checked') === 'false', 'a sub-option toggles (class and aria-checked)');
+    $('#view-menu button[data-opt="exact"]').click(); await settle();
+  } else { gear.click(); await settle(); }
+  check(!$('#view-menu'), 'the menu is closed again');
+  $('#view button[data-view="graph"]').click(); await settle();
+  check(!$('#view-sub') && !$('#view-gear'), 'the graph view has no gear');
+  $('#view button[data-view="math"]').click(); await settle();
   $('#share').click(); await settle();
   check(location.hash.startsWith('#src=') && location.hash.includes('mode=gf64') && $('#share').textContent.includes('copied') &&
         shimHistory.entries === 0,
@@ -710,13 +735,16 @@ const replyToLatest = async () => { const r = await replyPart('main'); await rep
   check(shown.includes('−') && copiedText === shown.replace(/−/g, '-').replace(/·/g, '*') && !/[−·]/.test(copiedText),
         'Copy in the math view writes an ASCII minus and asterisk');
   delete globalThis.navigator.clipboard;
-  // phones: no sub-option strip in the math view (the constants strip is presentedState's job) — and no empty container
-  check(!$('#view-sub') && $$('#view-sub .strip').length === 0 && $('.viewbar') && $('#view'),
-        'the phone view bar has no (empty) sub-option element in the math view');
+  // phones: the gear's math-view menu holds the form group only (the constants group is presentedState's job)
+  check($('#view-sub #view-gear') && !$('#view-menu') && $('.viewbar') && $('#view'), 'the phone view bar carries the closed gear');
+  $('#view-gear').click(); await settle();
+  eq($$('#view-menu .strip').map(s => s.dataset.strip), ['form'], 'the phone math-view menu has the form group only');
   $('#view button[data-view="c"]').click(); await settle();
-  eq($$('#view-sub .strip').map(s => s.dataset.strip), ['constants'], 'the ℚ C view keeps its constants strip on phones');
+  check(!$('#view-menu'), 'a view change closes the menu');
+  $('#view-gear').click(); await settle();
+  eq($$('#view-menu .strip').map(s => s.dataset.strip), ['constants'], 'the ℚ C view keeps its constants group on phones');
   $('#view button[data-view="math"]').click(); await settle();
-  check(!$('#view-sub'), 'back in the math view the strip container is gone again');
+  check(!$('#view-menu') && $('#view-gear'), 'back in the math view the menu is closed and the gear stays');
   const msel = $('#method-select'); msel.value = 'Knuth–Eve'; msel.dispatch('change'); await settle();
   check($('#compare tr.on')?.dataset.m === 'Knuth–Eve' && /\d\.\d{2,5}\b/.test($('#chain').textContent) && !/\d\.\d{7,}/.test($('#chain').textContent),
         'the method dropdown selects a method; a numeric row shows six-digit constants on phones');

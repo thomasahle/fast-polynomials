@@ -133,7 +133,7 @@ label.head { display: block; font-weight: 700; }
 }
 .examples .chip:hover { border-color: var(--accent); }
 .examples .chip:focus-visible, .monic-toggle:focus-visible, .degree button:focus-visible,
-.seg button:focus-visible, .views button:focus-visible, .subopts button:focus-visible,
+.seg button:focus-visible, .views button:focus-visible, .subopts .gear:focus-visible,
 button.copy:focus-visible, button.download:focus-visible, button.share:focus-visible,
 button.cancel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .seg button:focus-visible { outline-offset: -2px; }   /* inside the clipped pill group */
@@ -278,16 +278,38 @@ table.cmp td.pending .spinner { margin-left: 0; margin-right: .3em; }
   background: var(--out-bg); border-color: var(--out-border);
   border-bottom: 1px solid var(--out-bg);
 }
-.subopts { display: flex; flex-wrap: wrap; gap: .2rem .9rem; align-items: center; font-size: .82rem; color: var(--muted); padding-bottom: .35rem; }
-.subopts .strip { display: inline-flex; gap: .2rem; align-items: center; }
-.subopts .lbl { margin-right: .3rem; }
-.subopts button {
-  cursor: pointer; padding: .1rem .55rem; border-radius: 999px; border: 1px solid transparent;
-  color: var(--muted); user-select: none; background: none; font: inherit; line-height: inherit;
+/* the display menu: a gear at the right end of the view bar; its dropdown
+   (one labelled radio group per sub-option: form, constants) hangs under it
+   over the pane's top-right corner */
+.subopts { position: relative; display: flex; align-items: center; font-size: .82rem; color: var(--muted); padding-bottom: .35rem; }
+.subopts .gear {
+  display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem;
+  cursor: pointer; border-radius: 999px; border: 1px solid transparent; color: var(--muted);
+  background: none; font: inherit; line-height: 1;
 }
-.subopts button.on { color: var(--accent); border-color: var(--accent); }
-.subopts button:disabled { opacity: .55; cursor: default; }
-.subopts button:not(.on):not(:disabled):hover { color: var(--ink); }
+.subopts .gear:hover, .subopts .gear[aria-expanded="true"] { color: var(--ink); }
+.subopts .gear[aria-expanded="true"] { border-color: var(--border); background: var(--panel); }
+.subopts .menu {
+  position: absolute; top: calc(100% - .1rem); right: 0; z-index: 5; min-width: 11rem;
+  display: flex; flex-direction: column; gap: .5rem; padding: .55rem .6rem;
+  background: var(--panel); border: 1px solid var(--border); border-radius: .5rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+}
+.subopts .strip { display: flex; flex-direction: column; gap: .1rem; }
+.subopts .lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; padding: 0 .35rem .15rem; }
+.subopts .menu button {
+  display: flex; align-items: center; gap: .5rem; text-align: left; width: 100%;
+  cursor: pointer; padding: .22rem .45rem; border-radius: .35rem; border: 1px solid transparent;
+  color: var(--ink); user-select: none; background: none; font: inherit; line-height: inherit;
+}
+.subopts .menu button::before {   /* the radio mark: a ring, filled for the chosen option */
+  content: ""; width: .6rem; height: .6rem; border-radius: 999px; box-sizing: border-box;
+  border: 1.5px solid var(--muted); flex: none;
+}
+.subopts .menu button.on { color: var(--accent); }
+.subopts .menu button.on::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 2px var(--panel); }
+.subopts .menu button:disabled { opacity: .5; cursor: default; }
+.subopts .menu button:not(:disabled):hover, .subopts .menu button:focus-visible { background: var(--accent-soft); outline: none; }
 
 /* the pane wrapper anchors Copy + Download to the pane's top-right corner */
 .pane-wrap { position: relative; }
@@ -485,9 +507,10 @@ button.share:hover { border-color: var(--accent); }
    Header: the title, a short intro and Paper / GitHub ★ n links with the desktop
    icons (the desktop intro and paper card are hidden).  Input card: label +
    three example chips on one line, the auto-growing input, then Field and
-   Method as two dropdowns.  Output card: underline tabs — alone in the math
-   view; the ℚ C view's constants strip (pills only, its caption hidden) sits
-   beside them, and ui.js mounts no strip container otherwise — then a static right-aligned
+   Method as two dropdowns.  Output card: underline tabs with the display-menu
+   gear at the right (the form group in the math view — the constants group is
+   presentedState's job on phones — and the ℚ C view's constants group; ui.js
+   mounts no gear without a group) — then a static right-aligned
    Copy + Share row at the top of the pane — not floating: a floated corner
    covered the end of mid-width equation rows, which do not scroll — and the
    pane body (rows wider than the pane scroll sideways, as in the C and graph
@@ -533,7 +556,7 @@ button.share:hover { border-color: var(--accent); }
   .picker select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .controls > .lbl { flex-basis: 100%; order: -1; margin-left: 0; }   /* busy row etc. */
 
-  /* output card: tabs (+ the C constants strip) on one line, the pane attached below */
+  /* output card: tabs + the display-menu gear on one line, the pane attached below */
   .out-card { padding: 0 0 .85rem; overflow: hidden; }
   .out-card .out { margin-top: 0; }
   .viewbar { padding: .1rem .8rem 0; border-bottom: 1px solid var(--out-border); gap: .1rem .5rem; flex-wrap: nowrap; }
@@ -544,10 +567,9 @@ button.share:hover { border-color: var(--accent); }
     white-space: nowrap;
   }
   .views button.on { background: none; border-color: var(--accent); color: var(--accent); }
-  .subopts { padding: 0 0 .4rem; font-size: .8rem; gap: .2rem .5rem; flex-wrap: nowrap; margin-left: auto; min-width: 0; }
-  .subopts .lbl { display: none; }     /* "float | fraction" is self-explanatory; the room goes to the tabs at 360px */
-  .subopts:empty { display: none; }    /* never a gap beside the tabs (ui.js omits the container anyway) */
-  .subopts button { padding: .28rem .45rem; }
+  .subopts { padding: 0 0 .4rem; font-size: .8rem; margin-left: auto; min-width: 0; }
+  .subopts .gear { width: 2rem; height: 2rem; }      /* a finger-sized target beside the tabs */
+  .subopts .menu button { padding: .35rem .5rem; }
   .pane-wrap { margin: 0; }
   .out-card .chain, .out-card .graph-pane { border-left: 0; border-right: 0; border-radius: 0; }
   /* Copy / Share / Cancel: a static right-aligned row inside the pane, above its body */

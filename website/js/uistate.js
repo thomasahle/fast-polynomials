@@ -4,7 +4,7 @@
 // selectors say, so the controls can never disagree with each other.
 //
 //   state = { mode, src, exDegree, exKey, exSeed, exMonic, busy, jobId, error, result,
-//             prevResult, lateNumeric, cancelled, method, view, cstyle, numfmt }
+//             prevResult, lateNumeric, cancelled, method, view, form, cstyle, numfmt }
 //     mode      a field id from the js/field.js registry ('Q', 'R', 'C', 'p61', 'p89',
 //               'p127', 'gf32', 'gf64', 'gf128'): which field the input is read in
 //     src       textarea contents
@@ -30,10 +30,12 @@
 //               chain of the current input (ui.js dims it and says so) until the
 //               next job starts
 //     method    'ours' | a comparison row name (which chain the output shows)
-//     view      'math' | 'c' | 'graph'  (the math view shows each method in its own
-//                                      form — mathTextOriginal: the paper's gadget rows for
-//                                      ours, Horner's nesting, Estrin's tree, … — and falls
-//                                      back to the one-product-per-line mathText silently)
+//     view      'math' | 'c' | 'graph'
+//     form      'original' | 'factor'  math view: the method's own form (mathTextOriginal:
+//                                      the paper's gadget rows for ours, Horner's nesting,
+//                                      Estrin's tree, …; a row without one falls back to the
+//                                      factored list silently) or the one-product-per-line
+//                                      gate list (mathText)
 //     cstyle    'float' | 'fraction'   C view over ℚ: constant rendering
 //     numfmt    'exact' | 'decimal'    math view: constants as produced, or readable
 //                                      (≈6 significant digits over ℚ/ℝ/ℂ, hex over GF(2^k));
@@ -69,8 +71,8 @@
 //   { type: 'workerError', message } as a failed reply
 //   { type: 'setMethod', method }    ignored unless that method has an ok chain in `result`
 //   { type: 'setView', view }
-//   { type: 'setCstyle', cstyle } / { type: 'setNumfmt', numfmt }
-//   { type: 'setSubOption', key }    routed to the strip showing that key
+//   { type: 'setForm', form } / { type: 'setCstyle', cstyle } / { type: 'setNumfmt', numfmt }
+//   { type: 'setSubOption', key }    routed to the strip (display-menu group) showing that key
 import { Rat } from './rat.js';
 import { REAL_SRC, MAX_PARSE_DEGREE } from './polyparse.js';
 import { DEGREE_CEILING } from './methodlist.js';
@@ -83,6 +85,7 @@ import { referenceFor } from './references.js';
 import { numericMethodsFor, needsNumericWorker, methodNamesFor, MAX_DEGREE } from './methodlist.js';
 
 export const VIEWS = ['math', 'c', 'graph'];
+export const FORMS = ['original', 'factor'];
 export const CSTYLES = ['float', 'fraction'];
 export const NUMFMTS = ['exact', 'decimal'];
 
@@ -503,6 +506,7 @@ export const initialState = Object.freeze({
   cancelled: false,    // the last job was cancelled: the mounted output is stale until the next job
   method: 'ours',
   view: 'math',
+  form: 'original',
   cstyle: 'float',
   numfmt: 'exact',
 });
@@ -689,6 +693,9 @@ export function reduce(state, action) {
     case 'setView':
       if (!VIEWS.includes(action.view) || action.view === state.view) return state;
       return { ...state, view: action.view };
+    case 'setForm':
+      if (!FORMS.includes(action.form) || action.form === state.form) return state;
+      return { ...state, form: action.form };
     case 'setCstyle':
       if (!CSTYLES.includes(action.cstyle) || action.cstyle === state.cstyle) return state;
       return { ...state, cstyle: action.cstyle };
@@ -698,7 +705,8 @@ export function reduce(state, action) {
     case 'setSubOption': {                      // routed to the strip that shows the key
       const strip = subOptionStrips(state).find(st => st.options.some(o => o.key === action.key && o.enabled));
       if (!strip) return state;
-      return strip.kind === 'constants' ? reduce(state, { type: 'setCstyle', cstyle: action.key })
+      return strip.kind === 'form' ? reduce(state, { type: 'setForm', form: action.key })
+        : strip.kind === 'constants' ? reduce(state, { type: 'setCstyle', cstyle: action.key })
         : reduce(state, { type: 'setNumfmt', numfmt: action.key });
     }
     default:
@@ -827,7 +835,7 @@ export function rowOps(row, text = row?.mathTextOriginal || row?.mathText) {
 const withCount = (name, row) => { const o = rowOps(row); return o === null ? name : `${name} (${o.mults + o.scalar})`; };
 
 /** Method chips: [{ key, label, enabled, title, on }] — names with their total
- *  multiplication count (counted on the rendering shown — the method's own form — like the table). */
+ *  multiplication count (counted on the method's own form, like the table). */
 export function methodTabs(state) {
   const r = state.result;
   if (!r) return [];
@@ -845,7 +853,7 @@ export function methodTabs(state) {
  * The comparison table under the output pane, one row per method in worker
  * order (This paper, Horner, Estrin, Rabin–Winograd, Knuth–Eve, Pan; Belaga over ℂ):
  *   [{ key, name, ok, on, mults, scalar, adds, height, exact, exactNote, maxRelError, note }]
- * Counts come from rowOps on each method's own rendering, the text the math view shows (mults = the
+ * Counts come from rowOps on each method's own rendering, the math view's default text (mults = the
  * total, scalar = how many of them are by a constant); a method that did not
  * run has ok: false, null counts and its reason in `note`; a method that ran
  * carries its own note (the worker's description of what it did) there, so
@@ -918,12 +926,13 @@ function numericNote(row, f = null) {
   return err ? `${pre}, ${err[0]}` : pre;
 }
 
-/** Stat tiles for the selected row, counted on the rendering shown, like the
- *  chips and the table: [{ label, value }] (empty when the row has no counts). */
+/** Stat tiles for the selected row, counted on the form actually shown (the
+ *  chips and the table count the method's own form): [{ label, value }]
+ *  (empty when the row has no counts). */
 export function stats(state) {
   const src = selectedRow(state);
   if (!src) return [];
-  const ops = rowOps(src);
+  const ops = rowOps(src, effectiveForm(state) === 'factor' ? src.mathText : src.mathTextOriginal);
   if (ops === null) return [];
   const row = shownRow(state);
   return [
@@ -934,6 +943,13 @@ export function stats(state) {
     { label: 'field', value: state.result.fieldName },
     { label: 'exact', value: (row ? row.exact : state.result.exact ?? true) ? 'yes' : '≈ numeric' },
   ];
+}
+
+/** Form actually shown in the math view: 'original' only for rows with an
+ *  original rendering; the factored list otherwise. */
+export function effectiveForm(state) {
+  const src = selectedRow(state);
+  return state.form === 'original' && src?.mathTextOriginal ? 'original' : 'factor';
 }
 
 /** Constant style actually used in the C view: fractions only over ℚ, and only for rows that have them. */
@@ -954,14 +970,14 @@ export function selectedCSource(state) {
   return { code, style, label: shownRow(state)?.name ?? 'This paper' };
 }
 
-/** The exact math text of the selected row ('' without one): the method's own
- *  form (mathTextOriginal — the paper's gadget rows, Horner's nesting, Estrin's
- *  tree, Rabin–Winograd's splits, Knuth–Eve's peels), or the one-product-per-line
- *  mathText for a row without one. */
+/** The exact math text of the selected row in the effective form ('' without
+ *  one): the method's own form (mathTextOriginal — the paper's gadget rows,
+ *  Horner's nesting, Estrin's tree, Rabin–Winograd's splits, Knuth–Eve's peels)
+ *  or the one-product-per-line mathText. */
 function exactMathText(state) {
   const src = selectedRow(state);
   if (!src) return '';
-  return src.mathTextOriginal || src.mathText || '';
+  return (effectiveForm(state) === 'original' ? src.mathTextOriginal : src.mathText) ?? '';
 }
 
 /** Readable constant style of a field: decimals in characteristic 0, hex bit
@@ -982,8 +998,8 @@ export function effectiveNumfmt(state) {
   return state.numfmt === 'decimal' && state.view === 'math' && selectedRow(state) && readableRendering(state) ? 'decimal' : 'exact';
 }
 
-/** The state the output panes render from.  On phones the constants strip is
- *  hidden, and numeric rows — everything over ℝ / ℂ, and the numerically
+/** The state the output panes render from.  On phones the constants group of
+ *  the display menu is hidden, and numeric rows — everything over ℝ / ℂ, and the numerically
  *  preprocessed methods (Knuth–Eve, Pan) over ℚ — show their constants to six
  *  significant digits (the readable rendering); exact fractions are left alone. */
 export function presentedState(state, { compact = false } = {}) {
@@ -994,20 +1010,30 @@ export function presentedState(state, { compact = false } = {}) {
 }
 
 /**
- * The sub-option strips on the right of the view bar (empty without a result):
- *   [{ kind: 'numfmt' | 'constants', label, options: [{ key, label, on, enabled, title }] }]
- * math view: numfmt (exact / decimal|hex); C view over ℚ: constants
- * (float / fraction).  Option keys are unique across strips.
+ * The sub-option groups of the display menu (the gear on the right of the view
+ * bar; empty without a result):
+ *   [{ kind: 'form' | 'numfmt' | 'constants', label, options: [{ key, label, on, enabled, title }] }]
+ * math view: form (original / factor) and numfmt (exact / decimal|hex); C view
+ * over ℚ: constants (float / fraction).  Option keys are unique across groups.
  */
 export function subOptionStrips(state) {
   const src = selectedRow(state);
   if (!src) return [];
   if (state.view === 'math') {
+    const hasOriginal = !!src.mathTextOriginal;
+    const effF = effectiveForm(state);
     const f = fieldOf(state.mode), style = readableStyle(f);
     const readable = readableRendering(state);
     const effN = effectiveNumfmt(state);
     const dbl = inexactChar0(f);          // ℝ / ℂ: the constants are (complex) doubles already
     return [
+      { kind: 'form', label: 'form:',
+        options: [
+          { key: 'original', label: 'original', on: effF === 'original', enabled: hasOriginal,
+            title: hasOriginal ? 'the method\'s own form: the paper\'s gadget rows, Horner\'s nested form, Estrin\'s tree, …'
+                               : 'no original form for this row (its factored list is shown)' },
+          { key: 'factor', label: 'factor', on: effF === 'factor', enabled: true, title: 'one product per line' },
+        ] },
       { kind: 'numfmt', label: 'constants:',
         options: [
           { key: 'exact', label: dbl ? 'full' : 'exact', on: effN === 'exact', enabled: true,
@@ -1038,7 +1064,7 @@ export function subOptionStrips(state) {
   return [];
 }
 
-/** The first sub-option strip (the constants strip: format in the math view, style in the ℚ C view), or null. */
+/** The first sub-option group (form in the math view, the constants style in the ℚ C view), or null. */
 export const availableSubOptions = state => subOptionStrips(state)[0] ?? null;
 
 /**
@@ -1092,14 +1118,14 @@ export function paneContent(state) {
 // ---- URL-hash sharing ------------------------------------------------------
 
 /** The state as the Share button's URL hash:
- *  #ex=<chip>|src=..&mode=..&method=..&view=..&cstyle=..&numfmt=..&deg=..[&seed=..][&monic=0]
+ *  #ex=<chip>|src=..&mode=..&method=..&view=..&form=..&cstyle=..&numfmt=..&deg=..[&seed=..][&monic=0]
  *  A held example chip is shared by its key (`ex=`, with deg / seed / monic
  *  regenerating it — a full-width key polynomial would be 1.5 kB of src=);
  *  typed text travels verbatim in src=. */
 export const hashFromState = s =>
   (exampleHeld(s) ? `#ex=${encodeURIComponent(s.exKey)}` : `#src=${encodeURIComponent(s.src)}`) +
   `&mode=${s.mode}&method=${encodeURIComponent(s.method)}` +
-  `&view=${s.view}&cstyle=${s.cstyle}&numfmt=${s.numfmt}&deg=${clampDegree(s.mode, s.exDegree)}` +
+  `&view=${s.view}&form=${s.form}&cstyle=${s.cstyle}&numfmt=${s.numfmt}&deg=${clampDegree(s.mode, s.exDegree)}` +
   (s.exSeed ? `&seed=${s.exSeed}` : '') + (s.exMonic ? '' : '&monic=0');
 
 /**
@@ -1141,6 +1167,7 @@ export function stateFromHash(base, hash) {
   if (methodNamesFor(s.mode).includes(method)) s.method = method;
   else if (method) s.method = 'ours';                 // a method the field cannot show
   if (VIEWS.includes(p.get('view'))) s.view = p.get('view');
+  if (FORMS.includes(p.get('form'))) s.form = p.get('form');
   if (CSTYLES.includes(p.get('cstyle'))) s.cstyle = p.get('cstyle');
   if (NUMFMTS.includes(p.get('numfmt'))) s.numfmt = p.get('numfmt');
   return s;

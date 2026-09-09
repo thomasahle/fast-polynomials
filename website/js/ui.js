@@ -592,18 +592,69 @@ function PolyInput({ src, invalid = false, onInput, onKeyDown }) {
 
 // ---- the output: view tabs, pane, comparison table ------------------------
 
-/** View tabs (+ the sub-option strips: constant format in the math view,
- *  constant style in the ℚ C view) attached to the pane.  Phones hide the
- *  math view's constants strip (presentedState decides the format there), so
- *  the strip container is rendered only when a strip is shown — no empty
- *  element beside the tabs.  The math pane shows each method in its own form
- *  (uistate.paneContent); there is no form chooser.  The tabs
+/** The display menu on the right of the view bar: a gear button opening a
+ *  dropdown with one radio group per sub-option strip (uistate.subOptionStrips):
+ *  form (original / factor) and constants (exact / decimal|hex) in the math
+ *  view, the constant style (float / fraction) in the ℚ C view.  A choice
+ *  closes the menu, as do Escape (focus back on the gear), the gear itself and
+ *  a press outside; Up / Down / Home / End move between the enabled items
+ *  (the ARIA menu pattern with menuitemradio items).  Remounted per view by
+ *  its key, so a view change never leaves it open. */
+function DisplayMenu({ groups, dispatch }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null), gearRef = useRef(null);
+  const items = () => [...(rootRef.current?.querySelectorAll('.menu button') ?? [])].filter(b => !b.disabled);
+  useEffect(() => {
+    if (!open) return;
+    items().find(b => b.getAttribute('aria-checked') === 'true')?.focus();
+    const onDoc = e => { if (!rootRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', onDoc);
+    return () => document.removeEventListener('pointerdown', onDoc);
+  }, [open]);
+  const close = () => { setOpen(false); gearRef.current?.focus(); };
+  const onKey = e => {
+    if (!open) return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    const list = items();
+    if (list.length === 0) return;
+    const i = list.indexOf(document.activeElement), n = list.length;
+    const next = e.key === 'ArrowDown' ? list[(i + 1) % n] : e.key === 'ArrowUp' ? list[(i + n - 1) % n]
+      : e.key === 'Home' ? list[0] : e.key === 'End' ? list[n - 1] : null;
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+  };
+  return html`<div class="subopts" id="view-sub" ref=${rootRef} onKeyDown=${onKey}>
+    <button type="button" class="gear" id="view-gear" ref=${gearRef} title="Display options" aria-label="Display options"
+      aria-haspopup="menu" aria-expanded=${open} aria-controls="view-menu" onClick=${() => setOpen(o => !o)}>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </button>
+    ${open && html`<div class="menu" id="view-menu" role="menu" aria-label="Display options">
+      ${groups.map(sub => html`<div class="strip" key=${sub.kind} data-strip=${sub.kind} role="group" aria-label=${sub.label}>
+        <span class="lbl">${sub.label}</span>
+        ${sub.options.map(o => html`<button type="button" key=${o.key} data-opt=${o.key} role="menuitemradio" title=${o.title || null}
+          aria-checked=${!!o.on} disabled=${!o.enabled} class=${o.on ? 'on' : null}
+          onClick=${o.enabled ? () => { dispatch({ type: 'setSubOption', key: o.key }); close(); } : null}>${o.label}</button>`)}
+      </div>`)}
+    </div>`}
+  </div>`;
+}
+
+/** View tabs (+ the display menu: a gear opening the form and constant-format
+ *  groups in the math view, the constant-style group in the ℚ C view)
+ *  attached to the pane.  Phones drop the math view's constants group
+ *  (presentedState decides the format there); the gear is rendered only when
+ *  a group is shown — no empty element beside the tabs.  The tabs
  *  are a complete tab widget: each controls the pane (its tabpanel), only the
  *  selected one is in the Tab order, and Left / Right / Home / End move the
  *  selection and the focus (the roving tabindex of the ARIA tabs pattern).
  *  `shareState` is the state Share links — the un-presented one on phones. */
 function Output({ state, shareState = null, dispatch, compact = false }) {
-  const strips = subOptionStrips(state).filter(sub => !compact || sub.kind !== 'numfmt');
+  const groups = subOptionStrips(state).filter(sub => !compact || sub.kind !== 'numfmt');
   const labels = compact ? VIEW_LABEL_COMPACT : VIEW_LABEL;
   const tabsRef = useRef(null);
   const onTabKey = e => {
@@ -626,14 +677,7 @@ function Output({ state, shareState = null, dispatch, compact = false }) {
           class=${v === state.view ? 'on' : null}
           onClick=${() => dispatch({ type: 'setView', view: v })}>${labels[v]}</button>`)}
       </div>
-      ${strips.length > 0 && html`<div class="subopts" id="view-sub">
-        ${strips.map(sub => html`<span class="strip" key=${sub.kind} data-strip=${sub.kind} role="group" aria-label=${sub.label}>
-          <span class="lbl" aria-hidden="true">${sub.label}</span>
-          ${sub.options.map(o => html`<button type="button" key=${o.key} data-opt=${o.key} title=${o.title || null}
-            aria-pressed=${!!o.on} disabled=${!o.enabled} class=${o.on ? 'on' : null}
-            onClick=${o.enabled ? () => dispatch({ type: 'setSubOption', key: o.key }) : null}>${o.label}</button>`)}
-        </span>`)}
-      </div>`}
+      ${groups.length > 0 && html`<${DisplayMenu} key=${state.view} groups=${groups} dispatch=${dispatch} />`}
     </div>
     <${Pane} content=${paneContent(state)} state=${state} shareState=${shareState} dispatch=${dispatch} compact=${compact} />
   </div>`;

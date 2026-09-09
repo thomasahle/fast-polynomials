@@ -30,10 +30,11 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   `(1/2-3/4i)x` — with the chain constants shown as complex doubles in the canonical token
   `(re±imi)` of `js/tokens.js`: `(0+2i)`, `(-2+1i)`, `(1.5-0.25i)`, real constants as plain
   doubles)
-  → method chips → view tabs attached to the output pane (mathematical — every method
-  in its own form: the paper's gadget rows H₂, Q₇, T⁽¹⁾ … for ours, Horner's nesting,
-  Estrin's tree, Rabin–Winograd's splits, Knuth–Eve's peels; a row without one shows its
-  one-product-per-line text — with exact/decimal (hex) constants, a display-only rewrite ·
+  → method chips → view tabs attached to the output pane, with a gear opening the display
+  menu (mathematical — form: original, every method in its own form: the paper's gadget
+  rows H₂, Q₇, T⁽¹⁾ … for ours, Horner's nesting, Estrin's tree, Rabin–Winograd's splits,
+  Knuth–Eve's peels, a row without one shows its factored text / factor, one product per
+  line — and exact/decimal (hex) constants, a display-only rewrite ·
   C code with float/fraction constants over ℚ, C99 `double complex` over ℂ · graph) → the comparison table (one row
   per method: multiplications with the scalar count, additions, multiplicative depth,
   exact or ≈ numeric; clicking a row selects the method; each method name links to its
@@ -47,7 +48,7 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   Share links and three cards: the input (three example chips beside the label, no degree
   stepper or monic toggle — the page opens on the ℚ e^x example at degree 5, monic, whose
   chain has small constants) with Field / Method dropdowns; the output with underline tabs
-  (the ℚ C view's constants strip beside them), a static right-aligned Copy + Share row above the pane
+  and the display-menu gear beside them (the form group; the ℚ C view's constants group), a static right-aligned Copy + Share row above the pane
   body (no Download; nothing floats over an equation), ℝ / ℂ constants to six
   significant digits, and a stats line (long rows scroll sideways, as in every pane);
   and a collapsed "Compare methods" disclosure.
