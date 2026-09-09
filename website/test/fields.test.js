@@ -389,7 +389,7 @@ const intSrc = n => Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : ((i *
     const p = fieldById(id).prime;
     const r = await handleMessage({ lane: 'char0', src: 'x^5 - x^3 - 2x - 1', fieldMode: id });
     check(!r.oursFailed && /^t = \(x − 1\) \* \(z − 2\)$/m.test(r.mathText) && /^P = t − 3$/m.test(r.mathText), `${id}: signed representatives in the math view\n${r.mathText}`);
-    check(/^w   = \(x − 1\) \* \(z − 2\)$/m.test(r.mathTextOriginal) && /^P_5 = w − 3$/m.test(r.mathTextOriginal), `${id}: … and in the constructions form\n${r.mathTextOriginal}`);
+    check(/^z   = y \* \(y \+ x\) − 2$/m.test(r.mathTextOriginal) && /^P_5 = \(x − 1\) \* z − 3$/m.test(r.mathTextOriginal), `${id}: … and in the constructions form\n${r.mathTextOriginal}`);
     const horner = r.comparisons.find(c => c.name === 'Horner');
     check(horner.ok && /f2 − 1$/m.test(horner.mathText) && /\* x − 2$/m.test(horner.mathTextOriginal), `${id}: Horner row subtracts\n${horner.mathText}\n${horner.mathTextOriginal}`);
     for (const c of r.comparisons.filter(c => c.ok))

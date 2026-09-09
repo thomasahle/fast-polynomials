@@ -42,33 +42,39 @@ export function nameToTex(raw) {
   let sign = '';
   if (name.startsWith('-')) { sign = '-'; name = name.slice(1); }
 
-  // Paper names use both ASCII apostrophes and U+2032 primes (Q_3′, Q_3′′).
+  // Paper names use both ASCII apostrophes and U+2032 primes (Q_3′, Q_3′′); Pan's twin p5* ends in a star
   const primeMatch = /(['′]+)$/.exec(name);
   const primes = primeMatch ? [...primeMatch[1]].length : 0;
   if (primeMatch) name = name.slice(0, primeMatch.index);
+  let star = false;
+  if (name.endsWith('*')) { star = true; name = name.slice(0, -1); }
 
   let superscript = null;
-  let m = /\^(-?\d+)$/.exec(name);
+  let subscript = null;
+  let m = /_\{([^{}]*)\}$/.exec(name);              // T⁽¹⁾_{3,4}: a braced subscript
+  if (m) { subscript = m[1]; name = name.slice(0, m.index); }
+  m = /\^(-?\d+)$/.exec(name);
   if (m) { superscript = m[1]; name = name.slice(0, m.index); }
   else {
-    m = /⁽([⁰¹²³⁴-⁹]+)⁾$/u.exec(name);
-    if (m) { superscript = `(${superscriptDigits(m[1])})`; name = name.slice(0, m.index); }
+    m = /⁽([⁰¹²³⁴-⁹]+)⁾(?=_\d+$|$)/u.exec(name);   // T⁽¹⁾ or T⁽¹⁾_15: the superscript before a subscript
+    if (m) { superscript = `(${superscriptDigits(m[1])})`; name = name.slice(0, m.index) + name.slice(m.index + m[0].length); }
   }
 
-  let subscript = null;
-  m = /_(\d+)$/.exec(name);
-  if (m) { subscript = m[1]; name = name.slice(0, m.index); }
-  else {
-    m = /^(x)(\d+)$/.exec(name);
-    if (m) { superscript ??= m[2]; name = m[1]; }
+  if (subscript === null) {
+    m = /_(\d+)$/.exec(name);
+    if (m) { subscript = m[1]; name = name.slice(0, m.index); }
     else {
-      m = /^(.+?)(\d+)$/.exec(name);
-      if (m) { subscript = m[2]; name = m[1]; }
+      m = /^(x)(\d+)$/.exec(name);
+      if (m) { superscript ??= m[2]; name = m[1]; }
+      else {
+        m = /^(.+?)(\d+)$/.exec(name);
+        if (m) { subscript = m[2]; name = m[1]; }
+      }
     }
   }
 
-  const hasTilde = name.includes('\u0303');
-  name = name.replace(/\u0303/g, '');
+  const hasTilde = name.includes('\u0303'), hasHat = name.includes('\u0302'), hasBar = name.includes('\u0304');
+  name = name.replace(/[\u0303\u0302\u0304]/g, '');
   let base = GREEK.get(name);
   if (!base) {
     if (/^[A-Za-z]$/.test(name)) base = name;
@@ -76,8 +82,10 @@ export function nameToTex(raw) {
     else base = `\\mathrm{${escapeTexText(name)}}`;
   }
   if (hasTilde) base = `\\widetilde{${base}}`;
+  if (hasHat) base = `\\widehat{${base}}`;
+  if (hasBar) base = `\\bar{${base}}`;
   if (subscript !== null) base += `_{${subscript}}`;
-  const superTex = (superscript !== null ? superscript : '') + '\\prime'.repeat(primes);
+  const superTex = (superscript !== null ? superscript : '') + (star ? '*' : '') + '\\prime'.repeat(primes);
   if (superTex) base += `^{${superTex}}`;
   return sign + base;
 }

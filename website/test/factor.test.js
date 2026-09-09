@@ -30,7 +30,7 @@ function evalLines(lines, F, x, lit) {
   for (const l of lines) env[l.lhs] = ev(parseRhs(l.rhs));
   return env[lines[lines.length - 1].lhs];
 }
-const PURE = /^\w+ = \([^()]*\) \* \([^()]*\)$/;   // pure product, NO nested brackets inside factors
+const PURE = /^\S+ = \([^()]*\) \* \([^()]*\)$/;   // pure product, NO nested brackets inside factors (row names may carry a prime: p5′)
 const FLAT_FINAL = /^[^()]*$/;                          // final affine row: no parentheses at all
 let fails = 0, checked = 0;
 const litQ = s => { const [a, b] = s.split('/'); return new Rat(BigInt(a), b ? BigInt(b) : 1n); };

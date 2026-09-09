@@ -28,6 +28,20 @@ const loadCore = () => (corePromise ??= import('./char0/core.js').catch(() => {
     'or reload in a bit.');
 }));
 
+/** The paper-notation rows of a chain as text, followed by the leading-coefficient
+ *  scale row of a non-monic input (`P = c * P_n   (leading-coefficient scale)`). */
+function paperFormText(F, chain, scaleStep, core) {
+  if (!chain.paper_rows?.length) return renderConstructionsForm(F, chain, scaleStep);
+  const rows = chain.paper_rows;
+  let text = core.render_paper_rows(rows, c => F.toDisplay(c));
+  if (scaleStep) {
+    const last = rows[rows.length - 1].lhs;
+    const w = Math.max(...rows.map(r => r.lhs.length), 1);
+    text += `\n${'P'.padEnd(w)} = ${scaleStep.rhs.replace('P̃', last)}`;
+  }
+  return text;
+}
+
 export async function compileChar0(src, fieldMode = 'Q') {
   const core = await loadCore();
   const fd = fieldById(fieldMode === 'p' ? 'p89' : fieldMode);
@@ -141,7 +155,9 @@ export async function compileChar0(src, fieldMode = 'Q') {
   result.maxRelError = maxRelError;
   result.mathText = factoredText(result, fd.make());   // the factor form: letter names (y, z, t, …) as in the C and the graph, the scale step folded
   result.linesPaper = scaleStep ? [...linesPaper, scaleStep] : linesPaper;
-  result.mathTextOriginal = renderConstructionsForm(F, chain, scaleStep);  // rows as in sections/constructions
+  // rows as in sections/constructions, in the paper's notation (the chain builder's
+  // paper trace); the older gate-based rendering is the fallback for a chain without one
+  result.mathTextOriginal = paperFormText(F, chain, scaleStep, core);
   // C rendering is optional: over Q / R the exact chain constants can exceed the
   // double range, in which case the math/graph views must survive without it;
   // result.cMissing then says why (the UI shows it in place of the C).

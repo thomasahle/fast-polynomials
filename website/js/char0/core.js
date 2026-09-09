@@ -390,6 +390,113 @@ class ChainBuilder {
     // PolynomialChain.gate_labels).  Purely a display aid — never affects
     // the emitted gates.
     this.label_stack = [];
+    // JS-only paper trace: the rows of sections/constructions in the paper's
+    // own notation (H_2, H̃_4, U_1, Q_7, T⁽¹⁾_{k,D}, S⁽¹⁾_2, P_n …), recorded by
+    // the emitters through prow() as they build the chain.  Display only.
+    this.paper = { rows: [], names: new Map(), taken: new Set() };
+  }
+
+  // ---- paper trace ----------------------------------------------------------
+  _puniq(name) {
+    let nm = name;
+    while (this.paper.taken.has(nm)) nm += '′';
+    this.paper.taken.add(nm);
+    return nm;
+  }
+  // Register the AffineForm object `form` under the paper name `name` (made
+  // unique with primes); later rows print the form by that name.
+  pname(form, name) {
+    const nm = this._puniq(name);
+    this.paper.names.set(form, nm);
+    return nm;
+  }
+  // Express `form` through the registered names.  A registered form is its
+  // own name.  Otherwise named forms are subtracted greedily: a candidate
+  // applies when its product wires all occur in the remainder with one common
+  // integer multiple (x and the constant are free); at each step the
+  // candidate leaving the fewest terms wins, ties going to `prefer` (in
+  // order), then to the earliest registered form (a base H_k before its
+  // twin H̃_k).  What remains is x and a constant.
+  // Returns terms [{ neg, coef, text }] / [{ neg, coef: 1, c }].
+  pshow(form, prefer = []) {
+    const field = this.field;
+    if (this.paper.names.has(form)) return [{ neg: false, coef: 1, text: this.paper.names.get(form) }];
+    let F = { const: form.const, terms: new Map(form.terms) };
+    const out = [];
+    const seen = new Set();
+    const cands = [];
+    const gateWires = f => [...f.terms.keys()].filter(w => w >= 2);
+    const usable = f => f && this.paper.names.has(f) && gateWires(f).length > 0;
+    for (const f of prefer) if (usable(f) && !seen.has(f)) { seen.add(f); cands.push(f); }
+    for (const f of this.paper.names.keys()) if (usable(f) && !seen.has(f)) { seen.add(f); cands.push(f); }
+    const size = G => G.terms.size + (field.is_zero(G.const) ? 0 : 1);
+    const apply = (G, cand, c) => {
+      const terms = new Map(G.terms);
+      for (const [w, k] of cand.terms) {
+        const v = (terms.get(w) ?? 0) - c * k;
+        if (v) terms.set(w, v); else terms.delete(w);
+      }
+      return { const: field.sub(G.const, _field_mul_int(field, cand.const, c)), terms };
+    };
+    for (;;) {
+      if (!gateWires(F).length) break;
+      let best = null;
+      for (const cand of cands) {
+        let c = null, ok = true;
+        for (const w of gateWires(cand)) {
+          const f = F.terms.get(w), k = cand.terms.get(w);
+          if (f === undefined || f % k !== 0) { ok = false; break; }
+          const q = f / k;
+          if (c === null) c = q; else if (q !== c) { ok = false; break; }
+        }
+        if (!ok || c === null || c === 0) continue;
+        const G = apply(F, cand, c);
+        if (best === null || size(G) < best.size) best = { cand, c, G, size: size(G) };
+      }
+      if (best === null) break;
+      F = best.G;
+      out.push({ neg: best.c < 0, coef: Math.abs(best.c), text: this.paper.names.get(best.cand) });
+    }
+    // named terms in registration order (a base power before its corrections), then x, then the constant
+    const order = [...this.paper.names.values()];
+    out.sort((a, b) => order.indexOf(a.text) - order.indexOf(b.text));
+    for (const [w, k] of F.terms) out.push({ neg: k < 0, coef: Math.abs(k), text: w === 1 ? 'x' : `y${w - 2}` });
+    if (!field.is_zero(F.const)) out.push({ neg: false, coef: 1, c: F.const });
+    return out;
+  }
+  // A sum written part by part, as the paper writes it: `parts` is an array of
+  // AffineForms, { c } constants, or ['-', item] for a subtracted item.
+  pparts(parts, prefer = []) {
+    const out = [];
+    for (let item of parts) {
+      let neg = false;
+      if (Array.isArray(item)) { neg = item[0] === '-'; item = item[1]; }
+      if (item && item.c !== undefined) { if (!this.field.is_zero(item.c)) out.push({ neg, coef: 1, c: item.c }); continue; }
+      for (const t of this.pshow(item, prefer)) out.push({ ...t, neg: t.neg !== neg });
+    }
+    return out;
+  }
+  // Record a row `name = …` for `form` and register the name.  With `spec`
+  // = { L, R, prod } the row is the product `(L) * (R)` plus whatever `form`
+  // adds to the product wire `prod`; without it the row is the affine form
+  // itself.  Forms are printed through pshow (opts.prefer names first).  A form
+  // without a product wire (x + α) is printed inline wherever it occurs, so
+  // it gets no row unless opts.force.
+  prow(name, form, spec = null, opts = {}) {
+    const prefer = opts.prefer ?? [];
+    const hasGate = [...form.terms.keys()].some(w => w >= 2);
+    if (!hasGate && !opts.force) return null;
+    let rhs;
+    const show = f => (Array.isArray(f) ? this.pparts(f, prefer) : this.pshow(f, prefer));
+    if (spec) {
+      const rest = form.sub(spec.prod, this.field);
+      rhs = { L: show(spec.L), R: show(spec.R), tail: spec.tail ? show(spec.tail) : this.pshow(rest, prefer) };
+    } else rhs = { sum: show(opts.parts ?? form) };
+    // an alias row (`S⁽¹⁾_1 = H_4`, opts.alias) documents the paper's name for a
+    // form that keeps its own name in later rows
+    const nm = opts.alias ? this._puniq(name) : this.pname(form, name);
+    this.paper.rows.push({ lhs: nm, rhs });
+    return nm;
   }
 
   // JS-only. Enter a gadget scope: gates emitted until the matching popLabel
@@ -456,7 +563,7 @@ class ChainBuilder {
 
   // py: tools/poly_schedule.py:415
   finalize(output) {
-    return new PolynomialChain(
+    const chain = new PolynomialChain(
       this.wire_names.slice(),
       this.gates.slice(),
       output,
@@ -464,7 +571,34 @@ class ChainBuilder {
       this.gates.map((g) => g.label ?? null),
       this.gates.map((g) => (g.label_path ?? []).slice())
     );
+    chain.paper_rows = this.paper.rows.slice();   // JS-only: the paper-notation rows
+    return chain;
   }
+}
+
+// JS-only.  Text of the paper-notation rows recorded by ChainBuilder.prow:
+// `lhs = rhs` lines, lhs padded, constants through `disp` (the lane's display
+// rule), integer multiples as k·name, the site's ' − ' for subtraction.
+function render_paper_rows(rows, disp) {
+  const term = t => {
+    if (t.c !== undefined) {
+      const d = disp(t.c);
+      return d.startsWith('-') ? { neg: !t.neg, s: d.slice(1) } : { neg: t.neg, s: d };
+    }
+    return { neg: t.neg, s: t.coef === 1 ? t.text : `${t.coef}·${t.text}` };
+  };
+  const sum = terms => {
+    if (!terms.length) return '0';
+    return terms.map(term).map((t, i) => (i === 0 ? (t.neg ? `-${t.s}` : t.s) : `${t.neg ? ' − ' : ' + '}${t.s}`)).join('');
+  };
+  const factor = terms => {
+    const s = sum(terms);
+    return terms.length === 1 && !term(terms[0]).neg ? s : `(${s})`;
+  };
+  const rhs = r => (r.sum ? sum(r.sum)
+    : `${factor(r.L)} * ${factor(r.R)}${r.tail.length ? (sum(r.tail).startsWith('-') ? ` − ${sum(r.tail).slice(1)}` : ` + ${sum(r.tail)}`) : ''}`);
+  const w = Math.max(0, ...rows.map(r => r.lhs.length));
+  return rows.map(r => `${r.lhs.padEnd(w)} = ${rhs(r.rhs)}`).join('\n');
 }
 
 // py: tools/poly_schedule.py:548
@@ -3764,9 +3898,11 @@ function _paper_square_diff(builder, A, B, name = null) {
 function _paper_H2(builder, alpha0, alpha1) {
   const field = builder.field;
   const x = builder.x;
-  const t = builder.withLabel('H_2 base', () =>
-    builder.mul(x.add_const(field.coerce(alpha1), field), x));
-  return t.add_const(field.coerce(alpha0), field);
+  const L = x.add_const(field.coerce(alpha1), field);
+  const t = builder.withLabel('H_2 base', () => builder.mul(L, x));
+  const H2 = t.add_const(field.coerce(alpha0), field);
+  builder.prow('H_2', H2, { L, R: x, prod: t });
+  return H2;
 }
 
 // py: tools/poly_schedule.py:443
@@ -3779,9 +3915,11 @@ function _paper_q3(builder, alpha0, alpha1, alpha2, H2) {
   const a0 = field.coerce(alpha0);
   const a1 = field.coerce(alpha1);
   const a2 = field.coerce(alpha2);
-  const t = builder.withLabel('Q_3 known-power block', () =>
-    builder.mul(x.add_const(a2, field), H2.add_const(a1, field)));
-  return t.add_const(a0, field);
+  const L = x.add_const(a2, field), R = H2.add_const(a1, field);
+  const t = builder.withLabel('Q_3 known-power block', () => builder.mul(L, R));
+  const Q3 = t.add_const(a0, field);
+  builder.prow('Q_3', Q3, { L, R, prod: t }, { prefer: [H2] });
+  return Q3;
 }
 
 // py: tools/poly_schedule.py:459
@@ -3806,10 +3944,17 @@ function _paper_P5(builder, alpha) {
   const x = builder.x;
   builder.pushLabel('P_5 base');
   const x2 = builder.mul(x, x);
-  const z = builder.mul(x2.add_const(a4, field), x2.add(x, field).add_const(a3, field));
-  const w = builder.mul(x.add_const(a2, field), z.add_const(a1, field));
+  builder.prow('y', x2, { L: x, R: x, prod: x2 });
+  const zL = x2.add_const(a4, field), zR = x2.add(x, field).add_const(a3, field);
+  const zp = builder.mul(zL, zR);
+  const z = zp.add_const(a1, field);
+  builder.prow('z', z, { L: zL, R: zR, prod: zp });
+  const wL = x.add_const(a2, field);
+  const w = builder.mul(wL, z);
   builder.popLabel();
-  return w.add_const(a0, field);
+  const P5 = w.add_const(a0, field);
+  builder.prow('P_5', P5, { L: wL, R: z, prod: w });
+  return P5;
 }
 
 // py: tools/poly_schedule.py:482
@@ -3833,12 +3978,22 @@ function _paper_P7(builder, alpha) {
   const x = builder.x;
 
   builder.pushLabel('P_7 base');
-  const y = builder.mul(x, x.add_const(alpha[6], field));
-  const z = builder.mul(x.add(y, field).add_const(alpha[5], field), x.add_const(alpha[4], field));
-  const w = builder.mul(z.add_const(alpha[3], field), x);
-  const v = builder.mul(x.add(z, field).add_const(alpha[2], field), w.add_const(alpha[1], field));
+  const yR = x.add_const(alpha[6], field);
+  const y = builder.mul(x, yR);
+  builder.prow('y', y, { L: x, R: yR, prod: y });
+  const zL = x.add(y, field).add_const(alpha[5], field), zR = x.add_const(alpha[4], field);
+  const z = builder.mul(zL, zR);
+  builder.prow('z', z, { L: zL, R: zR, prod: z });
+  const wL = z.add_const(alpha[3], field);
+  const w = builder.mul(wL, x);
+  builder.prow('w', w, { L: wL, R: x, prod: w });
+  const vL = x.add(z, field).add_const(alpha[2], field), vR = w.add_const(alpha[1], field);
+  const v = builder.mul(vL, vR);
+  builder.prow('v', v, { L: vL, R: vR, prod: v });
   builder.popLabel();
-  return y.add(w, field).add(v, field).add_const(alpha[0], field);
+  const P7 = y.add(w, field).add(v, field).add_const(alpha[0], field);
+  builder.prow('P_7', P7, null, { prefer: [y, w, v] });
+  return P7;
 }
 
 // py: tools/poly_schedule.py:580
@@ -3949,8 +4104,9 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
       } else {
         const t_plus = Hs[1].add(x.add_const(a1, field), field);
         const t_minus = Hs[1].sub(x.add_const(a1, field), field);
-        H4 = builder.withLabel('H_4 known power', () => builder.mul(t_plus, t_minus))
-          .add_const(a0, field);
+        const h4p = builder.withLabel('H_4 known power', () => builder.mul(t_plus, t_minus));
+        H4 = h4p.add_const(a0, field);
+        builder.prow('H_4', H4, { L: [Hs[1], x.add_const(a1, field)], R: [Hs[1], ['-', x.add_const(a1, field)]], prod: h4p }, { prefer: [Hs[1]] });
         if (!can_fast_shift) {
           throw new Error('The shared l=1 base requires tilde_H2-H2 to be scalar');
         }
@@ -3958,6 +4114,7 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
         // scalar shift of the first quartic, so no second product is
         // needed.
         tilde_H4 = H4.add(delta, field);
+        builder.prow('H̃_4', tilde_H4, null, { prefer: [H4] });
       }
       const Hs_next = Hs.slice();
       if (Hs_next.length <= 2) {
@@ -3973,25 +4130,31 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
     const q_lo = _paper_Q_known_powers(builder, l - 1, tail.slice(1, half), Hs.slice(0, l - 1));
 
     const S1_1 = Hs[l - 1].add(q_hi, field);
+    builder.prow('U_1', S1_1, null, { prefer: [Hs[l - 1], q_hi] });
     const S1_2 = q_lo;
+    builder.prow('V_1', S1_2);
     let H_next;
     if (is_char2) {
       // Char-2 replacement: H_next = H * (H + S1_1) + S1_2.
       H_next = builder.mul(Hs[l], Hs[l].add(S1_1, field)).add(S1_2, field);
     } else {
-      H_next = builder.withLabel(`H_${1 << (l + 1)} known power`, () =>
-        builder.mul(Hs[l].add(S1_1, field), Hs[l].sub(S1_1, field))).add(S1_2, field);
+      const L = Hs[l].add(S1_1, field), R = Hs[l].sub(S1_1, field);
+      const hp = builder.withLabel(`H_${1 << (l + 1)} known power`, () => builder.mul(L, R));
+      H_next = hp.add(S1_2, field);
+      builder.prow(`H_${1 << (l + 1)}`, H_next, { L: [Hs[l], S1_1], R: [Hs[l], ['-', S1_1]], prod: hp }, { prefer: [Hs[l], S1_1, S1_2] });
     }
 
     const S2_1 = Hs[l - 1].add_const(tail[half], field);
+    builder.prow('U_2', S2_1, null, { prefer: [Hs[l - 1]] });
     const S2_2 = tail[0];
     let tilde_next;
     if (is_char2) {
       tilde_next = builder.mul(tilde_H_2l, tilde_H_2l.add(S2_1, field)).add_const(S2_2, field);
     } else {
-      tilde_next = builder.withLabel(`H̃_${1 << (l + 1)} shifted power`, () => builder
-        .mul(tilde_H_2l.add(S2_1, field), tilde_H_2l.sub(S2_1, field)))
-        .add_const(S2_2, field);
+      const L = tilde_H_2l.add(S2_1, field), R = tilde_H_2l.sub(S2_1, field);
+      const hp = builder.withLabel(`H̃_${1 << (l + 1)} shifted power`, () => builder.mul(L, R));
+      tilde_next = hp.add_const(S2_2, field);
+      builder.prow(`H̃_${1 << (l + 1)}`, tilde_next, { L: [tilde_H_2l, S2_1], R: [tilde_H_2l, ['-', S2_1]], prod: hp }, { prefer: [tilde_H_2l, S2_1] });
     }
 
     const Hs_next = Hs.slice();
@@ -4031,10 +4194,13 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
     //   S1_2 = x + s1_2_shift
     //   S1_3 = s1_3
     const S1_1 = Hs[1].add(builder.x.add_const(s1_1_shift, field), field);
+    builder.prow('U_1', S1_1, null, { prefer: [Hs[1]] });
     const core = Hs[2].add(S1_1, field);
     const S1_2 = builder.x.add_const(s1_2_shift, field);
-    const H8 = builder.withLabel('H_8 known power', () =>
-      builder.mul(core.add(S1_2, field), core.sub(S1_2, field))).add_const(s1_3, field);
+    const h8L = core.add(S1_2, field), h8R = core.sub(S1_2, field);
+    const h8p = builder.withLabel('H_8 known power', () => builder.mul(h8L, h8R));
+    const H8 = h8p.add_const(s1_3, field);
+    builder.prow('H_8', H8, { L: [Hs[2], S1_1, S1_2], R: [Hs[2], S1_1, ['-', S1_2]], prod: h8p }, { prefer: [Hs[2], S1_1] });
 
     const Hs_next = Hs.slice();
     if (Hs_next.length <= 3) {
@@ -4051,6 +4217,7 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
     }
     const S2_1 = S1_1.sub(rho, field);
     const tilde_H8 = H8.add_const(next_shift, field);
+    builder.prow('H̃_8', tilde_H8, null, { prefer: [H8] });
 
     const [T1_rec, T2_rec, Hs_out, tilde_out] = _paper_T(builder, m, l + 1, mid, Hs_next, tilde_H8);
 
@@ -4059,11 +4226,17 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
 
     // (H4 - (k-1)S1_1) * T1_rec + Q3
     const factor1 = Hs[2].sub(_affine_scale_int(field, S1_1, k - 1), field);
-    const T1 = builder.mul(factor1, T1_rec).add(q3, field);
+    builder.prow('F_1', factor1, null, { prefer: [Hs[2], S1_1] });
+    const t1p = builder.mul(factor1, T1_rec);
+    const T1 = t1p.add(q3, field);
+    builder.prow(`T⁽¹⁾_{${k},4}`, T1, { L: factor1, R: T1_rec, prod: t1p }, { prefer: [factor1, T1_rec, q3] });
 
     // (tilde_H4 - (k-1)S2_1) * T2_rec + α0
     const factor2 = tilde_H_2l.sub(_affine_scale_int(field, S2_1, k - 1), field);
-    const T2 = builder.mul(factor2, T2_rec).add_const(head[0], field);
+    builder.prow('F_2', factor2, null, { prefer: [factor1] });
+    const t2p = builder.mul(factor2, T2_rec);
+    const T2 = t2p.add_const(head[0], field);
+    builder.prow(`T⁽²⁾_{${k},4}`, T2, { L: factor2, R: T2_rec, prod: t2p }, { prefer: [factor2, T2_rec] });
     return [T1, T2, Hs_out, tilde_out];
   }
 
@@ -4083,22 +4256,31 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
   // H_{2^{l+1}} = ((H_{2^l} + S1_1) + S1_2) * ((H_{2^l} + S1_1) - S1_2) + S1_3
   const q_hi = _paper_Q_known_powers(builder, l - 1, tail.slice(half + 1), Hs.slice(0, l - 1));
   const S1_1 = Hs[l - 1].add(q_hi, field);
+  builder.prow('U_1', S1_1, null, { prefer: [Hs[l - 1], q_hi] });
 
   const q_mid = _paper_Q_known_powers(builder, l - 2, tail.slice(quarter + 1, half), Hs.slice(0, l - 2));
   const S1_2 = Hs[l - 2].add(q_mid, field);
+  builder.prow('V_1', S1_2, null, { prefer: [Hs[l - 2], q_mid] });
 
   const S1_3 = _paper_Q_known_powers(builder, l - 2, tail.slice(1, quarter), Hs.slice(0, l - 2));
+  builder.prow('W_1', S1_3);
 
   const base = Hs[l].add(S1_1, field);
-  const H_next = builder.withLabel(`H_${1 << (l + 1)} known power`, () =>
-    builder.mul(base.add(S1_2, field), base.sub(S1_2, field))).add(S1_3, field);
+  const hL = base.add(S1_2, field), hR = base.sub(S1_2, field);
+  const hp = builder.withLabel(`H_${1 << (l + 1)} known power`, () => builder.mul(hL, hR));
+  const H_next = hp.add(S1_3, field);
+  builder.prow(`H_${1 << (l + 1)}`, H_next, { L: [Hs[l], S1_1, S1_2], R: [Hs[l], S1_1, ['-', S1_2]], prod: hp }, { prefer: [Hs[l], S1_1, S1_2, S1_3] });
 
   const S2_1 = Hs[l - 1].add_const(tail[half], field);
+  builder.prow('U_2', S2_1, null, { prefer: [Hs[l - 1]] });
   const S2_2 = Hs[l - 2].add_const(tail[quarter], field);
+  builder.prow('V_2', S2_2, null, { prefer: [Hs[l - 2]] });
   const S2_3 = tail[0];
   const base2 = tilde_H_2l.add(S2_1, field);
-  const tilde_next = builder.withLabel(`H̃_${1 << (l + 1)} shifted power`, () =>
-    builder.mul(base2.add(S2_2, field), base2.sub(S2_2, field))).add_const(S2_3, field);
+  const tL = base2.add(S2_2, field), tR = base2.sub(S2_2, field);
+  const tp = builder.withLabel(`H̃_${1 << (l + 1)} shifted power`, () => builder.mul(tL, tR));
+  const tilde_next = tp.add_const(S2_3, field);
+  builder.prow(`H̃_${1 << (l + 1)}`, tilde_next, { L: [tilde_H_2l, S2_1, S2_2], R: [tilde_H_2l, S2_1, ['-', S2_2]], prod: tp }, { prefer: [tilde_H_2l, S2_1, S2_2] });
 
   const Hs_next = Hs.slice();
   if (Hs_next.length <= l + 1) {
@@ -4110,10 +4292,14 @@ function _paper_T_impl(builder, k, l, alpha, Hs, tilde_H_2l) {
 
   const q_low = _paper_Q_known_powers(builder, l, head.slice(1), Hs.slice(0, l));
   const factor1 = Hs[l].sub(_affine_scale_int(field, S1_1, k - 1), field);
-  const T1 = builder.mul(factor1, T1_rec).add(q_low, field);
+  const t1p = builder.mul(factor1, T1_rec);
+  const T1 = t1p.add(q_low, field);
+  builder.prow(`T⁽¹⁾_{${k},${block}}`, T1, { L: factor1, R: T1_rec, prod: t1p }, { prefer: [Hs[l], S1_1, T1_rec, q_low] });
 
   const factor2 = tilde_H_2l.sub(_affine_scale_int(field, S2_1, k - 1), field);
-  const T2 = builder.mul(factor2, T2_rec).add_const(head[0], field);
+  const t2p = builder.mul(factor2, T2_rec);
+  const T2 = t2p.add_const(head[0], field);
+  builder.prow(`T⁽²⁾_{${k},${block}}`, T2, { L: factor2, R: T2_rec, prod: t2p }, { prefer: [tilde_H_2l, S2_1, T2_rec] });
   return [T1, T2, Hs_out, tilde_out];
 }
 
@@ -4161,9 +4347,11 @@ function _paper_QO(builder, deg, alpha, Hs) {
   const U = _paper_QO(builder, ud, alpha.slice(0, ud), Hs);
   const W = _paper_QO(builder, w, alpha.slice(ud, ud + w), Hs);
   const B = _paper_QO(builder, w, alpha.slice(ud + w), Hs);
-  return builder.mark_value(
-    builder.withLabel(`Q_${deg} peeled block`, () => builder.mul(Hs[t - 1].add(U, field), W))
-      .add(B, field));
+  const L = Hs[t - 1].add(U, field);
+  const qp = builder.withLabel(`Q_${deg} peeled block`, () => builder.mul(L, W));
+  const Q = qp.add(B, field);
+  builder.prow(`Q_${deg}`, Q, { L: [Hs[t - 1], U], R: W, prod: qp, tail: [B] }, { prefer: [Hs[t - 1], U, W, B] });
+  return builder.mark_value(Q);
 }
 
 // py: tools/poly_schedule.py:1843
@@ -4203,7 +4391,7 @@ function _paper_Q_for_odd_degree_with_powers(builder, deg, alpha, Hs) {
 //
 // Output:
 //   - A_{2^l} = (x + β0) A^{(1)}_{2^l} + A^{(2)}_{2^l}
-function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs) {
+function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs, outName = null) {
   const field = builder.field;
   if (l < 0) {
     throw new Error('A_fill requires l >= 0');
@@ -4231,18 +4419,26 @@ function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs) {
     }
     if (l_ === 1) {
       // A^{(1)}_2 = (H2 + β1) S1 + α1
-      const t = builder.mul(Hs[1].add_const(beta[1], field), S1);
-      return t.add_const(alpha[1], field);
+      const L = Hs[1].add_const(beta[1], field);
+      const t = builder.mul(L, S1);
+      const A = t.add_const(alpha[1], field);
+      builder.prow('A⁽¹⁾_2', A, { L: [Hs[1], { c: beta[1] }], R: S1, prod: t }, { prefer: [Hs[1], S1] });
+      return A;
     }
 
     if (l_ === 2) {
       // S^{(1)}_2 = (H4 + β3) S^{(1)}_4 + Q_3[α3,α4,α5](x,H2)
       const q3 = _paper_q3(builder, alpha[3], alpha[4], alpha[5], Hs[1]);
-      const t = builder.mul(Hs[2].add_const(beta[3], field), S1);
+      const L = Hs[2].add_const(beta[3], field);
+      const t = builder.mul(L, S1);
       const S1_2 = t.add(q3, field);
+      builder.prow('S⁽¹⁾_2', S1_2, { L: [Hs[2], { c: beta[3] }], R: S1, prod: t, tail: [q3] }, { prefer: [Hs[2], S1, q3] });
       // A^{(1)}_4 = A^{(1)}_2[α0,α1,β2,β1](S^{(1)}_2,(x,H2))
-      const t2 = builder.mul(Hs[1].add_const(beta[1], field), S1_2);
-      return t2.add_const(alpha[1], field);
+      const L2 = Hs[1].add_const(beta[1], field);
+      const t2 = builder.mul(L2, S1_2);
+      const A = t2.add_const(alpha[1], field);
+      builder.prow('A⁽¹⁾_4', A, { L: [Hs[1], { c: beta[1] }], R: S1_2, prod: t2 }, { prefer: [Hs[1], S1_2] });
+      return A;
     }
 
     // l_ >= 3:
@@ -4265,6 +4461,7 @@ function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs) {
     const q_big_params = alpha.slice((1 << l_) - 1, (1 << (l_ + 1)) - 2);
     const q_big = _paper_Q_known_powers(builder, l_, q_big_params, Hs.slice(0, l_));
     const S1_prev = t.add(q_big, field);
+    builder.prow(`S⁽¹⁾_${1 << (l_ - 1)}`, S1_prev, { L: [Hs[l_], q_small], R: S1, prod: t, tail: [q_big] }, { prefer: [Hs[l_], q_small, S1, q_big] });
     return A1(l_ - 1, S1_prev);
   }
 
@@ -4274,23 +4471,33 @@ function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs) {
     }
     if (l_ === 1) {
       // A^{(2)}_2 = (H2 + β2) S2 + α0
-      const t = builder.mul(Hs[1].add_const(beta[2], field), S2);
-      return t.add_const(alpha[0], field);
+      const L = Hs[1].add_const(beta[2], field);
+      const t = builder.mul(L, S2);
+      const A = t.add_const(alpha[0], field);
+      builder.prow('A⁽²⁾_2', A, { L: [Hs[1], { c: beta[2] }], R: S2, prod: t }, { prefer: [Hs[1], S2] });
+      return A;
     }
 
     if (l_ === 2) {
       // S^{(2)}_2 = (H4 + β4) S^{(2)}_4 + α2
-      const t = builder.mul(Hs[2].add_const(beta[4], field), S2);
+      const L = Hs[2].add_const(beta[4], field);
+      const t = builder.mul(L, S2);
       const S2_2 = t.add_const(alpha[2], field);
+      builder.prow('S⁽²⁾_2', S2_2, { L: [Hs[2], { c: beta[4] }], R: S2, prod: t }, { prefer: [Hs[2], S2] });
       // A^{(2)}_4 = A^{(2)}_2[α0,α1,β2,β1](S^{(2)}_2,(x,H2))
-      const t2 = builder.mul(Hs[1].add_const(beta[2], field), S2_2);
-      return t2.add_const(alpha[0], field);
+      const L2 = Hs[1].add_const(beta[2], field);
+      const t2 = builder.mul(L2, S2_2);
+      const A = t2.add_const(alpha[0], field);
+      builder.prow('A⁽²⁾_4', A, { L: [Hs[1], { c: beta[2] }], R: S2_2, prod: t2 }, { prefer: [Hs[1], S2_2] });
+      return A;
     }
 
     // l_ >= 3:
     // S^{(2)}_{2^{l_-1}} = (H_{2^{l_}} + β_{2^{l_}}) S^{(2)}_{2^{l_}} + α_{2^{l_}-2}
-    const t = builder.mul(Hs[l_].add_const(beta[1 << l_], field), S2);
+    const L = Hs[l_].add_const(beta[1 << l_], field);
+    const t = builder.mul(L, S2);
     const S2_prev = t.add_const(alpha[(1 << l_) - 2], field);
+    builder.prow(`S⁽²⁾_${1 << (l_ - 1)}`, S2_prev, { L: [Hs[l_], { c: beta[1 << l_] }], R: S2, prod: t }, { prefer: [Hs[l_], S2] });
     return A2(l_ - 1, S2_prev);
   }
 
@@ -4305,11 +4512,17 @@ function _paper_A_fill(builder, l, alpha, beta, S1_2l, S2_2l, Hs) {
     //
     // This matches the "(x+α)-extraction" pattern while keeping β1 as an
     // independent additive parameter.
-    const t = builder.mul(builder.x.add_const(beta[0], field), A1_out);
-    return t.add(A2_out, field).add_const(beta[1], field);
+    const L = builder.x.add_const(beta[0], field);
+    const t = builder.mul(L, A1_out);
+    const A = t.add(A2_out, field).add_const(beta[1], field);
+    builder.prow(outName ?? 'A_1', A, { L, R: A1_out, prod: t }, { prefer: [A1_out, A2_out] });
+    return A;
   }
 
-  const out = builder.mul(builder.x.add_const(beta[0], field), A1_out).add(A2_out, field);
+  const L = builder.x.add_const(beta[0], field);
+  const t = builder.mul(L, A1_out);
+  const out = t.add(A2_out, field);
+  builder.prow(outName ?? `A_${1 << l}`, out, { L, R: A1_out, prod: t, tail: [A2_out] }, { prefer: [A1_out, A2_out] });
   return out;
 }
 
@@ -4353,7 +4566,11 @@ function _paper_Q_known_powers_impl(builder, k, alpha, Hs) {
     const gamma = alpha[0];
     const W = _paper_Q_known_powers(builder, k - 1, alpha.slice(1, 1 + m), Hs.slice(0, k - 1));
     const B = _paper_Q_known_powers(builder, k - 1, alpha.slice(1 + m), Hs.slice(0, k - 1));
-    return builder.mul(Hs[k - 1].add_const(gamma, field), W).add(B, field);
+    const L = Hs[k - 1].add_const(gamma, field);
+    const qp = builder.mul(L, W);
+    const Q = qp.add(B, field);
+    builder.prow(`Q_${(1 << k) - 1}`, Q, { L: [Hs[k - 1], { c: gamma }], R: W, prod: qp, tail: [B] }, { prefer: [Hs[k - 1], W, B] });
+    return Q;
   }
 
   if (k === 0) {
@@ -4384,7 +4601,9 @@ function _paper_Q_known_powers_impl(builder, k, alpha, Hs) {
     for (let i = 0; i < beta_block.length; i++) {
       beta[2 - i] = beta_block[i];
     }
-    return _paper_A_fill(builder, 1, a_alpha, beta, S1, S2, Hs.slice(0, 2));
+    builder.prow('S⁽¹⁾_2', S1, null, { prefer: [Hs[2]] });
+    builder.prow('S⁽²⁾_2', S2, null, { prefer: [Hs[2]] });
+    return _paper_A_fill(builder, 1, a_alpha, beta, S1, S2, Hs.slice(0, 2), 'Q_7');
   }
 
   // k >= 4:
@@ -4417,7 +4636,9 @@ function _paper_Q_known_powers_impl(builder, k, alpha, Hs) {
     beta[(1 << l) - i] = beta_block[i];
   }
 
-  return _paper_A_fill(builder, l, a_alpha, beta, S1, S2, Hs.slice(0, l + 1));
+  builder.prow(`S⁽¹⁾_${1 << (k - 2)}`, S1, null, { prefer: [Hs[k - 1], q_sub] });
+  builder.prow(`S⁽²⁾_${1 << (k - 2)}`, S2, null, { prefer: [Hs[k - 1]] });
+  return _paper_A_fill(builder, l, a_alpha, beta, S1, S2, Hs.slice(0, l + 1), `Q_${(1 << k) - 1}`);
 }
 
 // ====================================================================
@@ -4514,14 +4735,17 @@ function _paper_Q_2lp1k_minus_1_with_powers_impl(builder, k, l, alpha, Hs) {
     const x = Hs[0];
     const H2 = Hs[1];
     const H_hat = H2.add_const(hat_shift, field);
+    builder.prow('Ĥ_2', H_hat, null, { prefer: [H2] });
     const tilde_H2 = H_hat.add_const(tilde_shift, field);
+    builder.prow('H̃_2', tilde_H2, null, { prefer: [H_hat] });
 
     const [S1, S2, Hs_out, tilde_out] = _paper_T(
       builder, 2 * k, 1, t_params, [x, H_hat], tilde_H2
     );
-    const out = builder.mark_value(
-      builder.mul(builder.x.add_const(beta0, field), S1).add(S2, field)
-    );
+    const L = builder.x.add_const(beta0, field);
+    const qp = builder.mul(L, S1);
+    const out = builder.mark_value(qp.add(S2, field));
+    builder.prow(`Q_${deg}`, out, { L, R: S1, prod: qp, tail: [S2] }, { prefer: [S1, S2] });
     return [out, Hs_out, tilde_out];
   }
 
@@ -4552,6 +4776,7 @@ function _paper_Q_2lp1k_minus_1_with_powers_impl(builder, k, l, alpha, Hs) {
   } else {
     const qhat = _paper_Q_known_powers(builder, l - 1, qhat_params, Hs.slice(0, l - 1));
     H_hat = Hs[l].add(qhat, field);
+    builder.prow(`Ĥ_${block}`, H_hat, null, { prefer: [Hs[l], qhat] });
   }
 
   // Run T_{2k,2^l} with H_{2^l} replaced by \hat H_{2^l}.
@@ -4561,8 +4786,10 @@ function _paper_Q_2lp1k_minus_1_with_powers_impl(builder, k, l, alpha, Hs) {
   if (t_params.length !== need_t) {
     throw new Error(`internal error: expected ${need_t} T-params, got ${t_params.length}`);
   }
+  const tilde_hat = H_hat.add_const(shift, field);
+  builder.prow(`H̃_${block}`, tilde_hat, null, { prefer: [H_hat] });
   const [S1, S2, Hs_out, tilde_out] = _paper_T(
-    builder, 2 * k, l, t_params, Hs_hat, H_hat.add_const(shift, field)
+    builder, 2 * k, l, t_params, Hs_hat, tilde_hat
   );
 
   // Final fill: A_{2^{l-1}} on (S1,S2).
@@ -4579,7 +4806,7 @@ function _paper_Q_2lp1k_minus_1_with_powers_impl(builder, k, l, alpha, Hs) {
   }
 
   const out = builder.mark_value(
-    _paper_A_fill(builder, A_l, a_alpha.slice(), A_beta, S1, S2, Hs.slice(0, A_l + 1))
+    _paper_A_fill(builder, A_l, a_alpha.slice(), A_beta, S1, S2, Hs.slice(0, A_l + 1), `Q_${deg}`)
   );
   return [out, Hs_out, tilde_out];
 }
@@ -4712,12 +4939,14 @@ function _paper_barQ_15(builder, alpha, H2, H4) {
   const A = x.add_const(b_h8, field); // degree 1
   const B = H2.add_const(c_h8, field); // degree 2
   builder.pushLabel('Q̄_15 block');
-  const H8 = builder.withLabel('H_8 known power', () =>
-    builder.mul(H4.add(A, field), H4.add(B, field))).add_const(a_h8, field);
+  const h8p = builder.withLabel('H_8 known power', () => builder.mul(H4.add(A, field), H4.add(B, field)));
+  const H8 = h8p.add_const(a_h8, field);
+  builder.prow('H_8', H8, { L: [H4, A], R: [H4, B], prod: h8p }, { prefer: [H4, H2] });
 
   const S1 = H8;
   const S2 = H8.add_const(d_shift, field);
-  const out = _paper_A_fill(builder, 2, a_alpha, beta, S1, S2, [x, H2, H4]);
+  builder.prow('H̃_8', S2, null, { prefer: [H8] });
+  const out = _paper_A_fill(builder, 2, a_alpha, beta, S1, S2, [x, H2, H4], 'Q̄_15');
   builder.popLabel();
   return out;
 }
@@ -4762,19 +4991,22 @@ function _paper_barQ_8k_plus_7_with_powers(builder, k, alpha, H2, H4) {
 
   // H8 proxy (monic degree 8) + tilde shift.
   builder.pushLabel(`Q̄_${deg} block (8k+7, k=${k})`);
-  const H8 = builder.withLabel('H_8 known power', () => builder.mul(
-    H4.add(x.add_const(b_h8, field), field),
-    H4.add(H2.add_const(c_h8, field), field)
-  )).add_const(a_h8, field);
+  const A8 = x.add_const(b_h8, field), B8 = H2.add_const(c_h8, field);
+  const h8p = builder.withLabel('H_8 known power', () => builder.mul(H4.add(A8, field), H4.add(B8, field)));
+  const H8 = h8p.add_const(a_h8, field);
+  builder.prow('H_8', H8, { L: [H4, A8], R: [H4, B8], prod: h8p }, { prefer: [H4, H2] });
   const tilde_H8 = H8.add_const(d_tilde, field);
+  builder.prow('H̃_8', tilde_H8, null, { prefer: [H8] });
 
   // Degree-(8k) compatible pair from T_{k,8}.
   const [S1, S2, Hs_out, _tilde_out] = _paper_T(
     builder, k, 3, t_params, [x, H2, H4, H8], tilde_H8
   );
+  builder.prow('S⁽¹⁾', S1, null, { alias: true, force: true });
+  builder.prow('S⁽²⁾', S2, null, { alias: true, force: true });
 
   // Final A_4 fill adds 7 degrees: 8k -> 8k+7.
-  const out = _paper_A_fill(builder, 2, a_alpha, beta, S1, S2, [x, H2, H4]);
+  const out = _paper_A_fill(builder, 2, a_alpha, beta, S1, S2, [x, H2, H4], `Q̄_${deg}`);
   builder.popLabel();
 
   // Expose any higher known powers produced by the internal T recursion.
@@ -4821,7 +5053,9 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
     // T1 = H2, T2 = H2 + α0
     const x = builder.x;
     const H2 = _paper_H2(builder, alpha[1], alpha[2]);
-    return [H2, H2.add_const(alpha[0], field), [x, H2]];
+    const T2 = H2.add_const(alpha[0], field);
+    builder.prow('T⁽²⁾_3', T2, null, { prefer: [H2] });
+    return [H2, T2, [x, H2]];
   }
 
   // Explicit special cases from sections/constructions.tex.
@@ -4829,21 +5063,29 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
     const H2 = _paper_H2(builder, alpha[6], alpha[7]);
     const x = builder.x;
     const x_shift = x.add_const(alpha[5], field);
-    const H4 = builder.withLabel('H_4 known power', () =>
-      _paper_square_diff(builder, H2, x_shift)).add_const(alpha[4], field);
+    const h4p = builder.withLabel('H_4 known power', () => _paper_square_diff(builder, H2, x_shift));
+    const H4 = h4p.add_const(alpha[4], field);
+    builder.prow('H_4', H4, { L: [H2, x_shift], R: [H2, ['-', x_shift]], prod: h4p }, { prefer: [H2] });
 
     const S1 = _paper_Q_known_powers(builder, 3, alpha.slice(8, 15), [x, H2, H4]);
+    builder.prow('S⁽¹⁾_1', S1, null, { alias: true });
     const S2 = H2.add_const(alpha[3], field);
-    const T1 = _paper_square_diff(builder, S1, S2).add_const(alpha[1], field);
+    builder.prow('S⁽¹⁾_2', S2, null, { prefer: [H2] });
+    const t1p = _paper_square_diff(builder, S1, S2);
+    const T1 = t1p.add_const(alpha[1], field);
+    builder.prow('T⁽¹⁾_15', T1, { L: [S1, S2], R: [S1, ['-', S2]], prod: t1p }, { prefer: [S1, S2] });
 
     // sections/constructions.tex defines
     //   T2_low = H4^2 - (H2+α2)^2 + α0
     // which has degree 8. For the later induction steps we need the second
     // component to have degree 14. We "promote" it by adding `T1` (no extra
     // multiplications), mirroring the fix used in the `n=27` special case.
-    const T2_low = _paper_square_diff(builder, H4, H2.add_const(alpha[2], field))
-      .add_const(alpha[0], field);
+    const S22 = H2.add_const(alpha[2], field);
+    builder.prow('S⁽²⁾_2', S22, null, { prefer: [H2] });
+    const t2p = _paper_square_diff(builder, H4, S22);
+    const T2_low = t2p.add_const(alpha[0], field);
     const T2 = T2_low.add(T1, field);
+    builder.prow('T⁽²⁾_15', T2, { L: [H4, S22], R: [H4, ['-', S22]], prod: t2p, tail: [{ c: alpha[0] }, T1] }, { prefer: [T1] });
     // Expose the monic degree-8 byproduct (used as H8 in the 8k+7 induction).
     const H8 = T2_low;
     return [T1, T2, [x, H2, H4, H8]];
@@ -4871,15 +5113,22 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
     }
     const H4 = Hs_out[2];
     const Hs = [x, H2].concat(Hs_out.slice(2));
+    builder.prow('S⁽¹⁾_1', S1, null, { alias: true });
 
     const S2 = _paper_q3(builder, alpha[4], alpha[5], alpha[6], H2);
+    builder.prow('S⁽¹⁾_2', S2, null, { alias: true });
     const S3 = _paper_Q_known_powers(builder, 3, alpha.slice(7, 14), [x, H2, H4]);
+    builder.prow('S⁽²⁾_1', S3, null, { alias: true });
 
-    const T1 = _paper_square_diff(builder, S1, S2).add_const(alpha[1], field);
+    const t1p = _paper_square_diff(builder, S1, S2);
+    const T1 = t1p.add_const(alpha[1], field);
+    builder.prow('T⁽¹⁾_27', T1, { L: [S1, S2], R: [S1, ['-', S2]], prod: t1p }, { prefer: [S1, S2] });
     // Promote the low-degree second component by adding `T1` (no extra multiplications).
     // This yields a degree-26 `T2` that composes correctly in later induction steps.
-    const T2_low = _paper_square_diff(builder, S3, H2).add_const(alpha[0], field);
+    const t2p = _paper_square_diff(builder, S3, H2);
+    const T2_low = t2p.add_const(alpha[0], field);
     const T2 = T2_low.add(T1, field);
+    builder.prow('T⁽²⁾_27', T2, { L: [S3, H2], R: [S3, ['-', H2]], prod: t2p, tail: [{ c: alpha[0] }, T1] }, { prefer: [T1] });
     return [T1, T2, Hs];
   }
 
@@ -4887,18 +5136,27 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
     const H2 = _paper_H2(builder, alpha[6], alpha[7]);
     const x = builder.x;
     const x_shift = x.add_const(alpha[5], field);
-    const H4 = builder.withLabel('H_4 known power', () =>
-      _paper_square_diff(builder, H2, x_shift)).add_const(alpha[4], field);
+    const h4p = builder.withLabel('H_4 known power', () => _paper_square_diff(builder, H2, x_shift));
+    const H4 = h4p.add_const(alpha[4], field);
+    builder.prow('H_4', H4, { L: [H2, x_shift], R: [H2, ['-', x_shift]], prod: h4p }, { prefer: [H2] });
 
     // sections/constructions.tex (Special case 31) references a "good polynomial"
     // gadget \bar{Q}_{15}(x,H2,H4).
     const S1 = _paper_barQ_odd_with_H2_H4(builder, 15, alpha.slice(16, 31), H2, H4);
+    builder.prow('S⁽¹⁾_1', S1, null, { alias: true });
     const S2 = _paper_Q_known_powers(builder, 3, alpha.slice(8, 15), [x, H2, H4]);
+    builder.prow('S⁽¹⁾_2', S2, null, { alias: true });
     const S3 = _paper_q3(builder, alpha[1], alpha[2], alpha[3], H2);
-    const T1 = _paper_square_diff(builder, S1, S2).add(S3, field);
+    builder.prow('S⁽¹⁾_3', S3, null, { alias: true });
+    const t1p = _paper_square_diff(builder, S1, S2);
+    const T1 = t1p.add(S3, field);
+    builder.prow('T⁽¹⁾_31', T1, { L: [S1, S2], R: [S1, ['-', S2]], prod: t1p, tail: [S3] }, { prefer: [S1, S2, S3] });
 
-    const T2 = _paper_square_diff(builder, S1.add_const(alpha[15], field), H4)
-      .add_const(alpha[0], field);
+    const S21 = S1.add_const(alpha[15], field);
+    builder.prow('S⁽²⁾_1', S21, null, { prefer: [S1] });
+    const t2p = _paper_square_diff(builder, S21, H4);
+    const T2 = t2p.add_const(alpha[0], field);
+    builder.prow('T⁽²⁾_31', T2, { L: [S21, H4], R: [S21, ['-', H4]], prod: t2p }, { prefer: [S21, H4] });
     return [T1, T2, [x, H2, H4]];
   }
 
@@ -4922,6 +5180,7 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
 
     const H2 = _paper_H2(builder, h2_const, h2_lin);
     const tilde_H2 = H2.add_const(tilde_shift, field);
+    builder.prow('H̃_2', tilde_H2, null, { prefer: [H2] });
     const x = builder.x;
     const [T1, T2, Hs_out, _tilde_out] = _paper_T(
       builder, 2 * k, 1, t_params, [x, H2], tilde_H2
@@ -4979,9 +5238,18 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
       Hs2 = Hs2.slice().concat(Hs3.slice(Hs2.length));
     }
 
-    const T1 = _paper_square_diff(builder, S2, S1_1).add(S3, field);
-    const T2 = _paper_square_diff(builder, S2.add_const(alpha[4 * k + 1], field), S1_2)
-      .add_const(alpha[0], field);
+    builder.prow('S⁽¹⁾_1', S1_1, null, { alias: true, force: true });
+    builder.prow('S⁽¹⁾_2', S2, null, { alias: true });
+    if (k !== 1) builder.prow('S⁽¹⁾_3', S3, null, { alias: true });
+    const t1p = _paper_square_diff(builder, S2, S1_1);
+    const T1 = t1p.add(S3, field);
+    builder.prow(`T⁽¹⁾_${n}`, T1, { L: [S2, S1_1], R: [S2, ['-', S1_1]], prod: t1p, tail: [S3] }, { prefer: [S2, S1_1, S3] });
+    builder.prow('S⁽²⁾_1', S1_2, null, { alias: true, force: true });
+    const S22 = S2.add_const(alpha[4 * k + 1], field);
+    builder.prow('S⁽²⁾_2', S22, null, { prefer: [S2] });
+    const t2p = _paper_square_diff(builder, S22, S1_2);
+    const T2 = t2p.add_const(alpha[0], field);
+    builder.prow(`T⁽²⁾_${n}`, T2, { L: [S22, S1_2], R: [S22, ['-', S1_2]], prod: t2p }, { prefer: [S22, S1_2] });
     // Expose the "known powers" computed while building S2; higher-level calls
     // may need H8/H16/... (e.g. when a later Q-construction has v2(deg+1) >= 3).
     return [T1, T2, Hs2];
@@ -5039,11 +5307,20 @@ function _paper_splittable_pair_impl(builder, n, alpha) {
     const S3 = res[0];
     Hs = res[1];
 
-    const T1 = _paper_square_diff(builder, S3, S2).add(S1_1, field);
+    builder.prow('S⁽¹⁾_1', S1_1, null, { alias: true, force: true });
+    builder.prow('S⁽¹⁾_2', S2, null, { alias: true });
+    builder.prow('S⁽¹⁾_3', S3, null, { alias: true });
+    const t1p = _paper_square_diff(builder, S3, S2);
+    const T1 = t1p.add(S1_1, field);
+    builder.prow(`T⁽¹⁾_${n}`, T1, { L: [S3, S2], R: [S3, ['-', S2]], prod: t1p, tail: [S1_1] }, { prefer: [S3, S2, S1_1] });
 
+    builder.prow('S⁽²⁾_1', S1_2, null, { alias: true, force: true });
     const S2_shift = S2.add_const(alpha[2 * k + 1], field);
     const S3_shift = S3.add_const(alpha[4 * k + 3], field);
-    const T2 = _paper_square_diff(builder, S3_shift, S2_shift).add(S1_2, field);
+    const t2p = _paper_square_diff(builder, S3_shift, S2_shift);
+    const T2 = t2p.add(S1_2, field);
+    const s_c = field.add(alpha[4 * k + 3], alpha[2 * k + 1]), d_c = field.sub(alpha[4 * k + 3], alpha[2 * k + 1]);
+    builder.prow(`T⁽²⁾_${n}`, T2, { L: [S3, S2, { c: s_c }], R: [S3, ['-', S2], { c: d_c }], prod: t2p, tail: [S1_2] }, { prefer: [S3, S2, S1_2] });
     return [T1, T2, Hs];
   }
 
@@ -5077,7 +5354,9 @@ function compile_paper_params_chain(params, modulus = null) {
       throw new Error('internal error: parameter length mismatch in build_P');
     }
     if (deg === 1) {
-      return builder.x.add_const(a[0], field);
+      const P1 = builder.x.add_const(a[0], field);
+      builder.prow('P_1', P1, null, { force: true });
+      return P1;
     }
     if (deg === 5) {
       return _paper_P5(builder, a);
@@ -5092,13 +5371,22 @@ function compile_paper_params_chain(params, modulus = null) {
     }
     if (deg % 2 === 0) {
       const q = build_P(deg - 1, a.slice(1));
-      return builder.withLabel(`even lift P_${deg} = x·P_${deg - 1} + α_0`, () =>
-        builder.mul(q, builder.x)).add_const(a[0], field);
+      const qp = builder.withLabel(`even lift P_${deg} = x·P_${deg - 1} + α_0`, () =>
+        builder.mul(q, builder.x));
+      const Pn = qp.add_const(a[0], field);
+      builder.prow(`P_${deg}`, Pn, { L: builder.x, R: q, prod: qp }, { prefer: [q] });
+      return Pn;
     }
 
     const [T1, T2, _H2] = _paper_splittable_pair(builder, deg, a);
-    return builder.withLabel(`P_${deg} = x·T⁽¹⁾ + T⁽²⁾`, () =>
-      builder.mul(T1, builder.x)).add(T2, field);
+    // the pair under the paper's outer names, unless the rows named it so already
+    if (builder.paper.names.get(T1) !== `T⁽¹⁾_${deg}`) builder.prow(`T⁽¹⁾_${deg}`, T1, null, { force: true });
+    if (builder.paper.names.get(T2) !== `T⁽²⁾_${deg}`) builder.prow(`T⁽²⁾_${deg}`, T2, null, { force: true });
+    const pp = builder.withLabel(`P_${deg} = x·T⁽¹⁾ + T⁽²⁾`, () =>
+      builder.mul(T1, builder.x));
+    const Pn = pp.add(T2, field);
+    builder.prow(`P_${deg}`, Pn, { L: builder.x, R: T1, prod: pp }, { prefer: [T1, T2] });
+    return Pn;
   }
 
   const out = build_P(n, params_list);
@@ -6023,6 +6311,7 @@ export {
   encode,
   decode,
   compile_paper_params_chain,
+  render_paper_rows,
   set_peeled_q,
   makeRng,
   _poly_trim,

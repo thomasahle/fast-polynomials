@@ -31,9 +31,11 @@ GF(2^127−1)), and carryless GF(2^k) arithmetic (char 2).
   `(re±imi)` of `js/tokens.js`: `(0+2i)`, `(-2+1i)`, `(1.5-0.25i)`, real constants as plain
   doubles)
   → method chips → view tabs attached to the output pane, with a gear opening the display
-  menu (mathematical — form: original, every method in its own form: the paper's gadget
-  rows H₂, Q₇, T⁽¹⁾ … for ours, Horner's nesting, Estrin's tree, Rabin–Winograd's splits,
-  Knuth–Eve's peels, a row without one shows its factored text / factor, every row a
+  menu (mathematical — form: original, every method in the notation of its source: the
+  rows of the paper's Appendix C for ours (H₂, H̃₄, U₁, Q₇, S⁽¹⁾₂, T⁽¹⁾_{k,D}, P_n =
+  x·T⁽¹⁾ + T⁽²⁾, recorded by the compiler as it builds the chain), Horner's b_k, Estrin's
+  tree, Rabin–Winograd's splits, Knuth's Theorem E (y, w, z, the peels), Pan's scheme (9)
+  (q₂, p₂, q₄, p₅, p₅*, p₄, p₉, q_n), a row without one shows its factored text / factor, every row a
   product of two linear combinations of the wires before it, scalar multiplications folded
   into the coefficients, the last row one linear combination — and exact/decimal (hex)
   constants, a display-only rewrite ·

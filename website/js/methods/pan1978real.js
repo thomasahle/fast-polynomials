@@ -10,8 +10,8 @@
 //   p2  = q2 + gamma*x                         gamma in {+1,-1}
 //   q4  = (p2+f1)(q2+f2)
 //   p5  = (q4+f3)(x+f4)
-//   p5* = (q4+f5)(x+f6)
-//   p4  = p5* - p5 + delta*2^N*q2             delta in {+1,-1}
+//   p5′ = (q4+f5)(x+f6)
+//   p4  = p5′ - p5 + delta*2^N*q2             delta in {+1,-1}
 //   p9  = (p5+f7)(p4+f8)
 //   qn  = (p9,q2,k-4,9)
 //   P   = qn+fn,
@@ -377,7 +377,7 @@ function solveOuterChart(p, initialShift, initialNodes, spec, seed) {
 
 function emit(f, spec, digits) {
   const { n, gamma, delta, N } = spec, lines = [], depth = { x: 0 };
-  let mults = 0, adds = 0, serial = 0;
+  let mults = 0, adds = 0;
   const push = (lhs, rhs, mul, deps, extra = {}) => {
     lines.push({ lhs, rhs, mul, ...extra });
     depth[lhs] = Math.max(0, ...deps.map(d => depth[d] ?? 0)) + (mul ? 1 : 0);
@@ -392,19 +392,20 @@ function emit(f, spec, digits) {
     push(lhs, `(${shift(a, ai)}) * (${shift(b, bi)})`, true, [a, b]);
     return lhs;
   };
+  // Pan's names (scheme (9)): q2 = (x+f0)^2, p2, q4, p5, p5′ (the twin), p4, p9, then the
+  // nested q's; the twin is the wire p5′ (a prime for Pan's star, since * is the product operator here; cgen's identifier for it is p5_)
   const u0 = shift('x', 0);
-  push('u0', u0, false, ['x']);
-  push('q2', 'u0 * u0', true, ['u0']);
+  push('q2', u0 === 'x' ? 'x * x' : `(${u0}) * (${u0})`, true, ['x']);
   push('p2', gamma > 0 ? 'q2 + x' : 'q2 - x', false, ['q2', 'x']); adds++;
   product('q4', 'p2', 1, 'q2', 2);
   product('p5', 'q4', 3, 'x', 4);
-  product('p5b', 'q4', 5, 'x', 6);
+  product('p5′', 'q4', 5, 'x', 6);
   const scale = Math.pow(2, N), signed = delta > 0 ? '+' : '-';
   const radix = N === 0 ? 'q2' : `${scale}·q2`;
-  push('p4', `p5b - p5 ${signed} ${radix}`, false, ['p5b', 'p5', 'q2'], { radixShift: N }); adds += 2;
+  push('p4', `p5′ - p5 ${signed} ${radix}`, false, ['p5′', 'p5', 'q2'], { radixShift: N }); adds += 2;
   product('p9', 'p5', 7, 'p4', 8);
   let acc = 'p9';
-  for (let i = 0; i < (n - 9) / 2; i++) acc = product(`q${11 + 2 * i}_${++serial}`, acc, 9 + 2 * i, 'q2', 10 + 2 * i);
+  for (let i = 0; i < (n - 9) / 2; i++) acc = product(`q${11 + 2 * i}`, acc, 9 + 2 * i, 'q2', 10 + 2 * i);   // Pan's q_{2k-2l-1} nest
   const final = appendConst(acc, C(f[n]), digits); if (final !== acc) adds++;
   push('P', final, false, [acc]);
   return { lines, mults, adds, height: depth.P };
@@ -423,9 +424,8 @@ function emit8(f, epsilon, digits) {
     depth[lhs] = Math.max(...deps.map(d => depth[d] ?? 0)) + 1;
     mults++;
   };
-  const u0 = shift('x', 0);
-  lines.push({ lhs: 'u0', rhs: u0, mul: false }); depth.u0 = 0;
-  product('q2', 'u0', 'u0', ['u0']);
+  const u0 = shift('x', 0);                       // q2 = (x+f0)^2, as Pan writes it
+  product('q2', u0, u0, ['x']);
   product('p3', shift('x', 1), shift('q2', 2), ['x', 'q2']);
   let right = epsilon > 0 ? 'p3 + q2' : 'p3 - q2'; adds++;
   const withF4 = appendConst(right, C(f[4]), digits);

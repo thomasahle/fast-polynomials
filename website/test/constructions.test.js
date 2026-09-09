@@ -1,6 +1,6 @@
-// The "original" view of the paper's chains follows sections/constructions:
-// named gadget rows (H_2, H_4, Q_k, T⁽¹⁾, T⁽²⁾, P_n, working letters y,z,w,v),
-// products inlined into their consumer, P_n = x·(…) + … as the last row.
+// The "original" view of the paper's chains follows sections/constructions in the
+// paper's notation: the chain builder's paper trace (H_2, H̃_4, U_1, Q_7, S⁽¹⁾_2,
+// T⁽¹⁾_{k,D}, P_n = x * T⁽¹⁾_n + T⁽²⁾_n as the last row).
 // Every row set must evaluate to the input polynomial exactly.
 import { Rat } from '../js/rat.js';
 import * as core from '../js/char0/core.js';
@@ -42,8 +42,20 @@ for (let n = 3; n <= 24; n++) {
   // fractional coefficients for small n (exercises the ℚ decoders), integers above
   const coeffs = [...Array.from({ length: n }, (_, i) => new Rat(BigInt((i * 7 + 3) % 11 - 5), BigInt(n <= 16 ? 1 + (i % 3) : 1))), Rat.ONE];
   const chain = core.compile_paper_params_chain(core.decode(n, coeffs, core.rationals()), null);
-  const text = renderConstructionsForm(QD, chain);
+  // the paper trace (what the site shows) and the older gate-based rendering (its fallback) both evaluate exactly
+  const text = core.render_paper_rows(chain.paper_rows, c => QD.toDisplay(c));
+  const legacy = renderConstructionsForm(QD, chain);
+  for (const xv of [new Rat(2n), new Rat(-3n, 7n)]) {
+    let want = Rat.ZERO; for (let i = n; i >= 0; i--) want = want.mul(xv).add(coeffs[i]);
+    const got = evalRows(legacy, xv); checked++;
+    if (!got.eq(want)) { console.log(`n=${n} x=${xv}: legacy rendering MISMATCH`); fails++; }
+  }
   const rows = text.split('\n');
+  // every product row is a product of two affine forms of named quantities; no gate wire name (y3) leaks through
+  if (/\by\d+\b/.test(text)) { console.log(`n=${n}: a gate wire name leaked into the paper rows:\n${text}`); fails++; }
+  if (n === 9 && !rows.some(r => /^H̃_4 += H_4 \+ /.test(r))) { console.log(`n=9: no H̃_4 = H_4 + ρ row:\n${text}`); fails++; }
+  if (n === 13 && !rows.some(r => /^T⁽¹⁾_\{3,4\} += F_1 \* H_8 \+ Q_3$/.test(r))) { console.log(`n=13: no T⁽¹⁾_{3,4} = F_1 * H_8 + Q_3 row:\n${text}`); fails++; }
+  if (n === 19 && !rows.some(r => /^T⁽¹⁾_19 += \(Q_9 \+ H_4\) \* \(Q_9 − H_4\) \+ Q_3$/.test(r))) { console.log(`n=19: 8k+3 step row:\n${text}`); fails++; }
   const products = (text.match(/\) \* \(|\) \* [A-Za-z]|[A-Za-z0-9_⁾] \* \(/g) ?? []).length;
   if (!/^P_\d+ /.test(rows[rows.length - 1])) { console.log(`n=${n}: last row is not P_n:`, rows[rows.length - 1]); fails++; }
   if (n >= 9 && !rows[0].startsWith('H_2 ')) { console.log(`n=${n}: first row is not H_2:`, rows[0]); fails++; }

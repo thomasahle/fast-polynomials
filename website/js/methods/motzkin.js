@@ -600,7 +600,7 @@ function evalRhs(src, env) {
         i += num[0].length;
         v = num[0].endsWith('i') ? C(0, parseFloat(num[0].slice(0, -1))) : C(parseFloat(num[0]));
       } else {
-        const id = /^[\p{L}_][\p{L}\p{M}\w]*/u.exec(rest);   // wires: x, y3, P, P̃ (combining tilde)
+        const id = /^[\p{L}_][\p{L}\p{M}\w′]*/u.exec(rest);   // wires: x, y3, P, P̃ (combining tilde), p5′ (Pan's twin)
         if (!id || !(id[0] in env)) throw new Error(`bad rhs (unknown atom) in: ${src}`);
         i += id[0].length;
         v = env[id[0]];
@@ -777,20 +777,22 @@ function emitChain(n, c, sArr, cs, eBase, bLead, digits) {
     adds++;
   }
   push('w', `${yName} * ${yName}`, true, [yName]);
+  // Knuth's Theorem E names the base z: z = y + β0 (n odd) or z = w + α0·y + β0 (n even)
   let accExpr, accDeps;
-  if (odd) {                                       // base: y + e
+  if (odd) {                                       // base: z = y + e
     accExpr = appendConst(yName, C(eBase), digits);
-    if (accExpr !== yName) adds++;
-    accDeps = [yName];
-  } else if (bLead !== 0) {                        // base: w + b*y + e
-    push('z', `${fmt(bLead, digits)} * ${yName}`, true, [yName]);
-    accExpr = appendConst('w + z', C(eBase), digits);
-    adds += accExpr === 'w + z' ? 1 : 2;
-    accDeps = ['w', 'z'];
-  } else {
+    if (accExpr !== yName) { adds++; push('z', accExpr, false, [yName]); accExpr = 'z'; }
+    accDeps = [accExpr];
+  } else if (bLead !== 0) {                        // base: z = w + b*y + e (b*y is a scalar product)
+    const rhs = appendConst(`w + ${fmt(bLead, digits)} * ${yName}`, C(eBase), digits);
+    adds += rhs.endsWith(yName) ? 1 : 2;
+    push('z', rhs, true, ['w', yName]);
+    accExpr = 'z';
+    accDeps = ['z'];
+  } else {                                         // base: z = w + e
     accExpr = appendConst('w', C(eBase), digits);
-    if (accExpr !== 'w') adds++;
-    accDeps = ['w'];
+    if (accExpr !== 'w') { adds++; push('z', accExpr, false, ['w']); accExpr = 'z'; }
+    accDeps = [accExpr];
   }
   const K = sArr.length;
   for (let k = K - 1; k >= 0; k--) {               // innermost peel first

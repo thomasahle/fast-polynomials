@@ -587,11 +587,15 @@ export function factorize(lines, F = null) {
 }
 
 // ---- constructions.tex form for the paper's chains ----------------------------
-// Rows as in sections/constructions: gadget outputs carry the paper's names (H_2,
-// H_4, H_8, H̃_8, Q_k, T⁽¹⁾, T⁽²⁾, P_n), products used once are inlined into their
-// consumer (so a row may hold several products), products used more than once get
-// the paper's working letters (y, z, w, v, …), and the last row is
-// P_n = x·(T⁽¹⁾ + …) + T⁽²⁾ + … rather than a separate product gate.
+// The fallback rendering of the paper's form, from the gate labels alone: the
+// char-0 compiler now records the rows in the paper's notation itself (the chain
+// builder's paper trace, core.js prow / render_paper_rows), and compile0 uses
+// this only for a chain without one.  Rows as in sections/constructions: gadget
+// outputs carry the paper's names (H_2, H_4, H_8, H̃_8, Q_k, T⁽¹⁾, T⁽²⁾, P_n),
+// products used once are inlined into their consumer (so a row may hold several
+// products), products used more than once get the paper's working letters
+// (y, z, w, v, …), and the last row is P_n = x·(T⁽¹⁾ + …) + T⁽²⁾ + … rather than
+// a separate product gate.
 const WORKING_LETTERS = ['y', 'z', 'w', 'v', 'u', 't', 's', 'r', 'q', 'p'];
 function groupName(label) {
   if (/^even/.test(label)) return /P_[0-9]+/.exec(label)?.[0] ?? 'P';
