@@ -217,8 +217,8 @@ const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 check(/^https:\/\/arxiv\.org\/abs\//.test(PAPER_URL) && referenceFor('ours').url === PAPER_URL &&
       indexSrc.includes(`href="${PAPER_URL}"`) && uiSrc.includes('href=${PAPER_URL}') && !uiSrc.includes('arxiv.org/abs/'),
   'the paper card, the phone Paper link and reference [1] share PAPER_URL from references.js');
-// the tooltips too: PAPER_TITLE is derived from PAPER_URL (it names the submission / the arXiv id), so the
-// announcement flip is that one constant — no literal id survives in ui.js, and index.html's static copy is checked equal
+// the tooltips too: PAPER_TITLE is derived from PAPER_URL (it names the arXiv id), so the
+// id lives in that one constant — no literal id survives in ui.js, and index.html's static copy is checked equal
 check(PAPER_TITLE.includes(PAPER_URL.split('/').pop()) && uiSrc.includes('title=${PAPER_TITLE}') && !/arXiv submission \d+/.test(uiSrc) &&
       indexSrc.includes(`title="${PAPER_TITLE}"`),
   'the Paper links\' tooltips come from PAPER_TITLE, derived from PAPER_URL');

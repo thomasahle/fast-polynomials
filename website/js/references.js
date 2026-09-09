@@ -10,17 +10,11 @@
 
 /** The paper's link — the single source for every Paper link on the page (the
  *  phone intro, the "This paper" row and reference [1], the generated C header;
- *  index.html's paper card carries a copy, checked equal by ui-smoke.test.js).
- *  The arXiv submission id resolves only once the paper is announced; change
- *  this one constant to https://arxiv.org/abs/<id> then. */
-export const PAPER_URL = 'https://arxiv.org/abs/submit/8036575';
+ *  index.html's paper card carries a copy, checked equal by ui-smoke.test.js). */
+export const PAPER_URL = 'https://arxiv.org/abs/2609.06022';
 
-/** The tooltip of the Paper links, derived from PAPER_URL so the announcement
- *  flip really is that one edit: a submission URL says the permanent identifier
- *  is still to come; an announced abs/<id> URL names the identifier. */
+/** The tooltip of the Paper links, derived from PAPER_URL so the id lives in one place. */
 export const PAPER_TITLE = (() => {
-  const submission = /\/abs\/submit\/(\d+)\/?$/.exec(PAPER_URL)?.[1];
-  if (submission) return `arXiv submission ${submission} (the permanent identifier follows on announcement)`;
   const id = /\/abs\/([^/?#]+)\/?$/.exec(PAPER_URL)?.[1];
   return id ? `arXiv:${id}` : 'the paper';
 })();
@@ -29,7 +23,7 @@ export const REFERENCES = {
   'This paper': {
     short: 'Ahle & Knudsen 2026',
     blurb: '⌊n/2⌋+2 multiplications for a general polynomial (⌊n/2⌋+1 monic) after exact rational preprocessing — no root-finding',
-    cite: 'T. D. Ahle and J. B. T. Knudsen, "Fast Evaluation of Polynomials with Rational Preprocessing", arXiv preprint, 2026.',
+    cite: 'T. D. Ahle and J. B. T. Knudsen, "Fast Evaluation of Polynomials with Rational Preprocessing", arXiv:2609.06022, 2026.',
     url: PAPER_URL,
   },
   'Horner': {
