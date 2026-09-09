@@ -264,23 +264,21 @@ Paper claims and their logs (all SMHasher3 = the paper's fork with the
 fork's `hashes/chainhash.cpp`, which is not part of this repository):
 
 * "both variants pass all 200 tests ... on an Apple M2 Pro and on an Intel Xeon 8375C"
-  (injective.tex:399-402): `smhasher3_chainhash/final4_degree5_twist_optimised/
-  final4_{m2,x86}_{256,1k}.txt`, each `Overall result: pass (200 / 200 passed)`.
+  (injective.tex:399-402): `rerun_2026-09-05/chainhash_strided_v2/{m2,xeon}/
+  final6_{m2,x86}_{256,1k}.txt`, each `Overall result: pass (200 / 200 passed)`.
   **Verification codes**: `chainhash-256` LE `0xAA4E2A3B`, `chainhash-1k` LE
-  `0x7A1ED2E0` (M2 Pro `[hwpmull]`, Xeon `[hwclmul]`).  Runs 2026-09-05 00:29-00:39
-  (M2), 00:36 (Xeon); the copies carry the handoff timestamp 10:56.
-* `final3_degree5_twist_pre_optimisation/` (2026-09-04 20:46-20:53): the same
-  function before the (A7) implementation optimisation, also 200/200 on both machines
-  with the same verification codes -- the log evidence for "computes the same function
-  bit for bit" (appendix_chainhash.tex:811).
-* "66 cycles per small key (72 for the 1 KB configuration) and 20.7 (17.5) bytes/cycle
-  in bulk" (appendix_chainhash.tex:812-814): `speed_optimised/sanity_speed_m2_256.txt`
-  (`Average - 65.95 cycles/hash`, bulk 262144-byte keys `20.68 bytes/cycle`) and
-  `speed_optimised/sanity_speed_m2_1k.txt` (`71.90 cycles/hash`, `17.50 bytes/cycle`);
-  M2 Pro, 2026-09-05 00:21 (`--test=Speed` only; `build_m2.log` is the fork build).
-  Xeon counterparts `sanity_speed_x86_*.txt` (112.02 / 111.18 cycles; 15.35 / 12.58 b/c).
-  `speed_pre_optimisation/` (2026-09-04 20:32-20:51): 83.97 / 97.77 cycles, 17.38 /
-  17.62 b/c on M2 Pro.
+  `0x7A1ED2E0` (M2 Pro `[hwpmull]`, Xeon `[hwclmul]`; identical on the portable
+  backend, `step3_logs/smh_portable.log`).  Runs 2026-09-05/06; the README of that
+  directory records the step history (the step-1 strided variant with the length in
+  one half only failed the Zeroes keyset, diagnosis in `../chainhash_strided/`).
+* "72 cycles per small key (77 for the 1 KB configuration) and 22.2 (17.3) bytes/cycle
+  in bulk" (appendix_chainhash.tex:847-848): `chainhash_strided_v2/step3_logs/
+  m2_smh_sanity_speed.log` and `m2_speed_run2.log` (M2 Pro, `--test=Speed`, 256-byte
+  and 1 KB registrations); Xeon counterparts `step3_logs/xeon_smh_sanity_speed.log` and
+  `xeon/final6_x86_speed_{256,1k}.txt`.
+* Logs of the previous, adjacent-pairing definition (codes `0xDE1AB9F9` / `0x32B4EE71`:
+  `smhasher3_chainhash/final3_*`, `final4_*`, `speed_*`) were removed on 2026-09-09 and
+  remain in the git history.
 * "62 GB/s ... with 1 KB blocks", "26.6 against 23.8 GB/s at 16 KB"
   (injective.tex:403-410): harness rows of Section 7 (`batch4.out` v8: 61.67, 26.60;
   `bv8gjh5w3.output`: 23.8056).

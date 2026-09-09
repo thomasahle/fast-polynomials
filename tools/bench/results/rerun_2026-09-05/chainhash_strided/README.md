@@ -1,5 +1,9 @@
 # ChainHash with the strided word pairing -- lane E step 2 (2026-09-05, measurement run "final5")
 
+> 2026-09-09: the suite and speed logs of this failed step (`m2/`, `xeon/`, `step1_logs/`) were removed from the
+> repository and remain in the git history; the README and the `zeroes_diagnosis/` sources are kept because they
+> explain why the shipped definition XORs the length into both halves of the last pair (`../chainhash_strided_v2/`).
+
 Definition under test: `tools/bench/chainhash/chainhash.h` as shipped by lane E step 1 (PH level pairs the
 words of every 32-byte group first-with-third and second-with-fourth, last block at 32-byte group
 granularity, pair count 2*ceil(r/32); recurrence, twist, degree-5 finalizer, key W+9 words unchanged),
