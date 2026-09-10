@@ -466,6 +466,11 @@ table.cmp .ref-no { color: var(--muted); font-size: .62rem; margin-left: .15rem;
 .cmp-notes li { margin-bottom: .15rem; }
 .cmp-notes b { color: var(--ink); font-weight: 600; }
 /* the references behind the methods, numbered as in the method cells */
+/* the page footer: author credit and links, quiet and centred */
+.site-footer { margin: 2.5rem 0 1.5rem; text-align: center; font-size: .86rem; color: var(--muted); }
+.site-footer a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 2px; }
+.site-footer a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
 .refs {
   max-width: 40rem; margin: .7rem auto 0; padding-left: 1.4rem;
   color: var(--muted); font-size: .8rem; line-height: 1.4;
