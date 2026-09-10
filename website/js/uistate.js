@@ -387,11 +387,18 @@ function keySrc(f, n, seeds, monic = false) {
   return bigPolyToSrc(cs, { hex: f.char === 2 });
 }
 
-/** Monic, only a few small lower-degree terms (≈ n/4 of them) plus a constant term. */
-function sparseSrc(f, n) {
+/** A small nonzero leading coefficient other than 1: the non-monic variant of a chip
+ *  (the monic toggle off), so the toggle visibly does something in every field. */
+function leadingCoeff(next, f) {
+  for (;;) { const c = smallCoeff(next, f); if (c !== 1n) return c; }
+}
+
+/** Only a few small lower-degree terms (≈ n/4 of them) plus a constant term; monic or
+ *  with a small leading coefficient. */
+function sparseSrc(f, n, monic = true) {
   const next = rng(String(f.char), 'sparse', n);
   const cs = Array(n + 1).fill(0n);
-  cs[n] = 1n;
+  cs[n] = monic ? 1n : leadingCoeff(next, f);
   cs[0] = smallCoeff(next, f);
   let placed = 0;
   const count = Math.min(n - 1, Math.max(1, Math.floor(n / 4)));
@@ -402,11 +409,11 @@ function sparseSrc(f, n) {
   return bigPolyToSrc(cs, { hex: f.char === 2 });
 }
 
-/** Monic, every coefficient a small nonzero value. */
-function denseSrc(f, n) {
+/** Every coefficient a small nonzero value; monic or with a small leading coefficient. */
+function denseSrc(f, n, monic = true) {
   const next = rng(String(f.char), 'dense', n);
   const cs = Array(n + 1).fill(0n);
-  cs[n] = 1n;
+  cs[n] = monic ? 1n : leadingCoeff(next, f);
   for (let d = n - 1; d >= 0; d--) cs[d] = smallCoeff(next, f);
   return bigPolyToSrc(cs, { hex: f.char === 2 });
 }
@@ -457,10 +464,10 @@ export function examplesFor(mode, degree, seed = 0, monic = false) {
         : `${k}-independent hashing: a uniformly random key polynomial over ${f.name} ` +
           `(all ${k} coefficients full-width) — click again for a fresh key`,
       src: keySrc(f, n, ['random', seed], monic) },
-    { key: 'sparse', label: 'sparse', title: 'monic, only a few small nonzero coefficients',
-      src: sparseSrc(f, n) },
-    { key: 'dense',  label: 'dense', title: 'monic, every coefficient a small nonzero value',
-      src: denseSrc(f, n) },
+    { key: 'sparse', label: 'sparse', title: `${monic ? 'monic, ' : ''}only a few small nonzero coefficients`,
+      src: sparseSrc(f, n, monic) },
+    { key: 'dense',  label: 'dense', title: `${monic ? 'monic, ' : ''}every coefficient a small nonzero value`,
+      src: denseSrc(f, n, monic) },
     { key: 'fixed',  label: 'fixed key',
       title: `a fixed, reproducible ${monic ? 'monic ' : 'full-width key '}polynomial over ${f.name} (the same on every visit)`,
       src: keySrc(f, n, ['fixed'], monic) },

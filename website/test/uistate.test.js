@@ -174,7 +174,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
   for (const m of ['p61', 'p89', 'p127', 'gf32', 'gf64', 'gf128'])
     eq(examplesFor(m, 10).map(e => e.key), ['random', 'sparse', 'dense', 'fixed'], `${m} hashing example chips`);
   const exM = reduce(reduce(s1, { type: 'setMode', mode: 'p89' }), { type: 'example', key: 'dense' });
-  check(exM.src === defaultExample('p89', 10).src, 'example chips follow the mode (Mersenne)');
+  check(exM.src === defaultExample('p89', 10, 0, true).src, 'example chips follow the mode (Mersenne)');
   const err = reduce(reduce(initialState, { type: 'compile' }), { type: 'reply', id: 1, ok: false, message: 'bad input' });
   check(err.error === 'bad input' && !err.busy && err.result === null && err.jobId === 2, 'error reply shows the message (nothing to keep on a first compile) and retires the job id');
   // a failed reply keeps the last result mounted under the error (the page never collapses while a draft is typed)
@@ -544,22 +544,26 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
     const f = REGISTRY.find(x => x.id === m);
     eq(examplesFor(m, 20), examplesFor(m, 20), `${m} generators are deterministic`);
     for (const n of [3, 20, 63]) {
-      const ex = Object.fromEntries(examplesFor(m, n).map(e => [e.key, parsePoly(e.src)]));
+      const ex = Object.fromEntries(examplesFor(m, n, 0, true).map(e => [e.key, parsePoly(e.src)]));
       check(ex.dense.degree === n && ex.dense.coeffs[n].isOne() && ex.dense.coeffs.every(c => c.isInt() && !c.isZero() && abs(c) <= 20n),
             `${m} dense degree ${n}: monic, every coefficient in ±[1,20]`);
+      // the monic toggle off: dense and sparse get a small leading coefficient other than 1
+      const exN = Object.fromEntries(examplesFor(m, n, 0, false).map(e => [e.key, parsePoly(e.src)]));
+      check([exN.dense, exN.sparse].every(q => q.degree === n && !q.coeffs[n].isOne() && !q.coeffs[n].isZero() && abs(q.coeffs[n]) <= 20n),
+            `${m} dense / sparse degree ${n}: non-monic with a small leading coefficient when the toggle is off`);
       const sparseNZ = ex.sparse.coeffs.filter(c => !c.isZero()).length;
       check(ex.sparse.degree === n && ex.sparse.coeffs[n].isOne() && !ex.sparse.coeffs[0].isZero() && sparseNZ <= Math.max(3, n / 4 + 2)
             && sparseNZ < n + 1 && ex.sparse.coeffs.every(c => c.isInt() && abs(c) <= 20n),
             `${m} sparse degree ${n}: monic, ${sparseNZ} nonzero terms`);
       for (const k of ['random', 'fixed']) {
-        const p = ex[k];
+        const p = exN[k];                       // the key chips are non-monic with the toggle off
         check(p.degree === n && p.coeffs.every(c => c.isInt() && c.n >= 0n && c.n < f.prime), `${m} ${k} key degree ${n}: residues in [0, p)`);
         check(p.coeffs.filter(c => c.n > (f.prime >> 8n)).length >= n / 2, `${m} ${k} key degree ${n}: full-width coefficients`);
         check(!p.coeffs[n].isOne(), `${m} ${k} key degree ${n}: random leading coefficient (non-monic)`);
       }
     }
-    check(examplesFor(m, 64)[2].src.startsWith('x^63'), `${m} degree clamps down to 63`);
-    check(examplesFor(m, 1)[2].src.startsWith('x^3'), `${m} degree clamps up to 3`);
+    check(examplesFor(m, 64, 0, true)[2].src.startsWith('x^63'), `${m} degree clamps down to 63`);
+    check(examplesFor(m, 1, 0, true)[2].src.startsWith('x^3'), `${m} degree clamps up to 3`);
   }
   check(examplesFor('p61', 20)[2].src === examplesFor('p89', 20)[2].src && examplesFor('p61', 20)[1].src === examplesFor('p127', 20)[1].src,
         'small-coefficient presets agree across the Mersenne fields (only the keys depend on the width)');
@@ -568,17 +572,20 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
     const f = REGISTRY.find(x => x.id === m);
     eq([0, 3, 13, 14, 16, 17, 21, 40].map(d => clampDegree(m, d)), [1, 3, 13, 14, 16, 17, 21, 26], `${m} degree clamping: every degree 1..26`);
     for (const n of [13, 14, 21]) {
-      const ex = Object.fromEntries(examplesFor(m, n).map(e => [e.key, parsePoly(e.src, { char2: true })]));
+      const ex = Object.fromEntries(examplesFor(m, n, 0, true).map(e => [e.key, parsePoly(e.src, { char2: true })]));
       check(ex.dense.degree === n && ex.dense.coeffs[n] === 1n && ex.dense.coeffs.every(c => c !== 0n && c <= 29n), `${m} dense degree ${n}: monic, small hex coefficients`);
       check(ex.sparse.degree === n && ex.sparse.coeffs[n] === 1n && ex.sparse.coeffs[0] !== 0n && ex.sparse.coeffs.filter(c => c !== 0n).length <= 8, `${m} sparse degree ${n}`);
+      const exN = Object.fromEntries(examplesFor(m, n, 0, false).map(e => [e.key, parsePoly(e.src, { char2: true })]));
+      check([exN.dense, exN.sparse].every(q => q.degree === n && q.coeffs[n] !== 1n && q.coeffs[n] !== 0n && q.coeffs[n] <= 29n),
+            `${m} dense / sparse degree ${n}: non-monic with a small leading coefficient when the toggle is off`);
       for (const k of ['random', 'fixed']) {
-        const p = ex[k];
+        const p = exN[k];                       // the key chips are non-monic with the toggle off
         check(p.degree === n && p.coeffs.every(c => c >= 0n && c < (1n << BigInt(f.bits))), `${m} ${k} key degree ${n}: ${f.bits}-bit patterns`);
         check(p.coeffs.filter(c => c > (1n << BigInt(f.bits - 8))).length >= n / 2 && p.coeffs[n] !== 1n, `${m} ${k} key degree ${n}: full-width, non-monic`);
       }
     }
     check(/^0x[0-9a-f]+ x\^13 \+ 0x/.test(examplesFor(m, 13)[0].src), `${m} keys are written in hex (a space before x)`);
-    check(examplesFor(m, 14)[2].src.startsWith('x^14') && examplesFor(m, 27)[2].src.startsWith('x^26'), `${m} even degrees are their own; 27 clamps to 26`);
+    check(examplesFor(m, 14, 0, true)[2].src.startsWith('x^14') && examplesFor(m, 27, 0, true)[2].src.startsWith('x^26'), `${m} even degrees are their own; 27 clamps to 26`);
   }
   // the random key reseeds; the fixed key does not
   check(examplesFor('p89', 20, 0)[0].src !== examplesFor('p89', 20, 1)[0].src, 'random key differs per seed');
@@ -690,7 +697,7 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
         'GF(2^k) deg: even degrees kept, clamped to the largest compiled degree');
   check(stateFromHash(initialState, '#deg=17').src === defaultExample('Q', 17, 0, true).src, "degree-only hash reseeds the field's default example at that degree");
   const m = stateFromHash(initialState, '#mode=p89&deg=20');
-  check(m.mode === 'p89' && m.src === defaultExample('p89', 20).src && m.exKey === 'dense', 'src-less hash seeds the dense example');
+  check(m.mode === 'p89' && m.src === defaultExample('p89', 20, 0, true).src && m.exKey === 'dense', 'src-less hash seeds the dense example');
   for (const [legacy, id] of Object.entries(LEGACY_MODES))
     check(stateFromHash(initialState, `#mode=${legacy}&deg=20`).mode === id, `legacy mode ${legacy} → ${id}`);
   check(stateFromHash(initialState, '#mode=mersenne&src=x%5E3%2B1').src === 'x^3+1', 'legacy Mersenne link keeps its source');
@@ -724,10 +731,10 @@ check(reduce(initialState, { type: 'cancel' }) === initialState, 'cancel while i
             `${m}/${ex.key}/${deg}/${monic ? 'monic' : 'raw'}/seed ${seed}: round-trips through ex=`);
     }
   check(longest < 120, `every chip link is short (longest ${longest} chars)`);
-  check(stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').src === defaultExample('p89', 20).src && stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').exKey === 'dense',
+  check(stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').src === defaultExample('p89', 20, 0, true).src && stateFromHash(initialState, '#ex=nosuchchip&mode=p89&deg=20').exKey === 'dense',
         'an unknown chip key falls to the field\'s default example');
   check(stateFromHash(initialState, '#ex=exp&mode=C&deg=9').exKey === 'expi', 'a chip the field lacks falls to its default');
-  check(stateFromHash(initialState, '#ex=sparse&src=x%5E3%2B1&mode=gf64&deg=12').src === examplesFor('gf64', 12).find(e => e.key === 'sparse').src, 'ex= wins over src= when both are present');
+  check(stateFromHash(initialState, '#ex=sparse&src=x%5E3%2B1&mode=gf64&deg=12').src === examplesFor('gf64', 12, 0, true).find(e => e.key === 'sparse').src, 'ex= wins over src= when both are present');
   check(stateFromHash(initialState, '#src=x%5E9%2B1&mode=gf64').src === 'x^9+1' && stateFromHash(initialState, '#src=x%5E9%2B1&mode=gf64').exKey === null,
         'src= links (typed text and earlier Shares) still work');
   // method= is validated against the field's methods (a hyphen for the en dash is accepted)
